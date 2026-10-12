@@ -25,8 +25,13 @@ fn weigh() {
     println!("  KEY WEIGHING SHEET");
     println!("  single key on its frame, stack removed");
     println!("  protocol: Stanwood, Standard Protocols of the New Touchweight");
-    println!("            Metrology, February 2000. Measuring point 13 mm back");
-    println!("            from the front lip.");
+    // The bench's own setting, not a number written here: a header that
+    // quoted the default would go on saying 13 mm after the bench moved.
+    println!(
+        "            Metrology, February 2000. Measuring point {:.1} mm back",
+        bench.measuring_point_from_lip() * 1000.0
+    );
+    println!("            from the front lip of the key, the edge of the covering.");
     println!();
     print_sheet("bare key, no leads", &bare);
 
@@ -41,9 +46,9 @@ fn weigh() {
     println!();
     println!(
         "  lead effect        BW {:+7.2} g      FW {:+7.2} g      F {:+7.2} g",
-        leaded.balance_weight_g - bare.balance_weight_g,
-        leaded.front_weight_g - bare.front_weight_g,
-        leaded.friction_weight_g - bare.friction_weight_g
+        shown(leaded.balance_weight_g - bare.balance_weight_g),
+        shown(leaded.front_weight_g - bare.front_weight_g),
+        shown(leaded.friction_weight_g - bare.friction_weight_g)
     );
     println!("                     friction must not move: leads change balance,");
     println!("                     not friction.");
@@ -62,6 +67,20 @@ fn print_sheet(title: &str, r: &BenchReadout) {
     row("key dip", r.key_dip_mm, "mm");
     row("key mass", r.key_mass_g, "g");
     println!("  {:<22}{:>8}", "leads fitted", r.lead_count);
+}
+
+/// A difference as the sheet prints it, to the hundredth of a gram.
+///
+/// Rounded before it is printed, so that a residue of the arithmetic far below
+/// the last digit does not print as `-0.00` beside the check that friction
+/// has not moved.
+fn shown(x: f64) -> f64 {
+    let r = (x * 100.0).round() / 100.0;
+    if r == 0.0 {
+        0.0
+    } else {
+        r
+    }
 }
 
 fn row(label: &str, value: f64, unit: &str) {

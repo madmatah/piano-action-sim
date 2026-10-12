@@ -204,7 +204,9 @@ function Leads({ leads, width }: { leads: Lead[]; width: number }) {
  * The measuring point: a marker at the datum every touchweight is read at.
  *
  * Marked on purpose. A weight is only a measurement if you can see where it was
- * taken, and 13 mm back from the front lip is not somewhere a reader can guess.
+ * taken, and a set distance back from the covering's lip is not somewhere a
+ * reader can guess, least of all once the distance has been changed. The
+ * engine places it, so it follows the setting with nothing to do here.
  */
 function MeasuringPoint({ at }: { at: [number, number] }) {
   const [x, y] = at

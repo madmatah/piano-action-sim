@@ -5,6 +5,8 @@
 //! reports a let-off, it must be the hammer-to-string distance at the instant
 //! the jack leaves the knuckle — not the value of a parameter.
 
+use crate::parts::KeyDesign;
+
 /// Touchweight quantities, after Stanwood's *New Touchweight Metrology*.
 ///
 /// # The two reciprocal Key Ratio conventions
@@ -22,8 +24,9 @@
 /// * **Geometric convention**: the ratio of lever arms, front over capstan,
 ///   *"nominally 2:1 for modern pianos"*. That is the reciprocal of the first.
 ///
-/// All weights are measured with the touch weights centred **13 mm** in from the
-/// front vertical edge of the key.
+/// All weights are measured with the touch weights centred on the **measuring
+/// point**, a set distance back from the front lip of the key
+/// ([`TouchweightProtocol`]).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Touchweight {
     /// Downweight: minimum mass at the measuring point that starts the key down
@@ -150,15 +153,78 @@ pub struct KeyWeighing {
     pub capstan_arm: f64,
 }
 
-/// The imperial alternative to the 13 mm measuring point, metres.
+/// How far back from the front lip of the key every weight is centred, metres:
+/// the default of [`TouchweightProtocol::measuring_point_from_lip`].
 ///
-/// The 2000 glossary gives both: *"the datum point on the top of the key 13 mm
-/// or 1/2 inch back from the front lip of the key"*. They differ by 0.3 mm,
-/// which is 0.1 % of the lever arm and therefore below the 0.1 g resolution of
-/// the scale. The project uses 13 mm,
-/// [`crate::parts::MEASURING_POINT_FROM_FRONT_EDGE`], and records this one
-/// rather than silently choosing. [V]
+/// The glossary's *Measuring Point*: *"The datum point on the top of the key
+/// 13mm or 1/2" back from the front lip of the key. Weights are centered on
+/// this point when measuring Up Weight and Down Weight."* [V, Stanwood 2000,
+/// glossary, p. 23; `data/params/touchweight-protocol.json`]
+pub const MEASURING_POINT_FROM_LIP: f64 = 0.013;
+
+/// The imperial alternative the same glossary gives, 1/2 inch, metres.
+///
+/// It differs from [`MEASURING_POINT_FROM_LIP`] by 0.3 mm, which is 0.1 % of
+/// the lever arm and therefore below the 0.1 g resolution of the scale. The
+/// default is 13 mm; this is the documented alternative a bench may be set to,
+/// recorded rather than silently dropped. [V, Stanwood 2000, glossary, p. 23;
+/// `data/params/touchweight-protocol.json`]
 pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
+
+/// The conventions the touchweight protocols are run under.
+///
+/// # Why this is not a dimension of the key
+///
+/// Where a weight is centred is a convention of the **measurement**, not a
+/// property of the wood: the same key read 13 mm or 1/2 inch back from its lip
+/// is the same key, and every touchweight read on it changes by the lever. So
+/// it stays out of [`KeyDesign`], which the outline and the mass are built
+/// from, and the assembly being weighed holds it once
+/// ([`crate::parts::KeyAssembly::protocol`]). Every protocol reads the
+/// measuring point through [`crate::parts::KeyAssembly::measuring_point`] —
+/// front weight and the key weight ratio on the jig, D, U, BW and F, key
+/// friction weight, and the weight the settle solve puts on the key — so no
+/// two of them can be weighed at different points.
+///
+/// # Which lip
+///
+/// Stanwood's 2000 glossary measures from *"the front lip of the key"* without
+/// saying which lip; the 1996 paper's *"front vertical edge of the key"* is
+/// superseded with the rest of its protocols. The bench takes the
+/// **covering's** lip, the owner's choice: the front edge of the keytop, which
+/// overhangs the key front ([`KeyDesign::lip`]) — by 2 mm on the default key,
+/// so the measuring point stands 2 mm further forward than one measured from
+/// the key front, and every touchweight is read on a 0.8 % longer arm. Key
+/// height and key dip keep their own datum, the key front.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TouchweightProtocol {
+    /// How far back from the covering's lip every weight is centred, metres.
+    ///
+    /// [`MEASURING_POINT_FROM_LIP`] by default; [`MEASURING_POINT_HALF_INCH`]
+    /// is the published alternative.
+    pub measuring_point_from_lip: f64,
+}
+
+impl TouchweightProtocol {
+    /// The measuring point on `key`, metres in front of the balance pin.
+    ///
+    /// The one place the datum and the distance meet. It takes the key and not
+    /// a coordinate on purpose: handed a bare number, a caller could pass the
+    /// key front instead of the lip, and every touchweight would be weighed
+    /// 2 mm too far back with nothing to notice.
+    pub fn measuring_point(&self, key: &KeyDesign) -> f64 {
+        key.lip() - self.measuring_point_from_lip
+    }
+}
+
+impl Default for TouchweightProtocol {
+    /// Stanwood's: 13 mm back from the front lip.
+    fn default() -> Self {
+        Self {
+            measuring_point_from_lip: MEASURING_POINT_FROM_LIP,
+        }
+    }
+}
 
 impl KeyWeighing {
     /// **What the jig's scale reads** when `load_g` grams sit at `at` metres
@@ -222,7 +288,8 @@ impl KeyWeighing {
 }
 
 /// The weight the current protocol places at the capstan to read the key ratio,
-/// grams. Ten, since February 2000; a hundred before that.
+/// grams. Ten, since February 2000; a hundred before that. [V, Stanwood 2000,
+/// p. 22; `data/params/touchweight-protocol.json`]
 pub const KR_PROTOCOL_LOAD_G: f64 = 10.0;
 
 /// The two branches of a weighing, and what the trade reads off them.
@@ -390,7 +457,13 @@ impl KeyOnFrame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parts::{KeyDesign, Lead};
+    use crate::parts::Lead;
+
+    /// The default protocol's measuring point on `design`, metres from the
+    /// balance pin: the arm every jig reading below is taken on.
+    fn arm(design: &KeyDesign) -> f64 {
+        TouchweightProtocol::default().measuring_point(design)
+    }
 
     /// Builds the weighing of the default key, pivoting on the balance pin.
     fn default_key_on_frame(friction: KeyPinFriction) -> (KeyDesign, KeyOnFrame) {
@@ -401,7 +474,7 @@ mod tests {
         let on_frame = KeyOnFrame {
             mass: props.mass,
             static_moment: props.static_moment_x(),
-            measuring_arm: design.measuring_point(),
+            measuring_arm: arm(&design),
             friction,
         };
         (design, on_frame)
@@ -410,26 +483,28 @@ mod tests {
     fn kf(kf_g: f64) -> KeyPinFriction {
         KeyPinFriction::FromKeyFrictionWeight {
             kf_g,
-            arm: KeyDesign::default().measuring_point(),
+            arm: arm(&KeyDesign::default()),
         }
     }
 
     /// Level 0: the key ratio is the ratio of the two arms, and nothing else.
     ///
     /// No masses appear, because the protocol tares them away. The expected
-    /// value comes from the only sourced longitudinal pair this project has —
-    /// capstan 129.5 mm behind the balance pin, measuring point 245 mm in front —
-    /// and it must land inside the published 0.50–0.60 band for a natural.
+    /// value is worked from the default key's dimensions, not read off the
+    /// code: the capstan 129.5 mm behind the balance pin, and the measuring
+    /// point 13 mm back from the covering's lip, which stands 2 mm proud of
+    /// the key front at 258 mm — so 247 mm in front. It must land inside the
+    /// published 0.50–0.60 band for a natural.
     #[test]
     fn key_ratio_is_the_arm_ratio_and_lands_in_the_published_band() {
         let d = KeyDesign::default();
         let w = KeyWeighing {
             static_moment_about_pin: 0.0,
-            measuring_arm: d.measuring_point(),
+            measuring_arm: arm(&d),
             capstan_arm: -d.capstan,
         };
 
-        let expected = 0.1295 / 0.245;
+        let expected = 0.1295 / (0.258 + 0.002 - 0.013);
         assert!(
             (w.key_ratio() - expected).abs() < 1e-12,
             "key ratio {} is not the arm ratio {expected}",
@@ -454,7 +529,7 @@ mod tests {
         let d = KeyDesign::default();
         let light = KeyWeighing {
             static_moment_about_pin: 0.0,
-            measuring_arm: d.measuring_point(),
+            measuring_arm: arm(&d),
             capstan_arm: -d.capstan,
         };
         let heavy = KeyWeighing {
@@ -479,7 +554,7 @@ mod tests {
 
         let weighing = KeyWeighing {
             static_moment_about_pin: props.static_moment_x(),
-            measuring_arm: design.measuring_point(),
+            measuring_arm: arm(&design),
             capstan_arm: -design.capstan,
         };
         let branches = on_frame.branches().expect("the default key weighs");
@@ -516,12 +591,13 @@ mod tests {
 
             let (b0, b1) = (bare.branches().unwrap(), leaded.branches().unwrap());
 
-            // 1 g at 150 mm, referred to a 245 mm arm, is 0.61 g of balance weight.
+            // 1 g at 150 mm, referred to the 247 mm arm, is 0.61 g of balance
+            // weight.
             let moved = b0.balance_weight() - b1.balance_weight();
             assert!(
-                (moved - 0.150 / design.measuring_point()).abs() < 1e-6,
+                (moved - 0.150 / arm(&design)).abs() < 1e-6,
                 "1 g of lead at 150 mm moved BW by {moved} g, expected {}",
-                0.150 / design.measuring_point()
+                0.150 / arm(&design)
             );
 
             let friction_drift = (b1.friction_weight() - b0.friction_weight()).abs();
@@ -573,50 +649,63 @@ mod tests {
         );
     }
 
-    /// Level 4: **front weight is read at 13 mm, and the 13 mm is load-bearing.**
+    /// Level 4: **front weight is read 13 mm back from the covering's lip, and
+    /// the datum is load-bearing.**
     ///
     /// Not a numerical probe at a convenient place: the datum the 2000 glossary
-    /// fixes, *"on the top of the key 13 mm or 1/2 inch back from the front
-    /// lip"*. Two things are checked. The arm really is the front edge less
-    /// 13 mm; and moving the datum changes the number by the lever ratio, which
-    /// is what makes it a *protocol* rather than a convention — read a weight
-    /// somewhere else and you have a different weight.
+    /// fixes, *"on the top of the key 13mm or 1/2" back from the front lip of
+    /// the key"*, the lip taken as the covering's. Three things are checked. The
+    /// arm really is the lip less 13 mm, the lip standing `keytop_overhang`
+    /// proud of the key front; moving the datum changes the number by the
+    /// lever ratio, which is what makes it a *protocol* rather than a
+    /// convention — read a weight somewhere else and you have a different
+    /// weight; and the two readings of "front lip", the covering's and the key
+    /// front beneath it, are 2 mm of arm apart.
     #[test]
     fn front_weight_is_read_at_the_protocol_datum_and_the_datum_matters() {
         let d = KeyDesign::default();
         let props = d.mass_properties().unwrap();
+        let lip = d.front_edge + d.keytop_overhang;
 
         assert!(
-            (d.measuring_point() - (d.front_edge - 0.013)).abs() < 1e-15,
-            "the measuring arm must be the front edge less 13 mm"
+            (arm(&d) - (lip - 0.013)).abs() < 1e-15,
+            "the measuring arm must be the covering's lip less 13 mm"
         );
 
-        let at = |arm: f64| {
+        let at = |lever: f64| {
             KeyWeighing {
                 static_moment_about_pin: props.static_moment_x(),
-                measuring_arm: arm,
+                measuring_arm: lever,
                 capstan_arm: -d.capstan,
             }
             .front_weight_g()
         };
 
-        let protocol = at(d.measuring_point());
-        // The same key read at the very front lip instead: a longer arm, so a
+        let protocol = at(arm(&d));
+        // The same key read at the very lip instead: a longer arm, so a
         // smaller weight, in exact inverse proportion.
-        let at_lip = at(d.front_edge);
+        let at_lip = at(lip);
         assert!(
             at_lip.abs() < protocol.abs(),
             "a longer arm must read a smaller weight: {protocol} -> {at_lip}"
         );
         assert!(
-            (protocol * d.measuring_point() - at_lip * d.front_edge).abs() < 1e-9,
+            (protocol * arm(&d) - at_lip * lip).abs() < 1e-9,
             "front weight times its arm is the static moment, and must not depend \
              on where it was read"
         );
 
+        // Measured from the key front instead, 13 mm stands 2 mm further back:
+        // the same static moment over a 2 mm shorter arm, 0.8 % heavier.
+        let from_key_front = at(d.front_edge - 0.013);
+        assert!(
+            (from_key_front / protocol - arm(&d) / (arm(&d) - d.keytop_overhang)).abs() < 1e-12,
+            "the key front reads {from_key_front} g against {protocol} g at the lip"
+        );
+
         // And the half-inch alternative the same glossary offers differs by
         // 0.3 mm of arm, which is below the 0.1 g the scale resolves.
-        let half_inch = at(d.front_edge - MEASURING_POINT_HALF_INCH);
+        let half_inch = at(lip - MEASURING_POINT_HALF_INCH);
         assert!(
             (half_inch - protocol).abs() < 0.1,
             "13 mm and 1/2 inch must agree inside the scale's resolution: \
@@ -659,7 +748,7 @@ mod tests {
         let props = d.mass_properties().unwrap();
         let w = KeyWeighing {
             static_moment_about_pin: props.static_moment_x(),
-            measuring_arm: d.measuring_point(),
+            measuring_arm: arm(&d),
             capstan_arm: -d.capstan,
         };
 

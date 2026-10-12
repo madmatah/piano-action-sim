@@ -142,6 +142,10 @@ struct ReadoutDto {
     front_rail_mm: f32,
     back_rail_mm: f32,
     back_cloth_mm: f32,
+    /// How far back from the front lip of the key every weight is centred,
+    /// millimetres: the measuring point every touchweight on the sheet is
+    /// read at. The lip is the covering's.
+    measuring_point_from_lip_mm: f32,
 }
 
 /// A fault, as the sentence a technician would be told.
@@ -316,6 +320,7 @@ impl Bench {
             front_rail_mm: (rails.1 * 1000.0) as f32,
             back_rail_mm: (rails.2 * 1000.0) as f32,
             back_cloth_mm: (rails.3 * 1000.0) as f32,
+            measuring_point_from_lip_mm: (self.inner.measuring_point_from_lip() * 1000.0) as f32,
         })
         .unwrap_or_else(|_| "null".to_owned())
     }
@@ -332,6 +337,12 @@ impl Bench {
     /// where the key comes to rest.
     pub fn set_finger_weight(&mut self, grams: f64) {
         self.inner.set_finger_weight(grams);
+    }
+
+    /// Sets how far back from the front lip of the key every weight is
+    /// centred, millimetres: the measuring point of every touchweight.
+    pub fn set_measuring_point_from_lip(&mut self, mm: f64) {
+        self.inner.set_measuring_point_from_lip(mm * 1e-3);
     }
 
     /// Fits a lead, position in millimetres from the balance pin, mass in grams.

@@ -232,6 +232,21 @@ if (unlevelled['key height'] !== leaded['key height']) {
 }
 console.log(`  ok  lift it off: key height back to ${unlevelled['key height']}`)
 
+// The measuring point is a protocol setting every touchweight reads. Moving it
+// must change front weight and the key weight ratio by the lever, carry the
+// friction torque onto the new arm, and leave key height and dip alone: they
+// are read at the key front, not at the measuring point.
+if ((await moveSlider('measuring point, back from', 20)) !== 'ok') {
+  fail('measuring point slider missing')
+}
+await settle()
+const remeasured = await sheet()
+expectChanged('measuring point', unlevelled, remeasured, 'front weight FW')
+expectChanged('measuring point', unlevelled, remeasured, 'key weight ratio KR')
+expectChanged('measuring point', unlevelled, remeasured, 'friction weight F')
+expectUnchanged('measuring point', unlevelled, remeasured, 'key height')
+expectUnchanged('measuring point', unlevelled, remeasured, 'key dip')
+
 if (thrown.length > 0) fail(`the page threw: ${thrown[0].split('\n')[0]}`)
 
 console.log('all interactions reached the engine')

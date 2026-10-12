@@ -40,14 +40,14 @@
       "value": 2.0,
       "unit": "mm",
       "reliability": "V",
-      "what_for": "The fronton, glued over the end grain. Its outer face is the front vertical edge every touchweight is referred to."
+      "what_for": "The fronton, glued over the end grain. Its outer face is the key front, where key height and key dip are read. Touchweights are referred to the covering's lip instead, keytop_overhang in front of it."
     },
     {
       "name": "keytop_overhang",
       "value": 2.0,
       "unit": "mm",
       "reliability": "V",
-      "what_for": "The covering's lip beyond that face. It overhangs the WOOD by 4 mm, of which the fronton takes 2."
+      "what_for": "The covering's lip beyond that face. It overhangs the WOOD by 4 mm, of which the fronton takes 2. The lip is the 'front lip of the key' every touchweight's measuring point is taken back from (touchweight-protocol.json), so this is the distance between the touchweight datum and the key height and dip datum."
     },
     {
       "name": "capsule_length",

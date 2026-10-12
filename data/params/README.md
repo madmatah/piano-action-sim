@@ -11,8 +11,9 @@ under version control, and runs with `python3 -I`.
 
 **Built:** nothing reads them. The engine's defaults are Rust literals that
 repeat the records (`KeyDesign::default`, `FrameDesign::default`,
-`PAPER_THICKNESSES`), their doc comments pointing here, and nothing checks that
-the two agree.
+`PAPER_THICKNESSES`, `MEASURING_POINT_FROM_LIP`, `MEASURING_POINT_HALF_INCH`,
+`KR_PROTOCOL_LOAD_G`), their doc comments pointing here, and nothing checks
+that the two agree.
 
 **Planned:** the engine loads its defaults from these records through the
 parameter registry (`docs/FOUNDATIONS.md` §7.3), and a test fails when a default
@@ -25,7 +26,7 @@ has no record or disagrees with it.
 | wood density 430 kg/m³ | the key's mass | assumed |
 | keystick width 22 mm | the key's mass | assumed: integrated as a uniform prism over the whole key, although behind the head a grand keystick is much narrower |
 | capstan 129.5 mm behind the balance pin | key weight ratio | no source gives it: Thorin gives 128.7 mm (his §4.5.2) and 129 mm (his Table 2.1). The owner's measured 122 mm is recorded in `key-section.json` and not used |
-| measuring point 245 mm in front of the balance pin | every touchweight | Thorin's key arm, L = 0.245 m (his Table 2.1); no record |
+| key front 258 mm in front of the balance pin | key height, key dip, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, so at 247 mm | 13 mm ahead of Thorin's key arm, L = 0.245 m (his Table 2.1); no record |
 | rail heights 26.6, 25.9 and 19.0 mm (balance, front, back) | key height, key dip | assumed |
 | key friction weight 6 g | the friction band | assumed, of the order the trade measures |
 | felt washers 1.5 and 2.0 mm (balance, front), back rail cloth 3.0 mm | key height, key dip | assumed |
@@ -34,7 +35,6 @@ has no record or disagrees with it.
 | back rail 24 mm along the key | where the tail bears on its cloth | assumed, to be measured |
 | the capstan's proportions, in steel at 7850 kg/m³ | the key's mass | proportions scaled from a photograph, material assumed |
 | a lead's centre 10 mm above the key's underside | the key's mass properties at an angle | assumed |
-| the 13 mm measuring point, the 10 g key-ratio load | every touchweight, the key weight ratio | Stanwood's protocols, quoted in the code; no record |
 | regulation targets: key height 65.0 mm, key dip 10.2 mm | the default bench | close to, not equal to, the published Steinway New York figures |
 
 ## Two instruments, two names
@@ -83,7 +83,8 @@ Four conventions come up as soon as a real instrument is measured:
   is not named publicly is described instead.
 - **Where every record in a file shares one source, the source sits at the top
   of the file** rather than on each record. A record from elsewhere carries its
-  own and overrides it.
+  own and overrides it; where the records share a document but not a page, each
+  carries its own `locator`.
 - **A measurement that contradicts another measurement is not entered.** It is
   recorded under `does_not_reconcile` with the arithmetic that refuses it, and
   the value it would have replaced stays until the conflict is settled.
@@ -99,6 +100,7 @@ Four conventions come up as soon as a real instrument is measured:
 | `key-frame-sections.json` | the three rails as parts: pin shapes and sizes, punching and hole diameters, and the offset between the naturals' and the sharps' rows, measured on one key frame |
 | `punching-papers.json` | the punching papers a regulation is shimmed with: eight thicknesses, and the colour each is supplied in |
 | `key-section.json` | the keystick in profile: the wood's thickness, the covering and key front, the capsule, the block that carries the back check, the thinned tail and its felt, and the chamfer under it |
+| `touchweight-protocol.json` | the conventions Stanwood's touchweight protocols run under: the measuring point 13 mm or 1/2 inch back from the front lip of the key, and the 10 g the key weight ratio is read with |
 
 ## Planned records
 

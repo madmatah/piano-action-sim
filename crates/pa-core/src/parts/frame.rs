@@ -164,7 +164,7 @@ impl Default for FrameDesign {
     /// catches the key where that attitude brings it. The condition reduces to
     ///
     /// ```text
-    /// balance bearing − back bearing = dip × (back rail arm ÷ front lip arm)
+    /// balance bearing − back bearing = dip × (back rail arm ÷ key front arm)
     /// ```
     ///
     /// — and the arm in it is where the key **really bears**, which is the back

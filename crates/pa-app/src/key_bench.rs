@@ -15,7 +15,7 @@
 //! an animation of leading, not leading.
 
 use pa_core::geometry::{KeyBearing, Point};
-use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, KeyWeighing};
+use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, KeyWeighing, TouchweightProtocol};
 pub use pa_core::parts::assembly::Fault;
 use pa_core::parts::assembly::Settled;
 /// The punching thicknesses a drawer holds, re-exported so an adapter can
@@ -199,7 +199,6 @@ impl KeyBench {
     /// answer and not an error to swallow.
     pub fn new(key: KeyDesign, mut frame: FrameDesign, target: Regulation) -> Option<Self> {
         let (balance, front) = target.solve(&key, &frame, 0.0)?;
-        let key_arm = key.measuring_point();
         let (balance_felt, front_felt) = (frame.balance_punching.felt, frame.front_punching.felt);
         // Keep the felt the technician fitted and put the difference in paper,
         // which is what he would actually do.
@@ -213,26 +212,31 @@ impl KeyBench {
             return None;
         }
 
+        let assembly = KeyAssembly {
+            key,
+            frame,
+            bearing: KeyBearing {
+                offset_from_pin: 0.0,
+                stack_height: balance,
+            },
+            // Stanwood's protocol until the bench is told otherwise; see
+            // `set_measuring_point_from_lip`.
+            protocol: TouchweightProtocol::default(),
+        };
+        // Six grams is the order of Key Friction Weight on a well-centred key;
+        // it is a starting value to be replaced by a measurement, and it is the
+        // single parameter the two non-confusion tests move. [E] The radius is
+        // this key's measuring point, read where every protocol reads it, not
+        // a number retyped from the default key: that would give any other key
+        // a friction bound measured on someone else's arm.
+        let friction = KeyPinFriction::FromKeyFrictionWeight {
+            kf_g: 6.0,
+            arm: assembly.measuring_point(),
+        };
         let mut bench = Self {
-            assembly: KeyAssembly {
-                key,
-                frame,
-                bearing: KeyBearing {
-                    offset_from_pin: 0.0,
-                    stack_height: balance,
-                },
-            },
+            assembly,
             kind: KeyKind::Natural,
-            // Six grams is the order of Key Friction Weight on a well-centred
-            // key; it is a starting value to be replaced by a measurement, and
-            // it is the single parameter the two non-confusion tests move. [E]
-            // The radius is the key's own measuring point, not the 0.245 m it
-            // happens to be on the default key: retyped, it would give any
-            // other key a friction bound measured on someone else's arm.
-            friction: KeyPinFriction::FromKeyFrictionWeight {
-                kf_g: 6.0,
-                arm: key_arm,
-            },
+            friction,
             depression: 0.0,
             finger_weight_g: 0.0,
             target,
@@ -476,16 +480,17 @@ impl KeyBench {
 
     /// Where the measuring point is now, in the keybed frame.
     ///
-    /// The datum every touchweight is read at, 13 mm back from the front lip,
-    /// on top of the covering. Exposed because the view must mark it — a reader
-    /// has to see *where* the engine thinks it is weighing — and because it is
-    /// the only honest probe for "has the front of the key moved": the outline's
-    /// extreme vertex changes identity as the key turns, so comparing extremes
-    /// across two attitudes compares two different corners.
+    /// The datum every touchweight is read at, the protocol's distance back
+    /// from the covering's lip, on top of the covering. Exposed because the
+    /// view must mark it — a reader has to see *where* the engine thinks it is
+    /// weighing — and because it is the only honest probe for "has the front
+    /// of the key moved": the outline's extreme vertex changes identity as the
+    /// key turns, so comparing extremes across two attitudes compares two
+    /// different corners.
     pub fn measuring_point_world(&self) -> Point {
         let key = &self.assembly.key;
         self.to_world(Point::new(
-            key.measuring_point(),
+            self.assembly.measuring_point(),
             key.stick_height + key.keytop_thickness,
         ))
     }
@@ -526,7 +531,7 @@ impl KeyBench {
 
         let weighing = KeyWeighing {
             static_moment_about_pin: props.static_moment_x(),
-            measuring_arm: key.measuring_point(),
+            measuring_arm: self.assembly.measuring_point(),
             capstan_arm: -key.capstan,
         };
         let on_frame = KeyOnFrame {
@@ -823,9 +828,45 @@ impl KeyBench {
     /// happens at all between the two branches.
     pub fn set_finger_weight(&mut self, grams: f64) {
         self.finger_weight_g = grams;
+        self.come_to_rest();
+    }
+
+    /// Lets the key come to rest under the weight on the measuring point.
+    fn come_to_rest(&mut self) {
         if let Some(s) = self.settle() {
             self.depression = self.depression_of(s.sin_theta);
         }
+    }
+
+    /// Sets how far back from the front lip of the key every weight is
+    /// centred, metres: the measuring point of every touchweight protocol.
+    ///
+    /// The lip is the covering's, which overhangs the key front. Every
+    /// touchweight follows by the lever — front weight and the key weight
+    /// ratio, D, U, BW and F, key friction weight — and nothing about the key
+    /// changes: the same static moment, and the same friction torque, read on
+    /// a different arm. Key height and key dip do not move; they are read at
+    /// the key front.
+    ///
+    /// A weight already on the key moves with the point, so the key settles
+    /// again under it. Clamped to the covering, from its lip to its back end:
+    /// in front of the lip there is no key to put a weight on, and behind the
+    /// covering the point would no longer stand on the top the statics put it
+    /// on. A value that is not a number is not a distance, and leaves the point
+    /// where it was.
+    pub fn set_measuring_point_from_lip(&mut self, from_lip: f64) {
+        if !from_lip.is_finite() {
+            return;
+        }
+        let covering = self.assembly.key.keytop_length.max(0.0);
+        self.assembly.protocol.measuring_point_from_lip = from_lip.clamp(0.0, covering);
+        self.come_to_rest();
+    }
+
+    /// How far back from the front lip of the key every weight is centred,
+    /// metres.
+    pub fn measuring_point_from_lip(&self) -> f64 {
+        self.assembly.protocol.measuring_point_from_lip
     }
 
     /// Solves where the key rests under the current weight, with both stops
@@ -896,9 +937,10 @@ impl KeyBench {
     //
     // The key weight ratio is deliberately **not** settable. It is the ratio of
     // two arms, so it is an output of the geometry exactly as the action ratio
-    // is: you move the capstan, or you change where the key is measured, and
-    // the ratio follows. A control that set it directly would have to silently
-    // choose which dimension to move, which is why neither ratio is a setting.
+    // is: you move the capstan, or you change where the key is measured
+    // (`set_measuring_point_from_lip`), and the ratio follows. A control that
+    // set it directly would have to silently choose which dimension to move,
+    // which is why neither ratio is a setting.
     //
     // Changing a dimension does **not** re-solve the punchings. The regulation
     // drifts and the bench shows the miss, because that is what happens on a
@@ -915,8 +957,9 @@ impl KeyBench {
 
     /// Moves the front edge of the key, metres in front of the balance pin.
     ///
-    /// This is the key's length in front of its pivot, and with the capstan it
-    /// is one of the two numbers that set the key weight ratio.
+    /// This is the key's length in front of its pivot. The measuring point
+    /// moves with it, a set distance back from the covering's lip, so with
+    /// the capstan and that distance it sets the key weight ratio.
     pub fn set_front_edge(&mut self, from_balance: f64) {
         self.assembly.key.front_edge = from_balance.max(0.050);
     }
@@ -1051,10 +1094,15 @@ impl KeyBench {
     }
 
     /// Sets the key friction weight, grams at the measuring point.
+    ///
+    /// Stored as a torque with the arm it is read at, the measuring point as
+    /// it stands now. Moving the measuring point afterwards leaves the torque
+    /// alone, so the key friction weight the protocol reads changes by the
+    /// lever: the bushings have not changed, only where they are weighed.
     pub fn set_key_friction_weight(&mut self, kf_g: f64) {
         self.friction = KeyPinFriction::FromKeyFrictionWeight {
             kf_g: kf_g.max(0.0),
-            arm: self.assembly.key.measuring_point(),
+            arm: self.assembly.measuring_point(),
         };
     }
 }
@@ -1164,8 +1212,10 @@ mod tests {
     ///
     /// The friction is turned down for this, and that is the point rather
     /// than a convenience: an unleaded key of this length is very nearly
-    /// balanced — 5.8 g of front weight against a 6 g friction band — so with
-    /// its own friction it stays wherever it is put, which is also correct.
+    /// balanced — about 6.5 g of front weight against a 6 g friction band — so
+    /// with its own friction it falls by a fraction of a gram, and a little
+    /// less front weight would leave it wherever it is put, which is also
+    /// correct.
     /// The bug this guards is the other case: a key whose front weight beats
     /// its friction, sitting at the bottom of its dip, and the branches
     /// insisting it is still going down.
@@ -1352,9 +1402,9 @@ mod contact_readout_tests {
         b.set_front_paper(paper + shim);
         let after = b.readout().unwrap();
 
-        // The front rail pin is 225 mm from the balance pin and the measuring
-        // point 245 mm, so a shim at the punching shows up at the front edge
-        // multiplied by 258/225.
+        // The front rail pin is 225 mm from the balance pin and the key front
+        // 258 mm, so a shim at the punching shows up at the key front, where
+        // the dip is read, multiplied by 258/225.
         let expected = shim * 1000.0 * (258.0 / 225.0);
         let moved = before.key_dip_mm - after.key_dip_mm;
         assert!(
@@ -1829,6 +1879,236 @@ mod dip_procedure_tests {
         assert!(
             (heavy - light).abs() < 1e-12,
             "tripling the friction moved the measured dip from {light} to {heavy}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod measuring_point_tests {
+    use super::*;
+    use pa_core::measure::MEASURING_POINT_HALF_INCH;
+
+    /// Level 0: **moving the measuring point changes front weight exactly as
+    /// the lever says**, and nothing about the key.
+    ///
+    /// Front weight is the key's static moment about the pin over the arm to
+    /// the measuring point. Moved 7 mm further back from the lip, the moment is
+    /// the same and the arm 7 mm shorter, so the reading rises in the ratio of
+    /// the two arms. The arms are worked from the key's own front edge and
+    /// covering overhang, not from the code that places the point. Key mass,
+    /// height and dip are read off the key and at the key front, so they must
+    /// not move at all.
+    #[test]
+    fn moving_the_measuring_point_changes_front_weight_exactly_by_the_lever() {
+        let mut b = KeyBench::standard();
+        let key = b.assembly().key.clone();
+        let lip = key.front_edge + key.keytop_overhang;
+        let moment_g_m = 1000.0 * key.mass_properties().unwrap().static_moment_x();
+
+        // The default: 13 mm back from the covering's lip, which stands 2 mm
+        // proud of the key front at 258 mm, so the arm is 247 mm.
+        assert!((b.measuring_point_from_lip() - 0.013).abs() < 1e-15);
+        assert!(
+            (b.assembly().measuring_point() - (0.258 + 0.002 - 0.013)).abs() < 1e-12,
+            "the default measuring point is 247 mm in front of the balance pin, not {} m",
+            b.assembly().measuring_point()
+        );
+
+        let before = b.readout().unwrap();
+        // The bench is built with 6 g of key friction weight taken at its own
+        // measuring point, so its sheet reads the 6 g back. A friction radius
+        // left at another point would read as another number here.
+        assert!(
+            (before.friction_weight_g - 6.0).abs() < 1e-12,
+            "the standard bench reads {} g of friction, not the 6 g it was built with",
+            before.friction_weight_g
+        );
+        let arm_before = lip - b.measuring_point_from_lip();
+        b.set_measuring_point_from_lip(b.measuring_point_from_lip() + 0.007);
+        let after = b.readout().unwrap();
+        let arm_after = lip - b.measuring_point_from_lip();
+
+        // The same static moment, read on each arm.
+        for (fw, arm) in [
+            (before.front_weight_g, arm_before),
+            (after.front_weight_g, arm_after),
+        ] {
+            assert!(
+                (fw * arm - moment_g_m).abs() < 1e-12,
+                "{fw} g on a {arm} m arm is not the key's static moment, {moment_g_m} g·m"
+            );
+        }
+        let expected = before.front_weight_g * arm_before / arm_after;
+        assert!(
+            (after.front_weight_g - expected).abs() < 1e-12,
+            "7 mm further back, front weight read {} g against the lever's {expected} g",
+            after.front_weight_g
+        );
+
+        // The key itself has not changed, and neither has its key front.
+        assert_eq!(after.key_mass_g, before.key_mass_g);
+        assert_eq!(after.key_height_mm, before.key_height_mm);
+        assert_eq!(after.key_dip_mm, before.key_dip_mm);
+    }
+
+    /// Level 0: **every protocol reads the same measuring point.**
+    ///
+    /// Set to the glossary's other value, 1/2 inch, so that a reading still
+    /// taken at a stale 13 mm cannot pass by agreeing with the default. Each
+    /// protocol's own output is then turned back into the arm it was read on,
+    /// and every one must be the covering's lip less the setting:
+    ///
+    /// * the jig: front weight `FW = M / arm`, key weight ratio
+    ///   `KR = capstan arm / arm`;
+    /// * the closed form on the frame, with the bearing at the pin:
+    ///   `D = (b − M) / arm`, `U = (−b − M) / arm`, so `BW = −M / arm` and
+    ///   `F = b / arm`;
+    /// * key friction weight, run as a procedure: the friction torque over the
+    ///   arm the key presents at rest, nose-up, `cos θ · arm + sin θ · h`;
+    /// * the weight the settle solve puts on the key, on that same arm.
+    ///
+    /// The friction is set before the point moves, so F also checks that it is
+    /// kept as a torque with its radius: read at the new point it is the same
+    /// torque over a different arm, not the same grams.
+    #[test]
+    fn every_protocol_reads_the_same_measuring_point() {
+        let mut b = KeyBench::standard();
+        let key = b.assembly().key.clone();
+        let lip = key.front_edge + key.keytop_overhang;
+
+        let kf_g = 6.0;
+        b.set_key_friction_weight(kf_g);
+        let torque = kf_g * 1e-3 * (lip - b.measuring_point_from_lip());
+
+        b.set_measuring_point_from_lip(MEASURING_POINT_HALF_INCH);
+        let arm = lip - b.measuring_point_from_lip();
+        assert!((b.measuring_point_from_lip() - MEASURING_POINT_HALF_INCH).abs() < 1e-15);
+        assert!((b.assembly().measuring_point() - arm).abs() < 1e-15);
+
+        let r = b.readout().unwrap();
+        let m = key.mass_properties().unwrap().static_moment_x();
+        let read_on = [
+            ("front weight", 1000.0 * m / r.front_weight_g),
+            ("key weight ratio", -key.capstan / r.key_ratio),
+            ("down weight", 1000.0 * (torque - m) / r.down_weight_g),
+            ("up weight", 1000.0 * (-torque - m) / r.up_weight_g),
+            ("balance weight", -1000.0 * m / r.balance_weight_g),
+            ("friction weight", 1000.0 * torque / r.friction_weight_g),
+        ];
+        for (what, on) in read_on {
+            assert!(
+                (on - arm).abs() < 1e-12,
+                "{what} was read on a {on} m arm; the measuring point's is {arm} m"
+            );
+        }
+
+        // Key friction weight, by the procedure. It reads the torque over the
+        // arm the key presents on its cloth, from the same point. The search
+        // halves a 200 g bracket 32 times, so the reading is within one final
+        // interval, 200 / 2^32 g, of the least weight: that is the tolerance.
+        let rest = b.assembly().sin_angle_on_back_rail().unwrap();
+        let tilted =
+            (1.0 - rest * rest).sqrt() * arm + rest * (key.stick_height + key.keytop_thickness);
+        let kf = r
+            .measured_kf_g
+            .expect("the procedure runs on the standard bench");
+        let resolution_g = 200.0 / 2f64.powi(32);
+        assert!(
+            (1000.0 * torque / kf - tilted).abs() < tilted * resolution_g / kf,
+            "key friction weight was read on a {} m arm; the measuring point presents {tilted} m",
+            1000.0 * torque / kf
+        );
+
+        // And the weight the settle solve puts on the key acts there too.
+        let a = b.assembly();
+        let w = 25.0;
+        let from_weight = a.net_torque(rest, w).unwrap() - a.net_torque(rest, 0.0).unwrap();
+        assert!(
+            (from_weight - w * 1e-3 * tilted).abs() < 1e-15,
+            "{w} g on the key acts on a {} m arm, not the measuring point's {tilted} m",
+            from_weight / (w * 1e-3)
+        );
+    }
+
+    /// The marker on the section follows the setting.
+    ///
+    /// Moved 7 mm further back from the lip, the drawn marker moves 7 mm along
+    /// the top of the key, whichever stop the key is on. The weight on the
+    /// measuring point holds the key on that stop, so the attitude does not
+    /// change and the whole of the marker's movement is the setting's.
+    #[test]
+    fn the_drawn_measuring_point_follows_the_setting() {
+        for weight in [20.0, -20.0] {
+            let mut b = KeyBench::standard();
+            b.set_finger_weight(weight);
+            let s = b.sin_angle();
+            let before = b.measuring_point_world();
+
+            let back = 0.007;
+            b.set_measuring_point_from_lip(b.measuring_point_from_lip() + back);
+            assert!(
+                (b.sin_angle() - s).abs() < 1e-15,
+                "under {weight} g the key must stay on its stop"
+            );
+            let after = b.measuring_point_world();
+
+            // Back along the key's top: in the keybed frame that is
+            // `(−cos θ, sin θ)` times the distance moved.
+            let c = (1.0 - s * s).sqrt();
+            assert!(
+                (after.x - before.x + c * back).abs() < 1e-12
+                    && (after.y - before.y - s * back).abs() < 1e-12,
+                "under {weight} g the marker moved ({}, {}) m, not {back} m along the key",
+                after.x - before.x,
+                after.y - before.y
+            );
+        }
+    }
+
+    /// The measuring point stays on the covering.
+    ///
+    /// In front of the lip there is no key to put a weight on; behind the
+    /// covering the point would no longer stand on the top the statics put it
+    /// on. Both are clamped, not refused: a finger cannot put a weight in the
+    /// air either.
+    #[test]
+    fn the_measuring_point_stays_on_the_covering() {
+        let mut b = KeyBench::standard();
+        b.set_measuring_point_from_lip(-0.005);
+        assert_eq!(b.measuring_point_from_lip(), 0.0);
+        b.set_measuring_point_from_lip(0.500);
+        assert_eq!(b.measuring_point_from_lip(), b.assembly().key.keytop_length);
+        // And a value that is not a distance changes nothing.
+        b.set_measuring_point_from_lip(f64::NAN);
+        assert_eq!(b.measuring_point_from_lip(), b.assembly().key.keytop_length);
+    }
+
+    /// A weight on the key moves with the measuring point, and the key comes
+    /// to rest again under it.
+    ///
+    /// A back-heavy key rests on its cloth with 10.6 g on a measuring point
+    /// 30 mm back from the lip: on that arm the weight cannot overcome the
+    /// key's balance and its friction. Moved to 5 mm, the same weight acts
+    /// on an arm 25 mm longer and takes the key down to its punching, with
+    /// nobody touching the weight. The key leaves its cloth above 11.2 g at
+    /// 30 mm and above 10.1 g at 5 mm, so 10.6 g is half a gram clear of
+    /// either.
+    #[test]
+    fn moving_the_point_moves_the_weight_on_it_and_the_key_settles_again() {
+        let mut b = KeyBench::standard();
+        b.add_lead(-0.120, 30.0);
+        b.set_key_friction_weight(2.0);
+        b.set_measuring_point_from_lip(0.030);
+        b.set_finger_weight(10.6);
+        assert_eq!(b.finger_verdict(), Some(FingerVerdict::BackRailCloth));
+        assert_eq!(b.depression(), 0.0, "the key must still be at rest");
+
+        b.set_measuring_point_from_lip(0.005);
+        assert_eq!(b.finger_verdict(), Some(FingerVerdict::FrontPunching));
+        assert!(
+            (b.depression() - 1.0).abs() < 1e-12,
+            "the key must have gone down to its punching, not stayed at {}",
+            b.depression()
         );
     }
 }

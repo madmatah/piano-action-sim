@@ -112,6 +112,10 @@ export interface Readout {
   front_rail_mm: number
   back_rail_mm: number
   back_cloth_mm: number
+  /** How far back from the front lip of the key every weight is centred,
+   * millimetres: the measuring point every touchweight on the sheet is read
+   * at. The lip is the covering's, which overhangs the key front. */
+  measuring_point_from_lip_mm: number
 }
 
 let booting: Promise<Bench> | undefined

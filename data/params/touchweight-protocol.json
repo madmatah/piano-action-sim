@@ -1,0 +1,43 @@
+{
+  "what": "The conventions Stanwood's touchweight protocols are run under: where on the key every weight is centred, and the load the key weight ratio is read with.",
+  "source": {
+    "author": "David C. Stanwood",
+    "doc": "Standard Protocols of the New Touchweight Metrology",
+    "published": "Piano Technicians Journal, February 2000, pp. 20-23",
+    "local_copy": "data/references/stanwood/2000-02 - Standard Protocols of the New Touchweight Metrology.pdf"
+  },
+  "supersedes": "The 1996 paper, The New Touchweight Metrology (Piano Technicians Journal, June 1996), centres the weights 13 mm in from 'the front vertical edge of the key' and reads the key weight ratio with 100 g. These protocols replace both.",
+  "records": [
+    {
+      "name": "measuring_point_from_lip",
+      "value": 13.0,
+      "unit": "mm",
+      "reliability": "V",
+      "locator": { "page": 23, "entry": "Glossary, Measuring Point" },
+      "quote": "The datum point on the top of the key 13mm or 1/2\" back from the front lip of the key. Weights are centered on this point when measuring Up Weight and Down Weight. When measuring Front Weight (FW) the key rests on a roller bearing on the scale pan. The point at which the front of the key rests on the bearing is directly below the Measuring Point.",
+      "what_for": "The arm every touchweight is read on: front weight and the key weight ratio on the jig, down, up, balance and friction weight, and key friction weight.",
+      "which_lip": "The covering's: the front edge of the keytop, which overhangs the key front (keytop_overhang in key-section.json, 2 mm). The glossary does not say which lip it means; this one is the owner's choice. Key height and key dip keep the key front as their datum.",
+      "engine": "pa_core::measure::MEASURING_POINT_FROM_LIP, the default of TouchweightProtocol::measuring_point_from_lip, which the bench can set."
+    },
+    {
+      "name": "measuring_point_from_lip_imperial",
+      "value": 12.7,
+      "unit": "mm",
+      "as_printed": "1/2\"",
+      "reliability": "V",
+      "locator": { "page": 23, "entry": "Glossary, Measuring Point" },
+      "note": "The same entry's alternative, converted exactly (1 in = 25.4 mm). It stands 0.3 mm from 13 mm, 0.1 % of the arm, below the 0.1 g front weight is read to.",
+      "engine": "pa_core::measure::MEASURING_POINT_HALF_INCH"
+    },
+    {
+      "name": "key_weight_ratio_load",
+      "value": 10.0,
+      "unit": "g",
+      "reliability": "V",
+      "locator": { "page": 22, "column": 1 },
+      "quote": "With the scale set to zero, a 10-gram weight is placed on the back of the key, centered on a vertical axis which passes through the capstan/heel contact point. This gives results accurate to two decimal places. For instance, if the scale reads -5.5 the Key Weight Ratio (KR) would be 0.55.",
+      "what_for": "The key weight ratio, read on the front weight jig with the scale tared: the reading over the load.",
+      "engine": "pa_core::measure::KR_PROTOCOL_LOAD_G"
+    }
+  ]
+}

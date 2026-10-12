@@ -23,6 +23,7 @@
 
 use super::{frame::FrameDesign, KeyDesign};
 use crate::geometry::{circle_vs_line, ContactQuery, Frame, KeyBearing, Point, Rot};
+use crate::measure::TouchweightProtocol;
 
 /// A stop the key's underside can land on: a punching, or the back rail cloth.
 ///
@@ -270,7 +271,8 @@ pub enum RestingOn {
     FrontRailPunching,
 }
 
-/// A key, its frame, and the bearing between them.
+/// A key, its frame, and the bearing between them — and the protocol the key
+/// is weighed by.
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyAssembly {
     /// The key.
@@ -283,26 +285,40 @@ pub struct KeyAssembly {
     /// moves this deliberately, and modelling the pivot as the pin would make
     /// that technique inexpressible.
     pub bearing: KeyBearing,
+    /// How the key is weighed: where on it every weight is centred.
+    ///
+    /// Held here, once, because every touchweight is a question asked of this
+    /// assembly. The weight the settle solve puts on the key acts at the
+    /// measuring point, the closed form's arm runs from the bearing to it, and
+    /// the jig and key friction weight are built from it; each reads it
+    /// through [`Self::measuring_point`], so none can be weighed at a point
+    /// the others are not. It is not a dimension of the key, which is why it
+    /// is not on [`KeyDesign`].
+    pub protocol: TouchweightProtocol,
 }
 
 /// Where along the key a height or a dip is read.
 ///
 /// # Why this is a parameter and not a constant
 ///
-/// Key height and key dip are read **at the front of the key**, with a rule or
-/// a dip block standing on the keybed. Touchweights are read 13 mm back from
-/// that lip. Three of the five observables this bench reports are therefore
-/// taken at *two different points*, and the difference is not small: the two
-/// arms stand in the ratio 258 : 245, so the same travel reads 5 % apart.
+/// Key height and key dip are read **at the key front**, with a rule or a dip
+/// block standing on the keybed. Touchweights are read at the measuring point,
+/// a protocol distance back from the covering's lip, which stands proud of the
+/// key front. Three of the five observables this bench reports are therefore
+/// taken at *two different points*, and the difference is not small: on the
+/// default key the two arms stand in the ratio 258 : 247, so the same travel
+/// reads 4 % apart.
 ///
 /// Naming the datum turns that into something a test can check — and something
 /// a reader can see — instead of a constant buried in a formula that happens
 /// to be right today.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReadAt {
-    /// The front lip of the key. Where a rule or a dip block sits.
+    /// The key front, the face the covering's lip overhangs. Where a rule or
+    /// a dip block sits.
     FrontEdge,
-    /// 13 mm back from the lip. Where every touchweight is taken.
+    /// The measuring point, [`KeyAssembly::protocol`]'s distance back from the
+    /// covering's lip. Where every touchweight is taken.
     MeasuringPoint,
 }
 
@@ -851,11 +867,22 @@ impl KeyAssembly {
         self.sin_angle_on_stop(self.front_stop())
     }
 
+    /// **The measuring point**, metres in front of the balance pin: the
+    /// covering's lip less the protocol's distance.
+    ///
+    /// The only route to it. The jig's arm, the closed form's arm, the weight
+    /// the settle solve puts on the key, key friction weight and the drawn
+    /// marker all come through here, so changing the protocol moves every one
+    /// of them by the same distance, and none can be left at the old point.
+    pub fn measuring_point(&self) -> f64 {
+        self.protocol.measuring_point(&self.key)
+    }
+
     /// Longitudinal position of a reading datum, metres from the balance pin.
     pub fn datum_x(&self, at: ReadAt) -> f64 {
         match at {
             ReadAt::FrontEdge => self.key.front_edge,
-            ReadAt::MeasuringPoint => self.key.measuring_point(),
+            ReadAt::MeasuringPoint => self.measuring_point(),
         }
     }
 
@@ -970,7 +997,7 @@ impl KeyAssembly {
     /// out, because a correctly set key is nose-up at rest by the whole dip.
     pub fn measuring_arm_at(&self, sin_theta: f64) -> f64 {
         let c = (1.0 - sin_theta * sin_theta).max(0.0).sqrt();
-        let dx = self.key.measuring_point() - self.bearing_x();
+        let dx = self.measuring_point() - self.bearing_x();
         let dy = self.key.stick_height + self.key.keytop_thickness;
         c * dx + sin_theta * dy
     }
@@ -1043,6 +1070,10 @@ impl Regulation {
                 offset_from_pin: bearing_offset_from_pin,
                 stack_height: balance,
             },
+            // Never weighed: the probe is asked where the key bears on its
+            // cloth, which is geometry, and nothing about it reads the
+            // measuring point.
+            protocol: TouchweightProtocol::default(),
         };
         self.place(
             key,
@@ -1123,6 +1154,7 @@ mod tests {
                 offset_from_pin: 0.0,
                 stack_height: balance,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 
@@ -1362,11 +1394,11 @@ mod tests {
             cut.measuring_arm() > base.measuring_arm(),
             "moving the bearing back lengthens the arm to the measuring point"
         );
-        // The jig still pivots on the pin, so its arm is the key's own geometry
-        // and has not moved.
+        // The jig still pivots on the pin, so its arm is the key's geometry
+        // and the protocol's, and has not moved.
         assert!(
-            (cut.key.measuring_point() - base.key.measuring_point()).abs() < 1e-15,
-            "the weighing jig's arm is a property of the key, not of the frame"
+            (cut.measuring_point() - base.measuring_point()).abs() < 1e-15,
+            "the weighing jig's arm belongs to the key and the protocol, not to the frame"
         );
     }
 
@@ -1487,7 +1519,7 @@ impl KeyAssembly {
     pub fn total_potential(&self, sin_theta: f64, applied_g: f64) -> Option<f64> {
         let p = self.key.mass_properties()?;
         let c = (1.0 - sin_theta * sin_theta).max(0.0).sqrt();
-        let dxm = self.key.measuring_point() - self.bearing_x();
+        let dxm = self.measuring_point() - self.bearing_x();
         let dym = self.key.stick_height + self.key.keytop_thickness;
         let y_measuring = self.bearing_y() - sin_theta * dxm + c * dym;
         Some(p.mass * self.centre_of_mass_height(sin_theta)? + applied_g * 1e-3 * y_measuring)
@@ -1720,6 +1752,7 @@ mod virtual_work_tests {
                 offset_from_pin: 0.0,
                 stack_height: balance,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 
@@ -1838,6 +1871,7 @@ mod bearing_tests {
                 offset_from_pin: 0.0,
                 stack_height: balance,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 
@@ -2129,6 +2163,7 @@ mod settle_tests {
                 offset_from_pin: 0.0,
                 stack_height: balance,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 
@@ -2286,6 +2321,7 @@ mod protocol_tests {
                 offset_from_pin: 0.0,
                 stack_height: balance,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 
@@ -2320,19 +2356,20 @@ mod protocol_tests {
     }
 
     /// Level 4: **the dip's datum is load-bearing**, exactly as the front
-    /// weight's 13 mm is.
+    /// weight's is.
     ///
-    /// Dip is read at the front lip; touchweights 13 mm back from it. Read the
-    /// same travel at the other datum and it must come out smaller, in the
-    /// ratio of the two arms. If the two agreed, one of them would be reading
-    /// a stored number rather than measuring the key.
+    /// Dip is read at the key front; touchweights at the measuring point, 13 mm
+    /// back from the covering's lip, which stands 2 mm proud of the key front —
+    /// so 11 mm behind it. Read the same travel at the other datum and it must
+    /// come out smaller, in the ratio of the two arms. If the two agreed, one
+    /// of them would be reading a stored number rather than measuring the key.
     #[test]
     fn reading_the_dip_at_the_other_datum_changes_it_by_the_arm_ratio() {
         let a = bench();
-        let at_lip = a.key_dip_at(ReadAt::FrontEdge).unwrap();
+        let at_front = a.key_dip_at(ReadAt::FrontEdge).unwrap();
         let at_weighing = a.key_dip_at(ReadAt::MeasuringPoint).unwrap();
 
-        assert!(at_weighing < at_lip, "the nearer datum must travel less");
+        assert!(at_weighing < at_front, "the nearer datum must travel less");
 
         // The ratio is *nearly* the ratio of the arms, and the residual is
         // physical rather than numerical: turning the key also drops the top
@@ -2345,17 +2382,17 @@ mod protocol_tests {
         let common = ((1.0 - s_rest * s_rest).sqrt() - (1.0 - s_bottom * s_bottom).sqrt())
             * (a.key.stick_height + a.key.keytop_thickness);
 
-        let arms = a.key.measuring_point() / a.key.front_edge;
+        let arms = a.measuring_point() / a.key.front_edge;
         assert!(
-            (at_weighing / at_lip - arms).abs() < 1e-3,
+            (at_weighing / at_front - arms).abs() < 1e-3,
             "the two readings are in the ratio {}, far from the arm ratio {arms}",
-            at_weighing / at_lip
+            at_weighing / at_front
         );
         // Take the common term out of both and the arm ratio comes back exactly.
         assert!(
-            ((at_weighing - common) / (at_lip - common) - arms).abs() < 1e-9,
+            ((at_weighing - common) / (at_front - common) - arms).abs() < 1e-9,
             "with the vertical term removed the ratio must be exactly the arms: {}",
-            (at_weighing - common) / (at_lip - common)
+            (at_weighing - common) / (at_front - common)
         );
         // Its **sign** says which side of level the key swings on, and is not
         // a property to assert: a frame set so the key is level at the bottom
@@ -2366,13 +2403,75 @@ mod protocol_tests {
             common.abs() < 5e-5,
             "the vertical term should be a few tens of micrometres, got {common}"
         );
-        // 13 mm out of 258 is 5 %, which is fifty times the tolerance the
-        // trade regulates dip to. Reading it at the wrong datum is not a
+        // 11 mm out of 258 is 4 %: 0.43 mm on a 10.2 mm dip, nearly five of
+        // the thinnest papers as the key front sees them (0.08 mm at the front
+        // rail, times 258/225). Reading it at the wrong datum is not a
         // rounding question.
         assert!(
-            at_lip - at_weighing > 0.0004,
+            at_front - at_weighing > 0.0004,
             "the difference between the two datums must be big enough to matter"
         );
+    }
+
+    /// Level 0: **every reader of the measuring point follows the protocol**,
+    /// and by exactly the distance it was moved.
+    ///
+    /// Moving the point 7 mm further back from the lip must shorten the arm the
+    /// closed forms use by 7 mm, move the weight the settle solve puts on the
+    /// key by 7 mm along the key's top, and move the datum a height is read at
+    /// by the same 7 mm. A consumer still holding its own copy of the point —
+    /// the bug a single field exists to prevent — would show up here as one
+    /// reading that did not move.
+    #[test]
+    fn every_reader_of_the_measuring_point_follows_the_protocol() {
+        let base = bench();
+        let mut moved = base.clone();
+        let back = 0.007;
+        moved.protocol.measuring_point_from_lip += back;
+
+        // The point itself, against the lip worked from the key's own fields.
+        let lip = base.key.front_edge + base.key.keytop_overhang;
+        for a in [&base, &moved] {
+            assert!(
+                (a.measuring_point() - (lip - a.protocol.measuring_point_from_lip)).abs() < 1e-15,
+                "the measuring point must be the covering's lip less the protocol's distance"
+            );
+        }
+
+        // The datum a height is read at.
+        assert!(
+            (base.datum_x(ReadAt::MeasuringPoint) - moved.datum_x(ReadAt::MeasuringPoint) - back)
+                .abs()
+                < 1e-15
+        );
+        // The datum key height and dip are read at does not move: it is the
+        // key front's, not the protocol's.
+        assert_eq!(
+            base.datum_x(ReadAt::FrontEdge),
+            moved.datum_x(ReadAt::FrontEdge)
+        );
+
+        // The closed forms' arm, level, and the arm the applied weight acts
+        // on at any attitude: `cos θ · dx + sin θ · dy`, so moving the point
+        // by `back` along the key shortens it by `back · cos θ`.
+        assert!((base.measuring_arm() - moved.measuring_arm() - back).abs() < 1e-15);
+        for i in -3i32..=3 {
+            let s = f64::from(i) * 0.012;
+            let c = (1.0 - s * s).sqrt();
+            assert!(
+                (base.measuring_arm_at(s) - moved.measuring_arm_at(s) - back * c).abs() < 1e-15,
+                "at sin θ = {s}"
+            );
+            // And the torque the settle solve sees from 50 g on the point is
+            // that arm, not a copy of it.
+            let w = 50.0;
+            let from_weight =
+                |a: &KeyAssembly| a.net_torque(s, w).unwrap() - a.net_torque(s, 0.0).unwrap();
+            assert!(
+                (from_weight(&moved) - w * 1e-3 * moved.measuring_arm_at(s)).abs() < 1e-15,
+                "the weight on the key must act at the protocol's point, at sin θ = {s}"
+            );
+        }
     }
 
     /// Level 4: the dip really is the travel between the **two contacts**.
@@ -2427,6 +2526,7 @@ mod vertical_equilibrium_tests {
                 offset_from_pin: 0.0,
                 stack_height: balance,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 
@@ -2513,6 +2613,7 @@ mod fault_tests {
                 offset_from_pin: 0.0,
                 stack_height: 0.0020,
             },
+            protocol: TouchweightProtocol::default(),
         }
     }
 

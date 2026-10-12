@@ -143,8 +143,9 @@ deliberate act.
 - **Front weight and key weight ratio** are read on a simulated jig: the key
   level, pivoting about its balance pin's axis as on Stanwood's wedge jig, its
   measuring point on the scale, the ratio with 10 g at the capstan [V,
-  Stanwood 2000]. A jig pivots the key at the pin, so it cannot see where the
-  key bears on its balance punching; only a reading on the frame can (§5.2 a).
+  Stanwood 2000; `data/params/touchweight-protocol.json`]. A jig pivots the
+  key at the pin, so it cannot see where the key bears on its balance punching;
+  only a reading on the frame can (§5.2 a).
 - **Key friction weight** is a procedure run on the model, Stanwood's: zero the
   front weight with a temporary weight, put the key back on its frame, find the
   least weight on the measuring point that makes it leave its back rail cloth (a
@@ -159,14 +160,21 @@ deliberate act.
   for bit. It is not an independent measurement.
 - **D, U, BW and F**, on the sheet and in `pa-cli weigh`, come from a closed
   form taken with the key level, not from the weighing run on the model; F is
-  the friction weight set as input, echoed back. On the default bare key the
-  sheet's D, −0.53 g, is about a quarter of a gram below the −0.27 g the bench's
-  own settle solve gives from the key's real, nose-up rest attitude.
+  the input friction torque over the measuring arm: the key friction weight as
+  set, echoed back, until the measuring point moves. On the default bare key
+  the sheet's D, −0.48 g, is about a quarter of a gram below the −0.22 g the
+  bench's own settle solve gives from the key's real, nose-up rest attitude.
 - **Datums.** Key height and dip are read at the key front, the face of the
   plate over the end grain, 258 mm in front of the balance pin on the default
-  key; touchweights 13 mm behind it, at 245 mm. The covering's lip stands 2 mm
-  proud of that face, and Stanwood's "front lip of the key" (2000) and "front
-  vertical edge of the key" (1996) leave open which one counts (§9).
+  key. Every touchweight is read at the measuring point, 13 mm by default
+  (§3.1) back from the covering's lip, the front edge of the keytop, which
+  stands 2 mm proud of the key front: 247 mm in front of the balance pin. The
+  distance is one setting, `TouchweightProtocol` on the key assembly, set on
+  the bench from 5 to 30 mm, and every touchweight reads it there: front weight
+  and the key weight ratio on the jig, D, U, BW and F, key friction weight, and
+  the weight on the measuring point. Moving it changes each by the lever, the
+  same static moment and the same friction torque read on another arm, and
+  leaves key height and dip where they are.
 
 **Planned:** every displayed weighing quantity becomes a procedure run on the
 model (D the least weight that starts the key down from rest, U the greatest
@@ -224,7 +232,8 @@ that lets it rise from the bottom), the closed forms kept as test oracles.
 
 **Built.** A browser page in React and react-three-fiber draws the key on its
 frame in section and in solid from outlines computed in Rust. Its panels: the
-weighing sheet; regulation (punching papers, key friction weight); punchings and
+weighing sheet, with the measuring point's distance back from the front lip of
+the key; regulation (punching papers, key friction weight); punchings and
 cloth (felts, front rail pin and mortise, back rail cloth); the key; the frame
 (rails, placing the frame); touch (a weight on the measuring point, and which
 stop holds the key); the leading workshop, which goes with the leads
@@ -248,13 +257,23 @@ front weight levelled with a bubble level, the key weight ratio read with 10 g a
 the capstan, a negative front weight measured by its own protocol, and Key
 Friction Weight and Support Spring Balance Weight defined [V, Stanwood 2000,
 pp. 21–22]. With every weight centred on the measuring point, 13 mm or 1/2 inch
-back from "the front lip of the key" [V, Stanwood 2000, glossary, p. 23; his
-1996 paper says 13 mm in from "the front vertical edge of the key"]:
+back from "the front lip of the key" [V, Stanwood 2000, glossary, p. 23]:
 
 ```
 BW + FW = (WW × KR) + (SW × SR)
 BW = (D + U) / 2        F = (D − U) / 2
 ```
+
+**The lip is the covering's**: the front edge of the keytop, which overhangs
+the key front by 2 mm on the default key. The glossary does not say which lip
+it means, and this one is the owner's choice; the 1996 paper's "front vertical
+edge of the key" goes with the protocols the 2000 ones supersede. Measured from
+the key front, the point would stand 2 mm further back and every touchweight
+would be read on an arm 0.8 % shorter. **The distance is a setting**, 13 mm by
+default and the glossary's 1/2 inch as its alternative
+[`data/params/touchweight-protocol.json`], held in one place because every
+touchweight protocol reads it, so no two can be taken at different points
+(§2.2). Key height and key dip keep the key front as their datum.
 
 ### 3.2 Staged by sub-assembly, with the view at every stage
 
@@ -365,10 +384,11 @@ source and reliability marker (`V`, `E` or `S`), and a derived value has its
 script in `tools/derivations/`. The owner's measurements are primary sources,
 marked `V` with the instrument and the date. A value whose source is unpublished
 is provenanced; one whose source is lost is not. Built: records for the key
-section, the key frame, the papers and Stanwood's weight curves, which the
-engine does not read: its defaults are Rust literals repeating them, and several
-defaults have no record (listed in `data/params/README.md`). Planned: the
-parameter registry loads them, and a test fails on a default with no record.
+section, the key frame, the papers, the touchweight protocol's measuring point
+and key-ratio load, and Stanwood's weight curves, which the engine does not
+read: its defaults are Rust literals repeating them, and several defaults have
+no record (listed in `data/params/README.md`). Planned: the parameter registry
+loads them, and a test fails on a default with no record.
 
 ### 3.9 A dedicated planar solver, not a general-purpose engine
 
@@ -616,12 +636,13 @@ the validation is worthless. Planned.
 
 **(a) One real key, measured by the owner** (planned). Its mass and its front
 weight by the trade's protocol are inputs (§2.3); its key weight ratio on the
-jig and its down and up weights on its frame are outputs, the measuring point
-fixed before anything is weighed (§9). It is a modest validation: the ratio is
-close to a lever identity, and a bare key's balance weight differs from minus
-its front weight only by what the bearing point and the rest attitude add. But
-it is the first comparison of computed readings with independent ones, and it
-exercises what stage 1a builds: arms, datum, bearing, protocols.
+jig and its down and up weights on its frame are outputs, the bench's measuring
+point set to where he weighs before anything is weighed (§3.1). It is a modest
+validation: the ratio is close to a lever identity, and a bare key's balance
+weight differs from minus its front weight only by what the bearing point and
+the rest attitude add. But it is the first comparison of computed readings with
+independent ones, and it exercises what stage 1a builds: arms, datum, bearing,
+protocols.
 
 **(b) Hirschkorn's Boston GP-178, note 52** (planned): geometry, masses,
 thirteen contact laws and five axis frictions measured on one action [V,
@@ -1000,32 +1021,26 @@ on a number the owner can judge by the trade's protocol.
 
 Each is stated so it can be answered without opening anything else.
 
-1. **The measuring point.** Stanwood takes every touchweight 13 mm back from
-   "the front lip of the key" in his 2000 glossary, 13 mm in from "the front
-   vertical edge of the key" in his 1996 paper. On a key whose covering
-   overhangs the key front by 2 mm, do you measure from the covering's lip or
-   from the key front beneath it? The bench uses the key front; 2 mm moves every
-   touchweight by about 0.8 %, 2 in 245.
-2. **Which key the bench models.** The default key combines your measured key
+1. **Which key the bench models.** The default key combines your measured key
    section with a capstan 129.5 mm behind the balance pin, a figure no source
-   gives (you measured 122 mm), and a measuring point 245 mm in front of it.
-   Should the default become the key you measure for §5.2(a), with its own
-   capstan position and arm?
-3. **The repetition spring**, where one spring serves jack and lever: is it
+   gives (you measured 122 mm), and a key front 258 mm in front of it, which
+   puts the measuring point at 247 mm. Should the default become the key you
+   measure for §5.2(a), with its own capstan position and arm?
+2. **The repetition spring**, where one spring serves jack and lever: is it
    pivoted on the repetition lever, pulling the jack through a loop, or in the
    lever's support fork, with two branches? In the slow-release test, should the
    hammer rise more slowly in the bass, or at nearly the treble's speed?
-4. **Pedals.** On the makes you work on, what moves with the una corda besides
+3. **Pedals.** On the makes you work on, what moves with the una corda besides
    the key frame and the hammers: the sostenuto rod? From which note is the
    treble undamped?
-5. **Training.** Is a regulating screw turned continuously or in clicks of a
+4. **Training.** Is a regulating screw turned continuously or in clicks of a
    fixed fraction of a turn? Which measuring tools does a trainee have, and does
    measuring cost a gesture? Do exercises follow a full regulation sequence or a
    short path (blow distance, springs, let-off, checking)? What passes an
    exercise: targets within tolerances, evenness from note to note, or both?
-6. **Sound.** In scope or not, and if so, samples chosen by the computed hammer
+5. **Sound.** In scope or not, and if so, samples chosen by the computed hammer
    velocity or a physical string?
-7. **Licence.** Under which licence may the project be published? Nothing is
+6. **Licence.** Under which licence may the project be published? Nothing is
    published until one is chosen.
 
 The French terms in doubt are listed in `docs/vocabulary-worksheet.md`. And an

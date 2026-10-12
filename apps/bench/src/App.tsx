@@ -196,6 +196,10 @@ export function App() {
   const [backRailAt, setBackRailAt] = useState(200)
   const [frontPin, setFrontPin] = useState(24)
   const [frontMortise, setFrontMortise] = useState(22)
+  // No default is written here: the engine holds it, and the boot below seeds
+  // this before the panel first renders. NaN rather than a plausible number,
+  // so that an unseeded value could never pass for the protocol's.
+  const [measuringPoint, setMeasuringPoint] = useState(Number.NaN)
   const [newLeadMass, setNewLeadMass] = useState(10)
 
   // Every mutation goes through the engine and the whole view is re-read from
@@ -244,6 +248,7 @@ export function App() {
         setFinger(r.finger_weight_g)
         setFrontPin(r.front_pin_mm)
         setFrontMortise(r.front_mortise_mm)
+        setMeasuringPoint(r.measuring_point_from_lip_mm)
       }
       refresh()
     })
@@ -287,7 +292,8 @@ export function App() {
         <h1>Single-key bench</h1>
         <p className="protocol">
           Weighed by Stanwood’s <i>Standard Protocols of the New Touchweight Metrology</i>, February
-          2000. Measuring point 13&nbsp;mm back from the front lip, marked on the section.
+          2000. Every weight is centred on the measuring point, marked on the section, a set
+          distance back from the front lip of the key.
         </p>
 
         {state.scene.faults.length > 0 && (
@@ -317,6 +323,33 @@ export function App() {
         ) : (
           <>
             <h2>Weighing sheet</h2>
+            <Slider
+              label="measuring point, back from the key’s front lip"
+              value={measuringPoint}
+              min={5}
+              max={30}
+              // A tenth of a millimetre, so the glossary's 1/2 inch, 12.7 mm,
+              // can be set as well as its 13 mm.
+              step={0.1}
+              unit="mm"
+              onChange={(v) => {
+                setMeasuringPoint(v)
+                act((b) => b.set_measuring_point_from_lip(v))
+                // The friction torque stays where it was set, so the key
+                // friction weight it reads as at the new point is another
+                // number. The friction slider takes it from the engine rather
+                // than keep one the key no longer reads.
+                const b = bench.current
+                const fresh = b ? readout(b) : null
+                if (fresh) setFriction(fresh.friction_band_g)
+              }}
+            />
+            <p className="note">
+              The lip is the covering’s, which overhangs the key front. Moving the point changes
+              every weight on this sheet by the lever and nothing about the key: the same static
+              moment, and the same friction torque, read on another arm. Key height and dip are read
+              at the key front, and do not move.
+            </p>
             <Row label="down weight D" value={r.down_weight_g} unit="g" />
             <Row label="up weight U" value={r.up_weight_g} unit="g" />
             <Row label="balance weight BW" value={r.balance_weight_g} unit="g" />

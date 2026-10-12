@@ -363,12 +363,22 @@ impl Lead {
 /// Everything about one key that the choice of parts fixes.
 ///
 /// Longitudinal dimensions are signed distances from the balance pin, positive
-/// towards the player. The three that carry the trade's own meaning are named
-/// after the measurements a technician takes: the front edge, the measuring
-/// point, and the capstan.
+/// towards the player. The ones that carry the trade's own meaning are named
+/// after where a technician measures: the front edge, where key height and dip
+/// are read; the covering's lip ([`Self::lip`]), which the touchweight
+/// measuring point is taken back from; and the capstan.
+///
+/// The measuring point itself is **not** here. Where a weight is centred is a
+/// convention of the protocol, not a dimension of the wood, so it is set on
+/// [`crate::measure::TouchweightProtocol`] and read through
+/// [`KeyAssembly::measuring_point`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyDesign {
-    /// Front vertical edge of the key, metres in front of the balance pin.
+    /// The key front, metres in front of the balance pin: the outer face of
+    /// the plate glued over the end grain ([`Self::front_board`]).
+    ///
+    /// Key height and key dip are read here. The covering's lip stands
+    /// [`Self::keytop_overhang`] proud of it.
     pub front_edge: f64,
     /// Rear end of the keystick, metres (negative: behind the balance pin).
     pub tail_end: f64,
@@ -467,11 +477,16 @@ pub struct KeyDesign {
     pub keytop_length: f64,
     /// Thickness of the **key front** glued to the wood's front face, metres.
     ///
-    /// The small plate — the *fronton* — that closes the end grain. It is what
-    /// [`KeyDesign::front_edge`] names: the front vertical edge every
-    /// touchweight is referred to is this face, not the covering's lip.
+    /// The small plate — the *fronton* — that closes the end grain. Its outer
+    /// face is what [`KeyDesign::front_edge`] names, where key height and dip
+    /// are read. Touchweights are referred to the covering's lip instead,
+    /// [`Self::keytop_overhang`] further forward.
     pub front_board: f64,
     /// How far the covering's lip overhangs that face, metres.
+    ///
+    /// The lip is the "front lip of the key" every touchweight's measuring
+    /// point is taken back from ([`Self::lip`]), so this is the distance
+    /// between the touchweight datum and the key height and dip datum.
     pub keytop_overhang: f64,
     /// Width of the keystick across the sagittal plane, metres.
     pub width: f64,
@@ -491,21 +506,18 @@ pub struct KeyDesign {
     pub measured_stick_mass: Option<f64>,
 }
 
-/// The distance from the front vertical edge of the key at which every
-/// touchweight is taken, metres.
-///
-/// Stanwood's metrology fixes this and nothing else will do: down weight, up
-/// weight and front weight are all read *"centered on a point 13 mm in from the
-/// front vertical edge of the key"*. A weight taken anywhere else is a different
-/// number, and the whole equation of balance is expressed at this point. [V]
-pub const MEASURING_POINT_FROM_FRONT_EDGE: f64 = 0.013;
-
 impl KeyDesign {
-    /// Distance from the balance pin to the measuring point, metres.
+    /// The covering's lip, metres in front of the balance pin: the front edge
+    /// of the keytop, standing [`Self::keytop_overhang`] proud of the key
+    /// front.
     ///
-    /// This is the lever arm every touchweight is referred to.
-    pub fn measuring_point(&self) -> f64 {
-        self.front_edge - MEASURING_POINT_FROM_FRONT_EDGE
+    /// The bench's reading of Stanwood's *"front lip of the key"*: the datum
+    /// the touchweight measuring point is taken back from
+    /// ([`crate::measure::TouchweightProtocol::measuring_point`]). One
+    /// definition, which the drawn outline uses too, so the lip a reader sees
+    /// is the one the touchweights are referred to.
+    pub fn lip(&self) -> f64 {
+        self.front_edge + self.keytop_overhang
     }
 
     /// Middle of the front mortise, metres in front of the balance pin.
@@ -573,7 +585,7 @@ impl KeyDesign {
     pub fn outline_vertices(&self) -> Vec<Point> {
         let top = self.stick_height;
         let wood_front = self.front_edge - self.front_board;
-        let lip = self.front_edge + self.keytop_overhang;
+        let lip = self.lip();
         let keytop_back = lip - self.keytop_length;
         let capsule_front = self.capsule_length * 0.5;
         let capsule_back = -self.capsule_length * 0.5;
@@ -591,11 +603,12 @@ impl KeyDesign {
             Point::new(rise_from, 0.0),
             Point::new(wood_front, 0.0),
             // The key front: a plate glued over the end grain. Its outer face
-            // is the datum every touchweight is referred to.
+            // is where key height and dip are read.
             Point::new(self.front_edge, 0.0),
             Point::new(self.front_edge, top),
             // The covering's lip, which overhangs that face with nothing
-            // under it.
+            // under it. Every touchweight's measuring point is taken back
+            // from it.
             Point::new(lip, top),
             Point::new(lip, top + self.keytop_thickness),
             Point::new(keytop_back, top + self.keytop_thickness),
@@ -720,12 +733,12 @@ impl KeyDesign {
                 id: "capstan",
                 at: Point::new(self.capstan, self.stick_height + self.capstan_screw.height),
             },
+            // The lip and not the measuring point: where a weight is centred
+            // is the protocol's, and a key asked for its own measuring point
+            // would answer with one setting while the bench weighs at another.
             Anchor {
-                id: "measuring_point",
-                at: Point::new(
-                    self.measuring_point(),
-                    self.stick_height + self.keytop_thickness,
-                ),
+                id: "front_lip",
+                at: Point::new(self.lip(), self.stick_height + self.keytop_thickness),
             },
             Anchor {
                 id: "front_mortise",
@@ -764,10 +777,14 @@ impl KeyDesign {
 impl Default for KeyDesign {
     /// A natural key of the middle of the keyboard.
     ///
-    /// The two longitudinal dimensions that matter are **sourced**: the capstan
-    /// sits 129.5 mm behind the balance pin and the measuring point 245 mm in
-    /// front of it, both from Thorin's instrumented action, which puts the key
-    /// ratio at 0.529 — inside the published 0.50–0.60 band for a natural. [V]
+    /// The two longitudinal dimensions that set the key weight ratio: the
+    /// capstan 129.5 mm behind the balance pin, close to Thorin's 128.7 and
+    /// 129 mm; and the key front 258 mm in front of it, 13 mm ahead of
+    /// Thorin's 245 mm key arm [V, Thorin 2013, Table 2.1]. The covering's lip
+    /// stands 2 mm proud of the key front, so the measuring point, 13 mm back
+    /// from the lip, is at 247 mm, and the key ratio is 0.524 — inside the
+    /// published 0.50–0.60 band for a natural. Neither dimension has a record
+    /// yet (`data/params/README.md`).
     ///
     /// The section is measured too: 24.5 mm of wood, a 1.5 mm covering
     /// 155 mm long over a 2 mm key front, and the capsule, back check block
@@ -778,7 +795,7 @@ impl Default for KeyDesign {
     /// key is a natural or a sharp and belongs with the balance rail.
     fn default() -> Self {
         Self {
-            front_edge: 0.245 + MEASURING_POINT_FROM_FRONT_EDGE,
+            front_edge: 0.258,
             tail_end: -0.240,
             capstan: -0.1295,
             front_mortise_from_front_edge: 0.033,
@@ -934,8 +951,9 @@ mod tests {
             );
         }
         assert!(
-            part.anchors.iter().any(|a| a.id == "measuring_point"),
-            "the measuring point must be a named anchor: every touchweight is read there"
+            part.anchors.iter().any(|a| a.id == "front_lip"),
+            "the covering's lip must be a named anchor: every touchweight's measuring \
+             point is taken back from it"
         );
     }
 }

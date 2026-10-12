@@ -20,15 +20,17 @@ of freedom, unilateral stops and set-valued friction at the balance: the key
 rests where its statics put it, and a weight between the up weight and the down
 weight moves nothing. Key height and key dip are solved from targets to punching
 stacks; front weight and key weight ratio are read on a simulated jig; key
-friction weight is measured by Stanwood's procedure run on the model. A frame
-edited out of fit with its key is drawn as it is, its faults named in
-millimetres.
+friction weight is measured by Stanwood's procedure run on the model. Every
+touchweight is read at one measuring point, a setting of the bench, 13 mm back
+from the covering's lip by default. A frame edited out of fit with its key is
+drawn as it is, its faults named in millimetres.
 
 Down weight, up weight and balance weight on the weighing sheet come from a
-closed form taken with the key level, and friction weight is its input echoed;
-making each of them a procedure run on the model is planned. What the stage
-simplifies is listed in [`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §2.3,
-first among them a mass model that cannot predict front weight.
+closed form taken with the key level, and friction weight is its input, a
+friction torque, read back at the measuring point; making each of them a
+procedure run on the model is planned. What the stage simplifies is listed in
+[`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §2.3, first among them a mass
+model that cannot predict front weight.
 
 | Part | What it is |
 |---|---|
