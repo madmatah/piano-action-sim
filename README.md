@@ -1,7 +1,10 @@
 # piano-action-sim
 
-A simulator of the **grand piano action**, physics and 3D rendering in a
-browser, built for a piano technician. Its acceptance test is the trade's own:
+An engine for building applications around the **grand piano action**,
+educational and playful alike: the trade's physics, a configurator, a saved
+state, diagnostics in the trade's terms and a 3D rendering, running in a
+browser, built for a piano technician. Its first application is a single-key
+regulation bench. Its acceptance test is the trade's own:
 the simulator must measure its own regulation with the trade's protocols (key
 height, key dip, blow distance, let-off, drop, aftertouch, checking, damper lift
 point, down weight, up weight, friction, action ratio) and come back with the

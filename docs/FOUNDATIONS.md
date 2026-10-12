@@ -17,9 +17,32 @@ on; where one disagrees with this document, this document holds.
 
 ## 1. What the simulator is for
 
-### 1.1 Uses
+### 1.1 An engine for piano applications
 
-The simulator is built for a piano technician, who is also its first user.
+The project is an **engine for building applications around the grand piano
+action**, educational and playful alike, rather than one application. It is
+built for a piano technician, who is also its first user, and it provides five
+things an application composes:
+
+- **the trade's physics**: the action's parts, contacts, friction and motion,
+  measuring itself by the trade's protocols (§1.3);
+- **a configurator**: every part and every regulation setting adjustable, the
+  way a technician regulates and a designer draws (§3.4, §7.3);
+- **a state**: a regulated action that can be saved, reopened, compared and
+  replayed, its coordinates normative (§3.4, §7.4);
+- **diagnostics**: what is out of regulation and what cannot work, named in the
+  trade's terms and quantities (§3.3);
+- **a realistic rendering in 3D**, beside the technical section that validates
+  the geometry (§3.11).
+
+Built: the physics, configurator and diagnostics of the key on its frame, and
+the technical section and solid view of the bench, the engine's first
+application. Planned: the rest, and an interface shaped so that a new
+application composes these five without changing the engine (§7).
+
+### 1.2 Uses
+
+The applications in view, others to follow:
 
 1. **Regulate, measure and train on a single key**, set up as a technician sets
    one up and read as he reads it. Regulating and measuring built for the key on
@@ -36,11 +59,12 @@ The simulator is built for a piano technician, who is also its first user.
    faults named in millimetres. Faults for the key and frame built; a
    validation layer naming every impossible configuration planned (§7.3).
 5. **Play a score on 88 notes**, dampers and three pedals included. Planned.
+6. **A game whose task is to regulate a piano.** Planned.
 
 Out of scope: upright actions, a soundboard model, tuning, voicing. Whether
 sound is in scope, and how, is open (§9).
 
-### 1.2 The acceptance criterion
+### 1.3 The acceptance criterion
 
 > **The simulator must measure its own regulation using the trade's own
 > protocols, and come back with the expected values**: key height, key dip,
@@ -60,7 +84,7 @@ that much is named where it is made. And the user sees the trade's quantities:
 grams, millimetres, the trade's names, fractional inches planned as a second
 unit system.
 
-### 1.3 What the model is
+### 1.4 What the model is
 
 **Planar and single-note**: the sagittal section of one note. Adjustments out of
 that plane or across notes (squaring and spacing keys, bushing play, glides,
@@ -216,7 +240,7 @@ out where that matters.
 ### 3.1 The trade's protocols are the acceptance test
 
 The simulator reports what a technician's procedure reads when run on the model
-(§1.2), so the person who uses the tool can judge it; ruled out are probes chosen
+(§1.3), so the person who uses the tool can judge it; ruled out are probes chosen
 for convenience, a parameter read back or an internal angle. The protocols are
 Stanwood's *Standard Protocols of the New Touchweight Metrology* (Piano
 Technicians Journal, February 2000), which supersede those of his 1996 paper:
@@ -397,7 +421,9 @@ and values sit in HTML over the canvas, never as 3D text. Ruled out: Babylon.js,
 with a better inspector and bundled types but no equivalent of the React
 ecosystem for the interface. Planned: linings drawn compressed by the solver's
 penetration, dimensions on the section, one instanced mesh per part family for
-88 notes, and skins that ride on the parametric solids without replacing them.
+88 notes, and the realistic rendering of §1.1: materials and detailed shapes
+as skins riding on the parametric solids without replacing them, so the
+realistic view cannot drift from the physics any more than the section can.
 
 ### 3.12 A bilingual interface
 
@@ -840,6 +866,14 @@ wasm-pack. The CI workflow (`.github/workflows/ci.yml`) runs the format check,
 Clippy with warnings as errors, the tests and the WebAssembly build for Rust,
 and Biome, the type-check, the build, the tests and the smoke test for the web;
 `scripts/verify.sh` runs the same gates locally.
+
+**The engine and its applications.** The crates are the engine (§1.1) and
+`apps/bench` its first application. Planned: the engine's interface is what
+applications are written against. The boundary of §7.2, the parameter registry
+and validation layer of §7.3 and persistence (§7.4) make the configurator, the
+diagnostics and the state an application composes; a rendering package and an
+interface package are extracted from the bench when a second application needs
+them, not created empty before.
 
 **One definition per part.** The key is drawn from, and its mass integrated
 over, one outline; its stops read the underside from a second construction built

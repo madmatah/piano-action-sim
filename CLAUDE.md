@@ -5,7 +5,7 @@ and each ending with its check or *not mechanically checked*. What the simulator
 is for, what is built or planned, and why: `docs/FOUNDATIONS.md`. Where the work
 stands: `private/HANDOFF.md`, read before touching anything. Where either
 disagrees with the code, the code is right. One criterion governs everything
-(FOUNDATIONS §1.2): **the simulator must measure its own regulation using the
+(FOUNDATIONS §1.3): **the simulator must measure its own regulation using the
 trade's own protocols, and come back with the expected values.**
 
 ## Documents and commits
