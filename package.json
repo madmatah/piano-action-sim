@@ -1,0 +1,35 @@
+{
+  "name": "piano-action-sim",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^26.0.0",
+      "onFail": "warn"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "10.34.5",
+      "onFail": "error"
+    }
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "check": "biome check .",
+    "format": "biome format --write .",
+    "wasm": "turbo run build --filter=@pas/wasm",
+    "verify": "bash scripts/verify.sh",
+    "rust:test": "cargo test --workspace",
+    "rust:lint": "cargo clippy --workspace --all-targets -- -D warnings && cargo fmt --all --check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "turbo": "2.11.7",
+    "typescript": "7.0.2"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "what": "The keystick in profile: one thickness of wood, and the parts glued to it or cut out of it.",
+  "source": {
+    "measured_by": "project owner",
+    "instrument": "natural keys from a grand piano keyboard",
+    "date": "2026-10-12"
+  },
+  "generic_not_a_model": "These stand in for a plausible grand rather than describing any maker's key.",
+  "the_point_of_this_file": "Each feature is recorded with what it is FOR, because the reason is what says where it may be moved. A key read as a stack of steps gets the mass about right and all of that wrong.",
+  "records": [
+    {
+      "name": "stick_thickness",
+      "value": 24.5,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "The keystick's own wood. One piece, one thickness; everything else is glued to it or cut out of it."
+    },
+    {
+      "name": "key_length_overall",
+      "value": 500.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "Tail to the covering's lip, the 2 mm overhang included."
+    },
+    {
+      "name": "keytop_thickness",
+      "value": 1.5,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "The covering. It sits ON the wood, not in a rebate, so the step a reader sees partway along the key is the covering ending."
+    },
+    {
+      "name": "keytop_length",
+      "value": 155.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "key_front_thickness",
+      "value": 2.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "The fronton, glued over the end grain. Its outer face is the front vertical edge every touchweight is referred to."
+    },
+    {
+      "name": "keytop_overhang",
+      "value": 2.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "The covering's lip beyond that face. It overhangs the WOOD by 4 mm, of which the fronton takes 2."
+    },
+    {
+      "name": "capsule_length",
+      "value": 62.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "More wood where the balance mortise is cut."
+    },
+    {
+      "name": "capsule_height",
+      "value": 6.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "back_check_block_length",
+      "value": 27.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "Something for the back check wire to be driven into, where the hammer's tail arrives."
+    },
+    {
+      "name": "back_check_block_height",
+      "value": 8.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Taller than the capsule: this is the highest wood on the key."
+    },
+    {
+      "name": "tail_length",
+      "value": 20.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "The tail is cut down to set the height the damper system bears at. It begins immediately behind the back check block."
+    },
+    {
+      "name": "tail_thickness",
+      "value": 7.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "damper_felt_thickness",
+      "value": 5.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Hard felt, not punching felt."
+    },
+    {
+      "name": "tail_underside_rise",
+      "value": 2.5,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "The underside is relieved towards the very end so that the key beds FLAT on its back rail cloth. The cloth is a flat strip and the key stands nose-up, so two rigid flats would meet at a corner and the tail would dig in; relieving the underside by the angle the key stands at puts the faces parallel. Owner's account."
+    },
+    {
+      "name": "tail_underside_rise_run",
+      "value": 77.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Long and shallow: 2.5 mm over 77 mm is 1.86 degrees. The rest attitude it has to match is 2.26 degrees (a 10.2 mm dip over a 258 mm arm), so on these figures the two do not agree and the key bears on the back edge of its cloth, 0.41 degrees from flat. Both were given as approximate; the bench reports the miss rather than arbitrating. For a 10.2 mm dip the rise would be 3.0 mm over 77, or 2.5 mm over 63."
+    },
+    {
+      "name": "capstan_seat",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "V",
+      "what_for": "There is none. The capstan screws into a hole bored straight through the keystick; the pad the model used to carry does not exist."
+    },
+    {
+      "name": "capstan_behind_balance_owner",
+      "value": 122.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Measured on the owner's key, and recorded rather than used: a design parameter that varies by maker and by note. The bench keeps 129.5 mm, which is sourced from Thorin's instrumented action and is what sets the key ratio."
+    },
+    {
+      "name": "front_mortise_from_front_edge",
+      "value": 33.0,
+      "unit": "mm",
+      "reliability": "E",
+      "what_for": "Where the front mortise is cut, measured back from the key's front edge. Back from the front edge and not forward from the balance pin because that is the dimension the key carries: lengthen a key and its front end and its mortise move together. It is what the frame's front rail is placed from, so it is also what decides whether a rail already bolted down still has a mortise over it.",
+      "note": "Not measured. It is the difference between the two numbers the model held before this one existed - a front edge 258 mm from the balance pin and a front rail pin at 225 - so it reproduces the frame that was there, and nothing more. A calliper from the key's front end to the near side of the mortise would replace it."
+    },
+    {
+      "name": "front_mortise_length",
+      "value": 8.0,
+      "unit": "mm",
+      "reliability": "E",
+      "what_for": "The slot's length ALONG the key. Longer than the 5 mm pin standing in it, because the key swings about its balance pin and the mortise travels through a small arc past a pin that does not move. The clearance is also what lets a frame be a few tenths out of place without the key knowing, so it is the tolerance a frame design is judged against.",
+      "note": "Not measured, and not the lateral fit: across the keyboard the mortise is bushed and close on the pin's wide faces, which is what holds the key straight and is not a dimension in the sagittal plane. 8 mm is 3 mm of total slack on a 5 mm pin."
+    }
+  ],
+  "deliberately_absent": [
+    "The hollow in the top of the key behind the capstan, which clears a rail. Left out until the rail it clears is modelled - the owner's call, and the right one: a hollow with no reason to be where it is would be shaped from a photograph again."
+  ],
+  "still_to_measure": [
+    "Where the capsule sits along the key. It depends on whether the key is a natural or a sharp, and belongs with the balance rail rather than here.",
+    "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. This is now the measurement worth taking, and the one to ask for first. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the default key beds flat, and the default currently holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
+    "The front mortise: how far back from the key's front end it is cut, and how long the slot is along the key. Both are [E] above, and the second is the tolerance a frame design is judged against.",
+    "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm it is given, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.047 degrees, the key height by 0.04 mm and the dip by 0.05 mm - a fifth of the thinnest paper in the drawer. The near-cancellation is itself the finding: the chamfer's slope is close to the rest attitude, which is what makes a back rail's position forgiving. The bound is real and the number is not critical."
+  ],
+  "not_weighed_on_purpose": "A single key's mass would not transfer: the owner notes that keys differ across the keyboard in shape and in how much wood they carry. So the model's mass follows from the profile, and the profile is still missing the hollow - which makes the figure an over-estimate by exactly the wood not yet taken out."
+}

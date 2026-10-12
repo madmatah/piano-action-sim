@@ -1,0 +1,11 @@
+# Pinned so that a developer machine and CI build, lint and format with the same
+# compiler: a new release can add a clippy lint or change rustfmt's output, and
+# turn a gate red with no change to the code.
+#
+# The WebAssembly threads blocker that docs/FOUNDATIONS.md describes is
+# reproduced on this version. Re-check it on the `cdylib` (pa-wasm), never on a
+# library crate: a library performs no link step and passes with the same flags.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

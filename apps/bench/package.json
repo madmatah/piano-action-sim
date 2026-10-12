@@ -1,0 +1,30 @@
+{
+  "name": "@pas/app-bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-key bench: regulate, measure, train. The measurement instrument.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pas/wasm": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "three": "catalog:",
+    "@react-three/fiber": "catalog:",
+    "@react-three/drei": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@types/three": "catalog:",
+    "typescript": "7.0.2",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

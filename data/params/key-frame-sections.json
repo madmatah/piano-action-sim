@@ -1,0 +1,158 @@
+{
+  "what": "The key frame's three rails as parts: the pins standing in them, the punchings sitting on them, and the spacing of the two rows each rail carries.",
+  "source": {
+    "measured_by": "project owner",
+    "instrument": "a grand piano key frame",
+    "date": "2026-10-11"
+  },
+  "generic_not_a_model": "Key frames differ a great deal between makers, so these are a generic base and not any maker's specification: one measured frame standing in for a plausible grand.",
+  "note_on_the_two_rows": "Every rail carries a row of pins for the naturals and a second row, set back towards the player's far side, for the sharps. The offset between them is what decides how wide the rail must be, because one rail serves both: half the offset plus a punching's radius is the least half-length that keeps a punching on the wood.",
+  "records": [
+    {
+      "name": "balance_punching_diameter",
+      "value": 12.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "balance_punching_hole_diameter",
+      "value": 4.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "balance_pin_diameter",
+      "value": 3.4,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Cylindrical over its whole visible length."
+    },
+    {
+      "name": "balance_row_offset",
+      "value": 27.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "front_punching_diameter",
+      "value": 22.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "front_punching_hole_diameter",
+      "value": 5.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Exactly the front rail pin's long axis: the round hole touches the oblong pin at its two ends. The punching is pierced with a round die, so the hole is round even though the pin is not."
+    },
+    {
+      "name": "front_pin_length",
+      "value": 5.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Along the key. Only the head is oblong; the shank driven into the rail is turned round and is not drawn."
+    },
+    {
+      "name": "front_pin_thickness",
+      "value": 3.4,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Across the keyboard — the flats bear on the bushing cloth of the key's front mortise."
+    },
+    {
+      "name": "front_row_offset",
+      "value": 49.0,
+      "unit": "mm",
+      "reliability": "V"
+    },
+    {
+      "name": "balance_rail_length",
+      "value": 51.0,
+      "unit": "mm",
+      "reliability": "E",
+      "derived_from": [
+        "balance_row_offset",
+        "balance_punching_diameter"
+      ],
+      "rule": "2 * (offset/2 + punching_radius) = 2 * (13.5 + 6) = 39, plus 12 mm so the crown has a shoulder to stand on"
+    },
+    {
+      "name": "balance_crown_length",
+      "value": 43.0,
+      "unit": "mm",
+      "reliability": "E",
+      "derived_from": [
+        "balance_row_offset",
+        "balance_punching_diameter"
+      ],
+      "rule": "The punchings bear on the crown's flat, so it carries both rows too: 2 * (13.5 + 6) + 4 = 43"
+    },
+    {
+      "name": "front_rail_length",
+      "value": 75.0,
+      "unit": "mm",
+      "reliability": "E",
+      "derived_from": [
+        "front_row_offset",
+        "front_punching_diameter"
+      ],
+      "rule": "2 * (offset/2 + punching_radius) + 4 mm of margin = 2 * (24.5 + 11) + 4 = 75"
+    },
+    {
+      "name": "front_pin_total_length",
+      "value": 37.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "13 mm of round shank and a 24 mm oblong head standing proud of the rail. The pin as supplied is 39 mm with a 26 mm head; it is driven 2 mm past its shoulder so that its tip still clears the top of the mortise at the bottom of the key's travel."
+    },
+    {
+      "name": "front_pin_shank_length",
+      "value": 13.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Round, and the part driven into the rail. Not drawn: it is inside the wood."
+    },
+    {
+      "name": "front_pin_head_length",
+      "value": 24.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Oblong, and this is the pin's height above the rail's wood - RailSection::pin_height."
+    },
+    {
+      "name": "front_pin_head_length_as_supplied",
+      "value": 26.0,
+      "unit": "mm",
+      "reliability": "V",
+      "note": "Before driving. 26 mm proud would put the tip exactly on the top of the mortise at the bottom of the key's travel: 4 of punching + 3 of recess + 19 of mortise. Exact is too fine to build, hence the 2 mm."
+    },
+    {
+      "name": "back_rail_from_the_tail",
+      "value": 40.0,
+      "unit": "mm",
+      "reliability": "E",
+      "what_for": "How far in from the end of the key the back rail stands. It is the relation the frame's back rail is PLACED by, not a dimension of any part: the rail's own position is a frame coordinate, and this is what a frame is built to when it is built under a key.",
+      "note": "Not measured. It is bounded at both ends and comfortably inside them: the tail has to overhang the rail, because the key is lifted off the frame from behind and the damper works at the very end of it; and the cloth has to fall wholly within the 77 mm of chamfer cut to bed on it. 40 mm leaves 26 mm of chamfer in front of a 24 mm rail and 28 mm of tail behind it.",
+      "how_much_it_matters": "Less than it looks. Sweeping the rail from 170 to 225 mm behind the balance pin moves the bedding angle by 0.047 degrees and the key height and dip by less than 0.05 mm each, because the regulation re-places the punchings on whatever arm it is given. The chamfer's slope being close to the key's rest attitude is what makes the position forgiving."
+    }
+  ],
+  "still_to_measure": [
+    "The three rails' real lengths along the key, which would replace the three E records above with measurements. The rule only gives the minimum that keeps a punching on the wood; a real rail is at least that and probably more.",
+    "The balance crown's height above the shoulder, and the shape of its sides.",
+    "How far each pin stands above its punching stack at the balance. The front one is measured; the balance one waits on the balance mortise, since a pin's height and the depth of the slot it enters are one measurement.",
+    "The back rail's length along the key, and the thickness of its cloth.",
+    "Where the front rail and the back rail actually stand along the key on a real frame. They are frame coordinates now, placed under a key by rule when a frame is built and kept as their own numbers afterwards - so a measured frame replaces them rather than deriving them, and that is the whole point of their being coordinates."
+  ],
+  "the_pin_must_stay_in_its_mortise": {
+    "constraint": "pin_height <= punching stack + mortise recess + mortise depth, every term measured upward from the rail's wood.",
+    "read_at_the_bottom_of_the_travel_not_at_rest": "At rest the key's front hangs clear of its punching - that gap IS the key dip - so the pin sits at its shallowest in the mortise. Pressing the key drives the mortise down onto the pin. Reading the constraint at rest instead gets the sign of the travel backwards and makes a sound frame look impossible.",
+    "on_this_frame": "4 + 3 + 19 = 26 mm of room against a pin driven to stand 24 mm proud: 2 mm of headroom at the bottom of the travel.",
+    "still_to_test": "a_pin_too_proud_stops_the_key_before_the_punching_does holds the stop itself. What is not held is this frame's own headroom, because the model's front stack is 2.9 mm rather than the 4 mm measured here, which leaves 0.9 mm instead of 2."
+  },
+  "a_rail_is_placed_under_a_key_and_then_stays_where_it_is": {
+    "rule": "front rail = the key's front mortise; back rail = the key's tail end + back_rail_from_the_tail.",
+    "why_it_is_a_default_and_not_a_definition": "Running it is how a frame is BUILT, and nobody should have to type a coordinate to get a keyboard that goes together. It is not how a frame is MAINTAINED: rails are screwed to a keybed and do not follow a key that has been changed afterwards. So the positions are stored, they drift, and the faults name the mismatch - the project's standing rule that upstream settings drift rather than cascade, applied to geometry.",
+    "what_it_catches": "Lengthening a key by 100 mm leaves the front rail pin 98.5 mm outside the mortise and the front rail punching 78 mm off the flat of the underside. Both are reported in millimetres past the limit, so the number says whether a dimension was mis-typed or a keyboard mis-designed."
+  }
+}

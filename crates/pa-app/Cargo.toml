@@ -1,0 +1,10 @@
+[package]
+name = "pa-app"
+description = "Application layer: the single-key weighing bench as a use case, adapted by pa-wasm for the browser and by pa-cli for the shell."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+pa-core.workspace = true

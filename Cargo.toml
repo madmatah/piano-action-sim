@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pa-core",
+    "crates/pa-app",
+    "crates/pa-wasm",
+    "crates/pa-cli",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2021"
+# Matches the pin in rust-toolchain.toml. A lower MSRV would be a claim nothing
+# tests.
+rust-version = "1.99"
+# OPEN DECISION, owner's call: the licence is undecided, and `UNLICENSED` is a
+# placeholder rather than an intent. Nothing may be published until it is set.
+license = "UNLICENSED"
+# OPEN: placeholder until the repository has a home.
+repository = "https://github.com/OWNER/piano-action-sim"
+
+[workspace.dependencies]
+pa-core = { path = "crates/pa-core" }
+pa-app = { path = "crates/pa-app" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 1

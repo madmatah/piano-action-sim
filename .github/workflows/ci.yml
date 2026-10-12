@@ -1,0 +1,55 @@
+name: CI
+
+# The same gates as `pnpm verify` (scripts/verify.sh), split into two jobs.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust — fmt, clippy, test, wasm build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # With no argument, rustup installs the toolchain rust-toolchain.toml
+      # names, with the components and the wasm target it lists.
+      - run: rustup toolchain install && rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo build -p pa-wasm --target wasm32-unknown-unknown --release
+
+  web:
+    name: Web — check, typecheck, build, test, browser smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # The bench imports the wasm package, which wasm-pack builds from Rust.
+      - run: rustup toolchain install && rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      # pnpm's version comes from `packageManager` in package.json.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+      # Drives the built bench in the headless Chrome the runner image ships.
+      # Required here: a missing Chrome fails the job instead of skipping.
+      - run: bash scripts/smoke.sh
+        env:
+          SMOKE_REQUIRE_CHROME: "1"

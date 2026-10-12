@@ -1,0 +1,702 @@
+/**
+ * Single-key bench.
+ *
+ * Two halves: the sagittal section, which a technician validates by looking,
+ * and the weighing sheet, which he validates by reading. Both come from the
+ * same engine call, so they cannot disagree.
+ */
+
+import type { Bench } from '@pas/wasm'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { type Readout, readout, type Scene, scene, start } from './bench'
+import { SagittalView, type ViewMode } from './SagittalView'
+
+interface State {
+  scene: Scene
+  /** The last sheet the engine could produce. Kept when it can no longer
+   * produce one, so the settings that caused it stay on the page. */
+  readout: Readout | null
+  /** Whether that sheet is the last good one rather than the current one. */
+  stale: boolean
+}
+
+/**
+ * Applies a bench state given in the URL, so that a particular setup can be
+ * linked to rather than described.
+ *
+ *   ?press=0.6&leads=10@150,8@190
+ *
+ * `press` is the fraction of the dip, `leads` a comma-separated list of
+ * `grams@millimetres-from-the-balance-pin`. Anything unparseable is ignored
+ * rather than guessed at: a malformed link should open the standard bench, not
+ * a bench nobody asked for.
+ */
+function applyUrlState(b: Bench): void {
+  const q = new URLSearchParams(window.location.search)
+
+  for (const spec of (q.get('leads') ?? '').split(',')) {
+    const m = /^\s*([\d.]+)@(-?[\d.]+)\s*$/.exec(spec)
+    if (!m) continue
+    const [mass, at] = [Number(m[1]), Number(m[2])]
+    if (Number.isFinite(mass) && Number.isFinite(at)) b.add_lead(at, mass)
+  }
+
+  // `press` places the key geometrically, for sharing a particular attitude
+  // in a link. It is deliberately not a control on the page: the bench's own
+  // way to move the key is to put weight on it.
+  const press = Number(q.get('press'))
+  if (Number.isFinite(press) && q.has('press')) b.set_depression(press)
+
+  const weight = Number(q.get('weight'))
+  if (Number.isFinite(weight) && q.has('weight')) b.set_finger_weight(weight)
+}
+
+function Row({
+  label,
+  value,
+  unit,
+  target,
+  targetLabel = 'target',
+}: {
+  label: string
+  value: number
+  unit: string
+  /** A second number shown beside the first: the regulation target, or what a
+      protocol measured. Beside it and never instead of it — the measurement is
+      what counts, and seeing the two together is the point. */
+  // `| undefined` is explicit because the project runs with
+  // `exactOptionalPropertyTypes`: an optional property and a property that may
+  // be undefined are different types, and the distinction is worth keeping.
+  target?: number | undefined
+  targetLabel?: string
+}) {
+  return (
+    <div className="row">
+      <span className="label">{label}</span>
+      <span className="value">{value.toFixed(2)}</span>
+      <span className="unit">{unit}</span>
+      <span className="target">
+        {target === undefined ? '' : `${targetLabel} ${target.toFixed(2)}`}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * One punching stack: the papers on it, and the drawer to add from.
+ *
+ * Discrete on purpose. A continuous thickness would let the bench reach stacks
+ * no drawer can build and teach a resolution the trade does not have.
+ */
+function PaperStack({
+  title,
+  papers,
+  sizes,
+  total,
+  onAdd,
+  onRemove,
+}: {
+  title: string
+  papers: number[]
+  sizes: number[]
+  /** The engine's own total for this stack. Summing the papers here instead
+   * would be the one number on the page computed outside the engine — and it
+   * would be summed from values already narrowed to f32. */
+  total: number
+  onAdd: (mm: number) => void
+  onRemove: (i: number) => void
+}) {
+  return (
+    <div className="stack">
+      <div className="stacktitle">
+        {title} <b>{total.toFixed(2)} mm</b> in {papers.length}{' '}
+        {papers.length === 1 ? 'paper' : 'papers'}
+      </div>
+      <div className="drawer">
+        add
+        {sizes.map((mm) => (
+          <button key={mm} type="button" onClick={() => onAdd(mm)}>
+            {mm.toFixed(2)}
+          </button>
+        ))}
+      </div>
+      <ul className="pile">
+        {papers.map((mm, i) => (
+          <li key={i}>
+            <span>{mm.toFixed(2)} mm</span>
+            <button type="button" onClick={() => onRemove(i)}>
+              lift off
+            </button>
+          </li>
+        ))}
+        {papers.length === 0 && <li className="empty">bare rail</li>}
+      </ul>
+    </div>
+  )
+}
+
+function Slider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  unit: string
+  onChange: (v: number) => void
+}) {
+  return (
+    <label className="slider">
+      <span>
+        {label}{' '}
+        <b>
+          {value.toFixed(2)} {unit}
+        </b>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </label>
+  )
+}
+
+export function App() {
+  const bench = useRef<Bench | undefined>(undefined)
+  const [state, setState] = useState<State>()
+
+  const [friction, setFriction] = useState(6)
+  const [finger, setFinger] = useState(0)
+  const [view, setView] = useState<ViewMode>(
+    // `?view=section` opens on the flat technical section rather than the
+    // solid, so a particular reading can be linked to.
+    new URLSearchParams(window.location.search).get('view') === 'section' ? 'section' : 'solid',
+  )
+  const [balanceFelt, setBalanceFelt] = useState(1.5)
+  const [frontFelt, setFrontFelt] = useState(2.0)
+  const [backCloth, setBackCloth] = useState(3.0)
+  const [capstan, setCapstan] = useState(129.5)
+  const [frontEdge, setFrontEdge] = useState(258)
+  const [capstanHeight, setCapstanHeight] = useState(12)
+  const [balanceRail, setBalanceRail] = useState(40)
+  const [frontRail, setFrontRail] = useState(30.7)
+  const [backRail, setBackRail] = useState(39)
+  const [frontRailAt, setFrontRailAt] = useState(225)
+  const [backRailAt, setBackRailAt] = useState(200)
+  const [frontPin, setFrontPin] = useState(24)
+  const [frontMortise, setFrontMortise] = useState(22)
+  const [newLeadMass, setNewLeadMass] = useState(10)
+
+  // Every mutation goes through the engine and the whole view is re-read from
+  // it. No value on this page is computed in TypeScript.
+  //
+  // A frame can be edited into one no key can sit in, and then there is no
+  // weighing. The page **keeps the last sheet it had** and says it is stale,
+  // rather than emptying itself: the sliders live in that panel, so hiding it
+  // would leave the user with no way back out of the frame they just built.
+  const refresh = useCallback(() => {
+    const b = bench.current
+    if (!b) return
+    const fresh = readout(b)
+    setState((prev) => ({
+      scene: scene(b),
+      readout: fresh ?? prev?.readout ?? null,
+      stale: fresh === null,
+    }))
+  }, [])
+
+  useEffect(() => {
+    void start((b) => {
+      // Runs exactly once, inside the boot promise: see `start`.
+      b.set_finger_weight(0)
+      applyUrlState(b)
+    }).then((b) => {
+      bench.current = b
+      const r = readout(b)
+      if (r) {
+        // Seed every control from the engine, so no slider starts out lying
+        // about what the model holds.
+        setBalanceFelt(r.balance_felt_mm)
+        setFrontFelt(r.front_felt_mm)
+        setBackCloth(r.back_cloth_mm)
+        setCapstan(r.capstan_behind_mm)
+        setFrontEdge(r.front_edge_mm)
+        setCapstanHeight(r.capstan_height_mm)
+        setBalanceRail(r.balance_rail_mm)
+        setFrontRail(r.front_rail_mm)
+        setBackRail(r.back_rail_mm)
+        setFrontRailAt(r.front_rail_at_mm)
+        setBackRailAt(r.back_rail_at_mm)
+        // The probe too: `?weight=` can set the engine before this runs, and a
+        // slider that disagrees with the sheet beside it is worse than no
+        // slider.
+        setFinger(r.finger_weight_g)
+        setFrontPin(r.front_pin_mm)
+        setFrontMortise(r.front_mortise_mm)
+      }
+      refresh()
+    })
+  }, [refresh])
+
+  const act = (f: (b: Bench) => void) => {
+    const b = bench.current
+    if (!b) return
+    f(b)
+    refresh()
+  }
+
+  if (!state) return <div className="booting">starting the engine…</div>
+  const r = state.readout
+  const fault = state.stale ? (state.scene.frame_fault ?? 'the geometry is degenerate.') : null
+
+  return (
+    <div className="bench">
+      <div className="view">
+        <SagittalView scene={state.scene} mode={view} />
+        <div className="viewtabs">
+          <button
+            type="button"
+            className={view === 'section' ? 'on' : ''}
+            onClick={() => setView('section')}
+          >
+            section
+          </button>
+          <button
+            type="button"
+            className={view === 'solid' ? 'on' : ''}
+            onClick={() => setView('solid')}
+          >
+            solid
+          </button>
+          <span className="hint">drag to turn · scroll to zoom</span>
+        </div>
+      </div>
+
+      <aside className="panel">
+        <h1>Single-key bench</h1>
+        <p className="protocol">
+          Weighed by Stanwood’s <i>Standard Protocols of the New Touchweight Metrology</i>, February
+          2000. Measuring point 13&nbsp;mm back from the front lip, marked on the section.
+        </p>
+
+        {state.scene.faults.length > 0 && (
+          <div className="faults">
+            <b>This is not a keyboard anybody could build.</b>
+            <ul>
+              {state.scene.faults.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+            <p>
+              The rails are placed under the key when the frame is built, and then they stay bolted
+              where they are. Change the key afterwards and they do not follow — a real keybed does
+              not either. <i>Place the frame under the key</i>, under The frame, unbolts them and
+              stands them where this key needs them.
+            </p>
+          </div>
+        )}
+        {fault && (
+          <p className="degenerate">
+            No weighing is possible: {fault} The sheet below is the last one that was, kept so the
+            settings stay reachable.
+          </p>
+        )}
+        {r === null ? (
+          <p className="degenerate">Nothing has been weighed yet.</p>
+        ) : (
+          <>
+            <h2>Weighing sheet</h2>
+            <Row label="down weight D" value={r.down_weight_g} unit="g" />
+            <Row label="up weight U" value={r.up_weight_g} unit="g" />
+            <Row label="balance weight BW" value={r.balance_weight_g} unit="g" />
+            <Row
+              label="friction weight F"
+              value={r.friction_weight_g}
+              unit="g"
+              target={r.measured_kf_g ?? undefined}
+              targetLabel="protocol"
+            />
+            <Row label="front weight FW" value={r.front_weight_g} unit="g" />
+            <Row label="key weight ratio KR" value={r.key_ratio} unit="" />
+            <Row
+              label="key height"
+              value={r.key_height_mm}
+              unit="mm"
+              target={r.key_height_target_mm}
+            />
+            <Row label="key dip" value={r.key_dip_mm} unit="mm" target={r.key_dip_target_mm} />
+            {r.measured_dip_mm === null ? (
+              <p className="note">
+                The dip cannot be pressed out on this geometry, so there is no measured value to
+                show beside the solved {r.key_dip_mm.toFixed(2)} mm.
+              </p>
+            ) : (
+              <Row
+                label="key dip, pressed"
+                value={r.measured_dip_mm}
+                unit="mm"
+                target={r.key_dip_mm}
+                targetLabel="solved"
+              />
+            )}
+            <Row label="key mass" value={r.key_mass_g} unit="g" />
+            <Row label="out of level, key down" value={r.out_of_level_deg} unit="°" target={0} />
+            <Row
+              label="bedding at the back"
+              value={r.bedding_at_the_back_deg}
+              unit="°"
+              target={0}
+            />
+            <Row label="bears at" value={r.bears_at_the_back_mm} unit="mm behind" />
+            <p className="note">
+              The key is <b>{r.back_bearing}</b>. A keyboard is set up so the key is{' '}
+              <b>level when it is fully down</b>, and so slightly nose-up when released — and the
+              chamfer under the tail is cut at that same angle so the tail beds <b>flat</b> on its
+              cloth. Both are design goals, not laws: rail heights, punchings and cloth are what
+              reach them, and plenty of keyboards miss. A key that misses bears on an edge instead,
+              which is where it bears from — so the bench reports all three rather than refusing the
+              frame. Nose-down is positive, and so is a rear end digging in.
+            </p>
+            <p className="note">
+              With no action on the capstan, <b>BW = −FW</b>: the equation of balance with its
+              right-hand side removed. A bare front-heavy key falls on its own, which is why these
+              branches are negative.
+            </p>
+
+            <h2>Regulation</h2>
+            <p className="note">
+              A punching stack is a <b>pile of papers</b>, not a thickness. The operation is “lay a
+              two-tenths”, never “set it to 0.37”, so these are the papers in the drawer and the
+              pile you have built.
+            </p>
+            <PaperStack
+              title="balance punching — key height"
+              papers={r.balance_papers_mm}
+              total={r.balance_paper_mm}
+              sizes={r.paper_sizes_mm}
+              onAdd={(mm) => act((b) => b.add_balance_paper(mm))}
+              onRemove={(i) => act((b) => b.remove_balance_paper(i))}
+            />
+            <PaperStack
+              title="front punching — key dip"
+              papers={r.front_papers_mm}
+              total={r.front_paper_mm}
+              sizes={r.paper_sizes_mm}
+              onAdd={(mm) => act((b) => b.add_front_paper(mm))}
+              onRemove={(i) => act((b) => b.remove_front_paper(i))}
+            />
+            <Slider
+              label="key friction weight"
+              value={friction}
+              min={0}
+              max={20}
+              step={0.5}
+              unit="g"
+              onChange={(v) => {
+                setFriction(v)
+                act((b) => b.set_key_friction_weight(v))
+              }}
+            />
+
+            <h2>Punchings and cloth</h2>
+            <p className="note">
+              Paper is how you adjust, felt is what you fit. The rest geometry cares only about the
+              total; the split will matter once the felts are allowed to compress.
+            </p>
+            <Slider
+              label="balance felt"
+              value={balanceFelt}
+              min={0}
+              max={4}
+              step={0.05}
+              unit="mm"
+              onChange={(v) => {
+                setBalanceFelt(v)
+                act((b) => b.set_balance_felt(v))
+              }}
+            />
+            <Slider
+              label="front felt"
+              value={frontFelt}
+              min={0}
+              max={4}
+              step={0.05}
+              unit="mm"
+              onChange={(v) => {
+                setFrontFelt(v)
+                act((b) => b.set_front_felt(v))
+              }}
+            />
+            <Slider
+              label="front rail pin, above the rail"
+              value={frontPin}
+              min={5}
+              max={40}
+              step={0.5}
+              unit="mm"
+              onChange={(v) => {
+                setFrontPin(v)
+                act((b) => b.set_front_pin_height(v))
+              }}
+            />
+            <Slider
+              label="front mortise, above the underside"
+              value={frontMortise}
+              min={5}
+              max={40}
+              step={0.5}
+              unit="mm"
+              onChange={(v) => {
+                setFrontMortise(v)
+                act((b) => b.set_front_mortise_depth(v))
+              }}
+            />
+            <p className="note">
+              The key stops on its front punching <i>or</i> on the pin reaching the top of its
+              mortise, whichever comes first.{' '}
+              {r.stopped_by_the_mortise
+                ? 'Right now it is the pin: the dip below is shorter than the punchings alone would give.'
+                : 'Right now it is the punching, as on a sane frame.'}
+            </p>
+            <Slider
+              label="back rail cloth"
+              value={backCloth}
+              min={0}
+              max={6}
+              step={0.05}
+              unit="mm"
+              onChange={(v) => {
+                setBackCloth(v)
+                act((b) => b.set_back_rail_cloth(v))
+              }}
+            />
+
+            <h2>The key</h2>
+            <p className="note">
+              The key weight ratio is <b>not</b> a control. It is the ratio of two arms, so it
+              follows from the geometry exactly as the action ratio does; a slider for it would have
+              to pick which dimension to move. Changing a dimension does not re-solve the punchings
+              either: the regulation drifts and the sheet shows the miss, because that is what
+              happens on a real keyboard.
+            </p>
+            <Slider
+              label="capstan behind the balance pin"
+              value={capstan}
+              min={60}
+              max={200}
+              step={1}
+              unit="mm"
+              onChange={(v) => {
+                setCapstan(v)
+                act((b) => b.set_capstan_behind(v))
+              }}
+            />
+            <Slider
+              label="front edge from the balance pin"
+              value={frontEdge}
+              min={150}
+              max={340}
+              step={1}
+              unit="mm"
+              onChange={(v) => {
+                setFrontEdge(v)
+                act((b) => b.set_front_edge(v))
+              }}
+            />
+            <Slider
+              label="capstan height"
+              value={capstanHeight}
+              min={4}
+              max={24}
+              step={0.5}
+              unit="mm"
+              onChange={(v) => {
+                setCapstanHeight(v)
+                act((b) => b.set_capstan_height(v))
+              }}
+            />
+
+            <h2>The frame</h2>
+            <Slider
+              label="balance rail"
+              value={balanceRail}
+              min={10}
+              max={60}
+              step={0.1}
+              unit="mm"
+              onChange={(v) => {
+                setBalanceRail(v)
+                act((b) => b.set_balance_rail_height(v))
+              }}
+            />
+            <Slider
+              label="front rail"
+              value={frontRail}
+              min={10}
+              max={50}
+              step={0.5}
+              unit="mm"
+              onChange={(v) => {
+                setFrontRail(v)
+                act((b) => b.set_front_rail_height(v))
+              }}
+            />
+            <Slider
+              label="back rail"
+              value={backRail}
+              min={10}
+              max={60}
+              step={0.1}
+              unit="mm"
+              onChange={(v) => {
+                setBackRail(v)
+                act((b) => b.set_back_rail_height(v))
+              }}
+            />
+            <p className="note">
+              And where the two outer rails <b>stand</b> along the key. These are the frame's own
+              numbers, not the key's: a rail is screwed to the keybed, so lengthening a key moves
+              its mortise and its chamfer and leaves the rails behind. That is a design worth seeing
+              go wrong, which is why nothing here corrects itself — the sheet names the miss
+              instead.
+            </p>
+            <Slider
+              label="front rail, in front of the balance pin"
+              value={frontRailAt}
+              min={80}
+              max={320}
+              step={1}
+              unit="mm"
+              onChange={(v) => {
+                setFrontRailAt(v)
+                act((b) => b.set_front_rail_at(v))
+              }}
+            />
+            <Slider
+              label="back rail, behind the balance pin"
+              value={backRailAt}
+              min={120}
+              max={280}
+              step={1}
+              unit="mm"
+              onChange={(v) => {
+                setBackRailAt(v)
+                act((b) => b.set_back_rail_at(v))
+              }}
+            />
+            <button
+              type="button"
+              className="replace"
+              onClick={() => {
+                act((b) => b.place_the_frame_under_the_key())
+                const b = bench.current
+                const fresh = b ? readout(b) : null
+                if (fresh) {
+                  setFrontRailAt(fresh.front_rail_at_mm)
+                  setBackRailAt(fresh.back_rail_at_mm)
+                }
+              }}
+            >
+              place the frame under the key
+            </button>
+            <p className="note">
+              Moves the rails and <b>nothing else</b>. The key bears on the cloth at a new arm
+              afterwards, so the key height and the dip will have drifted off their targets and the
+              sheet will show it — shimming is a separate operation on a real bench too.
+            </p>
+
+            <h2>Touch</h2>
+            <p className="note">
+              Put a weight on the measuring point. Three things can happen, not two: above the down
+              weight the key descends, below the up weight it rises, and{' '}
+              <b>between them it does nothing at all</b>. That gap is the friction.
+            </p>
+            <Slider
+              label="weight on the measuring point"
+              value={finger}
+              min={-60}
+              max={60}
+              step={0.5}
+              unit="g"
+              onChange={(v) => {
+                setFinger(v)
+                act((b) => b.set_finger_weight(v))
+              }}
+            />
+            <div
+              className={`verdict ${
+                r.finger === 'held by friction alone' ? 'verdict-held' : 'verdict-stop'
+              }`}
+            >
+              the key is {r.finger}
+              <div className="gaps">
+                gap at the front punching {r.gap_front_mm.toFixed(3)} mm · at the back rail cloth{' '}
+                {r.gap_back_mm.toFixed(3)} mm
+              </div>
+              <div className="gaps">
+                admissible friction torque ±{r.friction_band_g.toFixed(2)} g at the measuring point
+                — an interval, not a value
+              </div>
+            </div>
+            <p className="note">
+              There is no “press the key” control. The key is only ever where the physics puts it —
+              a slider over a computed travel could park it in a position no weight produces, which
+              is the one thing a measuring instrument must not do.
+            </p>
+
+            <h2>Leading workshop</h2>
+            <div className="leadadd">
+              <input
+                type="number"
+                min={1}
+                max={60}
+                step={1}
+                value={newLeadMass}
+                onChange={(e) => setNewLeadMass(Number(e.target.value))}
+              />
+              <span>g at</span>
+              <button type="button" onClick={() => act((b) => b.add_lead(150, newLeadMass))}>
+                150 mm
+              </button>
+              <button type="button" onClick={() => act((b) => b.add_lead(190, newLeadMass))}>
+                190 mm
+              </button>
+            </div>
+            <ul className="leads">
+              {state.scene.leads.map((l, i) => (
+                <li key={i}>
+                  <span>
+                    {l.mass_g.toFixed(0)} g at {l.from_balance_mm.toFixed(0)} mm
+                  </span>
+                  <input
+                    type="range"
+                    min={20}
+                    max={240}
+                    step={1}
+                    value={l.from_balance_mm}
+                    onChange={(e) => act((b) => b.move_lead(i, Number(e.target.value)))}
+                  />
+                  <button type="button" onClick={() => act((b) => b.remove_lead(i))}>
+                    remove
+                  </button>
+                </li>
+              ))}
+              {state.scene.leads.length === 0 && <li className="empty">no leads fitted</li>}
+            </ul>
+          </>
+        )}
+      </aside>
+    </div>
+  )
+}

@@ -1,0 +1,16 @@
+[package]
+name = "pa-core"
+description = "Domain core: parametric part geometry, planar contact kinematics, the key on its frame, and the trade's weighing quantities."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# No dependencies: the domain compiles and tests offline.
+[dependencies]
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+float_cmp = "warn"

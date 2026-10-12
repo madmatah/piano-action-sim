@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+target/
+dist/
+build/
+pkg/
+*.wasm
+.turbo/
+.vite/
+
+# Reference corpus: third-party copyright, downloaded for study. These stay
+# local and are never redistributed. Full references — titles, DOIs, URLs —
+# are in docs/research/A1..A5.
+data/references/
+
+# Miscellaneous
+.DS_Store
+*.log
+.env
+.env.local
+.idea/
+.vscode/
+
+# wasm-pack output
+pkg/
+
+# Private working area. Two things live here and neither is published: the
+# owner's own material as a technician, and the project's tracking files —
+# where the work stands, how it got here, what was tried. Its own git repo.
+private/
+
+# TypeScript incremental build state
+*.tsbuildinfo
+.claude/worktrees/
