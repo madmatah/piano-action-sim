@@ -40,11 +40,11 @@ has no record or disagrees with it.
 ## Two instruments, two names
 
 **Hirschkorn's Boston GP-178, note 52** (Hirschkorn 2004, Appendix A) is the
-published action the dynamics are built on first: the only published set with
-all thirteen contact load laws measured on one action. Its records are planned
-(below), each body's frame convention transcribed with them: every frame's
-origin is the body's own pivot, and `Pw2`, `Pw3` are the jack and repetition
-lever pins on the wippen (his Figure A.1). With no compression bench, every
+engine's base action: the only published set with all thirteen contact load
+laws measured on one action, and the default key of the bench to come. Its
+record, `hirschkorn-boston-gp178-note52.json`, states each body's frame
+convention at the top: every frame's origin is the body's own pivot, and `Pw2`,
+`Pw3` are the jack and repetition lever pins on the wippen (his Figure A.1). With no compression bench, every
 contact law the engine is to use is borrowed from this action, and anything
 computed from a borrowed law is to be marked as such (planned,
 `docs/FOUNDATIONS.md` §7.5).
@@ -101,11 +101,10 @@ Four conventions come up as soon as a real instrument is measured:
 | `punching-papers.json` | the punching papers a regulation is shimmed with: eight thicknesses, and the colour each is supplied in |
 | `key-section.json` | the keystick in profile: the wood's thickness, the covering and key front, the capsule, the block that carries the back check, the thinned tail and its felt, and the chamfer under it |
 | `touchweight-protocol.json` | the conventions Stanwood's touchweight protocols run under: the measuring point 13 mm or 1/2 inch back from the front lip of the key, and the 10 g the key weight ratio is read with |
+| `hirschkorn-boston-gp178-note52.json` | all of Hirschkorn's Appendix A, the engine's base action: masses, centres of mass and inertias (A.1), the points and surfaces of the ground and the five bodies, each in its own body's frame with the frame convention stated at the top (A.2–A.7), the thirteen contact laws with their friction (A.8), the axis frictions (A.9), the springs, and his regulation; 235 values, each with its table, row and page, and what the thesis does not give. `tools/derivations/10` reads it |
 
 ## Planned records
 
-- Hirschkorn 2004, Appendix A: inertias (A.1), geometry (A.2–A.7) with the
-  frame convention above, the thirteen contact laws (A.8), axis friction (A.9).
 - Thorin 2013, chapter 4.5, and Lozada 2007, transcribed with a lineage tag on
   every value: measured, assumed equal to another joint, or placeholder. The
   traps are in `docs/FOUNDATIONS.md` §6.3.

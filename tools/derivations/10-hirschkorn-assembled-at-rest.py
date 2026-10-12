@@ -1,11 +1,16 @@
 """Hirschkorn's Boston GP-178, note 52, assembled at rest.
 
-Source: Hirschkorn 2004, MASc thesis, Appendix A: Table A.1 (masses), Tables
-A.2-A.7 (geometry), Table A.8 (contact laws). Every body frame has its origin
-at the body's own pivot, as his Figure A.1 draws them: the key turns on Pg1,
-the wippen on Pg2 and the hammer on Pg3, all fixed to ground. In the wippen's
-own frame, Pw2 is the jack's pin and Pw3 the repetition lever's pin: both ride
-on the wippen.
+Source: Hirschkorn 2004, MASc thesis, Appendix A, read from its transcription
+data/params/hirschkorn-boston-gp178-note52.json: Table A.1 (masses), Tables
+A.2-A.7 (geometry), Table A.8 (which two points each contact joins, and its
+law), and the frame convention stated at the top of that file. No value of his
+is typed in this script, so the record and the script cannot drift apart.
+
+Every body frame has its origin at the body's own pivot, as his Figure A.1
+draws them: the key turns on Pg1, the wippen on Pg2 and the hammer on Pg3, all
+fixed to ground. In the wippen's own frame, Pw2 is the jack's pin and Pw3 the
+repetition lever's pin: both ride on the wippen. The pivots are read from the
+record, which must name for each body a pin carried by the body it turns on.
 
 Do not take Pw2 for the wippen's pivot: every lever arm, reflected mass and
 time step built on that reading is wrong.
@@ -27,36 +32,72 @@ Prints:
   5. the reflected masses on the two sides of the jack/knuckle contact;
   6. the highest linearised mode with chosen contacts loaded at assumed forces.
 
-Pure arithmetic: import math and nothing else. Run with python3 -I.
+Pure arithmetic on the standard library: math, and json to read the record by
+its path relative to this file. Run with python3 -I.
 """
+import json
 import math
+from pathlib import Path
 
-# ---- Table A.2: ground (pins, and contact features fixed to the frame) ----
-PG1, PG2, PG3 = (0.0, 0.0), (-0.1810, 0.0528), (-0.0883, 0.1166)
-GROUND_CIRCLE = {"Pg4": ((0.2172, -0.0077), 0.0050), "Pg5": ((-0.2037, -0.0105), 0.0050),
-                 "Pg7": ((-0.0843, 0.1132), 0.0033), "Pg8": ((-0.1921, 0.0766), 0.0050)}
-GROUND_LINE = {"Pg6": ((-0.0580, 0.0640), (0.0, -1.0)), "Pg9": ((-0.2196, 0.1706), (0.0, -1.0))}
-# ---- Tables A.3-A.7: points in each body's own frame (metres) ----
-KEY = {"Pk3": ((-0.1176, 0.0259), 0.0097), "Pk4": ((0.2175, 0.0), (0.0, -1.0)),
-       "Pk5": ((-0.2208, 0.0010), (-0.041, -0.999)), "Pk6": ((-0.2192, 0.0817), (0.904, 0.427))}
-WIP = {"Pw2": (0.0989, -0.0035), "Pw3": (0.0483, 0.0275), "Pw4": ((0.0759, 0.0189), (0.969, 0.247)),
-       "Pw5": ((0.0595, 0.0030), 0.0253), "Pw6": ((0.0170, 0.0015), (0.0, 1.0))}
-JACK = {"Pj2": ((-0.0010, 0.0495), 0.0010, (1.571, 3.142)), "Pj3": ((0.0247, -0.0050), 0.0021),
-        "Pj4": ((-0.0097, 0.0300), 0.0050), "Pj5": ((0.0031, 0.0477), (1.0, 0.0))}
-LEVER = {"Pr2": ((0.0363, -0.0521), 0.0552, (1.300, 1.571)), "Pr3": ((-0.0361, -0.0093), 0.0050),
-         "Pr4": ((0.0527, -0.0009), 0.0050), "Pr5": ((0.0561, 0.0017), (0.317, 0.948))}
-HAM = {"Ph2": ((-0.0170, -0.0091), 0.0044), "Ph3": ((-0.0813, -0.0025), 0.0549),
-       "Ph4": ((-0.1321, 0.0356), 0.0102), "Ph5": ((-0.1100, -0.0031), (0.0, -1.0))}
+RECORD = Path(__file__).resolve().parents[2] / "data" / "params" / "hirschkorn-boston-gp178-note52.json"
+HK = json.loads(RECORD.read_text(encoding="utf-8"))
+# The record's bodies, and the letter each goes by below.
+BODY = {"ground": "g", "key": "k", "wippen": "w", "jack": "j", "repetition_lever": "r", "hammer": "h"}
+KIND = {"Pin Location": "pin", "Circle Contact": "circle", "Line Contact": "line",
+        "Hybrid Contact": "hybrid"}
+
+
+def value(record):
+    return record["value"]
+
+
+def shape(p):
+    """A point as the gap functions take it: a pin (x, y); a circle ((x, y), r);
+    a line ((x, y), (nx, ny)); a hybrid ((x, y), r, (start, end))."""
+    xy = (value(p["x"]), value(p["y"]))
+    kind = KIND[p["description"]]
+    if kind == "pin":
+        return xy
+    if kind == "circle":
+        return (xy, value(p["radius"]))
+    if kind == "line":
+        return (xy, (value(p["normal"]["x"]), value(p["normal"]["y"])))
+    return (xy, value(p["radius"]), (value(p["arc"]["start"]), value(p["arc"]["end"])))
+
+
+# ---- Tables A.2-A.7: every point, in the frame of the body that carries it (metres) ----
+POINT = {name: (code, KIND[p["description"]], shape(p))
+         for body, code in BODY.items()
+         for name, p in HK["geometry"][body]["points"].items()}
+
+
+def pivot(body, carrier):
+    """The pin `body` turns on, which frames() needs carried by `carrier`."""
+    entry = next(p for p in HK["frame_convention"]["pivots"] if p["body"] == body)
+    code, kind, xy = POINT[entry["turns_on"]]
+    if (code, kind) != (BODY[carrier], "pin") or entry["pin_carried_by"] != carrier:
+        raise ValueError(f"the {body} must turn on a pin carried by the {carrier}")
+    return xy
+
+
+# The key, the wippen and the hammer turn on ground pins; the jack and the lever on wippen pins.
+O_K, O_W, O_H = pivot("key", "ground"), pivot("wippen", "ground"), pivot("hammer", "ground")
+P_J, P_R = pivot("jack", "wippen"), pivot("repetition_lever", "wippen")
+
+
+def inertia(body):
+    r = HK["mass_properties"]["bodies"][body]
+    cm = r["centre_of_mass"]
+    return value(r["mass"]), value(r["moment_of_inertia"]), (value(cm["x"]), value(cm["y"]))
+
+
 # ---- Table A.1: mass (kg), inertia about the centre of mass (kg m^2), centre of mass ----
-MASS = {"k": (0.12008, 2.75e-3, (0.0514, 0.0158)), "w": (0.01196, 1.69e-5, (0.0502, -0.0018)),
-        "j": (0.00265, 7.78e-7, (0.0008, 0.0195)), "r": (0.00371, 4.10e-6, (0.0021, -0.0012)),
-        "h": (0.01174, 2.90e-5, (-0.1022, 0.0145))}
-# ---- Table A.8: elastic branch f = a d^3 + b d^2 + c d of each contact law ----
-LAW = {1: (1.26e10, 3.26e7, 7.92e3), 2: (4.41e10, -1.02e7, 1.57e4), 3: (2.42e10, -1.11e7, 6.54e3),
-       4: (5.86e11, -3.70e7, 3.11e4), 5: (5.28e9, -7.54e5, 4.42e3), 6: (2.53e10, -9.89e6, 7.07e3),
-       7: (3.92e11, 1.10e7, 3.23e4), 8: (7.46e10, -2.29e7, 1.32e4), 9: (6.02e10, -1.68e7, 6.96e3),
-       10: (1.09e12, -7.51e7, 2.23e4), 11: (8.82e11, -7.59e7, 1.67e4), 12: (1.81e10, 8.19e7, 1.16e4),
-       13: (8.58e8, -1.11e6, 2.39e3)}
+MASS = {BODY[b]: inertia(b) for b in ("key", "wippen", "jack", "repetition_lever", "hammer")}
+# ---- Table A.8: the two points each contact joins, and the elastic branch
+# f = a d^3 + b d^2 + c d of its law ----
+ROWS = HK["contacts"]["rows"]
+CONTACT = {int(n): tuple(r["points"]) for n, r in ROWS.items()}
+LAW = {int(n): (value(r["a"]), value(r["b"]), value(r["c"])) for n, r in ROWS.items()}
 NAME = {1: "capstan / wippen heel", 2: "key front / front rail punching", 3: "key back / back rail cloth",
         4: "back check / hammer tail", 5: "wippen / jack rest", 6: "wippen / lever stop",
         7: "jack / knuckle", 8: "jack toe / let-off button", 9: "jack / lever window",
@@ -87,11 +128,11 @@ def dot(a, b):
 def frames(q):
     """Origin and absolute angle of every body's frame."""
     tk, tw, tj, tr, th = q
-    o_w = PG2
-    return {"k": (PG1, tk), "w": (o_w, tw),
-            "j": (add(o_w, rot(tw, WIP["Pw2"])), tw + tj),
-            "r": (add(o_w, rot(tw, WIP["Pw3"])), tw + tr),
-            "h": (PG3, th), "g": ((0.0, 0.0), 0.0)}
+    o_w = O_W
+    return {"k": (O_K, tk), "w": (o_w, tw),
+            "j": (add(o_w, rot(tw, P_J)), tw + tj),
+            "r": (add(o_w, rot(tw, P_R)), tw + tr),
+            "h": (O_H, th), "g": ((0.0, 0.0), 0.0)}
 
 
 def point(f, body, p):
@@ -126,23 +167,23 @@ def gap_hybrid_circle(f, bh, centre, radius, arc, bc, c, r):
     return dot(d, (math.cos(a), math.sin(a))) - radius - r
 
 
+def gap(f, c):
+    """Contact c's gap, from the shapes of the two points Table A.8 says it joins."""
+    (b1, k1, s1), (b2, k2, s2) = (POINT[p] for p in CONTACT[c])
+    if (k1, k2) == ("circle", "circle"):
+        return gap_circles(f, b1, *s1, b2, *s2)
+    if (k1, k2) == ("line", "circle"):
+        return gap_line_circle(f, b1, *s1, b2, *s2)
+    if (k1, k2) == ("circle", "line"):
+        return gap_line_circle(f, b2, *s2, b1, *s1)
+    if (k1, k2) == ("hybrid", "circle"):
+        return gap_hybrid_circle(f, b1, *s1, b2, *s2)
+    raise ValueError(f"contact {c}: no gap function for a {k1} against a {k2}")
+
+
 def gaps(q):
     f = frames(q)
-    return {
-        1: gap_circles(f, "k", *KEY["Pk3"], "w", *WIP["Pw5"]),
-        2: gap_line_circle(f, "k", *KEY["Pk4"], "g", *GROUND_CIRCLE["Pg4"]),
-        3: gap_line_circle(f, "k", *KEY["Pk5"], "g", *GROUND_CIRCLE["Pg5"]),
-        4: gap_line_circle(f, "k", *KEY["Pk6"], "h", *HAM["Ph3"]),
-        5: gap_line_circle(f, "w", *WIP["Pw4"], "j", *JACK["Pj4"]),
-        6: gap_line_circle(f, "w", *WIP["Pw6"], "r", *LEVER["Pr3"]),
-        7: gap_hybrid_circle(f, "j", *JACK["Pj2"], "h", *HAM["Ph2"]),
-        8: gap_line_circle(f, "g", *GROUND_LINE["Pg6"], "j", *JACK["Pj3"]),
-        9: gap_line_circle(f, "j", *JACK["Pj5"], "r", *LEVER["Pr4"]),
-        10: gap_hybrid_circle(f, "r", *LEVER["Pr2"], "h", *HAM["Ph2"]),
-        11: gap_line_circle(f, "r", *LEVER["Pr5"], "g", *GROUND_CIRCLE["Pg7"]),
-        12: gap_line_circle(f, "g", *GROUND_LINE["Pg9"], "h", *HAM["Ph4"]),
-        13: gap_line_circle(f, "h", *HAM["Ph5"], "g", *GROUND_CIRCLE["Pg8"]),
-    }
+    return {c: gap(f, c) for c in sorted(CONTACT)}
 
 
 def solve_linear(a, b):
@@ -286,7 +327,8 @@ if __name__ == "__main__":
     print("\n=== 3. Lever arms at rest: d(gap)/dq, mm/rad ===")
     for c in (7, 10):
         print(f"  #{c:2d} {NAME[c]:16s} " + "  ".join(f"{v * 1e3:+7.2f}" for v in gradient(c, q0)))
-    print("  (the radial distance from the jack's pin to its contact arc is 49.5 mm;")
+    print("  (the radial distance from the jack's pin to its contact arc is"
+          f" {math.hypot(*POINT['Pj2'][2][0]) * 1e3:.1f} mm;")
     print("   the jack's own arm on its flat top is a few millimetres)")
 
     print("\n=== 4. Effective mass along each contact normal, 1/(grad g . M^-1 grad g) ===")

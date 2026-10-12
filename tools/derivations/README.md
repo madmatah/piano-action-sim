@@ -6,8 +6,12 @@ its marker names the script by number: `[E, 10]` is
 in prose is not reproducible, so a computed number without a script here does
 not carry `[E]`.
 
-The scripts are pure arithmetic, `import math` and nothing else, so each runs
-anywhere with `python3 -I <script>`. Each one states its sources at the top.
+The scripts are pure arithmetic on the standard library, so each runs anywhere
+with `python3 -I <script>`. Each one states its sources at the top. Script 10
+reads every value of Hirschkorn's it uses from
+`data/params/hirschkorn-boston-gp178-note52.json`, with `json`, by a path
+relative to itself, so the record and the script cannot drift apart; the other
+scripts type their inputs.
 
 | Script | What it establishes |
 |---|---|

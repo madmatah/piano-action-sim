@@ -198,13 +198,19 @@ that lets it rise from the bottom), the closed forms kept as test oracles.
   [V, Nakamura, Part 1] or rates it from static weights [V, Stanwood, SNAP,
   2023], and measures it nowhere; Hirschkorn swung each part as a pendulum on a
   string, I = m·g·l·(T/2π)² [V, Hirschkorn 2004 §A.1], which a string between
-  support and part biases unless the part hangs from a knife edge. Planned: the
-  key hung level from two threads and twisted (a bifilar suspension), its
-  centre of gravity from the front weight, about five minutes a key; and, per
-  note, the effective mass at the measuring point, the mass the finger
-  accelerates, with each part's share. The volume model then draws a
-  key and never weighs it, and leads leave the model: a key arrives leaded,
-  with lead masses nobody knows, and is measured whole.
+  support and part biases unless the part hangs from a knife edge. Inertia is
+  therefore neither measured nor shown: it is an internal parameter of the
+  dynamics, each part's taken from Hirschkorn's published action and the key's
+  estimated from its outline matched to its mass and front weight, marked
+  estimated (planned). The volume model then draws a key and never weighs it,
+  and leads leave the model: a key arrives leaded, with lead masses nobody
+  knows, and is measured whole.
+- **The default key is a composite**: the owner's measured key section, a
+  capstan 129.5 mm behind the balance pin that no source gives, and a key front
+  258 mm out, which puts the measuring point at 247 mm. Planned, with the
+  quasi-static core: the default key becomes Hirschkorn's (§5.2 b), whose mass,
+  centre of gravity, inertia and contact points were measured and published on
+  one action, and the owner's measured section a second profile.
 - **The balance bearing is a rigid pivot at the pin.** The key bears on a felt
   washer whose pressure centre moves with attitude and load; moving the bearing
   behind the pin by cutting the punchings drops the action ratio by three to
@@ -649,10 +655,14 @@ thirteen contact laws and five axis frictions measured on one action [V,
 Hirschkorn 2004, Appendix A]. With every frame's origin at its own pivot, his
 rest pose closes on contacts 1, 3, 5, 7 and 10 with the hammer 47.0 mm from the
 string, against the 48.0 mm he regulated; the shank 0.93 mm above its rest rail;
-and one interpenetration, 0.88 mm, at the repetition lever's stop [E, 10],
+and one interpenetration, 0.88 mm, where the repetition lever rests on the
+wippen (contact 6, his "Whippen – Repetition") [E, 10],
 which fits his regulating the model by editing geometric parameters [V,
 Hirschkorn 2004 §2.3]. His experiments drive the key with a force and measure
-positions (forte, piano, double blow): the dynamics prototype's reference.
+positions (forte, piano, double blow): the dynamics prototype's reference. It
+is also the engine's reference action: the base profile the engine is built and
+checked on before any other action is compared with it (planned), its values
+transcribed with their locators in `data/params/`.
 
 **(c) Thorin's Renner demonstrator** (planned): the only published key force
 under position drive, and escapement velocities measured and simulated, 1.01 and
@@ -814,9 +824,12 @@ anyway. The action ratio is read off an assembled model, by virtual work.
   Hirschkorn 2004, Table A.9]; joint friction is set by the tightness of the
   bushings, constant once the action is assembled [V, Hirschkorn 2004 §2.2.4].
 - **At sliding contacts** (capstan and heel, back check, jack and knuckle, lever
-  and knuckle), his law gives static peaks 3.0, 6.6 and 1.9 times the kinetic
-  coefficient at the back check, the jack/knuckle and the lever/knuckle, and
-  none at the capstan [E, 07].
+  and knuckle), his law, μ = A(tanh(s_t/v_t) + B1(s_t/v_t)/(1 + B2(s_t/v_t)⁴))
+  [V, Hirschkorn 2004, Eq. 2.10], gives static peaks 1.69, 1.72 and 1.13 times
+  the kinetic coefficient at the back check, the jack/knuckle and the
+  lever/knuckle, and none at the capstan [E, 07]. **Do not drop the bracket**:
+  A multiplies both terms on the typeset page, and a plain-text extraction of the
+  thesis loses it, giving a different law with peaks of 3.0, 6.6 and 1.9.
 - **Do not use "~40 % of friction unexplained by the published axis torques"**,
   nor the prediction F ≈ 9 g, D ≈ 44 g, U ≈ 26 g drawn from the same sum: it
   leaves out two of the five pivots, the repetition lever among them, mixes
@@ -964,7 +977,8 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
   height, keybed crown, strike point, last damped note.
 - **Three kinds of setting**, which decide what the interface offers: actuated
   (a control turned), derived (read-only), target (aimed at through an actuator).
-- **A profile is a base plus a measured difference.** All layers but one are
+- **A profile is a base plus a measured difference**, the base being
+  Hirschkorn's action (§5.2 b). All layers but one are
   measurable with a calliper and the trade's gauges; the material set needs a
   compression bench, so it is inherited, and anything computed from an
   inherited layer says so and shows as indicative.
@@ -1009,7 +1023,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | planned |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client; the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |
@@ -1021,26 +1035,21 @@ on a number the owner can judge by the trade's protocol.
 
 Each is stated so it can be answered without opening anything else.
 
-1. **Which key the bench models.** The default key combines your measured key
-   section with a capstan 129.5 mm behind the balance pin, a figure no source
-   gives (you measured 122 mm), and a key front 258 mm in front of it, which
-   puts the measuring point at 247 mm. Should the default become the key you
-   measure for §5.2(a), with its own capstan position and arm?
-2. **The repetition spring**, where one spring serves jack and lever: is it
+1. **The repetition spring**, where one spring serves jack and lever: is it
    pivoted on the repetition lever, pulling the jack through a loop, or in the
    lever's support fork, with two branches? In the slow-release test, should the
    hammer rise more slowly in the bass, or at nearly the treble's speed?
-3. **Pedals.** On the makes you work on, what moves with the una corda besides
+2. **Pedals.** On the makes you work on, what moves with the una corda besides
    the key frame and the hammers: the sostenuto rod? From which note is the
    treble undamped?
-4. **Training.** Is a regulating screw turned continuously or in clicks of a
+3. **Training.** Is a regulating screw turned continuously or in clicks of a
    fixed fraction of a turn? Which measuring tools does a trainee have, and does
    measuring cost a gesture? Do exercises follow a full regulation sequence or a
    short path (blow distance, springs, let-off, checking)? What passes an
    exercise: targets within tolerances, evenness from note to note, or both?
-5. **Sound.** In scope or not, and if so, samples chosen by the computed hammer
+4. **Sound.** In scope or not, and if so, samples chosen by the computed hammer
    velocity or a physical string?
-6. **Licence.** Under which licence may the project be published? Nothing is
+5. **Licence.** Under which licence may the project be published? Nothing is
    published until one is chosen.
 
 The French terms in doubt are listed in `docs/vocabulary-worksheet.md`. And an

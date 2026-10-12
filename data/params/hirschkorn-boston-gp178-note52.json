@@ -1,0 +1,836 @@
+{
+  "id": "hirschkorn-boston-gp178-note52",
+  "what": "Hirschkorn's model of one grand piano action, every parameter of it: Appendix A of his thesis ('Model Parameters') transcribed whole, with what Appendix A sends the reader to the body of the thesis for: the laws its coefficients belong to, the description of each contact, and the regulation given to the action and to the model. Each value carries its table, row and page.",
+  "source": {
+    "author": "Martin C. Hirschkorn",
+    "title": "Dynamic Model of a Piano Action Mechanism",
+    "kind": "MASc thesis, Systems Design Engineering",
+    "institution": "University of Waterloo",
+    "year": 2004,
+    "local_copy": "data/references/papers/hirschkorn_thesis.pdf",
+    "instrument": "Boston GP-178 grand piano, note 52 (the thesis's 'key 52')",
+    "instrument_as_printed": "The experimental setup is based around a keyboard from a Boston GP-178 grand piano. [...] All experiments were performed on key 52.",
+    "instrument_locator": {"section": "3.1", "page": 29},
+    "parameters_as_printed": "In this case, the model was based on key 52 of a Boston model GP-178 grand piano. [...] All physical parameters and geometric dimensions in the model were taken from this action.",
+    "parameters_locator": {"chapter": "2", "page": 12},
+    "test_rig": "The keyboard was stripped to a single key and its rails cut down to one section, and the piano string was replaced with a solid metal bar (§3.1, p. 29): contact 12 is the hammer against that bar.",
+    "pages": "Every locator gives the page number printed on the thesis's page. The PDF's page index is that number plus 9: Appendix A, printed pages 67 to 74, is PDF pages 76 to 83.",
+    "how_transcribed": "Read off the typeset pages rendered as images, not off a text extraction, which loses alignment, signs and brackets. A text extraction served only to locate pages and to cross-check the numbers, and agrees with every one."
+  },
+  "frame_convention": {
+    "rule": "Every point is given in the frame of the body that carries it, and each body's frame has its origin at that body's own pivot, as Figure A.1 (p. 68) draws it. x and y are in metres, as printed. The ground's frame has its origin at the key's pivot: Pg1 is (0, 0).",
+    "as_printed": "All coordinates are listed in relation to the frame shown on each body in Figure A.1. (§A.2, p. 70)",
+    "pivots": [
+      {"body": "key", "turns_on": "Pg1", "pin_carried_by": "ground", "table": "A.2"},
+      {"body": "wippen", "turns_on": "Pg2", "pin_carried_by": "ground", "table": "A.2"},
+      {"body": "hammer", "turns_on": "Pg3", "pin_carried_by": "ground", "table": "A.2"},
+      {"body": "jack", "turns_on": "Pw2", "pin_carried_by": "wippen", "table": "A.4"},
+      {"body": "repetition_lever", "turns_on": "Pw3", "pin_carried_by": "wippen", "table": "A.4"}
+    ],
+    "pins": "Pg1, Pg2 and Pg3, listed 'Pin Location' in Table A.2, are the pins on which the key, the wippen and the hammer turn on the ground. Pw2 and Pw3, listed 'Pin Location' in Table A.4, are the pins of the jack and of the repetition lever, carried by the wippen. Each pin is the origin, (0, 0), of the frame of the body that turns on it.",
+    "pk2": "Pk2, listed 'Pin Location' in Table A.3, is a point on the key, in the key's frame. It is not the key's pivot, and no joint and no contact uses it. Figure A.1 draws a downward arrow at it, on top of the key front; the model's one applied force is 'an externally specified force applied to the key front' (§2.1, p. 15).",
+    "do_not_misread": "Do not take Pw2 for the wippen's pivot. The wippen turns on Pg2, a ground pin, which is the origin of the wippen's own frame; Pw2 is the jack's pin, at the far end of the wippen from its pivot. Read the other way, every lever arm, reflected mass and time step derived from these data is wrong; read this way, the action closes at rest (tools/derivations/10-hirschkorn-assembled-at-rest.py).",
+    "evidence": "Figure A.1 draws each body's axes at its pivot, the wippen's at the pin hole at the end opposite Pw2. Figure 2.8 (p. 27) draws the wippen pinned to ground at the end opposite the jack. The model joins the key, the wippen and the hammer to ground, and the jack and the repetition lever to the wippen, by revolute joints (§2.1, pp. 14-15).",
+    "angles": "θk, θw and θh are the rotations of the key, the wippen and the hammer, counter-clockwise from ground; θj and θr are the rotations of the jack and the repetition lever, counter-clockwise from the wippen (§2.1, pp. 15-16, Figure 2.3).",
+    "no_point_1": "No moving body's table lists a point numbered 1; they start at Pk2, Pw2, Pj2, Pr2 and Ph2. A moving body's pivot appears only as the origin of its own frame and as a pin of the body that carries it.",
+    "spelling": "Hirschkorn writes 'whippen'. This file writes 'wippen', and keeps his spelling where it quotes him."
+  },
+  "units_and_numbers": "SI, as printed: metres, kilograms, kg·m², radians and N·m; the regulation targets in millimetres, as printed. Each number is written as its table prints it, trailing zeros and exponent form included, so that it reads against its page: positions and radii to four decimals of a metre (0.1 mm), unit vectors to three decimals. Where a table prints no unit for a quantity that has one (Table A.8's curve parameters and damping factor, Table A.9's A), the record says unit_printed: false and gives the unit its defining equation requires; see ambiguities. The unit vectors, Table A.8's A, B1 and B2, and Table A.9's B1 and B2 are dimensionless, and no table prints a unit for them.",
+  "surfaces": {
+    "locator": {"section": "A.2", "pages": [70, 72]},
+    "Circle": "A simple circular surface defined by the centre of the circle and radius.",
+    "Line": "An infinitely long line defined by a point on the line and a unit normal vector.",
+    "Hybrid": "A shape consisting of an arc segment and two lines extending infinitely from the tangents of the arc. This is described by the centre and radius of the arc, and the starting and ending angles of the arc, as measured counter-clockwise from the positive x-axis.",
+    "Pin Location": "The tables' label for a pin: a point with no contact surface. Pg1 to Pg3, Pw2 and Pw3 are the pins of the revolute joints (frame_convention); Pk2 is no joint's pin.",
+    "what_a_shape_decides": "The geometry chosen for a contact decides only whether the bodies touch and the penetration depth, not the form of the force (§2.2.1, p. 18)."
+  },
+  "mass_properties": {
+    "table": "A.1",
+    "title": "Inertia Properties of Action Components",
+    "page": 67,
+    "centre_of_mass_frame": "Centre-of-mass coordinates are in the body's own frame, 'as defined in Figure A.1' (p. 67), like the points of Tables A.3 to A.7.",
+    "moment_of_inertia_axis": "About the body's centre of mass: §A.1 calculates Icm from the inertia measured by swinging the body (Eqs. A.1, A.2). The column heading itself names no axis; see ambiguities.",
+    "method": {
+      "mass": "Measured using a simple lab scale (p. 67).",
+      "centre_of_mass": "Located by suspending the bodies by a thread from two different points, drawing a vertical line under the fulcrum, and measuring the location of the intersection (pp. 67, 69).",
+      "moment_of_inertia": "Each body was 'suspended from a string and swung like a pendulum'. Its moment of inertia 'about the pivot point' is Ip = m g l (T/2π)² (Eq. A.1), with m the mass, g the gravitational constant, l 'the distance from the pivot point to the centre of mass of the body' and T the period of oscillation; then Icm = Ip − m l² (Eq. A.2) (p. 69)."
+    },
+    "key_load_cell": "For the experiments a load cell was fastened to the key front with an adhesive strip, 'small and light enough (1.1 g) to be insignificant when added to the key' (§3.1.2, p. 31). Table A.1 does not say whether the key's mass includes it.",
+    "bodies": {
+      "key": {
+        "mass": {"value": 0.12008, "unit": "kg", "locator": {"table": "A.1", "row": "Key", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
+        "moment_of_inertia": {"value": 2.75E-03, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Key", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
+        "centre_of_mass": {
+          "x": {"value": 0.0514, "unit": "m", "locator": {"table": "A.1", "row": "Key", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
+          "y": {"value": 0.0158, "unit": "m", "locator": {"table": "A.1", "row": "Key", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
+        }
+      },
+      "wippen": {
+        "mass": {"value": 0.01196, "unit": "kg", "locator": {"table": "A.1", "row": "Whippen", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
+        "moment_of_inertia": {"value": 1.69E-05, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Whippen", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
+        "centre_of_mass": {
+          "x": {"value": 0.0502, "unit": "m", "locator": {"table": "A.1", "row": "Whippen", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
+          "y": {"value": -0.0018, "unit": "m", "locator": {"table": "A.1", "row": "Whippen", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
+        }
+      },
+      "jack": {
+        "mass": {"value": 0.00265, "unit": "kg", "locator": {"table": "A.1", "row": "Jack", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
+        "moment_of_inertia": {"value": 7.78E-07, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Jack", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
+        "centre_of_mass": {
+          "x": {"value": 0.0008, "unit": "m", "locator": {"table": "A.1", "row": "Jack", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
+          "y": {"value": 0.0195, "unit": "m", "locator": {"table": "A.1", "row": "Jack", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
+        }
+      },
+      "repetition_lever": {
+        "mass": {"value": 0.00371, "unit": "kg", "locator": {"table": "A.1", "row": "Repetition", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
+        "moment_of_inertia": {"value": 4.10E-06, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Repetition", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
+        "centre_of_mass": {
+          "x": {"value": 0.0021, "unit": "m", "locator": {"table": "A.1", "row": "Repetition", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
+          "y": {"value": -0.0012, "unit": "m", "locator": {"table": "A.1", "row": "Repetition", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
+        }
+      },
+      "hammer": {
+        "mass": {"value": 0.01174, "unit": "kg", "locator": {"table": "A.1", "row": "Hammer", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
+        "moment_of_inertia": {"value": 2.90E-05, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Hammer", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
+        "centre_of_mass": {
+          "x": {"value": -0.1022, "unit": "m", "locator": {"table": "A.1", "row": "Hammer", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
+          "y": {"value": 0.0145, "unit": "m", "locator": {"table": "A.1", "row": "Hammer", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
+        }
+      }
+    }
+  },
+  "geometry": {
+    "method": "All bodies were scanned on a flatbed scanner, the images scaled to match known dimensions, then traced in AutoCAD and measured; the ground's image came from a digital camera, since the experimental apparatus could not be placed on a flatbed scanner (§A.2, p. 70).",
+    "ground": {
+      "table": "A.2",
+      "title": "Geometric Properties of Ground",
+      "page": 70,
+      "frame": "Origin at Pg1, the key's pivot. Figure A.1 draws x towards Pg4, which is under the key front, and y upwards.",
+      "points": {
+        "Pg1": {
+          "description": "Pin Location",
+          "pin_of": "key",
+          "x": {"value": 0.0000, "unit": "m", "locator": {"table": "A.2", "row": "Pg1", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.0000, "unit": "m", "locator": {"table": "A.2", "row": "Pg1", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "note": "The key is not pinned: it rests on a felt washer on top of the balance rail, a vertical pin preventing horizontal movement and only gravity holding it down. The model simplifies it, like every joint, to a simple revolute joint (§2, pp. 12-13)."
+        },
+        "Pg2": {
+          "description": "Pin Location",
+          "pin_of": "wippen",
+          "x": {"value": -0.1810, "unit": "m", "locator": {"table": "A.2", "row": "Pg2", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.0528, "unit": "m", "locator": {"table": "A.2", "row": "Pg2", "column": "Position (m), y", "page": 70}, "reliability": "V"}
+        },
+        "Pg3": {
+          "description": "Pin Location",
+          "pin_of": "hammer",
+          "x": {"value": -0.0883, "unit": "m", "locator": {"table": "A.2", "row": "Pg3", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.1166, "unit": "m", "locator": {"table": "A.2", "row": "Pg3", "column": "Position (m), y", "page": 70}, "reliability": "V"}
+        },
+        "Pg4": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 2, "described": "Key - Ground at Key Front"}],
+          "x": {"value": 0.2172, "unit": "m", "locator": {"table": "A.2", "row": "Pg4", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": -0.0077, "unit": "m", "locator": {"table": "A.2", "row": "Pg4", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "radius": {"value": 0.0050, "unit": "m", "locator": {"table": "A.2", "row": "Pg4", "column": "Radius (m)", "page": 70}, "reliability": "V"},
+          "note": "'The felt under the front of the key is actually a flat, horizontal disk, but treating it as a circular contact can still produce the correct penetration depth' (§2.2.1, pp. 18-19)."
+        },
+        "Pg5": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 3, "described": "Key - Ground at Key Back"}],
+          "x": {"value": -0.2037, "unit": "m", "locator": {"table": "A.2", "row": "Pg5", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": -0.0105, "unit": "m", "locator": {"table": "A.2", "row": "Pg5", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "radius": {"value": 0.0050, "unit": "m", "locator": {"table": "A.2", "row": "Pg5", "column": "Radius (m)", "page": 70}, "reliability": "V"}
+        },
+        "Pg6": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 8, "described": "Jack - Ground at Button"}],
+          "x": {"value": -0.0580, "unit": "m", "locator": {"table": "A.2", "row": "Pg6", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.0640, "unit": "m", "locator": {"table": "A.2", "row": "Pg6", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.000, "unit": "dimensionless", "locator": {"table": "A.2", "row": "Pg6", "column": "Unit Vector, x", "page": 70}, "reliability": "V"},
+            "y": {"value": -1.000, "unit": "dimensionless", "locator": {"table": "A.2", "row": "Pg6", "column": "Unit Vector, y", "page": 70}, "reliability": "V"}
+          }
+        },
+        "Pg7": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 11, "described": "Repetition - Ground at Stop"}],
+          "x": {"value": -0.0843, "unit": "m", "locator": {"table": "A.2", "row": "Pg7", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.1132, "unit": "m", "locator": {"table": "A.2", "row": "Pg7", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "radius": {"value": 0.0033, "unit": "m", "locator": {"table": "A.2", "row": "Pg7", "column": "Radius (m)", "page": 70}, "reliability": "V"}
+        },
+        "Pg8": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 13, "described": "Hammer - Ground at Rest"}],
+          "x": {"value": -0.1921, "unit": "m", "locator": {"table": "A.2", "row": "Pg8", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.0766, "unit": "m", "locator": {"table": "A.2", "row": "Pg8", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "radius": {"value": 0.0050, "unit": "m", "locator": {"table": "A.2", "row": "Pg8", "column": "Radius (m)", "page": 70}, "reliability": "V"}
+        },
+        "Pg9": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 12, "described": "Hammer - Ground at String"}],
+          "x": {"value": -0.2196, "unit": "m", "locator": {"table": "A.2", "row": "Pg9", "column": "Position (m), x", "page": 70}, "reliability": "V"},
+          "y": {"value": 0.1706, "unit": "m", "locator": {"table": "A.2", "row": "Pg9", "column": "Position (m), y", "page": 70}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.000, "unit": "dimensionless", "locator": {"table": "A.2", "row": "Pg9", "column": "Unit Vector, x", "page": 70}, "reliability": "V"},
+            "y": {"value": -1.000, "unit": "dimensionless", "locator": {"table": "A.2", "row": "Pg9", "column": "Unit Vector, y", "page": 70}, "reliability": "V"}
+          },
+          "note": "The 'string': in the experiment a solid metal bar replaced the piano string (§3.1, p. 29)."
+        }
+      }
+    },
+    "key": {
+      "table": "A.3",
+      "title": "Geometric Properties of Key",
+      "page": 71,
+      "frame": "Origin at the key's pivot, Pg1 on the ground, drawn on the key's underside at the balance point. x along the key towards its front (Pk4, Pk2), y upwards.",
+      "points": {
+        "Pk2": {
+          "description": "Pin Location",
+          "x": {"value": 0.2278, "unit": "m", "locator": {"table": "A.3", "row": "Pk2", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0261, "unit": "m", "locator": {"table": "A.3", "row": "Pk2", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "note": "Listed 'Pin Location', but no joint and no contact uses it; it is not the key's pivot. Figure A.1 draws a downward arrow at it, on top of the key front. See frame_convention.pk2."
+        },
+        "Pk3": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 1, "described": "Key - Whippen at Capstan"}],
+          "x": {"value": -0.1176, "unit": "m", "locator": {"table": "A.3", "row": "Pk3", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0259, "unit": "m", "locator": {"table": "A.3", "row": "Pk3", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "radius": {"value": 0.0097, "unit": "m", "locator": {"table": "A.3", "row": "Pk3", "column": "Radius (m)", "page": 71}, "reliability": "V"}
+        },
+        "Pk4": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 2, "described": "Key - Ground at Key Front"}],
+          "x": {"value": 0.2175, "unit": "m", "locator": {"table": "A.3", "row": "Pk4", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0000, "unit": "m", "locator": {"table": "A.3", "row": "Pk4", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.000, "unit": "dimensionless", "locator": {"table": "A.3", "row": "Pk4", "column": "Unit Vector, x", "page": 71}, "reliability": "V"},
+            "y": {"value": -1.000, "unit": "dimensionless", "locator": {"table": "A.3", "row": "Pk4", "column": "Unit Vector, y", "page": 71}, "reliability": "V"}
+          }
+        },
+        "Pk5": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 3, "described": "Key - Ground at Key Back"}],
+          "x": {"value": -0.2208, "unit": "m", "locator": {"table": "A.3", "row": "Pk5", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0010, "unit": "m", "locator": {"table": "A.3", "row": "Pk5", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "normal": {
+            "x": {"value": -0.041, "unit": "dimensionless", "locator": {"table": "A.3", "row": "Pk5", "column": "Unit Vector, x", "page": 71}, "reliability": "V"},
+            "y": {"value": -0.999, "unit": "dimensionless", "locator": {"table": "A.3", "row": "Pk5", "column": "Unit Vector, y", "page": 71}, "reliability": "V"}
+          }
+        },
+        "Pk6": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 4, "described": "Key - Hammer at Back Check"}],
+          "x": {"value": -0.2192, "unit": "m", "locator": {"table": "A.3", "row": "Pk6", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0817, "unit": "m", "locator": {"table": "A.3", "row": "Pk6", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.904, "unit": "dimensionless", "locator": {"table": "A.3", "row": "Pk6", "column": "Unit Vector, x", "page": 71}, "reliability": "V"},
+            "y": {"value": 0.427, "unit": "dimensionless", "locator": {"table": "A.3", "row": "Pk6", "column": "Unit Vector, y", "page": 71}, "reliability": "V"}
+          }
+        }
+      }
+    },
+    "wippen": {
+      "table": "A.4",
+      "title": "Geometric Properties of Whippen",
+      "page": 71,
+      "frame": "Origin at the wippen's pivot, Pg2 on the ground: the pin hole at the wippen's left end in Figure A.1, the end opposite Pw2. x towards Pw2, y upwards.",
+      "points": {
+        "Pw2": {
+          "description": "Pin Location",
+          "pin_of": "jack",
+          "x": {"value": 0.0989, "unit": "m", "locator": {"table": "A.4", "row": "Pw2", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": -0.0035, "unit": "m", "locator": {"table": "A.4", "row": "Pw2", "column": "Position (m), y", "page": 71}, "reliability": "V"}
+        },
+        "Pw3": {
+          "description": "Pin Location",
+          "pin_of": "repetition_lever",
+          "x": {"value": 0.0483, "unit": "m", "locator": {"table": "A.4", "row": "Pw3", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0275, "unit": "m", "locator": {"table": "A.4", "row": "Pw3", "column": "Position (m), y", "page": 71}, "reliability": "V"}
+        },
+        "Pw4": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 5, "described": "Whippen - Jack"}],
+          "x": {"value": 0.0759, "unit": "m", "locator": {"table": "A.4", "row": "Pw4", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0189, "unit": "m", "locator": {"table": "A.4", "row": "Pw4", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.969, "unit": "dimensionless", "locator": {"table": "A.4", "row": "Pw4", "column": "Unit Vector, x", "page": 71}, "reliability": "V"},
+            "y": {"value": 0.247, "unit": "dimensionless", "locator": {"table": "A.4", "row": "Pw4", "column": "Unit Vector, y", "page": 71}, "reliability": "V"}
+          }
+        },
+        "Pw5": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 1, "described": "Key - Whippen at Capstan"}],
+          "x": {"value": 0.0595, "unit": "m", "locator": {"table": "A.4", "row": "Pw5", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0030, "unit": "m", "locator": {"table": "A.4", "row": "Pw5", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "radius": {"value": 0.0253, "unit": "m", "locator": {"table": "A.4", "row": "Pw5", "column": "Radius (m)", "page": 71}, "reliability": "V"}
+        },
+        "Pw6": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 6, "described": "Whippen - Repetition"}],
+          "x": {"value": 0.0170, "unit": "m", "locator": {"table": "A.4", "row": "Pw6", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0015, "unit": "m", "locator": {"table": "A.4", "row": "Pw6", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.000, "unit": "dimensionless", "locator": {"table": "A.4", "row": "Pw6", "column": "Unit Vector, x", "page": 71}, "reliability": "V"},
+            "y": {"value": 1.000, "unit": "dimensionless", "locator": {"table": "A.4", "row": "Pw6", "column": "Unit Vector, y", "page": 71}, "reliability": "V"}
+          }
+        }
+      }
+    },
+    "jack": {
+      "table": "A.5",
+      "title": "Geometric Properties of Jack",
+      "page": 71,
+      "frame": "Origin at the jack's pivot, Pw2 on the wippen, at the corner of the jack's L. x towards the toe (Pj3), y along the jack towards its top (Pj2, Pj5).",
+      "points": {
+        "Pj2": {
+          "description": "Hybrid Contact",
+          "used_by": [{"contact": 7, "described": "Jack - Hammer at Knuckle"}],
+          "x": {"value": -0.0010, "unit": "m", "locator": {"table": "A.5", "row": "Pj2", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0495, "unit": "m", "locator": {"table": "A.5", "row": "Pj2", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "radius": {"value": 0.0010, "unit": "m", "locator": {"table": "A.5", "row": "Pj2", "column": "Radius (m)", "page": 71}, "reliability": "V"},
+          "arc": {
+            "as_printed": "1.571 - 3.142",
+            "start": {"value": 1.571, "unit": "rad", "locator": {"table": "A.5", "row": "Pj2", "column": "Arc (rad)", "page": 71}, "reliability": "V"},
+            "end": {"value": 3.142, "unit": "rad", "locator": {"table": "A.5", "row": "Pj2", "column": "Arc (rad)", "page": 71}, "reliability": "V"},
+            "measured": "counter-clockwise from the positive x axis of the body's own frame (pp. 70, 72)"
+          }
+        },
+        "Pj3": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 8, "described": "Jack - Ground at Button"}],
+          "x": {"value": 0.0247, "unit": "m", "locator": {"table": "A.5", "row": "Pj3", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": -0.0050, "unit": "m", "locator": {"table": "A.5", "row": "Pj3", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "radius": {"value": 0.0021, "unit": "m", "locator": {"table": "A.5", "row": "Pj3", "column": "Radius (m)", "page": 71}, "reliability": "V"}
+        },
+        "Pj4": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 5, "described": "Whippen - Jack"}],
+          "x": {"value": -0.0097, "unit": "m", "locator": {"table": "A.5", "row": "Pj4", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0300, "unit": "m", "locator": {"table": "A.5", "row": "Pj4", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "radius": {"value": 0.0050, "unit": "m", "locator": {"table": "A.5", "row": "Pj4", "column": "Radius (m)", "page": 71}, "reliability": "V"}
+        },
+        "Pj5": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 9, "described": "Jack - Repetition"}],
+          "x": {"value": 0.0031, "unit": "m", "locator": {"table": "A.5", "row": "Pj5", "column": "Position (m), x", "page": 71}, "reliability": "V"},
+          "y": {"value": 0.0477, "unit": "m", "locator": {"table": "A.5", "row": "Pj5", "column": "Position (m), y", "page": 71}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 1.000, "unit": "dimensionless", "locator": {"table": "A.5", "row": "Pj5", "column": "Unit Vector, x", "page": 71}, "reliability": "V"},
+            "y": {"value": 0.000, "unit": "dimensionless", "locator": {"table": "A.5", "row": "Pj5", "column": "Unit Vector, y", "page": 71}, "reliability": "V"}
+          }
+        }
+      }
+    },
+    "repetition_lever": {
+      "table": "A.6",
+      "title": "Geometric Properties of Repetition Lever",
+      "page": 72,
+      "frame": "Origin at the repetition lever's pivot, Pw3 on the wippen: its pin hole, between Pr3 and Pr2. x along the lever towards Pr2, Pr4 and Pr5.",
+      "points": {
+        "Pr2": {
+          "description": "Hybrid Contact",
+          "used_by": [{"contact": 10, "described": "Repetition - Hammer at Knuckle"}],
+          "x": {"value": 0.0363, "unit": "m", "locator": {"table": "A.6", "row": "Pr2", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": -0.0521, "unit": "m", "locator": {"table": "A.6", "row": "Pr2", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "radius": {"value": 0.0552, "unit": "m", "locator": {"table": "A.6", "row": "Pr2", "column": "Radius (m)", "page": 72}, "reliability": "V"},
+          "arc": {
+            "as_printed": "1.300 - 1.571",
+            "start": {"value": 1.300, "unit": "rad", "locator": {"table": "A.6", "row": "Pr2", "column": "Arc (rad)", "page": 72}, "reliability": "V"},
+            "end": {"value": 1.571, "unit": "rad", "locator": {"table": "A.6", "row": "Pr2", "column": "Arc (rad)", "page": 72}, "reliability": "V"},
+            "measured": "counter-clockwise from the positive x axis of the body's own frame (pp. 70, 72)"
+          }
+        },
+        "Pr3": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 6, "described": "Whippen - Repetition"}],
+          "x": {"value": -0.0361, "unit": "m", "locator": {"table": "A.6", "row": "Pr3", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": -0.0093, "unit": "m", "locator": {"table": "A.6", "row": "Pr3", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "radius": {"value": 0.0050, "unit": "m", "locator": {"table": "A.6", "row": "Pr3", "column": "Radius (m)", "page": 72}, "reliability": "V"}
+        },
+        "Pr4": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 9, "described": "Jack - Repetition"}],
+          "x": {"value": 0.0527, "unit": "m", "locator": {"table": "A.6", "row": "Pr4", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": -0.0009, "unit": "m", "locator": {"table": "A.6", "row": "Pr4", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "radius": {"value": 0.0050, "unit": "m", "locator": {"table": "A.6", "row": "Pr4", "column": "Radius (m)", "page": 72}, "reliability": "V"}
+        },
+        "Pr5": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 11, "described": "Repetition - Ground at Stop"}],
+          "x": {"value": 0.0561, "unit": "m", "locator": {"table": "A.6", "row": "Pr5", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": 0.0017, "unit": "m", "locator": {"table": "A.6", "row": "Pr5", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.317, "unit": "dimensionless", "locator": {"table": "A.6", "row": "Pr5", "column": "Unit Vector, x", "page": 72}, "reliability": "V"},
+            "y": {"value": 0.948, "unit": "dimensionless", "locator": {"table": "A.6", "row": "Pr5", "column": "Unit Vector, y", "page": 72}, "reliability": "V"}
+          }
+        }
+      }
+    },
+    "hammer": {
+      "table": "A.7",
+      "title": "Geometric Properties of Hammer",
+      "page": 72,
+      "frame": "Origin at the hammer's pivot, Pg3 on the ground: the shank's pin, at the end opposite the head. x along the shank, pointing away from the head.",
+      "points": {
+        "Ph2": {
+          "description": "Circle Contact",
+          "used_by": [
+            {"contact": 7, "described": "Jack - Hammer at Knuckle"},
+            {"contact": 10, "described": "Repetition - Hammer at Knuckle"}
+          ],
+          "x": {"value": -0.0170, "unit": "m", "locator": {"table": "A.7", "row": "Ph2", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": -0.0091, "unit": "m", "locator": {"table": "A.7", "row": "Ph2", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "radius": {"value": 0.0044, "unit": "m", "locator": {"table": "A.7", "row": "Ph2", "column": "Radius (m)", "page": 72}, "reliability": "V"}
+        },
+        "Ph3": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 4, "described": "Key - Hammer at Back Check"}],
+          "x": {"value": -0.0813, "unit": "m", "locator": {"table": "A.7", "row": "Ph3", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": -0.0025, "unit": "m", "locator": {"table": "A.7", "row": "Ph3", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "radius": {"value": 0.0549, "unit": "m", "locator": {"table": "A.7", "row": "Ph3", "column": "Radius (m)", "page": 72}, "reliability": "V"}
+        },
+        "Ph4": {
+          "description": "Circle Contact",
+          "used_by": [{"contact": 12, "described": "Hammer - Ground at String"}],
+          "x": {"value": -0.1321, "unit": "m", "locator": {"table": "A.7", "row": "Ph4", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": 0.0356, "unit": "m", "locator": {"table": "A.7", "row": "Ph4", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "radius": {"value": 0.0102, "unit": "m", "locator": {"table": "A.7", "row": "Ph4", "column": "Radius (m)", "page": 72}, "reliability": "V"}
+        },
+        "Ph5": {
+          "description": "Line Contact",
+          "used_by": [{"contact": 13, "described": "Hammer - Ground at Rest"}],
+          "x": {"value": -0.1100, "unit": "m", "locator": {"table": "A.7", "row": "Ph5", "column": "Position (m), x", "page": 72}, "reliability": "V"},
+          "y": {"value": -0.0031, "unit": "m", "locator": {"table": "A.7", "row": "Ph5", "column": "Position (m), y", "page": 72}, "reliability": "V"},
+          "normal": {
+            "x": {"value": 0.000, "unit": "dimensionless", "locator": {"table": "A.7", "row": "Ph5", "column": "Unit Vector, x", "page": 72}, "reliability": "V"},
+            "y": {"value": -1.000, "unit": "dimensionless", "locator": {"table": "A.7", "row": "Ph5", "column": "Unit Vector, y", "page": 72}, "reliability": "V"}
+          }
+        }
+      }
+    }
+  },
+  "contacts": {
+    "table": "A.8",
+    "title": "Contact Properties",
+    "page": 73,
+    "points_order": "Each contact joins the two points printed in its row, in the order of Table 2.1's description, first body then second. For the friction measurement the first body was held fixed and the second pushed into it (§A.3, p. 73).",
+    "normal_force": {
+      "law": "fn = f_fit(x) (1 + D ẋ)",
+      "law_locator": {"equation": "2.4", "page": 21},
+      "fit": "f_fit(x) = a x³ + b x² + c x",
+      "fit_locator": {"equation": "2.5", "page": 21},
+      "symbols": {
+        "fn": "the normal force",
+        "x": "the penetration depth",
+        "ẋ": "the normal velocity, positive while the contact loads (p. 22)",
+        "a, b, c": "Table A.8's Curve Parameters: the coefficients of a least-squares third-order polynomial fit",
+        "D": "Table A.8's Damping Factor"
+      },
+      "calibration": "a, b and c fit the mid-line of the loading and unloading curves of one loading experiment per contact, the action disassembled, one component in a vice and the other on a motor-driven arm (§2.2.3, p. 22). D = (f_loading(x_max) / f_fit(x_max) − 1) / ẋ_ave (Eq. 2.7, p. 23): at the penetration where the loading and fit curves differ most, with ẋ_ave the contact's average normal speed measured on the real action under the forte force profile. Contact 12 is the exception (its note)."
+    },
+    "tangential_friction": {
+      "law": "μ = A (tanh(s_t/v_t) + B1 (s_t/v_t) / (1 + B2 (s_t/v_t)⁴))",
+      "law_locator": {"equation": "2.10", "page": 25},
+      "force": "f_t = μ f_n",
+      "force_locator": {"equation": "2.11", "page": 25},
+      "bracket": "A multiplies both terms in the bracket, as the typeset equation shows. Do not read it as A tanh(s_t/v_t) + B1 (s_t/v_t) / (1 + B2 (s_t/v_t)⁴), which is how a plain-text extraction of the thesis renders it: that is a different law, with much higher static peaks.",
+      "symbols": {
+        "μ": "the coefficient of friction",
+        "s_t": "the relative tangential speed of the two contacting surfaces",
+        "v_t": "the threshold velocity; no value is given (not_given)",
+        "A": "set to the kinetic coefficient of friction: μ tends to A at large tangential speed",
+        "B1, B2": "adjusted by hand so that the curve's maximum peak matches the static coefficient of friction"
+      },
+      "symbols_locator": {"page": 25},
+      "applies_to": "Contacts 1, 4, 7 and 10, the four that undergo significant tangential motion; tangential friction is ignored at the others, whose A, B1 and B2 are 0 (pp. 25-26).",
+      "measurement": "The coefficients of friction for each pair of contacting bodies were measured by holding the first body fixed, pushing the second body into the first with a known force, then measuring the force required to start the bodies sliding, and keep them sliding (§A.3, p. 73)."
+    },
+    "rows": {
+      "1": {
+        "points": ["Pk3", "Pw5"],
+        "described": "Key - Whippen at Capstan",
+        "type": "Circle - Circle",
+        "described_in": {"table": "2.1", "row": "1", "page": 18},
+        "a": {"value": 1.26E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "1", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": 3.26E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "1", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 7.92E+03, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "1", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 1.877, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "1", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0.167, "unit": "dimensionless", "locator": {"table": "A.8", "row": "1", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "1", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 1, "unit": "dimensionless", "locator": {"table": "A.8", "row": "1", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "2": {
+        "points": ["Pk4", "Pg4"],
+        "described": "Key - Ground at Key Front",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "2", "page": 18},
+        "a": {"value": 4.41E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "2", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -1.02E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "2", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 1.57E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "2", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 1.219, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "2", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "2", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "2", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "2", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "3": {
+        "points": ["Pk5", "Pg5"],
+        "described": "Key - Ground at Key Back",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "3", "page": 18},
+        "a": {"value": 2.42E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "3", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -1.11E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "3", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 6.54E+03, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "3", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 2.502, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "3", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "3", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "3", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "3", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "4": {
+        "points": ["Pk6", "Ph3"],
+        "described": "Key - Hammer at Back Check",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "4", "page": 18},
+        "a": {"value": 5.86E+11, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "4", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -3.70E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "4", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 3.11E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "4", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 2.446, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "4", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0.434, "unit": "dimensionless", "locator": {"table": "A.8", "row": "4", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 1.78, "unit": "dimensionless", "locator": {"table": "A.8", "row": "4", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 1, "unit": "dimensionless", "locator": {"table": "A.8", "row": "4", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "5": {
+        "points": ["Pw4", "Pj4"],
+        "described": "Whippen - Jack",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "5", "page": 18},
+        "a": {"value": 5.28E+09, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "5", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -7.54E+05, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "5", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 4.42E+03, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "5", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 5.781, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "5", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "5", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "5", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "5", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "6": {
+        "points": ["Pw6", "Pr3"],
+        "described": "Whippen - Repetition",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "6", "page": 18},
+        "a": {"value": 2.53E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "6", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -9.89E+06, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "6", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 7.07E+03, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "6", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 7.732, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "6", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "6", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "6", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "6", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "7": {
+        "points": ["Pj2", "Ph2"],
+        "described": "Jack - Hammer at Knuckle",
+        "type": "Hybrid - Circle",
+        "described_in": {"table": "2.1", "row": "7", "page": 18},
+        "a": {"value": 3.92E+11, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "7", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": 1.10E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "7", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 3.23E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "7", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 4.694, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "7", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0.177, "unit": "dimensionless", "locator": {"table": "A.8", "row": "7", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 1.85, "unit": "dimensionless", "locator": {"table": "A.8", "row": "7", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 1, "unit": "dimensionless", "locator": {"table": "A.8", "row": "7", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "8": {
+        "points": ["Pj3", "Pg6"],
+        "described": "Jack - Ground at Button",
+        "type": "Circle - Line",
+        "described_in": {"table": "2.1", "row": "8", "page": 18},
+        "a": {"value": 7.46E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "8", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -2.29E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "8", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 1.32E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "8", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 1.527, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "8", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "8", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "8", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "8", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "9": {
+        "points": ["Pj5", "Pr4"],
+        "described": "Jack - Repetition",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "9", "page": 18},
+        "a": {"value": 6.02E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "9", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -1.68E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "9", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 6.96E+03, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "9", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 0.779, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "9", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "9", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "9", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "9", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "10": {
+        "points": ["Pr2", "Ph2"],
+        "described": "Repetition - Hammer at Knuckle",
+        "type": "Hybrid - Circle",
+        "described_in": {"table": "2.1", "row": "10", "page": 18},
+        "a": {"value": 1.09E+12, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "10", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -7.51E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "10", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 2.23E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "10", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 2.935, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "10", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0.332, "unit": "dimensionless", "locator": {"table": "A.8", "row": "10", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0.73, "unit": "dimensionless", "locator": {"table": "A.8", "row": "10", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 1, "unit": "dimensionless", "locator": {"table": "A.8", "row": "10", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "11": {
+        "points": ["Pr5", "Pg7"],
+        "described": "Repetition - Ground at Stop",
+        "type": "Line - Circle",
+        "described_in": {"table": "2.1", "row": "11", "page": 18},
+        "a": {"value": 8.82E+11, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "11", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -7.59E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "11", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 1.67E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "11", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 4.985, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "11", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "11", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "11", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "11", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        }
+      },
+      "12": {
+        "points": ["Ph4", "Pg9"],
+        "described": "Hammer - Ground at String",
+        "type": "Circle - Line",
+        "described_in": {"table": "2.1", "row": "12", "page": 18},
+        "a": {"value": 1.81E+10, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "12", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": 8.19E+07, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "12", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 1.16E+04, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "12", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 0.175, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "12", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "12", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "12", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "12", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        },
+        "note": "The 'string' is a solid metal bar (§3.1, p. 29). This damping factor was adjusted iteratively to give approximately the correct rebound speed of the hammer, not calibrated by Eq. 2.7 (§2.2.3, p. 23)."
+      },
+      "13": {
+        "points": ["Ph5", "Pg8"],
+        "described": "Hammer - Ground at Rest",
+        "type": "Circle - Line",
+        "described_in": {"table": "2.1", "row": "13", "page": 18},
+        "a": {"value": 8.58E+08, "unit": "N/m³", "unit_printed": false, "locator": {"table": "A.8", "row": "13", "column": "Curve Parameters, a", "page": 73}, "reliability": "V"},
+        "b": {"value": -1.11E+06, "unit": "N/m²", "unit_printed": false, "locator": {"table": "A.8", "row": "13", "column": "Curve Parameters, b", "page": 73}, "reliability": "V"},
+        "c": {"value": 2.39E+03, "unit": "N/m", "unit_printed": false, "locator": {"table": "A.8", "row": "13", "column": "Curve Parameters, c", "page": 73}, "reliability": "V"},
+        "damping_factor": {"value": 8.964, "unit": "s/m", "unit_printed": false, "locator": {"table": "A.8", "row": "13", "column": "Damping Factor", "page": 73}, "reliability": "V"},
+        "friction": {
+          "A": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "13", "column": "Friction Parameters, A", "page": 73}, "reliability": "V"},
+          "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "13", "column": "Friction Parameters, B1", "page": 73}, "reliability": "V"},
+          "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.8", "row": "13", "column": "Friction Parameters, B2", "page": 73}, "reliability": "V"}
+        },
+        "note": "Table 2.1 prints the type 'Circle - Line', but Appendix A makes Ph5 a line on the hammer and Pg8 a circle on the ground; the points follow Appendix A. See ambiguities."
+      }
+    }
+  },
+  "joint_friction": {
+    "table": "A.9",
+    "title": "Rotational Friction Parameters",
+    "page": 74,
+    "law": "T = A (tanh(ω/ω_t) + B1 (ω/ω_t) / (1 + B2 (ω/ω_t)⁴))",
+    "law_locator": {"equation": "2.12", "page": 26},
+    "bracket": "As in Eq. 2.10, A multiplies both terms in the bracket. With B1 = 0 at every joint, the law here is T = A tanh(ω/ω_t).",
+    "symbols": {
+      "T": "the resulting torque",
+      "ω": "the rotational speed",
+      "ω_t": "the threshold rotational speed; no value is given (not_given)",
+      "A, B1, B2": "constants determined from the measured torque in the joint"
+    },
+    "measurement": "The rotational friction parameter A is derived directly from the kinetic frictional torque in the joint, determined by measuring the force required to rotate the joint at a known distance from its centre. Static friction, as described by B1 and B2, was not included in these joints (§A.4, p. 74).",
+    "measurement_radius": "Not given: the force was measured 'at a known distance from the centre of the joint', and only the torque is printed.",
+    "bushings": "The friction in the joints is primarily determined by the tightness of the felt bushings, which is constant once the action is assembled (§2.2.4, p. 26).",
+    "rows": {
+      "key": {
+        "joint": "the key on the ground, at Pg1",
+        "A": {"value": 0.0122, "unit": "N·m", "unit_printed": false, "locator": {"table": "A.9", "row": "Key", "column": "A", "page": 74}, "reliability": "V"},
+        "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Key", "column": "B1", "page": 74}, "reliability": "V"},
+        "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Key", "column": "B2", "page": 74}, "reliability": "V"}
+      },
+      "wippen": {
+        "joint": "the wippen on the ground, at Pg2",
+        "A": {"value": 0.000397, "unit": "N·m", "unit_printed": false, "locator": {"table": "A.9", "row": "Whippen", "column": "A", "page": 74}, "reliability": "V"},
+        "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Whippen", "column": "B1", "page": 74}, "reliability": "V"},
+        "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Whippen", "column": "B2", "page": 74}, "reliability": "V"}
+      },
+      "jack": {
+        "joint": "the jack on the wippen, at Pw2",
+        "A": {"value": 0.000397, "unit": "N·m", "unit_printed": false, "locator": {"table": "A.9", "row": "Jack", "column": "A", "page": 74}, "reliability": "V"},
+        "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Jack", "column": "B1", "page": 74}, "reliability": "V"},
+        "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Jack", "column": "B2", "page": 74}, "reliability": "V"}
+      },
+      "repetition_lever": {
+        "joint": "the repetition lever on the wippen, at Pw3",
+        "A": {"value": 0.00247, "unit": "N·m", "unit_printed": false, "locator": {"table": "A.9", "row": "Repetition", "column": "A", "page": 74}, "reliability": "V"},
+        "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Repetition", "column": "B1", "page": 74}, "reliability": "V"},
+        "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Repetition", "column": "B2", "page": 74}, "reliability": "V"}
+      },
+      "hammer": {
+        "joint": "the hammer on the ground, at Pg3",
+        "A": {"value": 0.00101, "unit": "N·m", "unit_printed": false, "locator": {"table": "A.9", "row": "Hammer", "column": "A", "page": 74}, "reliability": "V"},
+        "B1": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Hammer", "column": "B1", "page": 74}, "reliability": "V"},
+        "B2": {"value": 0, "unit": "dimensionless", "locator": {"table": "A.9", "row": "Hammer", "column": "B2", "page": 74}, "reliability": "V"}
+      }
+    }
+  },
+  "springs": {
+    "locator": {"section": "A.4", "page": 74},
+    "where": "The revolute joints connecting the jack and the repetition lever to the wippen include rotational springs, present in the experimental action (§2.1, pp. 14-15).",
+    "jack": {
+      "joint": "the jack on the wippen, at Pw2",
+      "as_printed": "The spring force in the jack was measured to be approximately constant at 0.0042 N·m.",
+      "torque": {"value": 0.0042, "unit": "N·m", "locator": {"section": "A.4", "page": 74}, "reliability": "V", "note": "Approximately constant. Printed as a 'spring force' with a torque's unit; its sign in θj is not stated."}
+    },
+    "repetition_lever": {
+      "joint": "the repetition lever on the wippen, at Pw3",
+      "law": "T = −0.073(θr − 0.832)",
+      "law_locator": {"equation": "A.3", "page": 74},
+      "as_printed": "where T is the torque acting on the revolute joint (in N·m), and θr is the angle between the repetition lever and the whippen (in radians).",
+      "angle": "θr, the angle between the repetition lever and the wippen (§A.4, p. 74), measured counter-clockwise from the wippen (§2.1, pp. 15-16, Figure 2.3).",
+      "coefficient": {"value": -0.073, "unit": "N·m/rad", "locator": {"equation": "A.3", "page": 74}, "reliability": "V", "note": "The factor multiplying (θr − 0.832), its sign included; the unit follows from T in N·m and θr in radians, as printed."},
+      "angle_offset": {"value": 0.832, "unit": "rad", "locator": {"equation": "A.3", "page": 74}, "reliability": "V", "note": "Subtracted from θr: the torque is zero at θr = 0.832 rad."}
+    }
+  },
+  "regulation": {
+    "locator": {"section": "2.3", "pages": [26, 27, 28], "figure": "2.8"},
+    "procedure": "The same procedure was used for the experimental action, adjusted by turning screws or bending arms, and for the model, regulated by modifying the corresponding geometric parameter (§2.3, pp. 26-27).",
+    "hammer_height": "Figure 2.8 (p. 27) draws the hammer height as the distance from the top of the hammer head up to the string, which the experiment replaced with a solid metal bar (§3.1, p. 29).",
+    "steps": [
+      {
+        "step": 1,
+        "figure_2_8_label": "1",
+        "as_printed": "The key dip is adjusted by placing small paper washers under the felt at the front of the key. The key front, from rest until hitting the felt under the key front, should travel 10.0 mm.",
+        "target_is": "the travel of the key front from rest until it hits the felt under the key front",
+        "target": {"value": 10.0, "unit": "mm", "locator": {"section": "2.3", "item": 1, "page": 27}, "reliability": "V"}
+      },
+      {
+        "step": 2,
+        "figure_2_8_label": "2",
+        "as_printed": "The capstan is screwed in or out until the hammer height at rest is 48.0 mm.",
+        "target_is": "the hammer height at rest",
+        "target": {"value": 48.0, "unit": "mm", "locator": {"section": "2.3", "item": 2, "page": 27}, "reliability": "V"}
+      },
+      {
+        "step": 3,
+        "figure_2_8_label": "3",
+        "as_printed": "The rest position of the jack is adjusted by screwing the rest pad in or out. The right side of the jack should be aligned with the right edge of the knuckle."
+      },
+      {
+        "step": 4,
+        "figure_2_8_label": "4",
+        "as_printed": "The rest position of the repetition lever is adjusted with the screw on the felt pad. The repetition lever should be the same height as the jack under the knuckle."
+      },
+      {
+        "step": 5,
+        "figure_2_8_label": "5",
+        "as_printed": "The button above the toe of the jack is adjusted so the jack will rotate out from under the knuckle when the hammer height is 1.0 mm.",
+        "target_is": "the hammer height at which the jack rotates out from under the knuckle",
+        "target": {"value": 1.0, "unit": "mm", "locator": {"section": "2.3", "item": 5, "page": 27}, "reliability": "V"}
+      },
+      {
+        "step": 6,
+        "figure_2_8_label": "6",
+        "as_printed": "The screw above the repetition lever is adjusted so that once the jack releases from the hammer, the hammer height will be 3.0 mm when resting on the repetition.",
+        "target_is": "the hammer height once the jack has released, the hammer resting on the repetition lever",
+        "target": {"value": 3.0, "unit": "mm", "locator": {"section": "2.3", "item": 6, "page": 27}, "reliability": "V"}
+      },
+      {
+        "step": 7,
+        "figure_2_8_label": "7",
+        "as_printed": "The back check is adjusted by bending the metal wire connecting it to the key. Under a medium blow, the hammer should be stopped by the back check when the hammer height is 15.0 mm.",
+        "target_is": "the hammer height at which the back check stops the hammer, under a medium blow",
+        "target": {"value": 15.0, "unit": "mm", "locator": {"section": "2.3", "item": 7, "page": 28}, "reliability": "V"}
+      }
+    ]
+  },
+  "not_given": [
+    {
+      "what": "the threshold velocity v_t of Eq. 2.10",
+      "note": "No value in the text. Figure 2.7 (p. 25), 'a sample of this curve', draws v_t at 1 × 10⁻⁵ m/s; the thesis does not say the model used it."
+    },
+    {"what": "the threshold rotational speed ω_t of Eq. 2.12", "note": "No value."},
+    {
+      "what": "x_max and ẋ_ave of Eq. 2.7, for each contact",
+      "note": "They set each damping factor and are not printed."
+    },
+    {"what": "the gravitational constant g", "note": "Named in Eq. A.1; no value printed."},
+    {
+      "what": "the distance at which each joint's friction force was measured",
+      "note": "'A known distance from the centre of the joint' (§A.4, p. 74); only the torque is printed."
+    },
+    {"what": "the sign of the jack spring's torque", "note": "§A.4 gives its magnitude only."},
+    {
+      "what": "which geometric parameters the model's regulation modified",
+      "note": "§2.3 regulates the model 'by modifying the corresponding geometric parameter'. Appendix A, which lists 'all of the parameters that were used in the action model' (p. 67), does not say whether its tables include those modifications."
+    },
+    {
+      "what": "damping factors recalibrated for a piano blow",
+      "note": "§4.2.2 (p. 51) recomputes them at the lower speeds of a piano blow and reports them only as 'around four to five times larger' than the forte ones. Table A.8's are the forte calibration (p. 23)."
+    }
+  ],
+  "ambiguities": [
+    {
+      "what": "the bracket in Eqs. 2.10 and 2.12",
+      "where": "pp. 25, 26",
+      "reading": "μ = A (tanh(s_t/v_t) + B1 (s_t/v_t) / (1 + B2 (s_t/v_t)⁴)), and T likewise",
+      "resolved": "Read off the typeset page, where a large bracket encloses both terms. A plain-text extraction drops the bracket and gives a different law."
+    },
+    {
+      "what": "units Tables A.8 and A.9 do not print",
+      "where": "Table A.8 (a, b, c, Damping Factor), Table A.9 (A), pp. 73-74",
+      "reading": "a in N/m³, b in N/m², c in N/m, D in s/m, A in N·m",
+      "resolved": "The units Eqs. 2.4, 2.5 and 2.12 require with the appendix's SI: the fit in newtons of a penetration in metres, D ẋ dimensionless with ẋ in m/s, T a torque. For the fit, Figure 2.6 (p. 22), the curves of the contact under the key front, agrees with contact 2's coefficients read this way."
+    },
+    {
+      "what": "the axis of Table A.1's moment of inertia",
+      "where": "Table A.1, p. 67; §A.1, p. 69",
+      "reading": "about the body's centre of mass",
+      "resolved": "The column heading names no axis. §A.1 states that the moments of inertia about the centre of mass, Icm, were calculated from the pendulum's Ip with the parallel axis theorem (Eq. A.2)."
+    },
+    {
+      "what": "contact 13's surface types",
+      "where": "Table 2.1, p. 18; Tables A.2 and A.7, pp. 70, 72",
+      "reading": "Ph5 a line on the hammer, Pg8 a circle on the ground",
+      "resolved": "Appendix A gives Ph5 a unit normal and no radius, and Pg8 a radius and no normal, while Table 2.1 prints 'Circle - Line' for 'Hammer - Ground at Rest'. The points follow Appendix A; Table 2.1's type is kept as printed."
+    },
+    {
+      "what": "what Pk2 is",
+      "where": "Table A.3, p. 71; Figure A.1, p. 68",
+      "reading": "'Pin Location', as printed, on the key",
+      "resolved": "No joint and no contact uses Pk2. Figure A.1 draws a downward arrow at it, on top of the key front, and the model's one applied force is at the key front (§2.1, p. 15). The record gives it no other role."
+    },
+    {
+      "what": "the jack spring's quantity",
+      "where": "§A.4, p. 74",
+      "reading": "a torque of about 0.0042 N·m, constant",
+      "resolved": "Printed as 'the spring force in the jack' with the unit N·m. Recorded as a torque at the jack's joint; its sign is left unstated, as in the source."
+    },
+    {
+      "what": "the arc columns",
+      "where": "Tables A.5 and A.6, pp. 71-72",
+      "reading": "'1.571 - 3.142' and '1.300 - 1.571' are each a starting and an ending angle",
+      "resolved": "§A.2 (p. 72) describes a hybrid by 'the starting and ending angles of the arc'; the dash separates the two and is not a subtraction."
+    }
+  ]
+}

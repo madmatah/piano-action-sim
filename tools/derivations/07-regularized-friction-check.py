@@ -12,15 +12,20 @@
 3. Hirschkorn's damping factor D, calibrated on a forte blow, against the bias
    of dropping it.
 4. Static and kinetic friction at the four sliding contacts of Hirschkorn's
-   Table A.8, mu(x) = A tanh(x) + B1 x / (1 + B2 x^4), x = s_t / v_t: A is the
-   kinetic coefficient and the static one is the maximum of mu over x > 0.
+   Table A.8, mu(x) = A (tanh(x) + B1 x / (1 + B2 x^4)), x = s_t / v_t (his
+   Eq. 2.10, p. 25: A multiplies the whole bracket, which a plain-text
+   extraction of the thesis drops): A is the kinetic coefficient and the static
+   one is the maximum of mu over x > 0. The coefficients are read from
+   data/params/hirschkorn-boston-gp178-note52.json.
 
 Inputs: Hirschkorn 2004, Tables A.8 and A.9, and the inertias about the pivots
 from script 01.
 
 Pure arithmetic: import math and nothing else. Run with python3 -I.
 """
+import json
 import math
+from pathlib import Path
 
 print("=== 1. Regularized joint friction at the key: creep, and the explicit step ===")
 Ik = 3.0972e-3   # key inertia about its pivot, kg m^2 (script 01)
@@ -85,11 +90,21 @@ print("\n=== 4. Static against kinetic friction at the sliding contacts (Table A
 
 
 def mu(x, A, B1, B2):
-    return A * math.tanh(x) + B1 * x / (1 + B2 * x**4)
+    return A * (math.tanh(x) + B1 * x / (1 + B2 * x**4))
 
 
-for name, A, B1, B2 in (("1 capstan / heel", 0.167, 0.0, 1.0), ("4 back check", 0.434, 1.78, 1.0),
-                        ("7 jack / knuckle", 0.177, 1.85, 1.0), ("10 lever / knuckle", 0.332, 0.73, 1.0)):
+_RECORD = json.loads(
+    (Path(__file__).resolve().parents[2] / "data" / "params" / "hirschkorn-boston-gp178-note52.json").read_text(
+        encoding="utf-8"
+    )
+)
+_ROWS = _RECORD["contacts"]["rows"]
+_NAMES = {"1": "1 capstan / heel", "4": "4 back check", "7": "7 jack / knuckle", "10": "10 lever / knuckle"}
+_SLIDING = [
+    (_NAMES[k], *(_ROWS[k]["friction"][c]["value"] for c in ("A", "B1", "B2"))) for k in ("1", "4", "7", "10")
+]
+
+for name, A, B1, B2 in _SLIDING:
     xs = [i * 1e-4 for i in range(1, 100001)]       # x from 0.0001 to 10
     x_best = max(xs, key=lambda x: mu(x, A, B1, B2))
     peak = mu(x_best, A, B1, B2)
