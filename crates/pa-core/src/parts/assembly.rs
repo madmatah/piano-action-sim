@@ -677,8 +677,10 @@ impl KeyAssembly {
     /// such a frame, and must — but the key still has a definite place to be,
     /// and drawing it anywhere else means drawing wood through wood.
     ///
-    /// The underside is straight where this happens and the edges are circles
-    /// of one radius, so the resting line is their **common tangent from
+    /// This treats the underside as one straight line and the edges as circles
+    /// of one radius. Where a stop meets the chamfer instead of the flat, the
+    /// key is drawn clear of that stop by up to about 0.8 mm: a known defect,
+    /// to be replaced by the general solver. Under that assumption the resting line is their **common tangent from
     /// above**: parallel to the line of centres, offset by one radius along the
     /// upward normal. Closed form, like every other contact here — but over
     /// every pair of edges rather than one, because a strip of cloth has two
@@ -1041,13 +1043,12 @@ impl Regulation {
     /// equations. It is used only to *place* the punchings; what the bench then
     /// reads back is the exact contact of [`KeyAssembly::first_touch`], so the
     /// residual shows up as a dip that misses its target by a few hundredths of
-    /// a millimetre — which is the right way round. A solver that inverted the
-    /// exact contact everywhere would agree with itself by construction and
-    /// test nothing.
+    /// a millimetre.
     ///
-    /// `None` when the targets are unreachable on this geometry — a dip deeper
-    /// than the front rail can allow, say. An unreachable target is a real
-    /// user-facing answer, not an error to swallow.
+    /// `None` when the placement equations have no solution on this geometry.
+    /// It does not see the front pin bottoming in its mortise: a dip the pin
+    /// forbids is returned as solved and shows as a miss on the sheet, a known
+    /// defect the general solver replaces.
     pub fn solve(
         &self,
         key: &KeyDesign,

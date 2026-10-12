@@ -488,9 +488,8 @@ hammer-head acceleration of about 1,600 m/s² [E, 08].
 **Do not use 12 µs.** It comes from taking Hirschkorn's `Pw2`, the jack's pin,
 for the wippen's pivot, and from an effective mass I/r² with r the distance from
 a pin to the contact point instead of the moment arm of the contact normal. That
-gives 0.73 g and 3.9 kHz at the jack/knuckle, a state reached only when the
-knuckle has rolled onto the jack's side wall at the end of escapement, the force
-collapsing; at rest that effective mass is 8.9 g [E, 10]. **Do not use 570:1**
+gives 0.73 g and 3.9 kHz at the jack/knuckle; at rest, along the contact normal,
+that effective mass is 8.9 g [E, 10]. **Do not use 570:1**
 for the reflected-mass ratio there: at rest it is about 9 g on the driving side
 against 467 g on the hammer side, 51:1 [E, 10]. **Do not use 2/ω as the
 stability limit**: it is the undamped limit of an explicit spring, the limit
@@ -779,8 +778,9 @@ Planned: each value transcribed with its lineage: measured, assumed, placeholder
 
 - **Lozada measured the hammer's axis friction and assumed the rest**: he states
   that he identified the hammer-to-frame joint and considered the other joints
-  to behave the same [V, Lozada 2007, ch. 3 §1.3]. The wippen, jack, lever and
-  damper frictions in his and Thorin's tables copy the hammer's 9.92e-4 N·m, so
+  to behave the same [V, Lozada 2007, ch. 3 §1.3]. The wippen, lever and
+  damper frictions in his Table 2.3 copy the hammer's 9.92e-4 N·m, and Thorin
+  gives the jack the same value as a placeholder, so
   their agreement with Hirschkorn compares nothing measured, and the wippen and
   damper values printed as 9.92e-2 N·m, a hundred times the hammer's, are by his
   own assumption a transcription error.
@@ -1088,8 +1088,10 @@ trade term: the trade's vocabulary belongs to the trade.
   inertia*, Parts 1 and 2 (2015), and *Understanding MoI* (2018); Igrec,
   *Practical Touch* (2016). They compute or rate inertia; none measures it.
 - **Manuals**: Steinway's technical reference, chapters 1 to 4; Kawai's grand
-  regulation manual; the WNG instructions; Reyburn's geometry sheet; Spurlock on
-  touchweight; the Potter checklist; Igrec, *Pianos Inside Out* (sample pages).
+  regulation manual; a compiled sheet of grand regulation specifications; the
+  WNG instructions; Redekop's damper guide; Reyburn's geometry sheet; Spurlock on
+  touchweight; the Potter checklist; a French trade glossary; Igrec, *Pianos
+  Inside Out* (sample pages).
 
 Not in the corpus, and wanted by the stages ahead: Askenfelt and Jansson on the
 grand action's timing (1990); Gillespie et al.'s key force profiles (2011);

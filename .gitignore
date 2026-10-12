@@ -35,3 +35,4 @@ private/
 # TypeScript incremental build state
 *.tsbuildinfo
 .claude/worktrees/
+__pycache__/

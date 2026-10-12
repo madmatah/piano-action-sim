@@ -164,7 +164,9 @@ pub struct KeyBearing {
     /// Offset of the effective bearing point from the balance rail pin, metres.
     /// Positive towards the back of the key.
     pub offset_from_pin: f64,
-    /// Punching stack height, metres. This is what key levelling adjusts.
+    /// Punching stack height, metres. Written by the bench and read by
+    /// nothing: the bearing's height comes from the frame's balance stack
+    /// (`FrameDesign::balance_bearing_height`). A duplicate, to be removed.
     pub stack_height: f64,
 }
 

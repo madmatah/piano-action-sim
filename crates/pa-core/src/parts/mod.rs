@@ -86,10 +86,9 @@ impl MassProperties {
     /// Removes a region from a body: `self` without `other`.
     ///
     /// Mass, first moment and second moment all subtract exactly, so a part cut
-    /// out of a larger one needs no boolean geometry — only arithmetic. Used to
-    /// take the capstan's silhouette out of the wood before putting the real
-    /// brass capstan back, since the two are the same shape in very different
-    /// materials.
+    /// out of a larger one needs no boolean geometry — only arithmetic, as when
+    /// a part is cut out of the wood and replaced by the same shape in another
+    /// material. Only the tests call it.
     ///
     /// `None` when the result would have non-positive mass, which means the
     /// caller is removing more than is there.

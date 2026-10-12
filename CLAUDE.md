@@ -124,7 +124,8 @@ breaks reproducibility" (§4.4); annex A1's per-step costs (§4.6); "+0.1 mm of
 capstan ⇒ −1.4 g", ΔJ/J as a ranking, gradient descent on settings (§5.3);
 Thorin's demonstrator touchweights read as wear (§5.2); "only the support spring
 moves BW" (§6.1); the spurious gap-gradient term (§6.2); Pw2 as the wippen
-pivot, 5.84 (§6.4); "~40 % of friction unexplained", F ≈ 9 g (§6.5). Check: a
+pivot, 5.84 (§6.4); "~40 % of friction unexplained", F ≈ 9 g, Hirschkorn's
+friction law without its bracket (§6.5). Check: a
 grep for a listed value finds only its warning; *not enforced*.
 
 ## Layout

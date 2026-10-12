@@ -653,17 +653,16 @@ impl KeyBench {
         let props = self.assembly.key.mass_properties()?;
 
         // Step 2 first, because step 1 depends on it: the attitude the key is
-        // actually in, back end down on its cloth.
+        // in on its frame, back end down on its cloth.
         //
-        // **The zeroing has to happen in that attitude**, which is the trap
-        // this reads as pedantry and is not. Stanwood's procedure zeroes the
-        // front weight *with the key on its frame*; zeroing it level instead
-        // leaves a residual moment, because tilting the key changes each
-        // mass's arm by its own height above the pivot and the cancellation
-        // no longer holds. A correctly set key is nose-up by the whole dip at
-        // rest, so the residual is not small: it read as 0.18 g of friction on
-        // a frictionless key — an eleventh of a real one — and it reads as
-        // zero on a key the model wrongly held level.
+        // Stanwood zeroes the front weight on the levelled jig and only then
+        // puts the key back on its frame [V, Stanwood 2000, p. 22]. This
+        // zeroes it in the frame attitude instead, which cancels the gravity
+        // moment exactly where the key is weighed. The two differ, because
+        // tilting the key changes each mass's arm by its height above the
+        // pivot: about 0.3 g on the default key, under the gram the protocol
+        // reads to. A known departure from the protocol (FOUNDATIONS §2.2),
+        // to go when the protocols run on the general solver.
         let on_cloth = self.assembly.sin_angle_on_back_rail()?;
         let torque = self.assembly.gravity_torque(on_cloth)?;
 

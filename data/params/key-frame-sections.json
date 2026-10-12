@@ -70,7 +70,7 @@
       "name": "balance_rail_length",
       "value": 51.0,
       "unit": "mm",
-      "reliability": "E",
+      "reliability": "S",
       "derived_from": [
         "balance_row_offset",
         "balance_punching_diameter"
@@ -81,7 +81,7 @@
       "name": "balance_crown_length",
       "value": 43.0,
       "unit": "mm",
-      "reliability": "E",
+      "reliability": "S",
       "derived_from": [
         "balance_row_offset",
         "balance_punching_diameter"
@@ -92,7 +92,7 @@
       "name": "front_rail_length",
       "value": 75.0,
       "unit": "mm",
-      "reliability": "E",
+      "reliability": "S",
       "derived_from": [
         "front_row_offset",
         "front_punching_diameter"
@@ -131,7 +131,7 @@
       "name": "back_rail_from_the_tail",
       "value": 40.0,
       "unit": "mm",
-      "reliability": "E",
+      "reliability": "S",
       "what_for": "How far in from the end of the key the back rail stands. It is the relation the frame's back rail is PLACED by, not a dimension of any part: the rail's own position is a frame coordinate, and this is what a frame is built to when it is built under a key.",
       "note": "Not measured. It is bounded at both ends and comfortably inside them: the tail has to overhang the rail, because the key is lifted off the frame from behind and the damper works at the very end of it; and the cloth has to fall wholly within the 77 mm of chamfer cut to bed on it. 40 mm leaves 26 mm of chamfer in front of a 24 mm rail and 28 mm of tail behind it.",
       "how_much_it_matters": "Less than it looks. Sweeping the rail from 170 to 225 mm behind the balance pin moves the bedding angle by 0.047 degrees and the key height and dip by less than 0.05 mm each, because the regulation re-places the punchings on whatever arm it is given. The chamfer's slope being close to the key's rest attitude is what makes the position forgiving."

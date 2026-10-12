@@ -122,13 +122,13 @@
       "value": 122.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "Measured on the owner's key, and recorded rather than used: a design parameter that varies by maker and by note. The bench keeps 129.5 mm, which is sourced from Thorin's instrumented action and is what sets the key ratio."
+      "note": "Measured on the owner's key, and recorded rather than used: a design parameter that varies by maker and by note. The bench keeps 129.5 mm, which sets its key ratio and which no source gives: Thorin gives 128.7 mm (his thesis, §4.5.2) and 129 mm (his Table 2.1)."
     },
     {
       "name": "front_mortise_from_front_edge",
       "value": 33.0,
       "unit": "mm",
-      "reliability": "E",
+      "reliability": "S",
       "what_for": "Where the front mortise is cut, measured back from the key's front edge. Back from the front edge and not forward from the balance pin because that is the dimension the key carries: lengthen a key and its front end and its mortise move together. It is what the frame's front rail is placed from, so it is also what decides whether a rail already bolted down still has a mortise over it.",
       "note": "Not measured. It is the difference between the two numbers the model held before this one existed - a front edge 258 mm from the balance pin and a front rail pin at 225 - so it reproduces the frame that was there, and nothing more. A calliper from the key's front end to the near side of the mortise would replace it."
     },
@@ -136,7 +136,7 @@
       "name": "front_mortise_length",
       "value": 8.0,
       "unit": "mm",
-      "reliability": "E",
+      "reliability": "S",
       "what_for": "The slot's length ALONG the key. Longer than the 5 mm pin standing in it, because the key swings about its balance pin and the mortise travels through a small arc past a pin that does not move. The clearance is also what lets a frame be a few tenths out of place without the key knowing, so it is the tolerance a frame design is judged against.",
       "note": "Not measured, and not the lateral fit: across the keyboard the mortise is bushed and close on the pin's wide faces, which is what holds the key straight and is not a dimension in the sagittal plane. 8 mm is 3 mm of total slack on a 5 mm pin."
     }
