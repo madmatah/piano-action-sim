@@ -93,8 +93,14 @@ impl Touchweight {
     /// other inflates the wippen term by ~3.3x while still producing
     /// plausible-looking numbers. These two assertions make that substitution a
     /// test failure rather than a silent error.
+    ///
+    /// The window only has to separate the conventions: real actions run from
+    /// about 0.5 to 0.68 in the force convention (an 1878 Steinway concert grand,
+    /// "unusually high" [V, Igrec, *Practical Touch*, 2016, scenario 5]), the
+    /// geometric one from about 1.5 to 2.2. A window drawn round typical values
+    /// would reject real pianos, which a design tool must weigh.
     pub fn conventions_are_sane(&self) -> bool {
-        let kr_plausible = self.key_ratio > 0.45 && self.key_ratio < 0.62;
+        let kr_plausible = self.key_ratio > 0.3 && self.key_ratio < 1.0;
         let lever_reduces = self.wippen_balance_weight() < self.wippen_weight;
         kr_plausible && lever_reduces
     }
@@ -739,6 +745,18 @@ mod tests {
         assert!(
             !t.conventions_are_sane(),
             "an inverted key ratio must not pass"
+        );
+    }
+
+    #[test]
+    fn an_unusually_high_real_key_ratio_passes() {
+        let t = Touchweight {
+            key_ratio: 0.68,
+            ..sample()
+        };
+        assert!(
+            t.conventions_are_sane(),
+            "a real action's key ratio must not be rejected"
         );
     }
 

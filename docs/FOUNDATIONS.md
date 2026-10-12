@@ -158,9 +158,19 @@ that lets it rise from the bottom), the closed forms kept as test oracles.
   moving the centre of mass. Planned: per-key mass properties, measured by the
   trade's protocol and never derived from a wood volume, each key being cut to
   its own plan shape: its mass; its front weight, which gives its static moment
-  about the balance pin; and, for the dynamics, its inertia, which no trade
-  protocol gives and Hirschkorn measured on each part as a pendulum on a thread,
-  I = m·g·l·(T/2π)² [V, Hirschkorn 2004 §A.1]. The volume model then draws a
+  about the balance pin; and, for the dynamics, its inertia. The three are
+  independent: a key carrying 16 g of front weight in leads alone has 8,000,
+  5,700 or 2,920 g·cm² about its balance point depending on where the leads
+  sit [V, Nakamura, *Practical application of moment of inertia*, Part 2,
+  Fig. 9]. The trade computes inertia from a traced template and wood densities
+  [V, Nakamura, Part 1] or rates it from static weights [V, Stanwood, SNAP,
+  2023], and measures it nowhere; Hirschkorn swung each part as a pendulum on a
+  string, I = m·g·l·(T/2π)² [V, Hirschkorn 2004 §A.1], which a string between
+  support and part biases unless the part hangs from a knife edge. Planned: the
+  key hung level from two threads and twisted (a bifilar suspension), its
+  centre of gravity from the front weight, about five minutes a key; and, per
+  note, the effective mass at the measuring point, the mass the finger
+  accelerates, with each part's share. The volume model then draws a
   key and never weighs it, and leads leave the model: a key arrives leaded,
   with lead masses nobody knows, and is measured whole.
 - **The balance bearing is a rigid pivot at the pin.** The key bears on a felt
@@ -304,13 +314,17 @@ positivity test passes on them anyway.
 
 The **force convention**, KR = force at the front over force at the capstan,
 read with 10 g at the capstan ("−5.5 … 0.55") [V, Stanwood 2000], about 0.50 to
-0.60, is the one in the equation of balance. The **geometric convention**, front
+0.60 on most actions and 0.68 on an 1878 Steinway concert grand, "unusually
+high" [V, Igrec, *Practical Touch*, 2016, scenario 5], is the one in the
+equation of balance. The **geometric convention**, front
 arm over capstan arm, "nominally 2:1" [V, Stanwood, pianotech mailing list], is
 its reciprocal: put into the equation it inflates the wippen term by 1/KR²,
 about 3.3, and makes a wippen balance weight larger than the wippen weight, a
 reducing lever appearing to amplify at a plausible value. Built:
-`Touchweight::conventions_are_sane` asserts WBW < WW and 0.45 < KR < 0.62, and
-`the_inverted_key_ratio_is_rejected` tests it.
+`Touchweight::conventions_are_sane` asserts WBW < WW and 0.3 < KR < 1.0, a
+window that separates the two conventions without rejecting a real action;
+`the_inverted_key_ratio_is_rejected` and
+`an_unusually_high_real_key_ratio_passes` test it.
 
 **Ratios are outputs, never inputs.** The key weight ratio changes only through
 the capstan's position, the measuring point and the bearing point, the action
@@ -1012,6 +1026,9 @@ trade term: the trade's vocabulary belongs to the trade.
   1996); *Standard Protocols of the New Touchweight Metrology* (February 2000),
   the protocols; *Cutting the Balance Rail Punching to Effect Ratio* (2014); the
   strike-weight and hammer-weight curve standards; the rest of his series.
+- **Inertia in the trade**: Nakamura, *Practical application of moment of
+  inertia*, Parts 1 and 2 (2015), and *Understanding MoI* (2018); Igrec,
+  *Practical Touch* (2016). They compute or rate inertia; none measures it.
 - **Manuals**: Steinway's technical reference, chapters 1 to 4; Kawai's grand
   regulation manual; the WNG instructions; Reyburn's geometry sheet; Spurlock on
   touchweight; the Potter checklist; Igrec, *Pianos Inside Out* (sample pages).

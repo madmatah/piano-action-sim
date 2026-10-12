@@ -82,7 +82,7 @@ trade's own protocols, and come back with the expected values.**
     planned (FOUNDATIONS §7.3). Check:
     `a_fault_shrinks_to_nothing_as_the_frame_comes_right`.
 11. **Ratios are outputs**, changed only through geometry. The key ratio's force
-    convention (≈ 0.50–0.60, the one in the equation of balance) and geometric
+    convention (≈ 0.5–0.7, the one in the equation of balance) and geometric
     one ("nominally 2:1") are reciprocals; swapping them inflates the wippen
     term about 3.3 times. Check: `grep -rnE 'set_[a-z_]*ratio' crates apps`
     finds nothing; `Touchweight::conventions_are_sane`,
