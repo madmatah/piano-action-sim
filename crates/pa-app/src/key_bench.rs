@@ -14,18 +14,21 @@
 //! replayed. A lead dragged in a panel that only updated a React store would be
 //! an animation of leading, not leading.
 
+use pa_core::contact::Part;
+pub use pa_core::contact::{Material, PartCode, Provenance, Role, Sweep};
 use pa_core::geometry::{KeyBearing, Point};
 use pa_core::measure::jig::KeyJig;
 use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, TouchweightProtocol};
-pub use pa_core::parts::assembly::Fault;
+use pa_core::mechanism::{BodyId, Placement};
 use pa_core::parts::assembly::Settled;
+pub use pa_core::parts::faults::Fault;
 /// The punching thicknesses a drawer holds, re-exported so an adapter can
 /// offer the drawer without reaching past the application layer.
 pub use pa_core::parts::frame::PAPER_THICKNESSES;
-use pa_core::parts::frame::{papers_for, FrameLayout, KeyKind};
-/// How a part's profile becomes a solid, re-exported for the same reason.
-pub use pa_core::parts::Sweep;
-use pa_core::parts::{FrameDesign, KeyAssembly, KeyDesign, Lead, PunchingStack, Regulation};
+use pa_core::parts::frame::{papers_for, KeyKind};
+use pa_core::parts::{
+    FrameDesign, FrameRanges, KeyAssembly, KeyDesign, KeyRanges, Lead, PunchingStack, Regulation,
+};
 
 use crate::composite_key;
 
@@ -143,38 +146,43 @@ pub enum Which {
     Front,
 }
 
-/// One drawable outline, in the keybed frame.
+/// The key's body in the bench's scene. The ground, which carries the frame,
+/// is body 0.
+pub const KEY: BodyId = BodyId(1);
+
+/// One part, as the view draws it: its outline in its body's own frame, arcs
+/// cut into short lines.
+///
+/// The physics is planar; the *part* is not. A key is 22 mm wide and the rails
+/// run the length of the keyboard, so a single-key view shows a slice of them:
+/// the sweep carries the width, or the axis a turned part is lathed about,
+/// rather than the renderer guessing it, which keeps the solid and the section
+/// the same object. Where the part stands comes separately, as its body's pose
+/// ([`KeyBench::poses`]): the outline does not move when the key does.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Outline {
-    /// Stable identifier.
-    pub id: String,
-    /// Closed polygon, metres.
-    pub points: Vec<Point>,
-    /// Compliant lining rather than wood or metal.
-    pub compliant: bool,
-    /// Extrusion across the sagittal plane, metres. Ignored when the part is
-    /// turned.
-    ///
-    /// The physics is planar; the *part* is not. A key is 22 mm wide and the
-    /// rails run the length of the keyboard, so a single-key view shows a slice
-    /// of them. Carrying the width here rather than guessing it in the renderer
-    /// keeps the solid and the section the same object — the section is just
-    /// this, cut.
-    pub width: f64,
-    /// How the profile becomes a solid.
+    /// The body that carries it: [`BodyId::GROUND`] or [`KEY`].
+    pub body: BodyId,
+    /// What it is.
+    pub code: PartCode,
+    /// Material, void or lining.
+    pub role: Role,
+    /// What it is made of. The view chooses its colour from this.
+    pub material: Material,
+    /// How the outline becomes a solid.
     pub sweep: Sweep,
-    /// Where a turned part stands and how far it has turned: `x`, `y`, and the
-    /// sine of the angle. Meaningless when extruded.
-    ///
-    /// A turned profile is in **radius and height**, so it cannot be carried
-    /// round by rotating its points the way a polygon can. The part is
-    /// *placed* instead, and this is the placement.
-    pub axis: [f64; 3],
-    /// For a paper punching, its own thickness in metres. The trade identifies
-    /// a paper by colour and the colour is the thickness, so the view needs
-    /// the number rather than a palette of its own invention.
-    pub paper: Option<f64>,
+    /// Closed polygon, metres, in the body's frame; for a turned part, its
+    /// profile in radius and height about the sweep's axis.
+    pub points: Vec<Point>,
+    /// The segment of the part's outline each point starts or lies on.
+    pub segs: Vec<u16>,
+    /// Which segments come from where.
+    pub sources: Vec<(core::ops::Range<u16>, Provenance)>,
 }
+
+/// How many times an arc's sweep is halved for drawing: a quarter circle in
+/// eight pieces, whose chords stand within 2.5 µm of the cloth's 0.5 mm edges.
+const ARC_HALVINGS: u32 = 3;
 
 /// The bench.
 #[derive(Debug, Clone)]
@@ -222,7 +230,6 @@ impl KeyBench {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             // Stanwood's protocol until the bench is told otherwise; see
             // `set_measuring_point_from_lip`.
@@ -339,20 +346,6 @@ impl KeyBench {
         )
     }
 
-    /// Where the key's own frame stands right now: sine, cosine, and pivot.
-    ///
-    /// **One definition.** Everything that places a point on the key goes
-    /// through it — the outlines, the leads, the measuring point — because
-    /// three copies of this arithmetic is exactly how a correction comes to be
-    /// applied to the key and not to the marker standing on it.
-    fn placement(&self) -> (f64, f64, f64, f64) {
-        let (s, lift) = self.attitude();
-        let c = (1.0 - s * s).max(0.0).sqrt();
-        let bx = -self.assembly.bearing.offset_from_pin;
-        let by = self.assembly.frame.balance_bearing_height() + lift;
-        (s, c, bx, by)
-    }
-
     /// Why this frame cannot be weighed, if it cannot.
     ///
     /// Two different failures, and a technician needs to be told which. One is
@@ -384,7 +377,8 @@ impl KeyBench {
     }
 
     /// Everything about this key and this frame that no keyboard could be
-    /// built from, each with how far past the limit it is.
+    /// built from, each with how far past the limit it is, read off the drawn
+    /// parts.
     ///
     /// Empty on a keyboard that goes together. It sits here with
     /// [`Self::frame_fault`] and not on the weighing sheet, for the same
@@ -395,116 +389,103 @@ impl KeyBench {
     ///
     /// It reports rather than refuses — see [`Fault`].
     pub fn faults(&self) -> Vec<Fault> {
-        self.assembly.faults(self.kind)
+        let (parts, key, frame) = self.parts();
+        pa_core::parts::faults::faults(&parts, &key, &frame)
     }
 
-    /// Every outline to draw, key first, in the key's **current** attitude.
+    /// Every part of the key and of its frame, the frame's first, on the
+    /// ground, then the key's, on [`KEY`]; with what each declares.
     ///
-    /// The key's outline is rotated here rather than in the renderer, because
-    /// the renderer is not allowed to know how a key moves. What it receives is
-    /// the shape the physics says is there.
-    pub fn outlines(&self) -> Vec<Outline> {
-        let key_width = self.assembly.key.width;
-        let mut out = vec![Outline {
-            id: "key".to_owned(),
-            width: key_width,
-            sweep: Sweep::Extruded,
-            axis: [0.0; 3],
-            paper: None,
-            points: self
-                .assembly
-                .key
-                .outline_vertices()
-                .into_iter()
-                .map(|p| self.to_world(p))
-                .collect(),
-            compliant: false,
-        }];
-
-        // The frame. Each member carries its own sweep and its own width, so
-        // the bench does not guess them from an identifier: a punching is a
-        // washer because the frame says it is one, not because its name ends
-        // in `_punching`.
-        let layout = FrameLayout {
-            kind: self.kind,
-            balance_papers: &self.balance_papers,
-            front_papers: &self.front_papers,
-        };
-        out.extend(
-            self.assembly
-                .frame
-                .members(&self.assembly.key, &layout)
-                .into_iter()
-                .map(|m| Outline {
-                    id: m.id.to_owned(),
-                    points: m.outline,
-                    compliant: m.compliant,
-                    sweep: m.sweep,
-                    width: m.width,
-                    // The frame does not move, and a frame member's profile is
-                    // already at its true height, so the lathe stands at the
-                    // keybed and turns through nothing.
-                    axis: [m.axis_x, 0.0, 0.0],
-                    paper: m.paper,
-                }),
+    /// The frame's papers are the ones actually laid, one part each, because
+    /// that is what the drawer holds and what a technician counts.
+    pub fn parts(&self) -> (Vec<Part>, KeyRanges, FrameRanges) {
+        let mut parts = Vec::new();
+        let frame = self.assembly.frame.parts(
+            &self.assembly.key,
+            self.kind,
+            &self.balance_papers,
+            &self.front_papers,
+            &mut parts,
         );
-
-        // The capstan, turned about its own axis. Its profile is a
-        // half-section in **radius and height**, not in the keybed's x and y,
-        // so it cannot be carried round by rotating its points.
-        let (capstan_axis, capstan_sin) = self.capstan_placement();
-        out.push(Outline {
-            id: "capstan".to_owned(),
-            points: self
-                .assembly
-                .key
-                .capstan_profile()
-                .into_iter()
-                .map(|(r, y)| Point::new(r, y))
-                .collect(),
-            compliant: false,
-            width: 0.0,
-            sweep: Sweep::Revolved,
-            axis: [capstan_axis.x, capstan_axis.y, capstan_sin],
-            paper: None,
-        });
-        out
+        let key = self.assembly.key.parts(KEY, &mut parts);
+        (parts, key, frame)
     }
 
-    /// Where the capstan's axis stands now, and how far the key has turned.
+    /// Every part to draw, each in its own body's frame, arcs cut into
+    /// lines; where each body stands is [`Self::poses`].
+    pub fn outlines(&self) -> Vec<Outline> {
+        let (parts, _, _) = self.parts();
+        parts
+            .into_iter()
+            .map(|part| {
+                let mut points = Vec::new();
+                let mut segs = Vec::new();
+                for (i, seg) in (0u16..).zip(&part.outline) {
+                    for p in seg.drawn(ARC_HALVINGS) {
+                        points.push(p);
+                        segs.push(i);
+                    }
+                }
+                Outline {
+                    body: part.body,
+                    code: part.code,
+                    role: part.role,
+                    material: part.material,
+                    sweep: part.sweep,
+                    points,
+                    segs,
+                    sources: part.sources,
+                }
+            })
+            .collect()
+    }
+
+    /// Where each body of the scene stands: the ground's frame is the world's,
+    /// and the key's stands where its statics put it. One placement per body,
+    /// in body order, applied by the view as it is given.
+    pub fn poses(&self) -> Vec<Placement> {
+        vec![Placement::WORLD, self.key_placement()]
+    }
+
+    /// Where the key's frame stands in the keybed's: its origin, at the
+    /// balance pin on the underside, and its rotation, positive nose-up.
     ///
-    /// A turned part cannot be carried by rotating its profile — the profile
-    /// is in radius and height, not in the keybed's x and y. So the renderer
-    /// is given the axis and the angle, and places the lathe itself.
-    pub fn capstan_placement(&self) -> (Point, f64) {
-        (
-            self.to_world(Point::new(self.assembly.key.capstan, 0.0)),
-            self.sin_angle(),
+    /// The key turns about its bearing on the balance punching, and stands
+    /// off it by the lift a frame whose stops fight gives it; nothing else
+    /// places a point of the key.
+    pub fn key_placement(&self) -> Placement {
+        let (s, lift) = self.attitude();
+        let c = (1.0 - s * s).max(0.0).sqrt();
+        // The key turns about its bearing, `bx` along the underside from the
+        // origin of its frame, which stands wherever that turn carries it.
+        let bx = -self.assembly.bearing.offset_from_pin;
+        let by = self.assembly.frame.balance_bearing_height() + lift;
+        Placement {
+            origin: Point::new(bx - c * bx, by + s * bx),
+            cos: c,
+            // The attitude's sine is positive front-down, a clockwise turn.
+            sin: -s,
+        }
+    }
+
+    /// The measuring point, in the key's frame: on the keytop's top, the
+    /// protocol's distance back from the drawn lip.
+    ///
+    /// Not an anchor, because it moves with a setting of the protocol and not
+    /// with the wood. Exposed because the view must mark it — a reader has to
+    /// see *where* the engine thinks it is weighing — and because a named
+    /// point is the only honest probe for "has the front of the key moved":
+    /// the outline's extreme vertex changes identity as the key turns.
+    pub fn measuring_point_on_key(&self) -> Point {
+        let (parts, key, _) = self.parts();
+        let lip = key.lip.point(&parts);
+        Point::new(
+            lip.x - self.assembly.protocol.measuring_point_from_lip,
+            lip.y,
         )
     }
 
-    /// Where the measuring point is now, in the keybed frame.
-    ///
-    /// The datum every touchweight is read at, the protocol's distance back
-    /// from the covering's lip, on top of the covering. Exposed because the
-    /// view must mark it — a reader has to see *where* the engine thinks it is
-    /// weighing — and because it is the only honest probe for "has the front
-    /// of the key moved": the outline's extreme vertex changes identity as the
-    /// key turns, so comparing extremes across two attitudes compares two
-    /// different corners.
-    pub fn measuring_point_world(&self) -> Point {
-        let protocol = &self.assembly.protocol;
-        self.to_world(protocol.measuring_point_on_key(&self.assembly.key))
-    }
-
-    /// Maps a point from the key's own frame into the keybed frame.
-    fn to_world(&self, p: Point) -> Point {
-        let (s, c, bx, by) = self.placement();
-        let (dx, dy) = (p.x - bx, p.y);
-        Point::new(bx + c * dx + s * dy, by - s * dx + c * dy)
-    }
-
-    /// The leads, in the key's current attitude, as centre and radius in metres.
+    /// The leads, in the key's frame, as centre and radius in metres.
     ///
     /// Radius from the mass, taking lead at 11 340 kg/m³ and a disc the width of
     /// the key: a 10 g lead comes out near 5 mm, which is the size of the real
@@ -512,15 +493,13 @@ impl KeyBench {
     /// looking at it.
     pub fn lead_discs(&self) -> Vec<(Point, f64)> {
         let w = self.assembly.key.width;
-
         self.assembly
             .key
             .leads
             .iter()
             .map(|l| {
-                let centre = self.to_world(Point::new(l.from_balance, l.height));
                 let radius = (l.mass / (11_340.0 * core::f64::consts::PI * w)).sqrt();
-                (centre, radius)
+                (Point::new(l.from_balance, l.height), radius)
             })
             .collect()
     }
@@ -794,7 +773,6 @@ impl KeyBench {
     fn sync_stacks(&mut self) {
         self.assembly.frame.balance_punching.paper = self.balance_papers.iter().sum();
         self.assembly.frame.front_punching.paper = self.front_papers.iter().sum();
-        self.assembly.bearing.stack_height = self.assembly.frame.balance_punching.height();
     }
 
     /// Sets the paper under the balance punching to a given total, metres.
@@ -1079,7 +1057,6 @@ impl KeyBench {
     /// part that will compress once the contact law arrives.
     pub fn set_balance_felt(&mut self, felt: f64) {
         self.assembly.frame.balance_punching.felt = felt.max(0.0);
-        self.assembly.bearing.stack_height = self.assembly.frame.balance_punching.height();
     }
 
     /// Thickness of the felt washer on the front punching, metres.
@@ -1303,22 +1280,18 @@ mod tests {
         assert!((b.sin_angle() - rest).abs() < 1e-15, "nor above its rest");
     }
 
-    /// What is drawn moves when the key moves, and the frame does not.
+    /// What is drawn moves when the key moves, and the frame does not: the
+    /// key's pose turns it, its outlines stay as they are in its own frame,
+    /// and the ground's pose is the world's.
     #[test]
     fn pressing_the_key_moves_only_the_key() {
         let mut b = KeyBench::standard();
-        let at_rest = b.outlines();
-        let rest_pt = b.measuring_point_world();
+        let (at_rest, rest_poses) = (b.outlines(), b.poses());
+        let rest_pt = b.key_placement().world(b.measuring_point_on_key());
         b.set_depression(1.0);
-        let pressed = b.outlines();
-        let pressed_pt = b.measuring_point_world();
+        let (pressed, pressed_poses) = (b.outlines(), b.poses());
+        let pressed_pt = b.key_placement().world(b.measuring_point_on_key());
 
-        let front_of = |o: &[Outline], id: &str| {
-            o.iter()
-                .find(|x| x.id == id)
-                .map(|x| x.points.iter().fold(f64::MIN, |a, p| a.max(p.x)))
-                .unwrap()
-        };
         // Probe the *named* measuring point. Probing the outline's extreme
         // vertex does not work: the rotation mixes x and y, so which of the two
         // front-edge corners has the greater x changes with the sign of the
@@ -1330,23 +1303,55 @@ mod tests {
             pressed_pt.y
         );
         // And the tail must rise by the same rotation, which is the half of it
-        // a panel-shaped model would forget.
-        // Vertex 0 of the key outline is the tail corner of the underside, and
-        // the outline order is fixed. Comparing by index is the only way to be
-        // sure the same material point is being followed — `min_by(x)` switches
-        // between the tail's two corners as the key turns, for the same reason
-        // `max_by(x)` switched at the front.
-        let tail_y = |o: &[Outline]| o.iter().find(|x| x.id == "key").unwrap().points[0].y;
+        // a panel-shaped model would forget. Point 0 of the keystick is the
+        // tail's corner on the underside, and the outline's order is fixed:
+        // following one material point by its index is the only way to be sure
+        // it is the same one.
+        let tail = |o: &[Outline], poses: &[Placement]| {
+            let stick = o.iter().find(|x| x.code == PartCode::Keystick).unwrap();
+            poses[stick.body.0].world(stick.points[0]).y
+        };
         assert!(
-            tail_y(&pressed) > tail_y(&at_rest),
-            "the key's tail must rise: {} -> {}",
-            tail_y(&at_rest),
-            tail_y(&pressed)
+            tail(&pressed, &pressed_poses) > tail(&at_rest, &rest_poses),
+            "the key's tail must rise"
         );
+        assert_eq!(
+            at_rest, pressed,
+            "every outline stays where it is in its own frame"
+        );
+        assert_eq!(rest_poses[0], Placement::WORLD, "the frame does not move");
+        assert_eq!(pressed_poses[0], Placement::WORLD);
+    }
+
+    /// The scene's poses place the key where its statics put it: at rest, its
+    /// frame's origin stands on the balance bearing, and turning it by the
+    /// pose carries its underside's tail onto the cloth's height or above.
+    #[test]
+    fn the_key_stands_on_its_balance_bearing_at_rest() {
+        let b = KeyBench::standard();
+        let pose = b.key_placement();
+        let bearing = b.assembly().frame.balance_bearing_height();
+        assert!(pose.origin.x.abs() < 1e-15 && (pose.origin.y - bearing).abs() < 1e-15);
         assert!(
-            (front_of(&pressed, "balance_rail") - front_of(&at_rest, "balance_rail")).abs() < 1e-15,
-            "the frame does not move"
+            (pose.cos * pose.cos + pose.sin * pose.sin - 1.0).abs() < 4.0 * f64::EPSILON,
+            "a pose turns, it does not stretch"
         );
+        assert!(pose.sin > 0.0, "at rest the key stands nose-up");
+    }
+
+    /// The measuring point the view marks, taken back from the drawn lip, is
+    /// the one the jig weighs at, to the bit.
+    #[test]
+    fn the_marked_measuring_point_is_the_one_the_jig_weighs_at() {
+        let mut b = KeyBench::standard();
+        for from_lip in [0.013, 0.0127, 0.030] {
+            b.set_measuring_point_from_lip(from_lip);
+            let protocol = b.assembly().protocol;
+            let weighed = protocol.measuring_point_on_key(&b.assembly().key);
+            let marked = b.measuring_point_on_key();
+            assert_eq!(marked.x.to_bits(), weighed.x.to_bits());
+            assert_eq!(marked.y.to_bits(), weighed.y.to_bits());
+        }
     }
 
     /// Adding paper under the balance punching raises the key, as on the bench.
@@ -1561,23 +1566,35 @@ mod contact_readout_tests {
                 continue;
             };
             let drawn = b.outlines();
+            let poses = b.poses();
             let cloth = drawn
                 .iter()
-                .find(|o| o.id == "back_rail_cloth")
+                .find(|o| o.code == PartCode::BackRailCloth)
                 .expect("the cloth is drawn");
             let top = cloth.points.iter().fold(f64::MIN, |a, p| a.max(p.y));
+            // The cloth's face, between its rounded edges: where it is flat at
+            // its full height.
             let (x0, x1) = cloth
                 .points
                 .iter()
+                .filter(|p| p.y > top - 1e-12)
                 .fold((f64::MAX, f64::MIN), |(lo, hi), p| {
                     (lo.min(p.x), hi.max(p.x))
                 });
-            let key_outline = &drawn.iter().find(|o| o.id == "key").unwrap().points;
 
-            // The underside, as drawn: the first vertices of the key's own
-            // outline, carried round into the attitude the bench put it in.
-            for i in 0..3 {
-                let (a, b) = (key_outline[i], key_outline[i + 1]);
+            // The underside, as drawn: the keystick's chain from its tail,
+            // then the key front's bottom, carried round by the key's pose
+            // into the attitude the bench put it in.
+            let (parts, ranges, _) = b.parts();
+            let mut underside = Vec::new();
+            for range in &ranges.underside {
+                for seg in range.segs(&parts) {
+                    underside.push((seg.start(), seg.end()));
+                }
+            }
+            let pose = poses[KEY.0];
+            for (a, b) in underside {
+                let (a, b) = (pose.world(a), pose.world(b));
                 for step in 0..=20 {
                     let t = f64::from(step) / 20.0;
                     let x = a.x + t * (b.x - a.x);
@@ -2044,7 +2061,7 @@ mod measuring_point_tests {
             let mut b = KeyBench::standard();
             b.set_finger_weight(weight);
             let s = b.sin_angle();
-            let before = b.measuring_point_world();
+            let before = b.key_placement().world(b.measuring_point_on_key());
 
             let back = 0.007;
             b.set_measuring_point_from_lip(b.measuring_point_from_lip() + back);
@@ -2052,7 +2069,7 @@ mod measuring_point_tests {
                 (b.sin_angle() - s).abs() < 1e-15,
                 "under {weight} g the key must stay on its stop"
             );
-            let after = b.measuring_point_world();
+            let after = b.key_placement().world(b.measuring_point_on_key());
 
             // Back along the key's top: in the keybed frame that is
             // `(−cos θ, sin θ)` times the distance moved.

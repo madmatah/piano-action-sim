@@ -1,19 +1,11 @@
-//! Parametric part definitions and exact planar contact kinematics.
+//! Planar primitives: points, directions, and the two kinds of segment every
+//! outline is made of.
 //!
-//! # The outline, and what reads it
-//!
-//! If the contact primitives live in a list *parallel* to the drawn outline,
-//! the two drift apart silently and the displayed dimensions stop describing
-//! what is measured. So a [`Part`] owns exactly one `outline`, and a
-//! [`Surface`] is a *range into that outline*, never a copy of it.
-//!
-//! That is what the types say; the code that touches does not go through them.
-//! No contact reads a [`Surface`]. The key's stops read
-//! [`crate::parts::KeyDesign::underside_corners`] and
-//! [`crate::parts::KeyDesign::underside_segments`], which are built from the
-//! same fields as the outline [`crate::parts::KeyDesign::to_part`] carries. The
-//! two agree because they share those fields, and a test on the default key
-//! checks it; nothing structural prevents a drift.
+//! An outline is a closed chain of [`Seg`]s, lines and arcs. The parts built
+//! from outlines, and the ranges into them that a contact may read, are in
+//! [`crate::contact`]. The contact kinematics the key's stops read are in
+//! [`kinematics`]; they still read a construction of their own, built from
+//! the same fields as the drawn parts (see [`crate::contact`]).
 
 pub mod kinematics;
 
@@ -50,6 +42,10 @@ impl Dir {
     pub const X: Self = Self { x: 1.0, y: 0.0 };
     /// Upwards.
     pub const Y: Self = Self { x: 0.0, y: 1.0 };
+    /// Away from the player.
+    pub const NEG_X: Self = Self { x: -1.0, y: 0.0 };
+    /// Downwards.
+    pub const NEG_Y: Self = Self { x: 0.0, y: -1.0 };
 
     /// The direction of `(x, y)`, or `None` for a vector with no length or
     /// with a component that is not a finite number.
@@ -68,6 +64,31 @@ impl Dir {
     /// The direction as a vector of unit length.
     pub const fn vector(self) -> Point {
         Point::new(self.x, self.y)
+    }
+
+    /// The direction a counter-clockwise turn from `self` to `to` passes
+    /// halfway: a bisection with no angle computed, so no transcendental.
+    ///
+    /// Under a half turn it is the normalized sum of the two; over a half
+    /// turn, its opposite; at exactly a half turn, `self` turned a quarter
+    /// turn. Two equal directions bisect to themselves.
+    fn halfway_to(self, to: Self) -> Self {
+        let cross = self.x * to.y - self.y * to.x;
+        let dot = self.x * to.x + self.y * to.y;
+        let (sx, sy) = (self.x + to.x, self.y + to.y);
+        let bisector = if cross > 0.0 {
+            Self::new(sx, sy)
+        } else if cross < 0.0 {
+            Self::new(-sx, -sy)
+        } else if dot < 0.0 {
+            Some(Self {
+                x: -self.y,
+                y: self.x,
+            })
+        } else {
+            None
+        };
+        bisector.unwrap_or(self)
     }
 }
 
@@ -89,102 +110,76 @@ pub enum Seg {
         /// End point, local frame.
         b: Point,
     },
-    /// Circular arc, swept counter-clockwise from `th0` to `th1`.
+    /// Circular arc about `c`, swept counter-clockwise from the direction
+    /// `from` to the direction `to`.
+    ///
+    /// The two end directions are stored rather than two angles, so that
+    /// neither its ends nor its drawing need an `atan2`: the arc starts at
+    /// `c + r·from` and ends at `c + r·to`. Only a point placed a fraction of
+    /// the way round it ([`crate::contact::Anchor::point`]) takes the sweep's
+    /// angle back.
     Arc {
         /// Centre, local frame.
         c: Point,
         /// Radius, metres.
         r: f64,
-        /// Start angle, radians.
-        th0: f64,
-        /// End angle, radians.
-        th1: f64,
+        /// Where the arc starts, seen from its centre.
+        from: Dir,
+        /// Where the arc ends, seen from its centre.
+        to: Dir,
     },
 }
 
-/// A compliant lining glued onto a surface: felt, leather, buckskin, cloth, skin.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Lining {
-    /// Index of the lining's material in a material table. No such table
-    /// exists, so nothing reads this.
-    pub material: u16,
-    /// Nominal thickness, metres.
-    pub thickness: f64,
-    /// Where `gap == 0` actually is, relative to the nominal lining surface, in metres.
+/// `c + r·d`: a point of a circle, given the direction it lies in.
+fn on_circle(c: Point, r: f64, d: Dir) -> Point {
+    Point::new(c.x + r * d.x, c.y + r * d.y)
+}
+
+impl Seg {
+    /// Where the segment starts.
+    pub fn start(&self) -> Point {
+        match *self {
+            Self::Line { a, .. } => a,
+            Self::Arc { c, r, from, .. } => on_circle(c, r, from),
+        }
+    }
+
+    /// Where the segment ends.
+    pub fn end(&self) -> Point {
+        match *self {
+            Self::Line { b, .. } => b,
+            Self::Arc { c, r, to, .. } => on_circle(c, r, to),
+        }
+    }
+
+    /// The segment as points to draw through, its end left out, so that the
+    /// segments of a closed outline chain into a polygon with no point
+    /// repeated.
     ///
-    /// This field is not a refinement, it is a necessity. Hirschkorn states the
-    /// problem plainly:
-    /// *"the surface of the felt is not clearly defined."* The datum is therefore a
-    /// **calibrated, persisted** quantity, not a derived one. Without it, a let-off
-    /// regulated to 1.5 mm would be drawn with the jack buried 1 mm into the
-    /// knuckle, since the published load curves reach ~40 N at 1 mm of compression.
-    pub datum_offset: f64,
-}
-
-/// A named, contactable stretch of a part outline.
-#[derive(Debug, Clone)]
-pub struct Surface {
-    /// Stable identifier.
-    pub id: &'static str,
-    /// Range of [`Seg`] indices in the owning part's outline.
-    pub segs: core::ops::Range<usize>,
-    /// Compliant lining, if any. `None` means bare wood or metal.
-    pub lining: Option<Lining>,
-}
-
-/// How a part's inertia is obtained.
-///
-/// This has to be an explicit choice. If masses and centres of gravity were
-/// stored independently of the outline, then lengthening a hammer shank would
-/// leave `I_h` untouched and the sensitivity figures — which the project calls
-/// its real product — would be wrong in a plausible, hard-to-notice way.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Inertia {
-    /// Derived from the outline by extrusion. Changing a dimension changes the inertia.
-    Derived {
-        /// Material density, kg/m³.
-        density: f64,
-        /// Extrusion width across the sagittal plane, metres.
-        width: f64,
-    },
-    /// Measured on the real part. Does not follow the outline.
-    Measured {
-        /// Mass, kg.
-        mass: f64,
-        /// Centre of mass in the local frame.
-        com: Point,
-        /// Moment of inertia about the part's own pivot, kg·m².
-        i_pivot: f64,
-    },
-}
-
-/// A named point on a part that is not a contact: a pin hole, a lead position,
-/// a measuring point, a glue witness.
-#[derive(Debug, Clone)]
-pub struct Anchor {
-    /// Stable identifier.
-    pub id: &'static str,
-    /// Position in the local frame.
-    pub at: Point,
-}
-
-/// One mechanical part, defined parametrically.
-#[derive(Debug, Clone)]
-pub struct Part {
-    /// Stable identifier, English `snake_case`, matching the project glossary.
-    pub id: &'static str,
-    /// Pivot position in the parent frame, and rest angle in radians.
-    pub pivot: Point,
-    /// Angle at rest, radians.
-    pub rest_angle: f64,
-    /// The part's shape. Its [`Surface`]s are ranges into it, never copies.
-    pub outline: Vec<Seg>,
-    /// Contactable stretches of `outline`.
-    pub surfaces: Vec<Surface>,
-    /// How inertia is obtained.
-    pub inertia: Inertia,
-    /// Named non-contact points.
-    pub anchors: Vec<Anchor>,
+    /// A line is its start. An arc is its start and the points that cut it
+    /// into `2^halvings` equal pieces, found by bisecting its end directions
+    /// and never by an angle, so the drawing costs no transcendental and is
+    /// the same on every machine. **For drawing only**: nothing that touches
+    /// reads it, and a contact reads the arc itself.
+    pub fn drawn(&self, halvings: u32) -> Vec<Point> {
+        match *self {
+            Self::Line { a, .. } => vec![a],
+            Self::Arc { c, r, from, to } => {
+                let mut directions = vec![from, to];
+                for _ in 0..halvings {
+                    let mut finer = Vec::with_capacity(2 * directions.len() - 1);
+                    for pair in directions.windows(2) {
+                        finer.push(pair[0]);
+                        finer.push(pair[0].halfway_to(pair[1]));
+                    }
+                    finer.push(to);
+                    directions = finer;
+                }
+                directions.pop();
+                directions.into_iter().map(|d| on_circle(c, r, d)).collect()
+            }
+        }
+    }
 }
 
 /// The effective bearing of a key.
@@ -200,10 +195,6 @@ pub struct KeyBearing {
     /// Offset of the effective bearing point from the balance rail pin, metres.
     /// Positive towards the back of the key.
     pub offset_from_pin: f64,
-    /// Punching stack height, metres. Written by the bench and read by
-    /// nothing: the bearing's height comes from the frame's balance stack
-    /// (`FrameDesign::balance_bearing_height`). A duplicate, to be removed.
-    pub stack_height: f64,
 }
 
 /// Result of a planar contact query between two surfaces.
@@ -227,4 +218,74 @@ pub struct ContactQuery {
     pub d_gap_d_theta_b: f64,
     /// Relative tangential velocity at the contact point, m/s.
     pub v_tangential: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An arc starts and ends where its stored directions point, at its radius.
+    #[test]
+    fn an_arc_runs_from_its_first_direction_to_its_second() {
+        let arc = Seg::Arc {
+            c: Point::new(0.010, 0.020),
+            r: 0.0005,
+            from: Dir::X,
+            to: Dir::Y,
+        };
+        let (start, end) = (arc.start(), arc.end());
+        assert_eq!(start.x.to_bits(), (0.010_f64 + 0.0005).to_bits());
+        assert_eq!(start.y.to_bits(), (0.020_f64 + 0.0).to_bits());
+        assert_eq!(end.x.to_bits(), (0.010_f64 + 0.0).to_bits());
+        assert_eq!(end.y.to_bits(), (0.020_f64 + 0.0005).to_bits());
+    }
+
+    /// Consistency: every point drawn along an arc lies on its circle, the
+    /// points turn counter-clockwise from its start, and there are as many as
+    /// the halvings ask for.
+    ///
+    /// The bound is derived: each bisected direction is normalized, within a
+    /// few ulps of unit length, and the point `c + r·d` adds two roundings of
+    /// the coordinates' size; 16 ε of the reach covers both.
+    #[test]
+    fn an_arc_is_drawn_on_its_circle_counter_clockwise() {
+        let c = Point::new(-0.2, 0.022);
+        let r = 0.0005;
+        for (from, to) in [
+            (Dir::X, Dir::Y),
+            (Dir::Y, Dir::NEG_X),
+            (Dir::X, Dir::NEG_X),
+            (Dir::NEG_Y, Dir::new(1.0, -1.0).unwrap()),
+        ] {
+            let arc = Seg::Arc { c, r, from, to };
+            let points = arc.drawn(3);
+            assert_eq!(points.len(), 8);
+            assert_eq!(points[0], arc.start());
+            let reach = c.x.abs() + c.y.abs() + r;
+            let mut previous: Option<Point> = None;
+            for p in points.iter().copied().chain([arc.end()]) {
+                let (dx, dy) = (p.x - c.x, p.y - c.y);
+                let off = ((dx * dx + dy * dy).sqrt() - r).abs();
+                assert!(
+                    off <= 16.0 * f64::EPSILON * reach,
+                    "{p:?} is {off:e} off the circle"
+                );
+                if let Some(q) = previous {
+                    let turn = (q.x - c.x) * dy - (q.y - c.y) * dx;
+                    assert!(turn > 0.0, "{q:?} to {p:?} does not turn counter-clockwise");
+                }
+                previous = Some(p);
+            }
+        }
+    }
+
+    /// A line is drawn as its start, which the next segment's start follows.
+    #[test]
+    fn a_line_is_drawn_as_its_start() {
+        let line = Seg::Line {
+            a: Point::new(0.0, 0.0),
+            b: Point::new(1.0, 0.0),
+        };
+        assert_eq!(line.drawn(3), vec![Point::new(0.0, 0.0)]);
+    }
 }

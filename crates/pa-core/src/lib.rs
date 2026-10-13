@@ -8,26 +8,27 @@
 //!
 //! | Module | Responsibility |
 //! |---|---|
-//! | [`geometry`] | planar primitives and exact contact kinematics |
+//! | [`geometry`] | planar primitives, lines and arcs, and exact contact kinematics |
 //! | [`mechanism`] | bodies in a tree: poses, Jacobian columns, loads, prescribed coordinates and their reactions |
-//! | [`parts`] | the key and its frame as parametric parts, and their mass properties |
+//! | [`contact`] | parts on bodies, several per body with their materials, and the ranges into their outlines a contact may read |
+//! | [`parts`] | the key and its frame as parametric designs, the parts they build, and the composite key's mass |
 //! | [`parts::assembly`] | the key on its frame: stops, rest, travel, regulation, settle |
+//! | [`parts::faults`] | what about a key and its frame no keyboard could be built from, read off the drawn parts |
 //! | [`parts::mounts`] | the mechanisms a key is put in to be read: the jig |
 //! | [`measure`] | the trade's weighing quantities, as the technician's protocols define them |
 //! | [`measure::jig`] | Stanwood's front weight jig, run on the mechanism |
 //!
 //! # What holds today, and what holds it
 //!
-//! 1. **One definition per part.** The key is drawn from, and its mass
-//!    integrated over, [`parts::KeyDesign::outline_vertices`]. Its stops read
-//!    [`parts::KeyDesign::underside_corners`] and
-//!    [`parts::KeyDesign::underside_segments`], which are built from the same
-//!    fields. The two agree because they share those fields, and
-//!    `the_declared_bearing_surface_is_the_whole_underside` checks it on the
-//!    default key; nothing in the types enforces it. The frame is the same:
-//!    its stops read the bearing heights of [`parts::FrameDesign`], its drawn
-//!    members are built from those heights, and
-//!    `what_is_drawn_is_what_is_touched` checks that they meet.
+//! 1. **One definition per part.** The key and the frame are built as parts
+//!    ([`contact::Part`]): one closed outline per piece of material, on the
+//!    body that carries it, drawn by the bench and read by the faults, each
+//!    declaring the ranges of it a contact may read. The stops still read a
+//!    construction of their own, built from the same fields:
+//!    [`parts::KeyDesign::underside_corners`] for the key, the bearing
+//!    heights of [`parts::FrameDesign`] for the frame.
+//!    `every_stop_face_is_a_declared_range_of_a_drawn_part` holds every face
+//!    they read to a declared range; nothing in the types enforces it yet.
 //! 2. **Regulation is expressed as trade targets**, and the geometry is solved
 //!    to meet them ([`parts::Regulation::solve`]). The target is kept beside
 //!    what the geometry achieves.
@@ -38,6 +39,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod contact;
 pub mod geometry;
 pub mod measure;
 pub mod mechanism;

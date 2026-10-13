@@ -242,7 +242,7 @@ fn write_frame(out: &mut String, bench: &KeyBench) {
             Fault::ClothInFrontOfTheChamfer { by } => ("ClothInFrontOfTheChamfer".to_owned(), by),
             Fault::ClothBehindTheKey { by } => ("ClothBehindTheKey".to_owned(), by),
             Fault::PunchingOffTheUnderside { rail, by } => {
-                (format!("PunchingOffTheUnderside {rail}"), by)
+                (format!("PunchingOffTheUnderside {}", rail.code()), by)
             }
         };
         line(out, &format!("fault.{i}"), &code);
@@ -260,7 +260,8 @@ fn write_frame(out: &mut String, bench: &KeyBench) {
 fn write_pose(out: &mut String, bench: &KeyBench) {
     number(out, "pose.sin_angle", bench.sin_angle());
     number(out, "pose.depression", bench.depression());
-    let point = bench.measuring_point_world();
+    // Where the view marks it: the key's pose applied to the point on the key.
+    let point = bench.key_placement().world(bench.measuring_point_on_key());
     number(out, "pose.measuring_point.x", point.x);
     number(out, "pose.measuring_point.y", point.y);
 }

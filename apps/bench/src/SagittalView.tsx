@@ -1,34 +1,49 @@
 /**
  * The bench's 3-D view.
  *
- * Built in millimetres, in the keybed frame: `x` towards the player from the
- * balance pin, `y` up from the keybed surface, `z` across the keyboard. Those
- * are the engine's own coordinates, so nothing is transformed on the way in
- * except the camera — if a part looks wrong here, the geometry is wrong, not
- * the drawing.
+ * Built in millimetres: `x` towards the player, `y` up, `z` across the
+ * keyboard. Every part arrives in its own body's frame, the frame and its
+ * rails on the ground, the key's pieces on the key, and every body arrives
+ * with its pose. This component applies the poses it is given, one transform
+ * per body, and computes none: if a part stands in the wrong place, the
+ * engine put it there.
  *
- * # Why the solids are extruded sections and not models
+ * # Why the solids are swept outlines and not models
  *
- * There is **one** definition of each part: the sagittal outline the engine
- * computes. The mass integrator integrates it and this view extrudes it, and
- * the engine's contacts read the same underside and bearings, built from the
- * same fields. A separately modelled mesh would be a second geometry, and
- * the moment it disagreed with the first the displayed dimensions would stop
- * describing what is measured. So the section is not a reduced view of the
- * solid — the solid *is* the section, swept.
+ * There is **one** definition of each part: the outline the engine builds,
+ * which the faults read and the contacts are held to. This view extrudes it,
+ * or lathes it when the part is turned. A separately modelled mesh would be a
+ * second geometry, and the moment it disagreed with the first the displayed
+ * dimensions would stop describing what is measured. So the section is not a
+ * reduced view of the solid: the solid *is* the section, swept.
  *
- * The outlines arrive already rotated into the key's current attitude. This
- * component does not know how a key moves and must not learn: a renderer that
- * computed the rotation would be a second kinematics.
+ * # Two views
  *
- * # Two library traps, both met here
+ * The **section** is the sagittal plane itself, drawn flat: each part's
+ * outline, a turned part's profile beside its mirror, so a washer shows the
+ * hole its pin stands in. A cut, the front mortise, is a void in its body's
+ * solids: drawn into the stencil buffer first, it keeps the key's wood from
+ * being painted there, so the pin under it shows through, while a pin standing
+ * inside the key's wood stays hidden by it. Its mouth, which runs along the
+ * keystick's underside, is no edge of the section. The **solid** sweeps every
+ * part across the keyboard, and leaves the cuts out: a mortise is inside the
+ * key.
+ *
+ * Colours come from what a part is made of, never from what it is: the
+ * keytop and the key front are white, the key button and the back check block
+ * one wood and the keystick another, a paper the colour its thickness is sold
+ * in. The section paints them as they are, with no tone mapping, so white is
+ * white there; the solid is lit, and tone-mapped so the light does not burn
+ * its faces out.
+ *
+ * # Library traps met here
  *
  * drei's `Line` rendered nothing while a plain mesh in the same scene rendered
  * fine, so borders are plain `lineSegments`. drei's `Text` fetches a font over
  * the network and suspends until it arrives, which blanks the canvas on a bench
  * with no route out, so every label is in HTML.
  *
- * A third, from R3F itself: the `camera` prop is read **once, at creation**.
+ * And from R3F itself: the `camera` prop is read **once, at creation**.
  * Changing it later does not move the camera, which is why the two viewpoints
  * re-key `OrbitControls` on the mode instead of animating one camera between
  * them.
@@ -37,21 +52,26 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import type { Lead, Scene } from './bench'
-import { toShape } from './outline'
+import type { Lead, Marker, Outline, Pose, Scene } from './bench'
+import { axisSegments, mirrored, poseMatrix, sharedSegments, strokes, toShape } from './outline'
 
-/** Wood, metal, and the compliant linings, told apart at a glance. */
-const FILL: Record<string, string> = {
-  key: '#efe5cd',
-  balance_rail: '#c6a477',
-  front_rail: '#c6a477',
-  back_rail: '#c6a477',
-  balance_rail_pin: '#aab2bb',
-  front_rail_pin: '#aab2bb',
-  balance_rail_punching: '#d8706a',
-  front_rail_punching: '#5e9a78',
-  back_rail_cloth: '#5e9a78',
-  capstan: '#c9ccd1',
+/**
+ * Each material's colour: what a part is made of is the engine's, how it
+ * looks is this view's.
+ */
+const MATERIAL_FILL: Record<string, string> = {
+  key_wood: '#ecdcb6',
+  // The key button and the back check block: a wood other than the
+  // keystick's, as the owner described them.
+  block_wood: '#a8713f',
+  // The keytop and the key front, white.
+  covering: '#ffffff',
+  key_front: '#ffffff',
+  rail_wood: '#c6a477',
+  steel: '#a9b1ba',
+  punching_felt: '#c8655d',
+  hard_felt: '#5d5a6b',
+  cloth: '#5e9a78',
 }
 
 /**
@@ -79,6 +99,14 @@ const PAPER_FILL: ReadonlyArray<readonly [number, string]> = [
  */
 const CARD_FILL = '#9a7b52'
 
+/** The canvas behind everything: a grey light enough for the wood, dark
+ * enough that a white keytop still reads as a part. */
+const PAGE = '#e7e4dd'
+
+/** Edges in the section, opaque so that one hidden under the key's wood stays
+ * hidden. */
+const EDGE = '#5b544a'
+
 /** The colour of a paper of this thickness. */
 function paperColour(mm: number): string {
   for (const [thickness, fill] of PAPER_FILL) {
@@ -87,37 +115,65 @@ function paperColour(mm: number): string {
   return CARD_FILL
 }
 
+/** The colour a part is drawn in, from its material. */
+function colourOf(o: Outline): string {
+  if (o.paper_mm != null) return paperColour(o.paper_mm)
+  return MATERIAL_FILL[o.material] ?? '#9b9b9b'
+}
+
 /** Two viewpoints: the technical section, and the solid in three-quarters. */
 export type ViewMode = 'section' | 'solid'
 
-function Part({ points, width, colour }: { points: number[]; width: number; colour: string }) {
+/**
+ * The order the section is painted in, back to front. The section is flat, so
+ * nothing is depth-tested in it: the ground's parts first, then the key's
+ * cuts into the stencil, the key's wood around them and its edges, then the
+ * capstan over the wood it is screwed into, then what is marked on the key.
+ */
+const LAYER = {
+  ground: 1,
+  groundEdges: 2,
+  cut: 3,
+  key: 4,
+  keyEdges: 5,
+  turned: 6,
+  turnedEdges: 7,
+  marks: 8,
+} as const
+
+/** The engine's ground, which carries the frame: body 0. */
+const GROUND = 0
+
+/** The stencil value a cut leaves where the key's wood must not be painted. */
+const CUT_STENCIL = 1
+
+/**
+ * Disposes a geometry when it is replaced or unmounted.
+ *
+ * A geometry handed to a mesh through the `geometry` prop is not an instance
+ * in the tree, so react-three-fiber never disposes it. Every edit rebuilds the
+ * scene from a fresh `JSON.parse`, so without this a slider drag leaves a
+ * thousand orphaned buffers on the GPU — in an application meant to stay open
+ * while a technician works.
+ */
+function useDisposal(geometry: THREE.BufferGeometry) {
+  useEffect(() => () => geometry.dispose(), [geometry])
+}
+
+// ---- the solid ------------------------------------------------------------
+
+function Extruded({ points, width, colour }: { points: number[]; width: number; colour: string }) {
   const geometry = useMemo(() => {
-    const g = new THREE.ExtrudeGeometry(toShape(points), {
-      depth: width,
-      bevelEnabled: false,
-    })
+    const g = new THREE.ExtrudeGeometry(toShape(points), { depth: width, bevelEnabled: false })
     // Extrusion runs along +z from the outline's plane; centre it so the
     // sagittal plane really is the middle of the part.
     g.translate(0, 0, -width / 2)
     g.computeVertexNormals()
     return g
   }, [points, width])
-
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry])
-
-  // A geometry handed to a mesh through the `geometry` prop is not an instance
-  // in the tree, so react-three-fiber never disposes it. Every edit rebuilds
-  // the whole scene from a fresh `JSON.parse`, so without this a slider drag
-  // leaves a thousand orphaned buffers on the GPU — in an application meant to
-  // stay open while a technician works.
-  useEffect(
-    () => () => {
-      geometry.dispose()
-      edges.dispose()
-    },
-    [geometry, edges],
-  )
-
+  useDisposal(geometry)
+  useDisposal(edges)
   return (
     <group>
       <mesh geometry={geometry}>
@@ -133,27 +189,13 @@ function Part({ points, width, colour }: { points: number[]; width: number; colo
 /**
  * A turned part: the profile lathed about its own vertical axis.
  *
- * Three kinds of part need this. A capstan is a screw, and extruding its
- * silhouette across the 22 mm of the key draws a block of wood. A punching is
- * a **washer**, and extruding it draws a strip of felt the length of the rail.
- * A balance pin is round.
- *
- * The profile arrives as `(radius, height)` pairs, so the part is *placed*
- * rather than deformed: the axis and the angle come together in `axis`,
- * because a radius does not rotate. A profile whose first radius is non-zero
- * leaves the hole its pin passes through — closing it would swallow the pin,
- * and that hole is the feature saying the key is located and not merely
- * resting.
+ * A capstan is a screw, and extruding its silhouette across the 22 mm of the
+ * key draws a block of wood. A punching is a **washer**, and extruding it
+ * draws a strip of felt the length of the rail. A balance pin is round. A
+ * profile whose first radius is not zero leaves the hole its pin passes
+ * through, the feature that says the key is located and not merely resting.
  */
-function Turned({
-  profile,
-  axis,
-  colour,
-}: {
-  profile: number[]
-  axis: [number, number, number]
-  colour: string
-}) {
+function Lathed({ profile, axisX, colour }: { profile: number[]; axisX: number; colour: string }) {
   const geometry = useMemo(() => {
     const points: THREE.Vector2[] = []
     for (let i = 0; i < profile.length; i += 2) {
@@ -165,33 +207,27 @@ function Turned({
     if (first) points.push(first.clone())
     return new THREE.LatheGeometry(points, 48)
   }, [profile])
-
+  useDisposal(geometry)
   return (
-    <group position={[axis[0], axis[1], 0]} rotation={[0, 0, -Math.asin(axis[2])]}>
-      <mesh geometry={geometry}>
-        <meshLambertMaterial color={colour} side={THREE.DoubleSide} />
-      </mesh>
-    </group>
+    <mesh geometry={geometry} position={[axisX, 0, 0]}>
+      <meshLambertMaterial color={colour} side={THREE.DoubleSide} />
+    </mesh>
   )
 }
 
-/** Leads, drawn to scale, because a technician judges a leading by looking. */
 /**
- * The leads, as discs let in through the side of the key.
+ * The leads, as discs let in through the side of the key: their axis lies
+ * across the keyboard, so their face shows on the section.
  *
- * `width` is the keystick's, read off the engine's own `key` outline. Writing
+ * `width` is the keystick's, read off the engine's own outline. Writing
  * 22 mm here instead would size one half of the disc from a literal while the
- * other half — its radius — is already computed in Rust from the real width,
- * so a sharp or a measured key would draw leads protruding from the wood with
- * diameters still claiming to be to scale.
+ * other half — its radius — is already computed in Rust from the real width.
  */
-function Leads({ leads, width }: { leads: Lead[]; width: number }) {
+function SolidLeads({ leads, width }: { leads: Lead[]; width: number }) {
   return (
     <>
       {leads.map((l, i) => (
         <mesh key={i} position={[l.x, l.y, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          {/* A lead is a disc let in through the side of the key, so its axis
-              lies across the keyboard and its face shows on the section. */}
           <cylinderGeometry args={[l.radius, l.radius, width * 1.02, 28]} />
           <meshLambertMaterial color="#54535c" />
         </mesh>
@@ -200,20 +236,157 @@ function Leads({ leads, width }: { leads: Lead[]; width: number }) {
   )
 }
 
+// ---- the section ----------------------------------------------------------
+
+/** A flat fill in the sagittal plane, painted in its layer. */
+function Fill({
+  points,
+  colour,
+  layer,
+  masked = false,
+}: {
+  points: number[]
+  colour: string
+  layer: number
+  /** Whether a cut keeps it from being painted: the key's own parts are. */
+  masked?: boolean
+}) {
+  const geometry = useMemo(() => new THREE.ShapeGeometry(toShape(points)), [points])
+  useDisposal(geometry)
+  return (
+    <mesh geometry={geometry} renderOrder={layer}>
+      <meshBasicMaterial
+        color={colour}
+        side={THREE.DoubleSide}
+        depthTest={false}
+        depthWrite={false}
+        toneMapped={false}
+        stencilWrite={masked}
+        stencilRef={CUT_STENCIL}
+        stencilFunc={THREE.NotEqualStencilFunc}
+        stencilFail={THREE.KeepStencilOp}
+        stencilZFail={THREE.KeepStencilOp}
+        stencilZPass={THREE.KeepStencilOp}
+      />
+    </mesh>
+  )
+}
+
+/** A cut, written into the stencil buffer and nowhere else. */
+function Void({ points }: { points: number[] }) {
+  const geometry = useMemo(() => new THREE.ShapeGeometry(toShape(points)), [points])
+  useDisposal(geometry)
+  return (
+    <mesh geometry={geometry} renderOrder={LAYER.cut}>
+      <meshBasicMaterial
+        colorWrite={false}
+        side={THREE.DoubleSide}
+        depthTest={false}
+        depthWrite={false}
+        stencilWrite
+        stencilRef={CUT_STENCIL}
+        stencilFunc={THREE.AlwaysStencilFunc}
+        stencilZPass={THREE.ReplaceStencilOp}
+      />
+    </mesh>
+  )
+}
+
+/** Edges, as flat `[x0, y0, x1, y1, …]` pieces. */
+function Edges({ pieces, layer }: { pieces: number[]; layer: number }) {
+  const geometry = useMemo(() => {
+    const g = new THREE.BufferGeometry()
+    const xyz: number[] = []
+    for (let i = 0; i < pieces.length; i += 2) {
+      xyz.push(pieces[i] as number, pieces[i + 1] as number, 0)
+    }
+    g.setAttribute('position', new THREE.Float32BufferAttribute(xyz, 3))
+    return g
+  }, [pieces])
+  useDisposal(geometry)
+  return (
+    <lineSegments geometry={geometry} renderOrder={layer}>
+      <lineBasicMaterial color={EDGE} depthTest={false} depthWrite={false} toneMapped={false} />
+    </lineSegments>
+  )
+}
+
+/**
+ * One part, cut by the sagittal plane: an extruded part's outline; a turned
+ * part's profile and its mirror about the axis, neither edge drawn down the
+ * axis where they meet.
+ */
+function SectionPart({
+  outline,
+  layer,
+  edgeLayer,
+  masked,
+  open,
+}: {
+  outline: Outline
+  layer: number
+  edgeLayer: number
+  masked: boolean
+  /** Segments that are no edge: where the part runs along a cut's mouth. */
+  open: ReadonlySet<number>
+}) {
+  const colour = colourOf(outline)
+  if (outline.sweep === 'extruded') {
+    return (
+      <>
+        <Fill points={outline.points} colour={colour} layer={layer} masked={masked} />
+        <Edges pieces={strokes(outline.points, outline.segs, open)} layer={edgeLayer} />
+      </>
+    )
+  }
+  const onAxis = axisSegments(outline.points, outline.segs)
+  const half = strokes(outline.points, outline.segs, onAxis)
+  const mirror = mirrored(half)
+  return (
+    <group position={[outline.axis_x, 0, 0]}>
+      <Fill points={outline.points} colour={colour} layer={layer} masked={masked} />
+      <Fill points={mirrored(outline.points)} colour={colour} layer={layer} masked={masked} />
+      <Edges pieces={half} layer={edgeLayer} />
+      <Edges pieces={mirror} layer={edgeLayer} />
+    </group>
+  )
+}
+
+/** The leads in the section: their faces, over the key's wood. */
+function SectionLeads({ leads }: { leads: Lead[] }) {
+  return (
+    <>
+      {leads.map((l, i) => (
+        <mesh key={i} position={[l.x, l.y, 0]} renderOrder={LAYER.marks}>
+          <circleGeometry args={[l.radius, 28]} />
+          <meshBasicMaterial
+            color="#54535c"
+            depthTest={false}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+// ---- both -----------------------------------------------------------------
+
 /**
  * The measuring point: a marker at the datum every touchweight is read at.
  *
  * Marked on purpose. A weight is only a measurement if you can see where it was
  * taken, and a set distance back from the covering's lip is not somewhere a
  * reader can guess, least of all once the distance has been changed. The
- * engine places it, so it follows the setting with nothing to do here.
+ * engine places it on the key, so it follows the setting and the key both.
  */
 function MeasuringPoint({ at }: { at: [number, number] }) {
   const [x, y] = at
   return (
-    <mesh position={[x, y + 3.5, 0]} rotation={[Math.PI, 0, 0]}>
+    <mesh position={[x, y + 3.5, 0]} rotation={[Math.PI, 0, 0]} renderOrder={LAYER.marks}>
       <coneGeometry args={[2.2, 6, 4]} />
-      <meshBasicMaterial color="#c8302a" />
+      <meshBasicMaterial color="#c8302a" depthTest={false} toneMapped={false} />
     </mesh>
   )
 }
@@ -225,6 +398,100 @@ function Keybed() {
       <boxGeometry args={[560, 6, 86]} />
       <meshLambertMaterial color="#b9b2a2" />
     </mesh>
+  )
+}
+
+/**
+ * One body: its parts in its own frame, carried by its pose. The group's
+ * matrix is the pose and nothing else; three.js is told not to rebuild it from
+ * a position and a rotation.
+ */
+function Body({
+  body,
+  pose,
+  outlines,
+  mode,
+  leads,
+  marker,
+  keyWidth,
+}: {
+  body: number
+  pose: Pose
+  outlines: Outline[]
+  mode: ViewMode
+  leads: Lead[]
+  marker: Marker | undefined
+  keyWidth: number
+}) {
+  const matrix = useMemo(() => poseMatrix(pose), [pose])
+  const cuts = outlines.filter((o) => o.role === 'cut')
+  const parts = outlines.filter((o) => o.role !== 'cut')
+  const grounded = body === GROUND
+  return (
+    <group matrix={matrix} matrixAutoUpdate={false}>
+      {mode === 'solid' ? (
+        <>
+          {parts.map((o, i) =>
+            o.sweep === 'revolved' ? (
+              <Lathed
+                key={`${o.code}-${i}`}
+                profile={o.points}
+                axisX={o.axis_x}
+                colour={colourOf(o)}
+              />
+            ) : (
+              <Extruded
+                key={`${o.code}-${i}`}
+                points={o.points}
+                width={o.width}
+                colour={colourOf(o)}
+              />
+            ),
+          )}
+          <SolidLeads leads={leads} width={keyWidth} />
+        </>
+      ) : (
+        <>
+          {cuts.map((o, i) => (
+            <Void key={`${o.code}-${i}`} points={o.points} />
+          ))}
+          {cuts.map((o, i) => {
+            // A cut's mouth runs along its body's outline: no edge there.
+            const mouth = new Set<number>()
+            for (const p of parts) for (const s of sharedSegments(o, p)) mouth.add(s)
+            return (
+              <Edges
+                key={`${o.code}-edges-${i}`}
+                pieces={strokes(o.points, o.segs, mouth)}
+                layer={LAYER.keyEdges}
+              />
+            )
+          })}
+          {parts.map((o, i) => {
+            const open = new Set<number>()
+            for (const c of cuts) for (const s of sharedSegments(o, c)) open.add(s)
+            const turned = o.sweep === 'revolved'
+            const [layer, edgeLayer] = grounded
+              ? [LAYER.ground, LAYER.groundEdges]
+              : turned
+                ? [LAYER.turned, LAYER.turnedEdges]
+                : [LAYER.key, LAYER.keyEdges]
+            return (
+              <SectionPart
+                key={`${o.code}-${i}`}
+                outline={o}
+                layer={layer}
+                edgeLayer={edgeLayer}
+                masked={!grounded && cuts.length > 0}
+                open={open}
+              />
+            )
+          })}
+          <SectionLeads leads={leads} />
+        </>
+      )}
+      {marker && <MeasuringPoint at={marker.at} />}
+    </group>
   )
 }
 
@@ -246,7 +513,7 @@ export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) 
   // The keystick's width, off the engine's own outline. The leads are drawn
   // across it, and their radius is already computed in Rust from the same
   // number.
-  const keyWidth = scene.outlines.find((o) => o.id === 'key')?.width ?? 0
+  const keyWidth = scene.outlines.find((o) => o.code === 'keystick')?.width ?? 0
 
   return (
     <Canvas
@@ -255,7 +522,10 @@ export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) 
       // depending on where they sit.
       orthographic
       camera={{ position: preset.position, zoom: preset.zoom }}
-      style={{ background: '#fbfaf7' }}
+      // The stencil buffer is what lets a mortise be a void in the key's wood
+      // without being painted over the pin standing in it.
+      gl={{ stencil: true }}
+      style={{ background: PAGE }}
     >
       <ambientLight intensity={1.6} />
       <directionalLight position={[-200, 300, 400]} intensity={2.0} />
@@ -267,19 +537,18 @@ export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) 
           number changes. */}
       <group scale={[-1, 1, 1]}>
         <Keybed />
-        {scene.outlines.map((o, i) => {
-          // Papers repeat their id — a rail carries several — so the React key
-          // carries the index. The colour comes from the thickness, which is
-          // how a technician tells one paper from another in the drawer.
-          const colour = o.paper_mm != null ? paperColour(o.paper_mm) : (FILL[o.id] ?? '#9b9b9b')
-          return o.sweep === 'revolved' ? (
-            <Turned key={`${o.id}-${i}`} profile={o.points} axis={o.axis} colour={colour} />
-          ) : (
-            <Part key={`${o.id}-${i}`} points={o.points} width={o.width} colour={colour} />
-          )
-        })}
-        <Leads leads={scene.leads} width={keyWidth} />
-        <MeasuringPoint at={scene.measuring_point} />
+        {scene.poses.map((pose, body) => (
+          <Body
+            key={body}
+            body={body}
+            pose={pose}
+            outlines={scene.outlines.filter((o) => o.body === body)}
+            mode={mode}
+            leads={scene.leads.filter((l) => l.body === body)}
+            marker={scene.measuring_point.body === body ? scene.measuring_point : undefined}
+            keyWidth={keyWidth}
+          />
+        ))}
       </group>
 
       {/* Re-keyed on the mode so the two buttons are two viewpoints, not two

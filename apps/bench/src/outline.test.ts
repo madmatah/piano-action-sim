@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { toShape } from './outline'
+import { axisSegments, mirrored, poseMatrix, sharedSegments, strokes, toShape } from './outline'
 
 describe('toShape', () => {
   // An L-shaped outline as the engine sends it: flat x, y pairs, millimetres.
@@ -35,5 +35,66 @@ describe('toShape', () => {
 
   it('refuses fewer than three points', () => {
     expect(() => toShape([0, 0, 1, 1])).toThrow(/not a polygon/)
+  })
+})
+
+describe('poseMatrix', () => {
+  it('turns and shifts a point exactly as the pose says', () => {
+    // A quarter turn counter-clockwise about an origin at (10, 20): the point
+    // one along the body's x lands one up from the origin.
+    const m = poseMatrix({ origin: [10, 20], cos: 0, sin: 1 })
+    const p = new THREE.Vector3(1, 0, 0).applyMatrix4(m)
+    expect([p.x, p.y, p.z]).toEqual([10, 21, 0])
+  })
+
+  it('places nothing anywhere with the identity pose', () => {
+    const m = poseMatrix({ origin: [0, 0], cos: 1, sin: 0 })
+    expect(m.equals(new THREE.Matrix4())).toBe(true)
+  })
+})
+
+describe('mirrored', () => {
+  // A washer's profile, 2 to 11 mm out from its axis, 2 mm thick.
+  const profile = [2, 0, 11, 0, 11, 2, 2, 2]
+
+  it('mirrors the radius and keeps the heights', () => {
+    expect(mirrored(profile)).toEqual([-2, 2, -11, 2, -11, 0, -2, 0])
+  })
+
+  it('still turns counter-clockwise', () => {
+    const area = (flat: number[]) => THREE.ShapeUtils.area(toShape(flat).getPoints())
+    expect(area(profile)).toBeGreaterThan(0)
+    expect(area(mirrored(profile))).toBeGreaterThan(0)
+  })
+})
+
+describe('strokes and shared segments', () => {
+  // A keystick's underside split at a slot's edges, and the slot cut up from
+  // it: the slot's bottom (its segment 0) is the keystick's segment 1.
+  const stick = { points: [0, 0, 4, 0, 6, 0, 10, 0, 10, 3, 0, 3], segs: [0, 1, 2, 3, 4, 5] }
+  const slot = { points: [4, 0, 6, 0, 6, 2, 4, 2], segs: [0, 1, 2, 3] }
+
+  it('finds the mouth from either side', () => {
+    expect([...sharedSegments(slot, stick)]).toEqual([0])
+    expect([...sharedSegments(stick, slot)]).toEqual([1])
+  })
+
+  it('leaves the skipped segments out of the line work', () => {
+    const all = strokes(slot.points, slot.segs)
+    const open = strokes(slot.points, slot.segs, new Set([0]))
+    expect(all.length).toBe(16)
+    expect(open).toEqual([6, 0, 6, 2, 6, 2, 4, 2, 4, 2, 4, 0])
+  })
+
+  it('reads every point of an arc as part of its segment', () => {
+    // Segment 1 is an arc drawn through three points.
+    const points = [0, 0, 2, 0, 3, 1, 2, 2, 0, 2]
+    const segs = [0, 1, 1, 1, 2]
+    expect(strokes(points, segs, new Set([1]))).toEqual([0, 0, 2, 0, 0, 2, 0, 0])
+  })
+
+  it('finds where a turned profile runs down its axis', () => {
+    const pin = [0, 0, 1.7, 0, 1.7, 11, 0, 11]
+    expect([...axisSegments(pin, [0, 1, 2, 3])]).toEqual([3])
   })
 })

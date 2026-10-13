@@ -111,7 +111,11 @@ is cut; the back check block; the thinned tail and its damper felt; the chamfer
 that lets the tail bed flat on its cloth) [V, `data/params/key-section.json`].
 The capstan is a turned steel part, integrated as a solid of revolution; leads
 are point masses added, moved and removed on the model. Planned: leads leave
-the model, a key being measured whole, its leads included (§2.3).
+the model, a key being measured whole, its leads included (§2.3). Each piece
+is a part of its own, with its own material, on the key's body: the covering
+and the key front are of their own materials, the capsule and the back check
+block of one wood that is not the keystick's, and the front mortise is a cut,
+a void in the keystick open at its underside.
 
 **The frame**, `FrameDesign`, is three different rails: the balance rail with
 its crown and round pin, the front rail with its oblong pin, the back rail with
@@ -256,13 +260,21 @@ rise from the bottom), their closed forms joining the jig's as test oracles.
 - **No validation layer**: a front edge close to the capsule makes the outline
   cross itself, and the front pin and mortise at their maximum put the pin
   through the top of the key, both weighed with no fault raised.
-- **Drawing**: one row of pins; no mortises in the outline; flat-topped pins; a
-  flat balance crown only; opaque solids, so the pins inside the key are hidden.
+- **Drawing**: one row of pins; flat-topped pins; a flat balance crown only.
+  The balance mortise is not drawn, none of its dimensions being measured, so
+  the balance pin stands hidden in the key's wood; the front mortise's place
+  and length along the key are assumed [S, `data/params/key-section.json`],
+  its width across the keyboard not modelled.
 
 ### 2.4 The bench
 
 **Built.** A browser page in React and react-three-fiber draws the key on its
-frame in section and in solid from outlines computed in Rust. Its panels: the
+frame in section and in solid from parts computed in Rust, each in its own
+body's frame and placed by the pose the statics give that body. The section is
+the sagittal plane itself: a washer shows the hole its pin stands in, and the
+front pin stands in its mortise, a void open at the key's underside. Colours
+follow each part's material: the covering and the key front white, the capsule
+and the back check block in a wood other than the keystick's. Its panels: the
 weighing sheet, with the measuring point's distance back from the front lip of
 the key; regulation (punching papers, key friction weight); punchings and
 cloth (felts, front rail pin and mortise, back rail cloth); the key; the frame
@@ -753,7 +765,7 @@ traps (§6.3).
 
 | Level | What it checks | Kind | Status |
 |---|---|---|---|
-| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; the unilateral virtual-work inequality at every settled state; the key ratio guard | consistency | built |
+| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; the unilateral virtual-work inequality at every settled state; every stop's face against a declared range of a drawn part; the key ratio guard | consistency | built |
 | 0 | the mass matrix against finite differences of the kinetic energy; normals continuous across the hybrid profiles; every coordinate acted on by a contact or a spring | consistency | planned |
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
@@ -965,7 +977,7 @@ wins, so pedal force falls as notes are played.
 **Built.**
 
 ```
-crates/pa-core     the domain: geometry, mechanism, parts, measure. No I/O, no web;
+crates/pa-core     the domain: geometry, mechanism, contact, parts, measure. No I/O, no web;
                    one dependency, libm (§4.4)
 crates/pa-app      the application: the single-key bench, KeyBench; the golden sheet
 crates/pa-wasm     the browser's adapter of pa-app; the only crate that knows JavaScript
@@ -1000,33 +1012,42 @@ diagnostics and the state an application composes; a rendering package and an
 interface package are extracted from the bench when a second application needs
 them, not created empty before.
 
-**One definition per part.** The key is drawn from, and its mass integrated
-over, one outline; its stops read the underside from a second construction built
-from the same fields, and the frame's stops read the bearing heights its drawn
-members are built from. Two tests check that they agree,
-`the_declared_bearing_surface_is_the_whole_underside` on the default key and
-`what_is_drawn_is_what_is_touched`: the invariant holds by shared fields and
-tests, not by structure. Planned: contact surfaces as ranges into their part's
-outline, so drawing and contact cannot drift apart, and each part's inertia
-derived from its outline or measured, by an explicit choice, a key's always
-measured (§2.3).
+**One definition per part.** The key and its frame are built as parts: one
+closed outline of lines and arcs for each piece of material, on the body that
+carries it, several per body, a mortise a cut among them and a turned part read
+through its sagittal silhouette. Each part declares the ranges of its outline a
+contact may read and the named points on it, the lip and the key front's top
+among them. The bench draws them and the faults read them; whatever a stop
+rounds is drawn rounded, the back rail cloth's edges included. The stops still
+read a second construction built from the same fields, the underside's corners
+and the frame's bearing heights, and one test holds every face they read to a
+declared range of a drawn part,
+`every_stop_face_is_a_declared_range_of_a_drawn_part`: the invariant holds by
+shared fields and that test, not by structure. The composite key's mass is
+integrated over a third polygon, its volume model's, which the drawn parts tile
+exactly. Planned: contacts reading the declared ranges and nothing else, so
+drawing and contact cannot drift apart, and each part's inertia derived from
+its outline or measured, by an explicit choice, a key's always measured (§2.3).
 
 ### 7.2 The WebAssembly boundary
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
 double mount cannot construct two engines) and drives it with one setter per
-value. It reads two JSON documents: the scene (every outline in millimetres,
-the leads, the measuring point and the faults) and the readout (the settings,
-the weighing sheet and what holds the key, all absent when the frame cannot be
-weighed). Faults and verdicts are English sentences built in Rust, in `pa-app`
+value. It reads two JSON documents: the scene and the readout. The scene holds
+every part's outline in its own body's frame, in millimetres, with its material
+and the provenance of each stretch; one pose per body, an origin, a cosine and
+a sine, which the view applies and computes none of; the leads and the
+measuring point on the key; and the faults. The readout holds the settings, the
+weighing sheet and what holds the key, all absent when the frame cannot be
+weighed. Faults and verdicts are English sentences built in Rust, in `pa-app`
 and in the adapter, and the TypeScript types mirror both documents by hand.
 
 **Planned.** Settings and weighing come back separately: the settings always
 valid, each adjustable value with its unit, admissible range and step; the
 weighing nullable, with its reason when absent. Codes and numbers cross, never
 sentences (§3.12), with TypeScript types generated from the Rust ones. Outlines
-cross once per change of geometry, each in its part's own frame, and poses at
-each step. Per-step state is a flat `f64` buffer read through a pointer and a
+cross once per change of geometry, not with every scene, and poses at each
+step. Per-step state is a flat `f64` buffer read through a pointer and a
 length, the JavaScript view rebuilt whenever `memory.buffer` changes, since
 growing linear memory detaches old views. A step that produces a non-finite
 value stops and keeps the last finite state, so none is ever published.

@@ -204,62 +204,6 @@ fn sines_satisfying(p: f64, q: f64, k: f64) -> [Option<f64>; 2] {
 /// is tested to be insensitive to it at the micrometre the trade regulates to.
 pub const PUNCHING_EDGE_RADIUS: f64 = 0.0005;
 
-/// A way the frame and the key do not go together.
-///
-/// # Why this exists at all
-///
-/// The frame is **placed from the key**: the front rail stands under the key's
-/// front mortise, the back rail under its chamfer. That keeps a keyboard
-/// consistent without anybody typing a coordinate, and it is the right default
-/// — but it is a default, not a law. A measured frame carries its own numbers,
-/// a design under test is meant to be pushed until it breaks, and either can
-/// arrive here holding a combination no keyboard could be built from.
-///
-/// So the rule places and this reports. A fault is **not an error**: the
-/// assembly still answers every question put to it, and has to, because
-/// watching a bad design misbehave is how the bench teaches. What a fault
-/// changes is that the reader is told, in the trade's terms, which part of the
-/// picture is not a piano.
-///
-/// Distances are metres, and each is *how far past the limit*, so a fault's
-/// number is always positive and shrinking it is always the repair.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Fault {
-    /// The front rail pin is not inside the key's front mortise.
-    ///
-    /// The key would be guided by a pin bearing against the wood beside its
-    /// slot, or by nothing at all. On the bench this is what a key reads like
-    /// when its length has been changed without the frame following.
-    PinOutsideTheMortise {
-        /// How far past the end of the slot the pin stands, metres.
-        by: f64,
-    },
-    /// The back rail cloth reaches in front of where the tail's chamfer begins.
-    ///
-    /// The chamfer is cut so the key beds flat on this cloth; cloth in front of
-    /// it can only ever be met by the kink, which is the one thing the chamfer
-    /// exists to prevent.
-    ClothInFrontOfTheChamfer {
-        /// How far in front of the kink the cloth reaches, metres.
-        by: f64,
-    },
-    /// The back rail cloth reaches past the end of the key.
-    ///
-    /// Then the key's own corner carries it, on a lever arm that is the key's
-    /// length and not the rail's position.
-    ClothBehindTheKey {
-        /// How far past the tail the cloth reaches, metres.
-        by: f64,
-    },
-    /// A punching stands partly off the flat of the key's underside.
-    PunchingOffTheUnderside {
-        /// Which rail, as the member id the view draws it under.
-        rail: &'static str,
-        /// How far past the end of the flat it reaches, metres.
-        by: f64,
-    },
-}
-
 /// Which stop the key is resting against.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RestingOn {
@@ -433,65 +377,6 @@ impl KeyAssembly {
             top: self.frame.back_bearing_height(),
             edge_radius: PUNCHING_EDGE_RADIUS,
         }
-    }
-
-    /// Everything about this assembly that no keyboard could be built from.
-    ///
-    /// Empty for a frame that goes with its key. Each entry carries how far
-    /// past the limit it is, so the bench can say *"the pin misses the mortise
-    /// by 63 mm"* rather than merely that something is wrong — see [`Fault`]
-    /// for why this reports instead of refusing.
-    ///
-    /// Ordered the way a technician would walk the key: front first, because
-    /// that is the end he is holding.
-    pub fn faults(&self, kind: crate::parts::frame::KeyKind) -> Vec<Fault> {
-        let mut out = Vec::new();
-        let (flat_from, flat_to) = self.key.underside_flat();
-
-        // The pin has to stand within the slot cut for it, with its own length
-        // inside: a pin whose end is past the end of the mortise is bearing on
-        // wood, not running in a slot.
-        if let Some(pin) = self.frame.sections.front.pin {
-            let (mortise_back, mortise_front) = self.key.front_mortise_span();
-            let half = 0.5 * pin.length();
-            let pin_x = self.frame.sections.front.pin_x(self.frame.front_rail, kind);
-            let past = (mortise_back - (pin_x - half)).max((pin_x + half) - mortise_front);
-            if past > 0.0 {
-                out.push(Fault::PinOutsideTheMortise { by: past });
-            }
-        }
-
-        // Both punchings bear on the flat, and a washer is wide.
-        for (rail, section, natural_x) in [
-            ("balance_rail_punching", &self.frame.sections.balance, 0.0),
-            (
-                "front_rail_punching",
-                &self.frame.sections.front,
-                self.frame.front_rail,
-            ),
-        ] {
-            let x = section.pin_x(natural_x, kind);
-            let r = section.punching_radius;
-            let past = (flat_from - (x - r)).max((x + r) - flat_to);
-            if past > 0.0 {
-                out.push(Fault::PunchingOffTheUnderside { rail, by: past });
-            }
-        }
-
-        // And the cloth has to fall inside the chamfer, whole.
-        let back = self.back_stop();
-        let [cloth_back, cloth_front] = back.edges();
-        if cloth_front.x > flat_from {
-            out.push(Fault::ClothInFrontOfTheChamfer {
-                by: cloth_front.x - flat_from,
-            });
-        }
-        if cloth_back.x < self.key.tail_end {
-            out.push(Fault::ClothBehindTheKey {
-                by: self.key.tail_end - cloth_back.x,
-            });
-        }
-        out
     }
 
     /// Whether any of the key's underside is inside a stop at this angle.
@@ -1069,7 +954,6 @@ impl Regulation {
             frame: probed,
             bearing: KeyBearing {
                 offset_from_pin: bearing_offset_from_pin,
-                stack_height: balance,
             },
             // Never weighed: the probe is asked where the key bears on its
             // cloth, which is geometry, and nothing about it reads the
@@ -1153,7 +1037,6 @@ mod tests {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             protocol: TouchweightProtocol::default(),
         }
@@ -1757,7 +1640,6 @@ mod virtual_work_tests {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             protocol: TouchweightProtocol::default(),
         }
@@ -1879,7 +1761,6 @@ mod bearing_tests {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             protocol: TouchweightProtocol::default(),
         }
@@ -2171,7 +2052,6 @@ mod settle_tests {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             protocol: TouchweightProtocol::default(),
         }
@@ -2329,7 +2209,6 @@ mod protocol_tests {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             protocol: TouchweightProtocol::default(),
         }
@@ -2534,7 +2413,6 @@ mod vertical_equilibrium_tests {
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: balance,
             },
             protocol: TouchweightProtocol::default(),
         }
@@ -2610,169 +2488,221 @@ mod vertical_equilibrium_tests {
 }
 
 #[cfg(test)]
-mod fault_tests {
-    use super::super::frame::KeyKind;
+mod bridge_tests {
+    use super::super::frame::{papers_for, FrameRanges, KeyKind};
+    use super::super::key::KeyRanges;
     use super::super::{FrameDesign, KeyDesign};
     use super::*;
+    use crate::contact::{Part, SurfaceRef};
+    use crate::geometry::Seg;
+    use crate::mechanism::BodyId;
 
-    fn assembly(key: KeyDesign, frame: FrameDesign) -> KeyAssembly {
+    /// The default key regulated on the default frame, as the bench builds it:
+    /// each felt kept, the rest of each stack laid in papers from the drawer,
+    /// and the stack taken at what those papers make.
+    fn regulated() -> KeyAssembly {
+        let key = KeyDesign::default();
+        let mut frame = FrameDesign::default();
+        let target = Regulation {
+            key_height: 0.0650,
+            key_dip: 0.0102,
+        };
+        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
+        for (stack, total) in [
+            (&mut frame.balance_punching, balance),
+            (&mut frame.front_punching, front),
+        ] {
+            stack.paper = papers_for(total - stack.felt).iter().sum();
+        }
         KeyAssembly {
             key,
             frame,
             bearing: KeyBearing {
                 offset_from_pin: 0.0,
-                stack_height: 0.0020,
             },
             protocol: TouchweightProtocol::default(),
         }
     }
 
-    /// A frame built for its key reports nothing.
-    ///
-    /// The baseline every other test here is read against: if the default
-    /// assembly carried a fault, the badge would be permanent and therefore
-    /// invisible, which is worse than having no badge at all.
-    #[test]
-    fn a_frame_built_for_its_key_has_nothing_to_report() {
-        let key = KeyDesign::default();
-        let frame = FrameDesign::default().placed_under(&key);
+    /// The regulated bench and the four ways the golden sheet's fixtures push
+    /// it, with a cloth hung off the end of the key besides: a frame whose
+    /// stops fight, a pin bottoming in its mortise, a key shortened under its
+    /// frame.
+    fn assemblies() -> Vec<KeyAssembly> {
+        let base = regulated();
+        let mut wedged = base.clone();
+        wedged.frame.back_rail_height =
+            wedged.frame.balance_bearing_height() + 0.005 - wedged.frame.back_rail_cloth;
+        let mut proud = base.clone();
+        proud.frame.sections.front.pin_height += 0.001;
+        let mut short = base.clone();
+        short.key.front_edge -= 0.018;
+        let mut overhung = base.clone();
+        overhung.frame.back_rail = -0.232;
+        vec![base, wedged, proud, short, overhung]
+    }
+
+    /// The parts the bench draws for an assembly: the frame's, its papers
+    /// laid from the drawer, then the key's.
+    fn drawn(a: &KeyAssembly) -> (Vec<Part>, KeyRanges, FrameRanges) {
+        let mut parts = Vec::new();
+        let balance = papers_for(a.frame.balance_punching.paper);
+        let front = papers_for(a.frame.front_punching.paper);
+        let frame = a
+            .frame
+            .parts(&a.key, KeyKind::Natural, &balance, &front, &mut parts);
+        let key = a.key.parts(BodyId(1), &mut parts);
+        (parts, key, frame)
+    }
+
+    fn same(p: Point, q: Point) -> bool {
+        p.x.to_bits() == q.x.to_bits() && p.y.to_bits() == q.y.to_bits()
+    }
+
+    /// Whether two numbers are the same, to the bit but for the sign of zero:
+    /// adding `0.0` turns `−0.0` into `0.0` and leaves every other number as
+    /// it is.
+    fn equal(a: f64, b: f64) -> bool {
+        (a + 0.0).to_bits() == (b + 0.0).to_bits()
+    }
+
+    /// The centre of a turned part's drawn top: the point on its axis where the
+    /// two segments of its silhouette's top meet.
+    fn centre_of(range: &SurfaceRef, parts: &[Part]) -> Point {
+        let segs = range.segs(parts);
         assert_eq!(
-            assembly(key, frame).faults(KeyKind::Natural),
-            Vec::new(),
-            "the default keyboard must be one that could be built"
+            segs.len(),
+            2,
+            "a turned top is two segments, either side of the axis"
         );
+        assert!(
+            same(segs[0].end(), segs[1].start()),
+            "they meet on the axis"
+        );
+        segs[0].end()
     }
 
-    /// Lengthening a key leaves the front rail where it was bolted, and the
-    /// bench says by how much.
+    /// Consistency, and the check of `CLAUDE.md` rule 1 while the stops read a
+    /// construction of their own: **every face a stop reads coincides with a
+    /// declared range of a drawn part.**
     ///
-    /// **This is the behaviour, not a defect.** Rails are screwed to a keybed;
-    /// nothing about cutting a longer key moves them. A model that quietly
-    /// slid the rail along would draw a keyboard that cannot exist and call it
-    /// correct — and it would hide the one thing a keyboard designer is here
-    /// to find out, which is what else has to change when a key's length does.
+    /// The stops read the key's underside from [`KeyDesign::underside_corners`]
+    /// and the frame's faces from its bearing heights; the drawn parts are
+    /// built from the same fields. This holds the two together, on the bench
+    /// and on frames pushed the ways the golden sheet pushes them:
+    ///
+    /// - the underside's three corners are the drawn chain's ends and kink,
+    ///   the chain unbroken across the keystick and the key front;
+    /// - the back stop's two edges are the cloth's drawn arcs, centre and
+    ///   radius, and its face the cloth's face, along the key to the bit and
+    ///   in height within the one rounding an arc's end takes, `ε` of it;
+    /// - the front punching, a centre bearing, has its point at the centre of
+    ///   the felt's drawn top, on the washer's axis, as the balance bearing the
+    ///   key turns on has on its own; to the bit, but for the sign of zero,
+    ///   since the bearing's `−0.0` is the axis's `0.0`;
+    /// - the mortise stop is the pin's drawn top less the mortise's, to the
+    ///   bit, at the middle of the pin's drawn top. That middle is the mean of
+    ///   the top's two ends, which round once each and their sum once: within
+    ///   `ε` of the stop's distance from the balance pin, to first order, and
+    ///   `2ε` bounds it.
+    ///
+    /// A stop moved by a tenth of a millimetre along the key or up from it
+    /// fails here.
+    ///
+    /// Run on the natural, the bench's only kind: a sharp's punchings stand on
+    /// the second row, and the front punching's stop does not follow them.
     #[test]
-    fn lengthening_a_key_leaves_the_front_rail_behind_and_names_the_miss() {
-        let frame = FrameDesign::default();
-        let short = KeyDesign {
-            front_edge: 0.158,
-            ..KeyDesign::default()
-        };
-        let moved = 0.258 - 0.158;
+    fn every_stop_face_is_a_declared_range_of_a_drawn_part() {
+        for a in assemblies() {
+            let (parts, key, frame) = drawn(&a);
 
-        let faults = assembly(short, frame.clone()).faults(KeyKind::Natural);
-        let miss = faults
-            .iter()
-            .find_map(|f| match f {
-                Fault::PinOutsideTheMortise { by } => Some(*by),
-                _ => None,
-            })
-            .expect("the pin is 100 mm from a mortise 8 mm long");
-        // The mortise moved with the front edge; the pin did not. What is left
-        // over is the travel, less half the slot and half the pin.
-        let slack = 0.5 * (0.008 - 0.005);
-        assert!(
-            (miss - (moved - slack)).abs() < 1e-9,
-            "the miss should be {} m, and reads {miss} m",
-            moved - slack
-        );
-
-        // And the punching has walked off the end of the key with it.
-        assert!(
-            faults
+            let [tail, kink, nose] = a.key.underside_corners();
+            let chain: Vec<Seg> = key
+                .underside
                 .iter()
-                .any(|f| matches!(f, Fault::PunchingOffTheUnderside { .. })),
-            "a 22 mm washer 100 mm past the end of the key is off the underside"
-        );
-    }
+                .flat_map(|range| range.segs(&parts))
+                .collect();
+            assert!(same(chain[0].start(), tail), "the tail");
+            assert!(same(chain[0].end(), kink), "the kink");
+            assert!(same(chain[chain.len() - 1].end(), nose), "the front");
+            for pair in chain.windows(2) {
+                assert!(same(pair[0].end(), pair[1].start()), "the underside breaks");
+            }
+            for seg in &chain[1..] {
+                assert!(matches!(seg, Seg::Line { .. }));
+                assert_eq!(seg.end().y.to_bits(), 0.0_f64.to_bits(), "off the flat");
+            }
 
-    /// Placing the frame under the longer key clears both.
-    ///
-    /// The repair, and the other half of the rule: drift is the default, and
-    /// re-placing the frame is the deliberate act that ends it. A fault that
-    /// nothing could clear would be a complaint, not a diagnosis.
-    #[test]
-    fn placing_the_frame_under_the_new_key_clears_the_miss() {
-        let key = KeyDesign {
-            front_edge: 0.158,
-            ..KeyDesign::default()
-        };
-        let frame = FrameDesign::default().placed_under(&key);
-        assert_eq!(assembly(key, frame).faults(KeyKind::Natural), Vec::new());
-    }
+            let back = a.back_stop();
+            let [edge_back, edge_front] = back.edges();
+            let (face_back, face_front) = back.face();
+            match frame.cloth_top.segs(&parts)[..] {
+                [Seg::Arc {
+                    c: front_centre,
+                    r: front_radius,
+                    ..
+                }, Seg::Line {
+                    a: face_a,
+                    b: face_b,
+                }, Seg::Arc {
+                    c: back_centre,
+                    r: back_radius,
+                    ..
+                }] => {
+                    assert!(same(front_centre, edge_front) && same(back_centre, edge_back));
+                    assert_eq!(front_radius.to_bits(), back.edge_radius.to_bits());
+                    assert_eq!(back_radius.to_bits(), back.edge_radius.to_bits());
+                    assert_eq!(face_a.x.to_bits(), face_front.x.to_bits());
+                    assert_eq!(face_b.x.to_bits(), face_back.x.to_bits());
+                    for y in [face_a.y, face_b.y] {
+                        assert!(
+                            (y - back.top).abs() <= f64::EPSILON * back.top,
+                            "the cloth's face is drawn at {y} m, the stop's at {} m",
+                            back.top
+                        );
+                    }
+                }
+                ref other => panic!("the cloth's top is an edge, a face and an edge: {other:?}"),
+            }
 
-    /// Cloth in front of the chamfer, and cloth past the end of the key, are
-    /// each named.
-    ///
-    /// The two bounds run opposite ways and it is easy to write one of them
-    /// backwards. In front of the chamfer the key can only ever meet the cloth
-    /// on the kink; behind the end of the key it meets it on its own corner.
-    /// Both are keyboards somebody could build by accident and neither is one
-    /// that works.
-    #[test]
-    fn the_cloth_has_to_fall_inside_the_chamfer_at_both_ends() {
-        let key = KeyDesign::default();
-        let (chamfer_begins, _) = key.underside_flat();
-        let half = FrameDesign::default().sections.back.half_length;
-
-        let forward = FrameDesign {
-            back_rail: chamfer_begins,
-            ..FrameDesign::default()
-        };
-        let faults = assembly(key.clone(), forward).faults(KeyKind::Natural);
-        assert!(
-            faults.iter().any(
-                |f| matches!(f, Fault::ClothInFrontOfTheChamfer { by } if (by - half).abs() < 1e-9)
-            ),
-            "cloth centred on the kink reaches half a rail past it; got {faults:?}"
-        );
-
-        let behind = FrameDesign {
-            back_rail: key.tail_end,
-            ..FrameDesign::default()
-        };
-        let faults = assembly(key.clone(), behind).faults(KeyKind::Natural);
-        assert!(
-            faults
-                .iter()
-                .any(|f| matches!(f, Fault::ClothBehindTheKey { by } if (by - half).abs() < 1e-9)),
-            "cloth centred on the tail reaches half a rail past it; got {faults:?}"
-        );
-    }
-
-    /// Every fault counts from the limit, so repairing one shrinks it to zero
-    /// and never to a jump.
-    ///
-    /// A badge that read "wrong" would say the same thing 1 mm out and 100 mm
-    /// out. The number is what tells a reader whether he has mis-typed a
-    /// dimension or mis-designed a keyboard.
-    #[test]
-    fn a_fault_shrinks_to_nothing_as_the_frame_comes_right() {
-        let key = KeyDesign::default();
-        let mut previous = f64::MAX;
-        for front_rail in [0.100_f64, 0.150, 0.200, 0.220, 0.223] {
-            let frame = FrameDesign {
-                front_rail,
-                ..FrameDesign::default()
-            };
-            let by = assembly(key.clone(), frame)
-                .faults(KeyKind::Natural)
-                .iter()
-                .find_map(|f| match f {
-                    Fault::PinOutsideTheMortise { by } => Some(*by),
-                    _ => None,
-                })
-                .unwrap_or(0.0);
+            let punching = a.punching_stop();
+            let centre = centre_of(&frame.front_bearing, &parts);
             assert!(
-                by < previous,
-                "moving the rail towards the mortise must shrink the miss, \
-                 and {front_rail} m read {by} m after {previous} m"
+                equal(punching.at, centre.x) && equal(punching.top, centre.y),
+                "the front punching bears at ({}, {}) m, its felt's drawn top is centred at {centre:?}",
+                punching.at,
+                punching.top
             );
-            previous = by;
+            let centre = centre_of(&frame.balance_bearing, &parts);
+            assert!(
+                equal(a.bearing_x(), centre.x) && equal(a.bearing_y(), centre.y),
+                "the key turns at ({}, {}) m, its balance felt's drawn top is centred at {centre:?}",
+                a.bearing_x(),
+                a.bearing_y()
+            );
+
+            let mortise = a.mortise_stop().expect("the front rail has a pin");
+            let pin_top = frame
+                .front_pin_top
+                .as_ref()
+                .expect("a pin has a top")
+                .segs(&parts);
+            let mortise_top = key.front_mortise_top.segs(&parts)[0];
+            assert_eq!(
+                mortise.top.to_bits(),
+                (pin_top[0].start().y - mortise_top.start().y).to_bits(),
+                "the key cannot go below the pin's drawn top less the mortise's drawn depth"
+            );
+            let (lo, hi) = pin_top
+                .iter()
+                .flat_map(|s| [s.start().x, s.end().x])
+                .fold((f64::MAX, f64::MIN), |(lo, hi), x| (lo.min(x), hi.max(x)));
+            let middle = 0.5 * (lo + hi);
+            assert!(
+                (middle - mortise.at).abs() <= 2.0 * f64::EPSILON * mortise.at.abs(),
+                "the mortise stop stands at {} m, the middle of the pin's drawn top at {middle} m",
+                mortise.at
+            );
         }
-        assert!(
-            previous > 0.0,
-            "the sweep should stop just short of correct"
-        );
     }
 }

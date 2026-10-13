@@ -13,7 +13,13 @@
 //! # Frame
 //!
 //! Shared with [`super::KeyDesign`]: origin at the balance rail pin, `x` towards
-//! the player, `y` up. The keybed surface is the vertical datum, `y = 0`.
+//! the player, `y` up. The keybed surface is the vertical datum, `y = 0`. The
+//! frame is the ground's: [`FrameDesign::parts`] builds its parts on
+//! [`BodyId::GROUND`].
+
+use crate::contact::{Material, Part, PartCode, PartId, Provenance, Role, SurfaceRef, Sweep};
+use crate::geometry::{Dir, Point, Seg};
+use crate::mechanism::BodyId;
 
 /// A stack of punchings on a rail: paper shims plus the felt or leather washer.
 ///
@@ -69,7 +75,7 @@ pub struct FrameDesign {
     /// changed afterwards must **not** drag the frame along behind it. Lengthen
     /// a key on a real keyboard and the rail stays bolted where it was; the
     /// pin leaves the mortise and the keyboard is wrong until somebody moves
-    /// the rail. [`super::KeyAssembly::faults`] says so.
+    /// the rail. [`super::faults::faults`] says so.
     pub front_rail: f64,
     /// Where the back rail stands, metres behind the balance pin (negative).
     ///
@@ -127,7 +133,7 @@ impl FrameDesign {
     /// together. What it is not is how a frame is **maintained**. Change a key
     /// afterwards and the frame stays where it is — rails are bolted to a
     /// keybed and do not follow — so the mismatch appears, and
-    /// [`super::KeyAssembly::faults`] names it. That is the project's standing
+    /// [`super::faults::faults`] names it. That is the project's standing
     /// rule that upstream settings drift rather than cascade, applied to
     /// geometry: a frame that silently re-placed itself would hide exactly the
     /// lesson a keyboard designer is here to learn.
@@ -517,7 +523,7 @@ pub const PAPER_KINDS: usize = 8;
 /// Thickness is also how a paper punching is **identified**: a drawer is sorted
 /// by colour and the colour *is* the thickness — white, pastel green, sky blue,
 /// camel, black, and card for anything above half a millimetre. That is why the
-/// geometry emits one member per paper rather than one block of the right total
+/// geometry builds one part per paper rather than one block of the right total
 /// height, and why the view keys its palette on the thickness rather than on
 /// the part. [V] — `data/params/punching-papers.json`.
 pub const PAPER_THICKNESSES: [f64; PAPER_KINDS] = [
@@ -589,107 +595,126 @@ pub fn papers_for(total: f64) -> Vec<f64> {
     stack
 }
 
-/// An axis-aligned rectangle in the sagittal plane, as an outline.
-fn rect(x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<crate::geometry::Point> {
-    use crate::geometry::Point;
-    vec![
+/// The rails' sections and the punchings' sizes: measured, or derived from
+/// measurements by a rule written beside them.
+const SECTIONS: &str = "data/params/key-frame-sections.json";
+/// The punching papers a drawer holds.
+const PAPERS: &str = "data/params/punching-papers.json";
+/// Where the values that have no record are listed.
+const UNRECORDED: &str = "data/params/README.md";
+
+/// What the frame's parts declare: where each is, and the ranges of them
+/// that anything else may read.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrameRanges {
+    /// The back rail.
+    pub back_rail: PartId,
+    /// The balance rail, its crown included.
+    pub balance_rail: PartId,
+    /// The front rail.
+    pub front_rail: PartId,
+    /// The back rail cloth.
+    pub back_rail_cloth: PartId,
+    /// The papers under the balance punching, bottom first.
+    pub balance_papers: Vec<PartId>,
+    /// The balance punching's felt.
+    pub balance_rail_punching: PartId,
+    /// The papers under the front punching, bottom first.
+    pub front_papers: Vec<PartId>,
+    /// The front punching's felt.
+    pub front_rail_punching: PartId,
+    /// The balance pin, where the rail has one.
+    pub balance_rail_pin: Option<PartId>,
+    /// The front rail pin, where the rail has one.
+    pub front_rail_pin: Option<PartId>,
+    /// The balance punching's top, across its whole width: what the key bears
+    /// on at its pin.
+    pub balance_bearing: SurfaceRef,
+    /// The front punching's top, across its whole width.
+    pub front_bearing: SurfaceRef,
+    /// The cloth's top, from the front: its front edge, the face, its back
+    /// edge.
+    pub cloth_top: SurfaceRef,
+    /// The front rail pin's top, where the rail has one.
+    pub front_pin_top: Option<SurfaceRef>,
+}
+
+/// A rectangle's outline, counter-clockwise from its bottom left corner.
+fn rect(x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<Seg> {
+    super::polygon(&[
         Point::new(x0, y0),
         Point::new(x1, y0),
         Point::new(x1, y1),
         Point::new(x0, y1),
-    ]
+    ])
 }
 
-/// A washer, as a profile in radius and height to be turned about its axis.
-///
-/// Closed, and starting at the inner radius, so the lathe leaves the hole the
-/// pin passes through. A disc with no hole would swallow its own pin.
-fn washer(r_in: f64, r_out: f64, y0: f64, y1: f64) -> Vec<crate::geometry::Point> {
-    use crate::geometry::Point;
-    vec![
+/// A washer's profile in radius and height, counter-clockwise, its inner side
+/// last: the wall of the hole the pin passes through. A disc with no hole
+/// would swallow its own pin.
+fn washer(r_in: f64, r_out: f64, y0: f64, y1: f64) -> Vec<Seg> {
+    super::polygon(&[
         Point::new(r_in, y0),
         Point::new(r_out, y0),
         Point::new(r_out, y1),
         Point::new(r_in, y1),
-    ]
+    ])
 }
 
-/// One drawable, contactable member of the frame.
-///
-/// The frame does not move, so its members need no inertia and no pivot — but
-/// they do need outlines, because the view has to draw the thing the physics
-/// is touching. The stops do not read these outlines: they read the bearing
-/// heights of [`FrameDesign`], from which the members are built.
-/// `what_is_drawn_is_what_is_touched` checks that the two meet.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FrameMember {
-    /// Stable identifier, English `snake_case`, matching the glossary.
-    pub id: &'static str,
-    /// Closed outline. In the keybed frame — `x` towards the player from the
-    /// balance pin, `y` up from the keybed — when [`super::Sweep::Extruded`];
-    /// in **radius and height** about [`FrameMember::axis_x`] when
-    /// [`super::Sweep::Revolved`].
-    pub outline: Vec<crate::geometry::Point>,
-    /// Whether this member is a compliant lining — felt, cloth, paper — rather
-    /// than wood or metal.
-    pub compliant: bool,
-    /// How the outline becomes a solid.
-    pub sweep: super::Sweep,
-    /// Extent across the keyboard, metres. Meaningless when revolved.
-    pub width: f64,
-    /// Where the axis stands along the key, metres. Meaningless when extruded.
-    pub axis_x: f64,
-    /// For a paper punching, its own thickness in metres — which is how the
-    /// trade identifies one, and therefore how it is coloured. `None` for
-    /// everything else.
-    pub paper: Option<f64>,
-}
-
-/// What the frame needs to know beyond its regulation to be drawn.
-///
-/// The papers arrive as the **discrete stack actually laid**, not as a total,
-/// because two stacks of the same height are not the same object on a bench:
-/// one is four thin shims and the other is one thick one, and the technician
-/// reaches for a different drawer.
-#[derive(Debug, Clone, Copy)]
-pub struct FrameLayout<'a> {
-    /// Which row of pins this key stands on.
-    pub kind: KeyKind,
-    /// Papers under the balance punching, bottom first, metres.
-    pub balance_papers: &'a [f64],
-    /// Papers under the front punching, bottom first, metres.
-    pub front_papers: &'a [f64],
+/// The top of a turned part's silhouette, given the profile's number of
+/// segments: the two segments either side of the axis ([`Part::silhouette`]).
+fn top_of_turned(part: PartId, segments: u16) -> SurfaceRef {
+    SurfaceRef {
+        part,
+        segs: segments - 2..segments,
+    }
 }
 
 impl FrameDesign {
-    /// Every member of the frame, as outlines in the keybed frame.
+    /// Builds every part of the frame onto `out`, on the ground, in the keybed
+    /// frame: `x` towards the player from the balance pin, `y` up from the
+    /// keybed. Returns what they declare.
     ///
-    /// Ordered back to front, which is the order a technician would name them.
-    /// `key` supplies the longitudinal positions of the three bearings, because
-    /// the rails stand where the key needs them and not at arbitrary places.
-    pub fn members(&self, key: &super::KeyDesign, layout: &FrameLayout) -> Vec<FrameMember> {
-        use super::Sweep;
+    /// Ordered back to front, the order a technician names them. `key`
+    /// supplies the width the rails are drawn across; `kind`, which row of
+    /// pins and punchings the key stands on. The papers arrive as the stack
+    /// actually laid, bottom first, because two stacks of one height are not
+    /// one object on a bench: a technician counts papers.
+    ///
+    /// Built from the same fields the stops read, with the same arithmetic,
+    /// so the faces they share are the same bits: a punching's felt is drawn
+    /// up to the bearing height the stops read, whatever its papers sum to,
+    /// and the cloth's face and edges are the back stop's own.
+    pub fn parts(
+        &self,
+        key: &super::KeyDesign,
+        kind: KeyKind,
+        balance_papers: &[f64],
+        front_papers: &[f64],
+        out: &mut Vec<Part>,
+    ) -> FrameRanges {
         let s = &self.sections;
-        let mut out = Vec::with_capacity(16);
+        let mut push = |part: Part| {
+            let id = super::next_id(out);
+            out.push(part);
+            id
+        };
+        let whole = |outline: &[Seg], provenance| vec![(0..super::count(outline), provenance)];
 
         // The rails. A rail is continuous across the keyboard, so a single-key
-        // bench shows a slice a little wider than the key — enough to read as
-        // "this goes on", not so much that it hides the key.
-        //
-        // The slice has to beat the **longest** rail along the key as well, and
-        // not only the key's own width. A front rail 75 mm long cut to a 40 mm
-        // slice reads as a post standing under the key, which is the opposite
-        // of what it is.
+        // bench shows a slice a little wider than the key: enough to read as
+        // "this goes on", not so much that it hides the key. The slice has to
+        // beat the longest rail along the key as well, or a 75 mm front rail
+        // cut to a 40 mm slice reads as a post standing under the key.
         let longest = s
             .balance
             .half_length
             .max(s.front.half_length)
             .max(s.back.half_length);
         let slice = (key.width * 1.8).max(2.4 * longest);
-        let mut rail = |id: &'static str, natural_x: f64, top: f64, sec: &RailSection| {
-            // Centred between its two rows. A rail wide enough for both is not
-            // symmetric about either, and the front rail is the clear case: it
-            // reaches 24.5 mm back from the natural's pin towards the sharps.
+        let mut rail = |code, natural_x: f64, top: f64, sec: &RailSection| {
+            // Centred between its two rows: a rail wide enough for both is not
+            // symmetric about either.
             let x = sec.centre_x(natural_x);
             let h = sec.half_length;
             let outline = match sec.crown {
@@ -697,162 +722,250 @@ impl FrameDesign {
                 Some(crown) => {
                     let shoulder = top - crown.height;
                     let c = crown.half_length;
-                    vec![
-                        crate::geometry::Point::new(x - h, 0.0),
-                        crate::geometry::Point::new(x + h, 0.0),
-                        crate::geometry::Point::new(x + h, shoulder),
-                        crate::geometry::Point::new(x + c, top),
-                        crate::geometry::Point::new(x - c, top),
-                        crate::geometry::Point::new(x - h, shoulder),
-                    ]
+                    super::polygon(&[
+                        Point::new(x - h, 0.0),
+                        Point::new(x + h, 0.0),
+                        Point::new(x + h, shoulder),
+                        Point::new(x + c, top),
+                        Point::new(x - c, top),
+                        Point::new(x - h, shoulder),
+                    ])
                 }
             };
-            out.push(FrameMember {
-                id,
+            push(Part {
+                body: BodyId::GROUND,
+                code,
+                sources: whole(&outline, Provenance::Assumed(SECTIONS)),
                 outline,
-                compliant: false,
-                sweep: Sweep::Extruded,
-                width: slice,
-                axis_x: x,
-                paper: None,
-            });
+                sweep: Sweep::Extruded { width: slice },
+                role: Role::Solid,
+                material: Material::RailWood,
+            })
         };
-        rail("back_rail", self.back_rail, self.back_rail_height, &s.back);
-        rail("balance_rail", 0.0, self.balance_rail_height, &s.balance);
-        rail(
-            "front_rail",
+        let back_rail = rail(
+            PartCode::BackRail,
+            self.back_rail,
+            self.back_rail_height,
+            &s.back,
+        );
+        let balance_rail = rail(
+            PartCode::BalanceRail,
+            0.0,
+            self.balance_rail_height,
+            &s.balance,
+        );
+        let front_rail = rail(
+            PartCode::FrontRail,
             self.front_rail,
             self.front_rail_height,
             &s.front,
         );
 
-        // The back rail cloth runs the length of the rail rather than being a
-        // washer, so it stays a strip.
-        out.push(FrameMember {
-            id: "back_rail_cloth",
-            outline: rect(
-                s.back.centre_x(self.back_rail) - s.back.half_length,
-                self.back_rail_height,
-                s.back.centre_x(self.back_rail) + s.back.half_length,
-                self.back_bearing_height(),
-            ),
-            compliant: true,
-            sweep: Sweep::Extruded,
-            width: slice,
-            axis_x: self.back_rail,
-            paper: None,
+        // The cloth: a strip the length of the rail, its two top edges rounded
+        // to the radius the back stop gives them, the arcs centred on the
+        // face's two ends where the stop centres them. Each line takes its
+        // ends from the arcs beside it, so the outline closes bit for bit.
+        let centre = s.back.centre_x(self.back_rail);
+        let (x0, x1) = (centre - s.back.half_length, centre + s.back.half_length);
+        let (bottom, top) = (self.back_rail_height, self.back_bearing_height());
+        let r = super::assembly::PUNCHING_EDGE_RADIUS;
+        let front_edge = Seg::Arc {
+            c: Point::new(x1, top - r),
+            r,
+            from: Dir::X,
+            to: Dir::Y,
+        };
+        let back_edge = Seg::Arc {
+            c: Point::new(x0, top - r),
+            r,
+            from: Dir::Y,
+            to: Dir::NEG_X,
+        };
+        let (front_low, back_low) = (front_edge.start(), back_edge.end());
+        let cloth_outline = vec![
+            Seg::Line {
+                a: Point::new(back_low.x, bottom),
+                b: Point::new(front_low.x, bottom),
+            },
+            Seg::Line {
+                a: Point::new(front_low.x, bottom),
+                b: front_low,
+            },
+            front_edge,
+            Seg::Line {
+                a: front_edge.end(),
+                b: back_edge.start(),
+            },
+            back_edge,
+            Seg::Line {
+                a: back_low,
+                b: Point::new(back_low.x, bottom),
+            },
+        ];
+        let back_rail_cloth = push(Part {
+            body: BodyId::GROUND,
+            code: PartCode::BackRailCloth,
+            sources: whole(&cloth_outline, Provenance::Assumed(UNRECORDED)),
+            outline: cloth_outline,
+            sweep: Sweep::Extruded { width: slice },
+            role: Role::Lining,
+            material: Material::Cloth,
         });
+        let cloth_top = SurfaceRef {
+            part: back_rail_cloth,
+            segs: 2..5,
+        };
 
-        // The punching stacks: papers first, felt on top, each a washer turned
-        // about the pin it sits on. Drawn one paper at a time, because that is
-        // what the drawer holds and what the technician counts.
-        let balance_x = s.balance.pin_x(0.0, layout.kind);
-        let front_x = s.front.pin_x(self.front_rail, layout.kind);
-        out.extend(punching_stack(
+        // The punching stacks: papers first, each its own washer turned about
+        // the pin, then the felt, drawn up to the bearing height the stops
+        // read. A washer's rim is measured and its thickness is not.
+        let mut stack = |rail_top: f64,
+                         axis_x: f64,
+                         sec: &RailSection,
+                         papers: &[f64],
+                         bearing: f64,
+                         felt_code| {
+            let (r_in, r_out) = (sec.punching_hole_radius, sec.punching_radius);
+            let mut laid = Vec::with_capacity(papers.len());
+            let mut y = rail_top;
+            for &t in papers {
+                let outline = washer(r_in, r_out, y, y + t);
+                laid.push(push(Part {
+                    body: BodyId::GROUND,
+                    code: PartCode::PaperPunching,
+                    sources: whole(&outline, Provenance::Measured(PAPERS)),
+                    outline,
+                    sweep: Sweep::Revolved { axis_x },
+                    role: Role::Lining,
+                    material: Material::Paper { thickness: t },
+                }));
+                y += t;
+            }
+            let outline = washer(r_in, r_out, y, bearing);
+            let segments = super::count(&outline);
+            let felt = push(Part {
+                body: BodyId::GROUND,
+                code: felt_code,
+                sources: vec![
+                    (0..1, Provenance::Measured(SECTIONS)),
+                    (1..2, Provenance::Assumed(UNRECORDED)),
+                    (2..3, Provenance::Measured(SECTIONS)),
+                    (3..4, Provenance::Assumed(UNRECORDED)),
+                ],
+                outline,
+                sweep: Sweep::Revolved { axis_x },
+                role: Role::Lining,
+                material: Material::PunchingFelt,
+            });
+            (laid, felt, top_of_turned(felt, segments))
+        };
+        let balance_x = s.balance.pin_x(0.0, kind);
+        let front_x = s.front.pin_x(self.front_rail, kind);
+        let (balance_papers, balance_rail_punching, balance_bearing) = stack(
             self.balance_rail_height,
             balance_x,
             &s.balance,
-            layout.balance_papers,
-            self.balance_punching.felt,
-            "balance_rail_paper",
-            "balance_rail_punching",
-        ));
-        out.extend(punching_stack(
+            balance_papers,
+            self.balance_bearing_height(),
+            PartCode::BalanceRailPunching,
+        );
+        let (front_papers, front_rail_punching, front_bearing) = stack(
             self.front_rail_height,
             front_x,
             &s.front,
-            layout.front_papers,
-            self.front_punching.felt,
-            "front_rail_paper",
-            "front_rail_punching",
-        ));
+            front_papers,
+            self.front_bearing_height(),
+            PartCode::FrontRailPunching,
+        );
 
-        // The pins. They guide the key laterally and carry no vertical load,
-        // which is why the bearing is the punching and not the pin — but they
-        // are drawn, because a reader checks that the key is on its pins.
-        if let Some(pin) = s.balance.pin {
-            out.push(pin_member(
-                "balance_rail_pin",
-                pin,
-                balance_x,
+        // The pins. They guide the key and carry no vertical load, which is
+        // why the bearing is the punching and not the pin; they are drawn
+        // because a reader checks that the key is on its pins. A round pin is
+        // turned, its height assumed; an oblong one extruded, measured.
+        let balance_rail_pin = s.balance.pin.map(|pin| {
+            let (bottom, top) = (
                 self.balance_rail_height,
                 self.balance_rail_height + s.balance.pin_height,
-            ));
-        }
-        if let Some(pin) = s.front.pin {
-            out.push(pin_member(
-                "front_rail_pin",
+            );
+            pin_part(
                 pin,
-                front_x,
+                balance_x,
+                bottom,
+                top,
+                PartCode::BalanceRailPin,
+                &mut push,
+            )
+        });
+        let front_rail_pin = s.front.pin.map(|pin| {
+            let (bottom, top) = (
                 self.front_rail_height,
                 self.front_rail_height + s.front.pin_height,
-            ));
-        }
-        out
-    }
-}
-
-/// One rail's papers and its felt washer, bottom to top.
-fn punching_stack(
-    rail_top: f64,
-    axis_x: f64,
-    sec: &RailSection,
-    papers: &[f64],
-    felt: f64,
-    paper_id: &'static str,
-    felt_id: &'static str,
-) -> Vec<FrameMember> {
-    use super::Sweep;
-    let r_in = sec.punching_hole_radius;
-    let r_out = sec.punching_radius;
-    let mut out = Vec::with_capacity(papers.len() + 1);
-    let mut y = rail_top;
-    for &t in papers {
-        out.push(FrameMember {
-            id: paper_id,
-            outline: washer(r_in, r_out, y, y + t),
-            compliant: true,
-            sweep: Sweep::Revolved,
-            width: 0.0,
-            axis_x,
-            paper: Some(t),
+            );
+            pin_part(pin, front_x, bottom, top, PartCode::FrontRailPin, &mut push)
         });
-        y += t;
+        FrameRanges {
+            back_rail,
+            balance_rail,
+            front_rail,
+            back_rail_cloth,
+            balance_papers,
+            balance_rail_punching,
+            front_papers,
+            front_rail_punching,
+            balance_rail_pin: balance_rail_pin.map(|(id, _)| id),
+            front_rail_pin: front_rail_pin.as_ref().map(|&(id, _)| id),
+            balance_bearing,
+            front_bearing,
+            cloth_top,
+            front_pin_top: front_rail_pin.map(|(part, segs)| SurfaceRef { part, segs }),
+        }
     }
-    out.push(FrameMember {
-        id: felt_id,
-        outline: washer(r_in, r_out, y, y + felt),
-        compliant: true,
-        sweep: Sweep::Revolved,
-        width: 0.0,
-        axis_x,
-        paper: None,
-    });
-    out
 }
 
-/// A pin, turned if it is round and extruded if it is flattened.
-fn pin_member(id: &'static str, pin: PinShape, x: f64, bottom: f64, top: f64) -> FrameMember {
-    use super::Sweep;
+/// A pin, turned if it is round and extruded if it is flattened, pushed by
+/// `push`; with the range of its silhouette that is its top.
+fn pin_part(
+    pin: PinShape,
+    x: f64,
+    bottom: f64,
+    top: f64,
+    code: PartCode,
+    push: &mut impl FnMut(Part) -> PartId,
+) -> (PartId, core::ops::Range<u16>) {
     match pin {
-        PinShape::Round { diameter } => FrameMember {
-            id,
-            outline: washer(0.0, 0.5 * diameter, bottom, top),
-            compliant: false,
-            sweep: Sweep::Revolved,
-            width: 0.0,
-            axis_x: x,
-            paper: None,
-        },
-        PinShape::Oblong { length, thickness } => FrameMember {
-            id,
-            outline: rect(x - 0.5 * length, bottom, x + 0.5 * length, top),
-            compliant: false,
-            sweep: Sweep::Extruded,
-            width: thickness,
-            axis_x: x,
-            paper: None,
-        },
+        PinShape::Round { diameter } => {
+            let outline = washer(0.0, 0.5 * diameter, bottom, top);
+            let n = super::count(&outline);
+            let id = push(Part {
+                body: BodyId::GROUND,
+                code,
+                sources: vec![
+                    (0..1, Provenance::Measured(SECTIONS)),
+                    (1..2, Provenance::Assumed(UNRECORDED)),
+                    (2..3, Provenance::Measured(SECTIONS)),
+                    (3..4, Provenance::Assumed(UNRECORDED)),
+                ],
+                outline,
+                sweep: Sweep::Revolved { axis_x: x },
+                role: Role::Solid,
+                material: Material::Steel,
+            });
+            (id, top_of_turned(id, n).segs)
+        }
+        PinShape::Oblong { length, thickness } => {
+            let outline = rect(x - 0.5 * length, bottom, x + 0.5 * length, top);
+            let n = super::count(&outline);
+            let id = push(Part {
+                body: BodyId::GROUND,
+                code,
+                sources: vec![(0..n, Provenance::Measured(SECTIONS))],
+                outline,
+                sweep: Sweep::Extruded { width: thickness },
+                role: Role::Solid,
+                material: Material::Steel,
+            });
+            (id, 2..3)
+        }
     }
 }
 
@@ -937,102 +1050,136 @@ mod drawer_tests {
 }
 
 #[cfg(test)]
-mod member_tests {
+mod part_tests {
     use super::*;
-    use crate::parts::{KeyDesign, Sweep};
+    use crate::parts::KeyDesign;
 
     /// The frame as the bench lays it: real papers under both felts.
-    fn laid(frame: &FrameDesign, sections: &FrameSections, kind: KeyKind) -> Vec<FrameMember> {
-        let mut frame = frame.clone();
-        frame.sections = *sections;
+    fn laid(frame: &FrameDesign, kind: KeyKind) -> (Vec<Part>, FrameRanges) {
         let balance = papers_for(frame.balance_punching.paper);
         let front = papers_for(frame.front_punching.paper);
-        frame.members(
-            &KeyDesign::default(),
-            &FrameLayout {
-                kind,
-                balance_papers: &balance,
-                front_papers: &front,
-            },
+        let mut parts = Vec::new();
+        let ranges = frame.parts(&KeyDesign::default(), kind, &balance, &front, &mut parts);
+        (parts, ranges)
+    }
+
+    /// The points an outline is drawn through, arcs cut in eight.
+    fn drawn(part: &Part) -> Vec<Point> {
+        part.outline.iter().flat_map(|s| s.drawn(3)).collect()
+    }
+
+    /// The extent of what is drawn: `(x_min, x_max)` and `(y_min, y_max)`, in
+    /// the outline's own coordinates (radius and height for a turned part).
+    fn extent(part: &Part) -> ((f64, f64), (f64, f64)) {
+        drawn(part).iter().fold(
+            ((f64::MAX, f64::MIN), (f64::MAX, f64::MIN)),
+            |((x0, x1), (y0, y1)), p| ((x0.min(p.x), x1.max(p.x)), (y0.min(p.y), y1.max(p.y))),
         )
     }
 
-    fn top_of(members: &[FrameMember], id: &str) -> f64 {
-        members
-            .iter()
-            .filter(|m| m.id == id)
-            .flat_map(|m| m.outline.iter())
-            .fold(f64::MIN, |a, p| a.max(p.y))
-    }
-
-    /// Every member the goal names is present, and the stops the key touches
-    /// are among them.
-    #[test]
-    fn the_frame_carries_its_rails_pins_punchings_and_cloth() {
-        let members = laid(
-            &FrameDesign::default(),
-            &FrameSections::default(),
-            KeyKind::Natural,
-        );
-        for id in [
-            "balance_rail",
-            "balance_rail_pin",
-            "balance_rail_punching",
-            "balance_rail_paper",
-            "front_rail",
-            "front_rail_pin",
-            "front_rail_punching",
-            "front_rail_paper",
-            "back_rail",
-            "back_rail_cloth",
-        ] {
-            assert!(
-                members.iter().any(|m| m.id == id),
-                "the frame is missing its {id}"
-            );
+    fn axis(part: &Part) -> f64 {
+        match part.sweep {
+            Sweep::Revolved { axis_x } => axis_x,
+            Sweep::Extruded { .. } => {
+                let ((x0, x1), _) = extent(part);
+                0.5 * (x0 + x1)
+            }
         }
     }
 
-    /// The drawn top of each bearing is the height the physics uses as a stop.
-    ///
-    /// This is the single-definition invariant at its smallest scale: if the
-    /// punching were drawn from one number and contacted at another, a
-    /// technician would add paper, see the key rise, and read an unchanged dip.
+    /// Every part the frame carries is there, each with its code, and papers
+    /// under both punchings.
     #[test]
-    fn what_is_drawn_is_what_is_touched() {
-        let frame = FrameDesign::default();
-        let members = laid(&frame, &FrameSections::default(), KeyKind::Natural);
+    fn the_frame_carries_its_rails_pins_punchings_and_cloth() {
+        let (parts, ranges) = laid(&FrameDesign::default(), KeyKind::Natural);
+        for papers in [&ranges.balance_papers, &ranges.front_papers] {
+            assert!(!papers.is_empty(), "a punching stands on its papers");
+            for id in papers {
+                assert_eq!(parts[id.index()].code, PartCode::PaperPunching);
+            }
+        }
+        for code in [
+            PartCode::BalanceRail,
+            PartCode::BalanceRailPin,
+            PartCode::BalanceRailPunching,
+            PartCode::FrontRail,
+            PartCode::FrontRailPin,
+            PartCode::FrontRailPunching,
+            PartCode::PaperPunching,
+            PartCode::BackRail,
+            PartCode::BackRailCloth,
+        ] {
+            assert!(
+                parts.iter().any(|p| p.code == code),
+                "the frame is missing its {}",
+                code.code()
+            );
+        }
+        assert!(parts.iter().all(|p| p.body == BodyId::GROUND));
+    }
 
-        assert!(
-            (top_of(&members, "balance_rail_punching") - frame.balance_bearing_height()).abs()
-                < 1e-15
-        );
-        assert!(
-            (top_of(&members, "front_rail_punching") - frame.front_bearing_height()).abs() < 1e-15
-        );
-        assert!((top_of(&members, "back_rail_cloth") - frame.back_bearing_height()).abs() < 1e-15);
+    /// Consistency: every part of the frame is closed bit for bit, turns
+    /// counter-clockwise, and has a source for every segment.
+    #[test]
+    fn every_part_of_the_frame_is_closed_and_counter_clockwise() {
+        let (parts, _) = laid(&FrameDesign::default(), KeyKind::Natural);
+        for part in &parts {
+            assert!(part.is_closed(), "{} is open", part.code.code());
+            let p = drawn(part);
+            let twice_area: f64 = (0..p.len())
+                .map(|i| p[i].x * p[(i + 1) % p.len()].y - p[(i + 1) % p.len()].x * p[i].y)
+                .sum();
+            assert!(twice_area > 0.0, "{} turns clockwise", part.code.code());
+            let covered: u16 = part.sources.iter().map(|(r, _)| r.end - r.start).sum();
+            assert_eq!(usize::from(covered), part.outline.len());
+        }
+    }
+
+    /// The cloth is drawn with the rounded edges the back stop rounds: two
+    /// quarter circles of the stop's radius, centred on the ends of its face,
+    /// the face between them.
+    #[test]
+    fn the_cloth_is_drawn_with_its_rounded_edges() {
+        let frame = FrameDesign::default();
+        let (parts, ranges) = laid(&frame, KeyKind::Natural);
+        let top = ranges.cloth_top.segs(&parts);
+        let r = super::super::assembly::PUNCHING_EDGE_RADIUS;
+        let centre = frame.sections.back.centre_x(frame.back_rail);
+        let half = frame.sections.back.half_length;
+        match (top[0], top[1], top[2]) {
+            (
+                Seg::Arc {
+                    c: front, r: rf, ..
+                },
+                Seg::Line { a, b },
+                Seg::Arc { c: back, r: rb, .. },
+            ) => {
+                assert_eq!(rf.to_bits(), r.to_bits());
+                assert_eq!(rb.to_bits(), r.to_bits());
+                assert_eq!(front.x.to_bits(), (centre + half).to_bits());
+                assert_eq!(back.x.to_bits(), (centre - half).to_bits());
+                assert_eq!(a.x.to_bits(), (centre + half).to_bits());
+                assert_eq!(b.x.to_bits(), (centre - half).to_bits());
+            }
+            other => panic!("the cloth's top is an edge, a face and an edge, not {other:?}"),
+        }
     }
 
     /// Adding paper raises the felt that sits on it, by exactly what was added.
     ///
-    /// The felt does not grow — it is lifted. That is the operation, and a
-    /// model where the washer got thicker instead would teach the wrong thing.
+    /// The felt does not grow: it is lifted. That is the operation, and a model
+    /// where the washer got thicker instead would teach the wrong thing. The
+    /// felt is drawn up to the bearing height the stops read, so its drawn
+    /// thickness is the felt's within the roundings of that height's sum.
     #[test]
     fn adding_paper_lifts_the_felt_without_thickening_it() {
-        let sections = FrameSections::default();
         let base = FrameDesign::default();
         let mut raised = base.clone();
         raised.balance_punching.paper += 0.0004;
 
         let felt_span = |f: &FrameDesign| {
-            let m = laid(f, &sections, KeyKind::Natural);
-            let p = m
-                .iter()
-                .find(|m| m.id == "balance_rail_punching")
-                .expect("the felt washer");
-            let (lo, hi) = p.outline.iter().fold((f64::MAX, f64::MIN), |(lo, hi), q| {
-                (lo.min(q.y), hi.max(q.y))
-            });
+            let (parts, ranges) = laid(f, KeyKind::Natural);
+            let (_, (lo, hi)) = extent(&parts[ranges.balance_rail_punching.index()]);
             (lo, hi - lo)
         };
         let (base_bottom, base_thickness) = felt_span(&base);
@@ -1056,29 +1203,25 @@ mod member_tests {
     #[test]
     fn each_paper_is_drawn_as_itself_and_they_stack_without_a_gap() {
         let frame = FrameDesign::default();
-        let members = laid(&frame, &FrameSections::default(), KeyKind::Natural);
-        let papers: Vec<&FrameMember> = members
-            .iter()
-            .filter(|m| m.id == "balance_rail_paper")
-            .collect();
-
+        let (parts, ranges) = laid(&frame, KeyKind::Natural);
         assert_eq!(
-            papers.len(),
+            ranges.balance_papers.len(),
             papers_for(frame.balance_punching.paper).len(),
-            "one member per paper in the drawer's stack"
+            "one part per paper in the drawer's stack"
         );
         let mut y = frame.balance_rail_height;
-        for m in &papers {
-            let t = m.paper.expect("a paper carries its own thickness");
-            let (lo, hi) = m.outline.iter().fold((f64::MAX, f64::MIN), |(lo, hi), q| {
-                (lo.min(q.y), hi.max(q.y))
-            });
+        for id in &ranges.balance_papers {
+            let paper = &parts[id.index()];
+            let Material::Paper { thickness } = paper.material else {
+                panic!("a paper is made of paper, not {:?}", paper.material);
+            };
+            let (_, (lo, hi)) = extent(paper);
             assert!((lo - y).abs() < 1e-15, "papers stack with no gap");
             assert!(
-                (hi - lo - t).abs() < 1e-15,
+                (hi - lo - thickness).abs() < 1e-15,
                 "a paper is drawn its own thickness"
             );
-            y += t;
+            y += thickness;
         }
         assert!(
             (y - frame.balance_rail_height - frame.balance_punching.paper).abs() < 1e-12,
@@ -1097,27 +1240,26 @@ mod member_tests {
     /// real part.
     #[test]
     fn a_punching_is_a_washer_whose_hole_admits_its_pin() {
-        let sections = FrameSections::default();
-        let members = laid(&FrameDesign::default(), &sections, KeyKind::Natural);
-
+        let frame = FrameDesign::default();
+        let (parts, ranges) = laid(&frame, KeyKind::Natural);
         for (id, sec) in [
-            ("balance_rail_punching", sections.balance),
-            ("front_rail_punching", sections.front),
+            (ranges.balance_rail_punching, frame.sections.balance),
+            (ranges.front_rail_punching, frame.sections.front),
         ] {
-            let m = members.iter().find(|m| m.id == id).expect("the washer");
-            assert_eq!(m.sweep, Sweep::Revolved, "{id} is turned, not extruded");
-            let r_in = m.outline.iter().fold(f64::MAX, |a, p| a.min(p.x));
-            let r_out = m.outline.iter().fold(f64::MIN, |a, p| a.max(p.x));
+            let m = &parts[id.index()];
+            assert!(
+                matches!(m.sweep, Sweep::Revolved { .. }),
+                "turned, not extruded"
+            );
+            let ((r_in, r_out), _) = extent(m);
             let pin = sec.pin.expect("this rail has a pin");
             assert!(
                 r_in >= 0.5 * pin.length() - 1e-12,
-                "{id}: the hole must admit the pin's longest axis"
+                "{}: the hole must admit the pin's longest axis",
+                m.code.code()
             );
-            assert!(r_out > r_in, "{id}: a washer has a rim");
-            assert!(
-                (r_out - sec.punching_radius).abs() < 1e-15,
-                "{id}: drawn at the washer's own radius"
-            );
+            assert!(r_out > r_in, "a washer has a rim");
+            assert!((r_out - sec.punching_radius).abs() < 1e-15);
         }
     }
 
@@ -1126,40 +1268,23 @@ mod member_tests {
     /// One piece, and the crown is what the key's balance mortise straddles.
     #[test]
     fn the_balance_rail_is_crowned_and_the_others_are_not() {
-        let sections = FrameSections::default();
         let frame = FrameDesign::default();
-        let members = laid(&frame, &sections, KeyKind::Natural);
-
-        let rail = members
-            .iter()
-            .find(|m| m.id == "balance_rail")
-            .expect("the balance rail");
-        let crown = sections.balance.crown.expect("it is crowned");
+        let (parts, ranges) = laid(&frame, KeyKind::Natural);
+        let rail = &parts[ranges.balance_rail.index()];
+        let crown = frame.sections.balance.crown.expect("it is crowned");
         let width_at = |y: f64| {
-            let xs: Vec<f64> = rail
-                .outline
+            let xs: Vec<f64> = drawn(rail)
                 .iter()
                 .filter(|p| (p.y - y).abs() < 1e-12)
                 .map(|p| p.x)
                 .collect();
             xs.iter().fold(f64::MIN, |a, &x| a.max(x)) - xs.iter().fold(f64::MAX, |a, &x| a.min(x))
         };
-        assert!(
-            (width_at(0.0) - 2.0 * sections.balance.half_length).abs() < 1e-15,
-            "the block is the rail's full width at the keybed"
-        );
-        assert!(
-            (width_at(frame.balance_rail_height) - 2.0 * crown.half_length).abs() < 1e-15,
-            "the flat on top is the crown's width"
-        );
-        assert!(
-            width_at(frame.balance_rail_height) < width_at(0.0),
-            "a crown is narrower than what carries it"
-        );
-
-        for id in ["front_rail", "back_rail"] {
-            let m = members.iter().find(|m| m.id == id).expect(id);
-            assert_eq!(m.outline.len(), 4, "{id} is a plain block");
+        assert!((width_at(0.0) - 2.0 * frame.sections.balance.half_length).abs() < 1e-15);
+        assert!((width_at(frame.balance_rail_height) - 2.0 * crown.half_length).abs() < 1e-15);
+        assert!(width_at(frame.balance_rail_height) < width_at(0.0));
+        for id in [ranges.front_rail, ranges.back_rail] {
+            assert_eq!(parts[id.index()].outline.len(), 4, "a plain block");
         }
     }
 
@@ -1172,7 +1297,6 @@ mod member_tests {
     #[test]
     fn each_rail_carries_both_of_its_rows() {
         let sections = FrameSections::default();
-
         for (name, sec) in [
             ("balance rail", sections.balance),
             ("front rail", sections.front),
@@ -1185,40 +1309,27 @@ mod member_tests {
                 sec.minimum_half_length() * 2000.0
             );
             if let Some(crown) = sec.crown {
-                assert!(
-                    crown.half_length >= sec.minimum_half_length(),
-                    "the {name}'s punchings bear on the crown, so the flat carries both rows too"
-                );
-                assert!(
-                    crown.half_length < sec.half_length,
-                    "a crown is narrower than what carries it"
-                );
+                assert!(crown.half_length >= sec.minimum_half_length());
+                assert!(crown.half_length < sec.half_length);
             }
         }
 
         // And the rail as drawn really does span them, which is what
         // `centre_x` is for: the width alone would be satisfied by a rail
         // sitting in the wrong place.
+        let frame = FrameDesign::default();
+        let (parts, ranges) = laid(&frame, KeyKind::Natural);
         for (id, sec, natural_x) in [
-            ("balance_rail", sections.balance, 0.0),
-            (
-                "front_rail",
-                sections.front,
-                FrameDesign::default().front_rail,
-            ),
+            (ranges.balance_rail, sections.balance, 0.0),
+            (ranges.front_rail, sections.front, frame.front_rail),
         ] {
-            let members = laid(&FrameDesign::default(), &sections, KeyKind::Natural);
-            let rail = members.iter().find(|m| m.id == id).expect(id);
-            let (x0, x1) = rail
-                .outline
-                .iter()
-                .fold((f64::MAX, f64::MIN), |(a, b), p| (a.min(p.x), b.max(p.x)));
+            let ((x0, x1), _) = extent(&parts[id.index()]);
             for kind in [KeyKind::Natural, KeyKind::Sharp] {
                 let pin = sec.pin_x(natural_x, kind);
                 assert!(
                     pin - sec.punching_radius >= x0 - 1e-12
                         && pin + sec.punching_radius <= x1 + 1e-12,
-                    "{id}: the {kind:?} row's punching hangs off the wood"
+                    "the {kind:?} row's punching hangs off the wood"
                 );
             }
         }
@@ -1303,36 +1414,35 @@ mod member_tests {
     /// are first-class and a keyboard cannot be graduated without them.
     #[test]
     fn a_sharp_stands_on_the_second_row_of_pins() {
-        let sections = FrameSections::default();
         let frame = FrameDesign::default();
-        let natural = laid(&frame, &sections, KeyKind::Natural);
-        let sharp = laid(&frame, &sections, KeyKind::Sharp);
-
-        let axis = |m: &[FrameMember], id: &str| m.iter().find(|x| x.id == id).expect(id).axis_x;
+        let (natural, n) = laid(&frame, KeyKind::Natural);
+        let (sharp, s) = laid(&frame, KeyKind::Sharp);
+        let at = |parts: &[Part], id: Option<PartId>| axis(&parts[id.expect("a pin").index()]);
         assert!(
-            (axis(&natural, "balance_rail_pin")
-                - axis(&sharp, "balance_rail_pin")
-                - sections.balance.sharp_row_offset)
+            (at(&natural, n.balance_rail_pin)
+                - at(&sharp, s.balance_rail_pin)
+                - frame.sections.balance.sharp_row_offset)
                 .abs()
                 < 1e-15,
             "the sharp's balance pin is set back by the row offset"
         );
         assert!(
-            (axis(&natural, "front_rail_pin")
-                - axis(&sharp, "front_rail_pin")
-                - sections.front.sharp_row_offset)
+            (at(&natural, n.front_rail_pin)
+                - at(&sharp, s.front_rail_pin)
+                - frame.sections.front.sharp_row_offset)
                 .abs()
                 < 1e-15,
             "and so is its front pin"
         );
-
-        let rail_of =
-            |m: &[FrameMember], id: &str| m.iter().find(|x| x.id == id).expect(id).outline.clone();
-        for id in ["balance_rail", "front_rail", "back_rail"] {
+        for (a, b) in [
+            (n.balance_rail, s.balance_rail),
+            (n.front_rail, s.front_rail),
+            (n.back_rail, s.back_rail),
+        ] {
             assert_eq!(
-                rail_of(&natural, id),
-                rail_of(&sharp, id),
-                "{id} is one rail; only the row of pins differs"
+                natural[a.index()].outline,
+                sharp[b.index()].outline,
+                "one rail; only the row of pins differs"
             );
         }
     }
@@ -1340,24 +1450,19 @@ mod member_tests {
     /// The balance pin is turned and the front rail pin is flattened.
     #[test]
     fn the_two_pins_are_not_the_same_part() {
-        let sections = FrameSections::default();
-        let members = laid(&FrameDesign::default(), &sections, KeyKind::Natural);
-
-        let balance = members
-            .iter()
-            .find(|m| m.id == "balance_rail_pin")
-            .expect("balance pin");
-        assert_eq!(balance.sweep, Sweep::Revolved, "a balance pin is round");
-
-        let front = members
-            .iter()
-            .find(|m| m.id == "front_rail_pin")
-            .expect("front pin");
-        assert_eq!(front.sweep, Sweep::Extruded, "a front rail pin is oblong");
-        let length = front.outline.iter().fold(f64::MIN, |a, p| a.max(p.x))
-            - front.outline.iter().fold(f64::MAX, |a, p| a.min(p.x));
+        let (parts, ranges) = laid(&FrameDesign::default(), KeyKind::Natural);
+        let balance = &parts[ranges.balance_rail_pin.expect("a balance pin").index()];
         assert!(
-            length > front.width,
+            matches!(balance.sweep, Sweep::Revolved { .. }),
+            "a balance pin is round"
+        );
+        let front = &parts[ranges.front_rail_pin.expect("a front pin").index()];
+        let Sweep::Extruded { width } = front.sweep else {
+            panic!("a front rail pin is oblong");
+        };
+        let ((x0, x1), _) = extent(front);
+        assert!(
+            x1 - x0 > width,
             "an oblong pin is longer along the key than it is thick across it"
         );
     }

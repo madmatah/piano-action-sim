@@ -32,6 +32,7 @@ has no record or disagrees with it.
 | felt washers 1.5 and 2.0 mm (balance, front), back rail cloth 3.0 mm | key height, key dip | assumed |
 | front mortise depth 22 mm | the mortise stop | 3 mm of recess and 19 mm of mortise, written only in a note of `key-frame-sections.json` |
 | balance crown height 6 mm, balance pin 11.2 mm proud | the drawing | assumed |
+| the stops' rounded edges, 0.5 mm in radius | where the punchings and the cloth meet the key, and the cloth's drawn edges | assumed: a shape, not a setting; the dip does not move with it by more than 5 µm when it is doubled |
 | back rail 24 mm along the key | where the tail bears on its cloth | assumed, to be measured |
 | the capstan's proportions, in steel at 7850 kg/m³ | the key's mass | proportions scaled from a photograph, material assumed |
 | a lead's centre 10 mm above the key's underside | the key's mass properties at an angle | assumed |

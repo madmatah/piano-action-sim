@@ -32,11 +32,12 @@ trade's own protocols, and come back with the expected values.**
 ## Code
 
 1. **One part definition feeds contacts and drawing**: both are built in Rust
-   from the same fields and exported, and the browser only renders them. They
-   are two constructions held together by tests until contact surfaces become
-   ranges into the drawn outline (planned, FOUNDATIONS §7.1). Check:
-   `the_declared_bearing_surface_is_the_whole_underside`,
-   `what_is_drawn_is_what_is_touched`.
+   from the same fields and exported, and the browser only renders them,
+   applying each body's pose as given. The drawn parts declare the ranges a
+   contact may read; the stops still read a construction of their own, and the
+   two are held together by a test until contacts read those ranges (planned,
+   FOUNDATIONS §7.1). Check:
+   `every_stop_face_is_a_declared_range_of_a_drawn_part`.
 2. **Regulation is trade targets solved to geometry; the coordinate is
    normative**, the target kept beside it with its achieved value. Check:
    `the_regulated_key_lands_within_the_placement_error_of_its_targets`.
@@ -136,8 +137,8 @@ grep for a listed value finds only its warning; *not enforced*.
 ## Layout
 
 ```
-crates/pa-core     domain: geometry · mechanism · parts · measure. No I/O, no
-                   web; libm its one dependency
+crates/pa-core     domain: geometry · mechanism · contact · parts · measure. No
+                   I/O, no web; libm its one dependency
 crates/pa-app      application: the single-key bench (KeyBench), the golden
                    sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;

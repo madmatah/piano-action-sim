@@ -500,16 +500,19 @@ mod tests {
         assert_eq!(unweighed.front_weight_g(), Err(JigRefusal::KeyNotWeighed));
     }
 
-    /// The jig levels the covering: its top runs parallel to the `x` axis of
-    /// the key's frame, so the level the protocol asks for is angle zero.
+    /// The jig levels the covering: the drawn keytop's top runs parallel to
+    /// the `x` axis of the key's frame, so the level the protocol asks for is
+    /// angle zero.
     #[test]
     fn level_on_the_jig_is_the_covering_horizontal() {
         let key = KeyDesign::default();
-        let outline = key.outline_vertices();
-        // Vertices 6 and 7 are the covering's top, from the lip back: the
-        // outline's order is fixed, and a named vertex is the only honest
-        // probe.
-        let (lip, back) = (outline[6], outline[7]);
+        let mut parts = Vec::new();
+        let ranges = key.parts(crate::mechanism::BodyId(1), &mut parts);
+        // From the lip anchor back along the keytop's top: named points, the
+        // only honest probes.
+        let lip = ranges.lip.point(&parts);
+        let top = &parts[ranges.keytop.index()].outline;
+        let back = top[top.len() - 1].start();
         assert!((lip.x - key.lip()).abs() < 1e-15);
         assert!((lip.x - back.x - key.keytop_length).abs() < 1e-15);
         assert_eq!(lip.y.to_bits(), back.y.to_bits());

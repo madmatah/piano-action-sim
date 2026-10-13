@@ -141,8 +141,15 @@
       "note": "Not measured, and not the lateral fit: across the keyboard the mortise is bushed and close on the pin's wide faces, which is what holds the key straight and is not a dimension in the sagittal plane. 8 mm is 3 mm of total slack on a 5 mm pin."
     }
   ],
+  "materials": {
+    "statement": "The key front and the covering are white. The capsule and the back check block are of a wood different from the keystick's.",
+    "stated_by": "project owner",
+    "date": "2026-10-11",
+    "what_for": "Each piece of the key is drawn as its own part with its own material, so that a reader tells the pieces apart as on a real key. A colour is the view's choice from the material; the material is the model's."
+  },
   "deliberately_absent": [
-    "The hollow in the top of the key behind the capstan, which clears a rail. Left out until the rail it clears is modelled - the owner's call, and the right one: a hollow with no reason to be where it is would be shaped from a photograph again."
+    "The hollow in the top of the key behind the capstan, which clears a rail. Left out until the rail it clears is modelled - the owner's call, and the right one: a hollow with no reason to be where it is would be shaped from a photograph again.",
+    "The balance mortise. None of its dimensions is measured, and the balance pin's height waits on the same measurement (key-frame-sections.json), so it is not drawn and the balance pin stands hidden in the key's wood, rather than in a hole shaped from a guess. The front mortise is drawn: its depth is measured, and its place and length are the two S records above."
   ],
   "still_to_measure": [
     "Where the capsule sits along the key. It depends on whether the key is a natural or a sharp, and belongs with the balance rail rather than here.",

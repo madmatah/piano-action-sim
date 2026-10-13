@@ -1,14 +1,19 @@
-//! Parametric part definitions, and the mass properties that follow from them.
+//! Parametric part definitions, the parts they build, and the mass properties
+//! of the composite key.
 //!
-//! # Why mass is derived from the outline, not stored beside it
+//! # Two things built from one key
 //!
-//! [`crate::geometry::Inertia`] offers a choice, and this module exists to make
-//! the *derived* branch real. If a key's mass and centre of gravity were stored
-//! independently of its shape, then moving a lead, shortening a key or changing
-//! the wood would leave the inertia untouched, and every sensitivity this project
-//! sells would be wrong in a plausible, hard-to-notice way. So the outline is the
-//! single source: area, centroid and second moment all fall out of it, and a
-//! measured mass may override the total without ever detaching from the shape.
+//! [`KeyDesign`] holds the key's dimensions, and two things are built from
+//! them. Its **parts** ([`key`]), one closed outline per piece of material,
+//! are what is drawn and what the faults read; [`FrameDesign`] builds the
+//! frame's the same way ([`frame`]). Its **volume model**, the polygon
+//! [`KeyDesign::outline_vertices`] integrated as a uniform prism and the
+//! capstan turned from its profile, is the composite key's mass: an
+//! assumption with no record, drawn by nothing, which the parts tile exactly
+//! (`the_drawn_key_tiles_the_polygon_its_mass_is_integrated_over`). A key's
+//! mass properties are to be measured rather than derived from a volume
+//! (`docs/FOUNDATIONS.md` §2.3), and the volume model leaves with the composite
+//! key.
 //!
 //! # The key's local frame
 //!
@@ -19,27 +24,38 @@
 //! negative behind it.
 
 pub mod assembly;
+pub mod faults;
 pub mod frame;
+pub mod key;
 pub mod mounts;
 
 pub use assembly::{KeyAssembly, Regulation, RestingOn, Travel};
-pub use frame::{FrameDesign, PunchingStack};
+pub use faults::Fault;
+pub use frame::{FrameDesign, FrameRanges, PunchingStack};
+pub use key::KeyRanges;
 
-/// How a part's profile becomes a solid.
-///
-/// Most of the action is prismatic. A screw is not, and a punching is not: a
-/// washer extruded sideways is a strip of felt, which is not what sits on a
-/// rail. Turned parts get turned, and the profile they carry is in **radius
-/// and height** rather than in the keybed's `x` and `y`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Sweep {
-    /// Swept sideways across the keyboard: keys, rails, the back rail cloth.
-    Extruded,
-    /// Turned about a vertical axis: punchings, round pins, the capstan.
-    Revolved,
+use crate::contact::{Part, PartId};
+use crate::geometry::{Point, Seg};
+
+/// A closed outline through `points`, in order.
+fn polygon(points: &[Point]) -> Vec<Seg> {
+    (0..points.len())
+        .map(|i| Seg::Line {
+            a: points[i],
+            b: points[(i + 1) % points.len()],
+        })
+        .collect()
 }
 
-use crate::geometry::{Anchor, Inertia, Part, Point, Seg, Surface};
+/// A part's index as its list will hold it.
+fn next_id(out: &[Part]) -> PartId {
+    PartId(u16::try_from(out.len()).expect("a scene holds fewer than 65 536 parts"))
+}
+
+/// The number of segments in an outline, as a range bound.
+fn count(outline: &[Seg]) -> u16 {
+    u16::try_from(outline.len()).expect("an outline holds fewer than 65 536 segments")
+}
 
 /// Mass properties of a planar region extruded across the sagittal plane.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -393,7 +409,7 @@ pub struct KeyDesign {
     /// its own mortise behind and the front rail pin would stand in fresh air.
     ///
     /// It is a **key** dimension and the front rail's position is a *frame*
-    /// one. They have to agree, and [`KeyAssembly::faults`] is what says
+    /// one. They have to agree, and [`faults::faults`] is what says
     /// so when they do not; what places the rail by default is
     /// [`Self::front_mortise_x`]. [E]
     pub front_mortise_from_front_edge: f64,
@@ -542,7 +558,9 @@ impl KeyDesign {
     /// **This is the bearing surface**, and it is not the whole key: the tail is
     /// chamfered over its last stretch, behind everything that touches. Every
     /// stop contacts this and nothing else, so it is stated once here rather
-    /// than rebuilt by whoever needs it.
+    /// than rebuilt by whoever needs it. The drawn key declares the same
+    /// underside as ranges of its parts ([`KeyRanges::underside`]), built
+    /// from the same fields.
     pub fn underside_flat(&self) -> (f64, f64) {
         (self.tail_end + self.tail_rise_run, self.front_edge)
     }
@@ -574,14 +592,12 @@ impl KeyDesign {
         [(tail, kink), (kink, front)]
     }
 
-    /// The sagittal outline, as an ordered list of vertices.
+    /// The volume model's polygon: the key's whole sagittal section, as an
+    /// ordered list of vertices, the covering and the key front counted as wood.
     ///
-    /// The mass properties integrate it and the renderer extrudes it. The stops
-    /// do not read it: they read [`Self::underside_corners`] and
-    /// [`Self::underside_segments`], which are built from the same fields. That
-    /// shared construction is what keeps the drawn underside and the touched
-    /// one the same, and `the_declared_bearing_surface_is_the_whole_underside`
-    /// checks it on the default key.
+    /// The composite key's mass properties integrate it, and nothing else
+    /// reads it: the key is drawn from its parts ([`Self::parts`]), which tile
+    /// this polygon exactly, and the stops read [`Self::underside_corners`].
     pub fn outline_vertices(&self) -> Vec<Point> {
         let top = self.stick_height;
         let wood_front = self.front_edge - self.front_board;
@@ -719,71 +735,6 @@ impl KeyDesign {
             self.stick_mass_properties()?
                 .combined(self.lead_mass_properties()),
         )
-    }
-
-    /// Builds the key as a [`Part`]: its outline as segments, its underside as
-    /// a [`Surface`], and its named points.
-    ///
-    /// Only the tests call this today. The bench draws
-    /// [`Self::outline_vertices`] directly, and the stops read
-    /// [`Self::underside_corners`] and [`Self::underside_segments`].
-    pub fn to_part(&self) -> Part {
-        let v = self.outline_vertices();
-        let mut outline = Vec::with_capacity(v.len());
-        for i in 0..v.len() {
-            outline.push(Seg::Line {
-                a: v[i],
-                b: v[(i + 1) % v.len()],
-            });
-        }
-
-        let mut anchors = vec![
-            Anchor {
-                id: "balance_pin",
-                at: Point::new(0.0, 0.0),
-            },
-            Anchor {
-                id: "capstan",
-                at: self.capstan_contact(),
-            },
-            // The lip and not the measuring point: where a weight is centred
-            // is the protocol's, and a key asked for its own measuring point
-            // would answer with one setting while the bench weighs at another.
-            Anchor {
-                id: "front_lip",
-                at: Point::new(self.lip(), self.stick_height + self.keytop_thickness),
-            },
-            Anchor {
-                id: "front_mortise",
-                at: Point::new(self.front_mortise_x(), 0.0),
-            },
-        ];
-        anchors.extend(self.leads.iter().map(|l| Anchor {
-            id: "key_lead",
-            at: Point::new(l.from_balance, l.height),
-        }));
-
-        Part {
-            id: "key",
-            pivot: Point::new(0.0, 0.0),
-            rest_angle: 0.0,
-            // Segments 0, 1 and 2 are the underside, and all three of them
-            // bear: the chamfer under the tail on the back rail cloth — which
-            // is what it is cut for — and the flat on the balance punching and
-            // the front punching. Surfaces are ranges into this outline,
-            // never copies.
-            surfaces: vec![Surface {
-                id: "key_underside",
-                segs: 0..3,
-                lining: None,
-            }],
-            outline,
-            inertia: Inertia::Derived {
-                density: self.density,
-                width: self.width,
-            },
-            anchors,
-        }
     }
 }
 
@@ -946,28 +897,6 @@ mod tests {
             "weighing a key must not move its centre of gravity"
         );
         assert!((scaled.i_origin - derived.i_origin * 1.3).abs() < 1e-18);
-    }
-
-    /// The surfaces of the generated part are ranges into its own outline.
-    #[test]
-    fn the_generated_part_holds_no_parallel_geometry() {
-        let part = KeyDesign::default().to_part();
-        assert_eq!(
-            part.outline.len(),
-            KeyDesign::default().outline_vertices().len()
-        );
-        for s in &part.surfaces {
-            assert!(
-                s.segs.end <= part.outline.len(),
-                "surface {} points past the outline",
-                s.id
-            );
-        }
-        assert!(
-            part.anchors.iter().any(|a| a.id == "front_lip"),
-            "the covering's lip must be a named anchor: every touchweight's measuring \
-             point is taken back from it"
-        );
     }
 }
 
@@ -1228,232 +1157,6 @@ mod capstan_tests {
 #[cfg(test)]
 mod profile_tests {
     use super::*;
-
-    /// The keystick is one thickness of wood with things on it.
-    ///
-    /// Every feature in the profile is there for a reason, and the reason is
-    /// what says where it may be moved: the covering is a covering and stops
-    /// where it stops; the capsule puts more wood where the balance mortise is
-    /// cut; the block gives the back check wire something to be driven into;
-    /// the tail is cut down to set the height the damper bears at. A key read
-    /// as a stack of steps gets the mass about right and all of that wrong.
-    #[test]
-    fn the_keystick_is_one_thickness_with_its_parts_on_it() {
-        let d = KeyDesign::default();
-        let v = d.outline_vertices();
-
-        let heights: Vec<f64> = v.iter().map(|p| p.y).collect();
-        let distinct = {
-            let mut h = heights.clone();
-            h.sort_by(f64::total_cmp);
-            h.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
-            h.len()
-        };
-        assert!(
-            distinct >= 6,
-            "a stepped key should show at least six distinct heights, saw {distinct}"
-        );
-
-        // The capsule stands proud of the stick, which is the whole reason
-        // it is glued on: more wood where the mortise is cut. It is not the
-        // highest thing on the key, though: the block carrying the back
-        // check is taller.
-        let top = heights.iter().copied().fold(f64::MIN, f64::max);
-        assert!(d.capsule_height > 0.0 && d.back_check_block_height > d.capsule_height);
-        assert!(
-            (top - (d.stick_height + d.back_check_block_height)).abs() < 1e-12,
-            "the back check block must be the highest wood on the key"
-        );
-
-        // The tail is cut down, and it is the lowest wood on the key: that
-        // is what puts the damper's felt where the lever can reach it.
-        assert!(
-            d.tail_height < d.stick_height,
-            "the tail must be thinner than the stick it is cut from"
-        );
-        let over_the_tail = v
-            .iter()
-            .filter(|p| p.x < d.tail_end + d.tail_length - 1e-9)
-            .fold(f64::MIN, |a, p| a.max(p.y));
-        assert!(
-            (over_the_tail - (d.tail_height + d.damper_felt)).abs() < 1e-12,
-            "the felt the damper bears on must be the top of the tail, not {over_the_tail}"
-        );
-    }
-
-    /// The underside is straight everywhere the key bears — in two faces.
-    ///
-    /// The flat carries two of the three bearings, the balance punching and
-    /// the front punching. The third, the back rail cloth, is carried by the
-    /// **chamfer**: that is what the chamfer is cut for, so the cloth has to
-    /// lie inside it, with the whole width of the rail under it. A cloth in
-    /// front of the chamfer could only ever be met by an edge.
-    ///
-    /// What the stops depend on is that each face is straight where it bears,
-    /// and that is what is asserted.
-    #[test]
-    fn the_underside_is_straight_everywhere_the_key_bears() {
-        let d = KeyDesign::default();
-        let flat_from = d.tail_end + d.tail_rise_run;
-        let v = d.outline_vertices();
-        let flat: Vec<usize> = (0..v.len()).filter(|&i| v[i].y.abs() < 1e-12).collect();
-
-        assert!(
-            flat.windows(2).all(|w| w[1] == w[0] + 1),
-            "the bearing surface must be one unbroken run of the outline, not \
-             pieces of it with wood between them"
-        );
-        let (first, last) = (v[flat[0]].x, v[*flat.last().unwrap()].x);
-        assert!(
-            (first - flat_from).abs() < 1e-12,
-            "the flat must start where the tail's chamfer ends, not at {first}"
-        );
-        assert!(
-            (last - d.front_edge).abs() < 1e-12,
-            "and run to the front of the key, not to {last}"
-        );
-        for bearing in [0.0, d.front_mortise_x()] {
-            assert!(
-                bearing > first && bearing < last,
-                "the bearing at {bearing} m is off the flat"
-            );
-        }
-
-        // And the back rail the placement rule builds for this key bears on
-        // the chamfer, rail width included. The rule is what is under test:
-        // it is free to put the cloth anywhere, and only the chamfer stops it.
-        let placed = frame::FrameDesign::default().placed_under(&d);
-        let rail = frame::FrameSections::default().back.half_length;
-        assert!(
-            placed.back_rail + rail < first,
-            "the whole of the back rail must be behind where the chamfer \
-             begins: the rail reaches {} m against {first}",
-            placed.back_rail + rail
-        );
-        assert!(
-            placed.back_rail - rail > d.tail_end,
-            "and in front of the end of the key: it reaches {} m against {}",
-            placed.back_rail - rail,
-            d.tail_end
-        );
-    }
-
-    /// The capstan is screwed straight into the keystick.
-    ///
-    /// Into a hole bored through the wood, with nothing glued under it — so
-    /// its seat is the stick's own top, and the outline carries no pad.
-    #[test]
-    fn the_capstan_screws_into_the_stick_itself() {
-        let d = KeyDesign::default();
-        assert!((d.capstan_seat() - d.stick_height).abs() < 1e-15);
-
-        // Read the **top surface** over the capstan, not the vertices near it.
-        // Filtering vertices would be vacuous: the nearest one is 34 mm away,
-        // so the filter comes back empty, `fold` returns `f64::MIN`, and the
-        // assertion holds for any key whatsoever — a pad included.
-        let v = d.outline_vertices();
-        let top_over = |x: f64| {
-            let mut top = f64::MIN;
-            for i in 0..v.len() {
-                let (a, b) = (v[i], v[(i + 1) % v.len()]);
-                let (lo, hi) = if a.x <= b.x { (a, b) } else { (b, a) };
-                if lo.x <= x && x <= hi.x {
-                    let span = hi.x - lo.x;
-                    let t = if span.abs() < 1e-15 {
-                        0.0
-                    } else {
-                        (x - lo.x) / span
-                    };
-                    top = top.max(lo.y + t * (hi.y - lo.y));
-                }
-            }
-            top
-        };
-        for x in [d.capstan - 0.012, d.capstan, d.capstan + 0.012] {
-            let top = top_over(x);
-            assert!(
-                top <= d.stick_height + 1e-12,
-                "wood stands {top} m proud at {x} m, and the capstan screws into \
-                 the bare stick"
-            );
-        }
-    }
-
-    /// The declared bearing surface is the whole underside, both faces, and it
-    /// runs through the corners the stops read.
-    ///
-    /// No contact reads this surface. The stops read
-    /// [`KeyDesign::underside_corners`] and [`KeyDesign::underside_segments`],
-    /// built from the same fields as the outline, and this test is what checks,
-    /// on the default key, that the outline's underside passes through those
-    /// same corners. It also guards the range itself, which is a pair of
-    /// indices: indices stop meaning what they meant the moment a vertex is
-    /// added.
-    #[test]
-    fn the_declared_bearing_surface_is_the_whole_underside() {
-        let d = KeyDesign::default();
-        let part = d.to_part();
-        let (flat_from, flat_to) = d.underside_flat();
-        let surface = part
-            .surfaces
-            .first()
-            .expect("the key declares its underside");
-        let segs = &part.outline[surface.segs.clone()];
-        assert_eq!(
-            segs.len(),
-            3,
-            "the underside is the chamfer and the two stretches of flat"
-        );
-
-        let ends = |seg: &Seg| match *seg {
-            Seg::Line { a, b } => (a, b),
-            Seg::Arc { .. } => panic!("the underside is straight, not an arc"),
-        };
-        // It runs from the end of the tail to the front of the key, with every
-        // segment joined to the next: a bearing surface with a gap in it would
-        // let a stop through the wood between two pieces of it.
-        let (start, _) = ends(&segs[0]);
-        let (_, end) = ends(&segs[segs.len() - 1]);
-        assert!((start.x - d.tail_end).abs() < 1e-12 && (start.y - d.tail_rise).abs() < 1e-12);
-        assert!((end.x - flat_to).abs() < 1e-12 && end.y.abs() < 1e-12);
-        // Those are the corners the stops read, with the kink between them.
-        let (_, kink) = ends(&segs[0]);
-        let same = |p: Point, q: Point| (p.x - q.x).abs() < 1e-12 && (p.y - q.y).abs() < 1e-12;
-        let [tail, kink_read, front] = d.underside_corners();
-        assert!(
-            same(start, tail) && same(kink, kink_read) && same(end, front),
-            "the outline's underside and the corners the stops read have drifted apart"
-        );
-        for pair in segs.windows(2) {
-            let (_, b) = ends(&pair[0]);
-            let (c, _) = ends(&pair[1]);
-            assert!((b.x - c.x).abs() < 1e-12 && (b.y - c.y).abs() < 1e-12);
-        }
-        // The flat is flat, and it is where the two punchings bear.
-        for seg in &segs[1..] {
-            let (a, b) = ends(seg);
-            assert!(
-                a.y.abs() < 1e-12 && b.y.abs() < 1e-12,
-                "every segment of the flat lies on the flat"
-            );
-        }
-        for bearing in [0.0, d.front_mortise_x()] {
-            assert!(
-                bearing > flat_from && bearing < flat_to,
-                "the bearing at {bearing} m is not on the flat"
-            );
-        }
-        // And the chamfer, which is what the back rail bears on, rises
-        // towards the tail.
-        let (a, b) = ends(&segs[0]);
-        assert!(
-            a.y > b.y && (b.x - flat_from).abs() < 1e-12,
-            "the chamfer must rise towards the end of the key and run out \
-             where the flat begins"
-        );
-        let placed = frame::FrameDesign::default().placed_under(&d);
-        assert!(placed.back_rail > a.x && placed.back_rail < b.x);
-    }
 
     /// Shaping the key must not break its weighing.
     ///

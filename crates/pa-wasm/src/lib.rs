@@ -21,37 +21,79 @@
 //! wrong, it is wrong in the domain, and fixing it here would put the engine and
 //! the browser permanently out of step.
 
-use pa_app::key_bench::{Bearing, Fault, FingerVerdict, KeyBench, Sweep, Which, PAPER_THICKNESSES};
+use pa_app::key_bench::{
+    Bearing, Fault, FingerVerdict, KeyBench, Material, Provenance, Role, Sweep, Which, KEY,
+    PAPER_THICKNESSES,
+};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-/// One closed outline, in millimetres, ready to draw.
+/// One part, in millimetres, in its own body's frame, ready to draw.
 ///
 /// Millimetres rather than metres because every dimension the user reads is in
 /// millimetres, and converting once here beats converting in every label.
+/// Where the part stands is not here: it is its body's pose, which the view
+/// applies as it is given.
 #[derive(Serialize)]
 struct OutlineDto {
-    id: String,
-    /// Flat `[x0, y0, x1, y1, …]`, millimetres.
-    points: Vec<f32>,
-    compliant: bool,
-    /// Extrusion across the sagittal plane, millimetres. Zero when turned.
-    width: f32,
-    /// `"extruded"` or `"revolved"`. A screw is not a prism, and a punching is
-    /// not a strip of felt.
-    sweep: &'static str,
-    /// Where a turned part stands, millimetres, and the sine of its angle.
-    /// A turned part is placed, not deformed. Ignored when extruded.
-    axis: [f32; 3],
+    /// The body that carries it, an index into the scene's poses.
+    body: usize,
+    /// What it is, `snake_case`.
+    code: &'static str,
+    /// `"solid"`, `"cut"` or `"lining"`. A cut is drawn in the section only,
+    /// as the void it is.
+    role: &'static str,
+    /// What it is made of, `snake_case`. The view picks its colour.
+    material: &'static str,
     /// For a paper punching, its own thickness in millimetres. The trade
     /// identifies a paper by colour and the colour is the thickness, so the
     /// view is given the number rather than inventing a palette.
     paper_mm: Option<f32>,
+    /// `"extruded"` or `"revolved"`. A screw is not a prism, and a punching is
+    /// not a strip of felt.
+    sweep: &'static str,
+    /// Extrusion across the sagittal plane, millimetres. Zero when turned.
+    width: f32,
+    /// Where a turned part's axis stands along its body's `x`, millimetres.
+    /// Zero when extruded.
+    axis_x: f32,
+    /// Flat `[x0, y0, x1, y1, …]`, millimetres, in the body's frame; for a
+    /// turned part, its profile in radius and height.
+    points: Vec<f32>,
+    /// The segment of the part's outline each point starts or lies on.
+    segs: Vec<u16>,
+    /// Which segments come from where.
+    sources: Vec<SourceDto>,
 }
 
-/// A lead, as a circle to draw.
+/// Where a stretch of an outline comes from.
+#[derive(Serialize)]
+struct SourceDto {
+    /// The first segment.
+    from: u16,
+    /// One past the last.
+    to: u16,
+    /// `"measured"`, `"published"`, `"traced"` or `"assumed"`.
+    how: &'static str,
+    /// The record, a path under `data/params/`.
+    record: &'static str,
+}
+
+/// Where one body's frame stands: its origin in millimetres, and the cosine
+/// and sine of its rotation.
+#[derive(Serialize)]
+struct PoseDto {
+    origin: [f32; 2],
+    cos: f32,
+    sin: f32,
+}
+
+/// A lead, as a circle to draw on its body.
 #[derive(Serialize)]
 struct LeadDto {
+    /// The body it rides on, an index into the scene's poses.
+    body: usize,
+    /// Centre, millimetres, in the body's frame.
     x: f32,
     y: f32,
     radius: f32,
@@ -61,14 +103,26 @@ struct LeadDto {
     from_balance_mm: f32,
 }
 
+/// A point marked on a body.
+#[derive(Serialize)]
+struct MarkerDto {
+    /// The body, an index into the scene's poses.
+    body: usize,
+    /// Where, millimetres, in the body's frame.
+    at: [f32; 2],
+}
+
 /// Everything the view needs to draw one frame.
 #[derive(Serialize)]
 struct SceneDto {
+    /// Every part, each in its own body's frame.
     outlines: Vec<OutlineDto>,
+    /// One per body, in body order: where each body's frame stands.
+    poses: Vec<PoseDto>,
     leads: Vec<LeadDto>,
-    /// The measuring point, millimetres. Drawn because a reader must see where
-    /// the engine thinks it is weighing.
-    measuring_point: [f32; 2],
+    /// The measuring point. Drawn because a reader must see where the engine
+    /// thinks it is weighing.
+    measuring_point: MarkerDto,
     /// Why this frame cannot be weighed, when it cannot. Travels with the
     /// scene rather than with the readout, because the readout is exactly
     /// what is missing in that case.
@@ -84,6 +138,49 @@ struct SceneDto {
     /// a fault is to say it, and a second place deciding the wording is a
     /// second place for it to drift from the geometry that found it.
     faults: Vec<String>,
+}
+
+/// Metres to millimetres, narrowed for drawing.
+fn mm(metres: f64) -> f32 {
+    (metres * 1000.0) as f32
+}
+
+fn role(r: Role) -> &'static str {
+    match r {
+        Role::Solid => "solid",
+        Role::Cut => "cut",
+        Role::Lining => "lining",
+    }
+}
+
+fn material(m: Material) -> &'static str {
+    match m {
+        Material::KeyWood => "key_wood",
+        Material::BlockWood => "block_wood",
+        Material::Covering => "covering",
+        Material::KeyFront => "key_front",
+        Material::RailWood => "rail_wood",
+        Material::Steel => "steel",
+        Material::PunchingFelt => "punching_felt",
+        Material::HardFelt => "hard_felt",
+        Material::Cloth => "cloth",
+        Material::Paper { .. } => "paper",
+    }
+}
+
+fn source(range: &core::ops::Range<u16>, p: Provenance) -> SourceDto {
+    let (how, record) = match p {
+        Provenance::Measured(r) => ("measured", r),
+        Provenance::Published(r) => ("published", r),
+        Provenance::Traced(r) => ("traced", r),
+        Provenance::Assumed(r) => ("assumed", r),
+    };
+    SourceDto {
+        from: range.start,
+        to: range.end,
+        how,
+        record,
+    }
 }
 
 /// The trade quantities, in the trade's units.
@@ -169,7 +266,7 @@ fn say(fault: &Fault) -> String {
         ),
         Fault::PunchingOffTheUnderside { rail, by } => format!(
             "the {} stands {:.1} mm off the flat of the key's underside",
-            rail.replace('_', " "),
+            rail.code().replace('_', " "),
             by * 1000.0
         ),
     }
@@ -191,31 +288,45 @@ impl Bench {
         }
     }
 
-    /// The scene to draw, as JSON.
+    /// The scene to draw, as JSON: every part in its own body's frame, and
+    /// each body's pose.
     pub fn scene(&self) -> String {
         let outlines = self
             .inner
             .outlines()
             .into_iter()
-            .map(|o| OutlineDto {
-                id: o.id,
-                points: o
-                    .points
-                    .iter()
-                    .flat_map(|p| [(p.x * 1000.0) as f32, (p.y * 1000.0) as f32])
-                    .collect(),
-                compliant: o.compliant,
-                width: (o.width * 1000.0) as f32,
-                sweep: match o.sweep {
-                    Sweep::Extruded => "extruded",
-                    Sweep::Revolved => "revolved",
-                },
-                axis: [
-                    (o.axis[0] * 1000.0) as f32,
-                    (o.axis[1] * 1000.0) as f32,
-                    o.axis[2] as f32,
-                ],
-                paper_mm: o.paper.map(|t| (t * 1000.0) as f32),
+            .map(|o| {
+                let (sweep, width, axis_x) = match o.sweep {
+                    Sweep::Extruded { width } => ("extruded", mm(width), 0.0),
+                    Sweep::Revolved { axis_x } => ("revolved", 0.0, mm(axis_x)),
+                };
+                OutlineDto {
+                    body: o.body.0,
+                    code: o.code.code(),
+                    role: role(o.role),
+                    material: material(o.material),
+                    paper_mm: match o.material {
+                        Material::Paper { thickness } => Some(mm(thickness)),
+                        _ => None,
+                    },
+                    sweep,
+                    width,
+                    axis_x,
+                    points: o.points.iter().flat_map(|p| [mm(p.x), mm(p.y)]).collect(),
+                    segs: o.segs,
+                    sources: o.sources.iter().map(|(r, p)| source(r, *p)).collect(),
+                }
+            })
+            .collect();
+
+        let poses = self
+            .inner
+            .poses()
+            .into_iter()
+            .map(|p| PoseDto {
+                origin: [mm(p.origin.x), mm(p.origin.y)],
+                cos: p.cos as f32,
+                sin: p.sin as f32,
             })
             .collect();
 
@@ -225,19 +336,24 @@ impl Bench {
             .into_iter()
             .zip(self.inner.leads())
             .map(|((c, r), (from_balance, mass_g))| LeadDto {
-                x: (c.x * 1000.0) as f32,
-                y: (c.y * 1000.0) as f32,
-                radius: (r * 1000.0) as f32,
+                body: KEY.0,
+                x: mm(c.x),
+                y: mm(c.y),
+                radius: mm(r),
                 mass_g: mass_g as f32,
-                from_balance_mm: (from_balance * 1000.0) as f32,
+                from_balance_mm: mm(from_balance),
             })
             .collect();
 
-        let m = self.inner.measuring_point_world();
+        let m = self.inner.measuring_point_on_key();
         serde_json::to_string(&SceneDto {
             outlines,
+            poses,
             leads,
-            measuring_point: [(m.x * 1000.0) as f32, (m.y * 1000.0) as f32],
+            measuring_point: MarkerDto {
+                body: KEY.0,
+                at: [mm(m.x), mm(m.y)],
+            },
             frame_fault: self.inner.frame_fault(),
             faults: self.inner.faults().iter().map(say).collect(),
         })

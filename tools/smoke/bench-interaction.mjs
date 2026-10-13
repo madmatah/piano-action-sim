@@ -247,6 +247,15 @@ expectChanged('measuring point', unlevelled, remeasured, 'friction weight F')
 expectUnchanged('measuring point', unlevelled, remeasured, 'key height')
 expectUnchanged('measuring point', unlevelled, remeasured, 'key dip')
 
+// The section draws every part flat, each in its own body's frame, a cut as a
+// void in the key's wood. It is a different drawing from the solid's, and a
+// renderer that throws there blanks that view alone, so both are shown.
+if ((await clickButton('section')) !== 'ok') fail('no section button')
+await settle()
+if ((await clickButton('solid')) !== 'ok') fail('no solid button')
+await settle()
+console.log('  ok  both views drawn')
+
 if (thrown.length > 0) fail(`the page threw: ${thrown[0].split('\n')[0]}`)
 
 console.log('all interactions reached the engine')

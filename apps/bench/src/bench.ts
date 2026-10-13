@@ -9,33 +9,65 @@
  */
 import init, { Bench } from '@pas/wasm'
 
+/** Where a stretch of an outline comes from: a record under `data/params/`. */
+export interface Source {
+  /** The first segment. */
+  from: number
+  /** One past the last. */
+  to: number
+  how: 'measured' | 'published' | 'traced' | 'assumed'
+  record: string
+}
+
 /**
- * One closed outline, flat `[x0, y0, x1, y1, …]`, in millimetres.
+ * One part, in millimetres, in its own body's frame.
  *
- * For an extruded part those pairs are `x` and `y` in the keybed frame. For a
- * turned one they are **radius and height** about `axis`, which is why a turned
- * part is placed rather than carried round: a radius does not rotate.
+ * For an extruded part `points` are `x` and `y` in the body's frame. For a
+ * turned one they are its profile in **radius and height** about `axis_x`,
+ * which is why a turned part is lathed rather than extruded. Where the part
+ * stands is not here: it is its body's pose, in `Scene.poses`.
  */
 export interface Outline {
-  id: string
-  points: number[]
-  compliant: boolean
-  /** Extrusion across the sagittal plane, millimetres. Zero when turned. */
-  width: number
-  /** How the profile becomes a solid. A screw is not a prism, and a punching
-   * is not a strip of felt. */
-  sweep: 'extruded' | 'revolved'
-  /** Where a turned part stands — x, y, millimetres — and the sine of its
-   * angle. Ignored when extruded. */
-  axis: [number, number, number]
+  /** The body that carries it: an index into `Scene.poses`. */
+  body: number
+  /** What it is, the engine's identifier. */
+  code: string
+  /** A cut is a void in its body's solids, drawn in the section only. */
+  role: 'solid' | 'cut' | 'lining'
+  /** What it is made of. The colour is the view's choice, from this. */
+  material: string
   /** For a paper punching, its own thickness in millimetres. The trade
    * identifies a paper by colour and the colour is the thickness, so the
    * palette is keyed on this rather than invented per part. */
   paper_mm: number | null
+  /** How the outline becomes a solid. A screw is not a prism, and a punching
+   * is not a strip of felt. */
+  sweep: 'extruded' | 'revolved'
+  /** Extrusion across the sagittal plane, millimetres. Zero when turned. */
+  width: number
+  /** Where a turned part's axis stands along its body's `x`, millimetres. */
+  axis_x: number
+  /** Flat `[x0, y0, x1, y1, …]`, the closed outline, arcs cut into lines. */
+  points: number[]
+  /** The segment of the engine's outline each point starts or lies on. */
+  segs: number[]
+  sources: Source[]
 }
 
-/** A lead, as the circle to draw and the numbers to label it with. */
+/**
+ * Where one body's frame stands: its origin in millimetres, and the cosine
+ * and sine of its rotation. The view applies it as given and computes none.
+ */
+export interface Pose {
+  origin: [number, number]
+  cos: number
+  sin: number
+}
+
+/** A lead, as the circle to draw on its body and the numbers to label it with. */
 export interface Lead {
+  /** The body it rides on: an index into `Scene.poses`. */
+  body: number
   x: number
   y: number
   radius: number
@@ -43,10 +75,18 @@ export interface Lead {
   from_balance_mm: number
 }
 
+/** A point marked on a body, millimetres in the body's frame. */
+export interface Marker {
+  body: number
+  at: [number, number]
+}
+
 export interface Scene {
   outlines: Outline[]
+  /** One per body, in body order. */
+  poses: Pose[]
   leads: Lead[]
-  measuring_point: [number, number]
+  measuring_point: Marker
   /** Why this frame cannot be weighed, when it cannot. It travels with the
    * scene because the readout is precisely what is missing in that case. */
   frame_fault: string | null
