@@ -13,16 +13,15 @@ readout.balance_weight_g -6.480979726929044 0xc019ec85f314cc09
 readout.friction_weight_g 6.000000000000001 0x4018000000000001
 readout.key_mass_g 121.11668963924217 0x405e4777d7d214f0
 readout.lead_count 0
-readout.gap_front_mm 8.90333056243342 0x4021ce8157ee41f5
-readout.gap_back_mm -2.3852447794681098e-15 0xbce57c0000000000
-readout.measured_dip_mm 10.188788831680354 0x402460a8ee03d597
+readout.gap_front_mm 0.0 0x0000000000000000
+readout.gap_back_mm 7.607416258646726 0x401e6dfe8717c914
 readout.measured_kf_g 6.029838719405234 0x40181e8e0a900000
 readout.friction_band_g 6.0 0x4018000000000000
 readout.key_height_target_mm 65.0 0x4050400000000000
 readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
-readout.finger FrontPunching
-readout.out_of_level.sine 0.0 0x0000000000000000
-readout.bedding_at_the_back.slope 0.0071246812895846435 0x3f7d2ec512218af2
+readout.finger RestingOn FrontRailPunching
+readout.out_of_level_deg -6.957463365701443e-16 0xbcc91120971749b9
+readout.bedding_at_the_back.slope 0.00712468128958466 0x3f7d2ec512218b05
 readout.bears_at_the_back_mm 212.00356225023413 0x406a801d2e94882f
 readout.back_bearing StopEdge
 readout.stopped_by_the_mortise false
@@ -34,7 +33,6 @@ papers.balance.1 0.0002 0x3f2a36e2eb1c432d
 papers.front 2
 papers.front.0 0.0005 0x3f40624dd2f1a9fc
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
-pose.sin_angle -0.03957035805525962 0xbfa44290e37a090b
-pose.depression 0.0 0x0000000000000000
-pose.measuring_point.x 0.24577771699808515 0x3fcf75a4ec4bd11c
-pose.measuring_point.y 0.06455351489307248 0x3fb08694434ebe90
+pose.sin_angle -0.0 0x8000000000000000
+pose.measuring_point.x 0.247 0x3fcf9db22d0e5604
+pose.measuring_point.y 0.0548 0x3fac0ebedfa43fe6

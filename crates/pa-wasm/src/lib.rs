@@ -22,8 +22,8 @@
 //! the browser permanently out of step.
 
 use pa_app::key_bench::{
-    ContactState, Fault, FingerVerdict, HowItBears, KeyBench, Material, Provenance, Role, Sweep,
-    Which, KEY, PAPER_THICKNESSES,
+    ContactCode, ContactState, Fault, HowItBears, KeyBench, Material, Provenance, Role, Sweep,
+    TouchVerdict, Which, KEY, PAPER_THICKNESSES,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -224,11 +224,21 @@ struct ReadoutDto {
     front_paper_mm: f32,
     key_height_target_mm: f32,
     key_dip_target_mm: f32,
-    /// What is carrying the key: "on the front punching", or "on the front
-    /// rail pin, at the top of its mortise" where the pin bottoms before the
-    /// key reaches its punching; "on the back rail cloth"; or "held by friction
-    /// alone". Three states and not two, because the third is the friction.
+    /// What holds the key where the weight on its measuring point has left
+    /// it: a stop it rests on, "on the front punching", "on the front rail
+    /// pin, at the top of its mortise", "on the front rail pin, against the
+    /// wood round its mortise" or "on the back rail cloth"; or, between the
+    /// up weight and the down weight, the same stop "held by friction", or
+    /// "held by friction alone" touching nothing. Friction holding the key is
+    /// a state of its own, and the one the touch exercise teaches.
     finger: &'static str,
+    /// Whether friction alone holds the key where it is: the weight lies
+    /// between the up weight and the down weight at its attitude.
+    held_by_friction: bool,
+    /// How far the weight stands inside the friction band, from the band's
+    /// nearer edge, grams at the measuring point; `null` when a stop carries
+    /// the key.
+    friction_margin_g: Option<f32>,
     out_of_level_deg: f32,
     bedding_at_the_back_deg: f32,
     bears_at_the_back_mm: f32,
@@ -247,9 +257,6 @@ struct ReadoutDto {
     /// What the protocol measures on the model, or `null` if it cannot be run
     /// on this geometry.
     measured_kf_g: Option<f32>,
-    /// What pressing the key measures, millimetres, or `null` if the key
-    /// cannot be pressed on this geometry.
-    measured_dip_mm: Option<f32>,
     /// The papers actually stacked under the balance punching, millimetres,
     /// in the order they were laid.
     balance_papers_mm: Vec<f32>,
@@ -298,6 +305,32 @@ fn say(fault: &Fault) -> String {
             rail.code().replace('_', " "),
             by * 1000.0
         ),
+    }
+}
+
+/// What holds the key, as the sentence the touch panel shows after "the key
+/// is".
+fn say_verdict(verdict: TouchVerdict) -> &'static str {
+    match verdict {
+        TouchVerdict::RestingOn { stop } => match stop {
+            ContactCode::FrontRailPunching => "on the front punching",
+            ContactCode::FrontPinInTheMortise => "on the front rail pin, at the top of its mortise",
+            ContactCode::FrontPinOnTheWood => {
+                "on the front rail pin, against the wood round its mortise"
+            }
+            ContactCode::BackRailCloth => "on the back rail cloth",
+        },
+        TouchVerdict::HeldByFriction { touching, .. } => match touching {
+            Some(ContactCode::FrontRailPunching) => "on the front punching, held by friction",
+            Some(ContactCode::FrontPinInTheMortise) => {
+                "on the front rail pin, at the top of its mortise, held by friction"
+            }
+            Some(ContactCode::FrontPinOnTheWood) => {
+                "on the front rail pin, against the wood round its mortise, held by friction"
+            }
+            Some(ContactCode::BackRailCloth) => "on the back rail cloth, held by friction",
+            None => "held by friction alone",
+        },
     }
 }
 
@@ -445,23 +478,17 @@ impl Bench {
             stopped_by_the_mortise: r.stopped_by_the_mortise,
             front_pin_mm: (self.inner.front_pin_and_mortise().0 * 1000.0) as f32,
             front_mortise_mm: (self.inner.front_pin_and_mortise().1 * 1000.0) as f32,
-            finger: match r.finger {
-                // The front stop is the higher of the punching and the pin's
-                // tip; the gap beside this sentence is the punching's own, so
-                // a key held by its pin is said to be on its pin.
-                FingerVerdict::FrontPunching if r.stopped_by_the_mortise => {
-                    "on the front rail pin, at the top of its mortise"
-                }
-                FingerVerdict::FrontPunching => "on the front punching",
-                FingerVerdict::BackRailCloth => "on the back rail cloth",
-                FingerVerdict::FrictionAlone => "held by friction alone",
+            finger: say_verdict(r.finger),
+            held_by_friction: matches!(r.finger, TouchVerdict::HeldByFriction { .. }),
+            friction_margin_g: match r.finger {
+                TouchVerdict::HeldByFriction { margin_g, .. } => Some(margin_g as f32),
+                TouchVerdict::RestingOn { .. } => None,
             },
             finger_weight_g: self.inner.finger_weight() as f32,
             gap_front_mm: r.gap_front_mm.map(|v| v as f32),
             gap_back_mm: r.gap_back_mm.map(|v| v as f32),
             friction_band_g: r.friction_band_g as f32,
             measured_kf_g: r.measured_kf_g.map(|v| v as f32),
-            measured_dip_mm: r.measured_dip_mm.map(|v| v as f32),
             balance_papers_mm: self
                 .inner
                 .papers_on(Which::Balance)
@@ -494,16 +521,9 @@ impl Bench {
         .unwrap_or_else(|_| "null".to_owned())
     }
 
-    /// Presses the key, 0 at rest and 1 at the bottom of the dip.
-    ///
-    /// A direct geometric placement, for inspecting the section. The physical
-    /// control is [`Bench::set_finger_weight`].
-    pub fn set_depression(&mut self, f: f64) {
-        self.inner.set_depression(f);
-    }
-
-    /// Puts a weight on the measuring point and lets the contact solve decide
-    /// where the key comes to rest.
+    /// Puts a weight on the measuring point, as a static increment from
+    /// where the key stands: between the up weight and the down weight the
+    /// key stays where it is, held by its friction.
     pub fn set_finger_weight(&mut self, grams: f64) {
         self.inner.set_finger_weight(grams);
     }

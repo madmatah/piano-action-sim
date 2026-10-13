@@ -34,14 +34,18 @@
 //! drawn by the bench in each body's own frame and read by the faults
 //! ([`crate::parts::faults`]); the key's contacts with its frame as pairs of
 //! their declared ranges ([`crate::parts::mounts::key_on_frame`]), read into
-//! rows for the bench's gaps, for how the key bears on its cloth, and for the
-//! contacts the view marks. The one-coordinate statics that place the key
-//! still read their own construction of the stops, built from the same
-//! fields: the underside of [`crate::parts::KeyDesign::underside_corners`] and
-//! the bearing heights of [`crate::parts::FrameDesign`]. A test holds every
-//! face they read to a declared range of a drawn part
-//! (`every_stop_face_is_a_declared_range_of_a_drawn_part`). Planned: the static
-//! solve on the rows, after which nothing reads anything but a drawn range.
+//! rows for the static solve that places the key ([`crate::solve`]), for the
+//! bench's gaps, for how the key bears on its cloth, and for the contacts the
+//! view marks; and how deep drawn parts stand in one another, read off their
+//! outlines ([`crate::mechanism::Mechanism::overlap`]), where a solve starts
+//! and whether a state it finds is one. The one-coordinate statics left under
+//! the key friction weight protocol and the regulation solve still read their
+//! own construction of the stops, built from the same fields: the underside
+//! of [`crate::parts::KeyDesign::underside_corners`] and the bearing heights
+//! of [`crate::parts::FrameDesign`]. A test holds every face they read to a
+//! declared range of a drawn part
+//! (`every_stop_face_is_a_declared_range_of_a_drawn_part`). Planned: those
+//! statics leave, after which nothing reads anything but a drawn range.
 
 mod bearing;
 mod features;

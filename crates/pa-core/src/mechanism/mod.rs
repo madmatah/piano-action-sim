@@ -39,11 +39,12 @@
 //!   its bodies carry and the pairs of their ranges declared as contacts,
 //!   read at any pose into rows over every coordinate
 //!   ([`Mechanism::rows`], in [`crate::contact`]).
+//! - **Limits and friction** ([`Coord`]): the interval each coordinate may
+//!   not leave, and its joint's dry friction, a set-valued bound.
 //!
-//! Planned: coordinate limits and axis friction, and a static solve that
-//! finds the coordinates a procedure leaves free. Until it exists a mechanism
-//! is only ever held with every coordinate prescribed, and
-//! [`Mechanism::hold`] refuses to leave one free.
+//! The static solve ([`crate::solve`]) finds the coordinates a procedure
+//! leaves free; [`Mechanism::hold`] holds a mechanism with every coordinate
+//! prescribed, as the jig holds the key, and refuses to leave one free.
 
 mod hold;
 mod load;
@@ -82,25 +83,56 @@ pub enum CoordKind {
     Length,
 }
 
-/// One generalized coordinate.
-///
-/// Its kind only, for now: the limits that bound it and the axis friction
-/// that acts on it arrive with the static solve that reads them.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// One generalized coordinate: what it measures, the range the modelled
+/// world gives it, and the dry friction of its joint.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Coord {
     /// Whether it is an angle or a length.
     pub kind: CoordKind,
+    /// The least and the greatest value it may take, radians or metres: the
+    /// edge of the modelled world on either side. A static solve reads each
+    /// as a unilateral row, and refuses a state that leans on one
+    /// ([`crate::solve::Refusal::NoEquilibrium`]), since nothing modelled
+    /// stands there. Infinite for a coordinate only ever prescribed, as the
+    /// jig's; a solve that leaves a coordinate free needs both finite, so
+    /// that what it searches is bounded.
+    pub limits: (f64, f64),
+    /// The bound of its joint's dry friction: a torque in newton-metres on an
+    /// angle, a force in newtons on a length. Set-valued: while the joint is
+    /// still it takes any value within plus or minus this
+    /// (`docs/FOUNDATIONS.md` §3.5). Zero for a joint that turns freely.
+    pub friction: f64,
 }
 
 impl Coord {
-    /// An angle.
+    /// An angle, unbounded and frictionless.
     pub const ANGLE: Self = Self {
         kind: CoordKind::Angle,
+        limits: (f64::NEG_INFINITY, f64::INFINITY),
+        friction: 0.0,
     };
-    /// A length.
+    /// A length, unbounded and frictionless.
     pub const LENGTH: Self = Self {
         kind: CoordKind::Length,
+        limits: (f64::NEG_INFINITY, f64::INFINITY),
+        friction: 0.0,
     };
+
+    /// This coordinate, bounded to `[lo, hi]`.
+    pub const fn limited(self, lo: f64, hi: f64) -> Self {
+        Self {
+            limits: (lo, hi),
+            ..self
+        }
+    }
+
+    /// This coordinate, its joint's dry friction bounded by `bound`.
+    pub const fn with_friction(self, bound: f64) -> Self {
+        Self {
+            friction: bound,
+            ..self
+        }
+    }
 }
 
 /// How a body hangs from its parent.
@@ -222,6 +254,17 @@ pub enum Problem {
         /// The first such coordinate.
         coord: CoordId,
     },
+    /// A coordinate whose limits are not a range: a lower limit above the
+    /// upper one, or one that is not a number.
+    LimitsNotARange {
+        /// The coordinate.
+        coord: CoordId,
+    },
+    /// A coordinate whose friction bound is negative or not a finite number.
+    FrictionNotABound {
+        /// The coordinate.
+        coord: CoordId,
+    },
     /// A pivot, an origin, a mass or a centre of mass that is not a finite
     /// number.
     NotFinite {
@@ -233,8 +276,10 @@ pub enum Problem {
         /// The body.
         body: BodyId,
     },
-    /// A coordinate the procedure did not prescribe. Nothing solves for a
-    /// free coordinate until the static solve exists.
+    /// A coordinate left free where every one must be prescribed: holding a
+    /// mechanism still ([`Mechanism::hold`]) solves for nothing, and a
+    /// coordinate it is to find belongs to the static solve
+    /// ([`crate::solve::Statics`]).
     NotPrescribed {
         /// The first coordinate left free.
         coord: CoordId,
@@ -246,6 +291,23 @@ pub enum Problem {
     },
     /// A coordinate prescribed a value that is not a finite number.
     PrescribedNotFinite {
+        /// The coordinate.
+        coord: CoordId,
+    },
+    /// A coordinate a solve leaves free whose limits are not both finite:
+    /// the search for its equilibrium would not be bounded.
+    Unlimited {
+        /// The coordinate.
+        coord: CoordId,
+    },
+    /// A coordinate a solve leaves free that moves nothing drawn, weighed or
+    /// loaded: nothing could act on it or measure how far it moves.
+    MovesNothing {
+        /// The coordinate.
+        coord: CoordId,
+    },
+    /// A solve started from a value that is not a finite number.
+    StartNotFinite {
         /// The coordinate.
         coord: CoordId,
     },
@@ -356,6 +418,15 @@ impl Mechanism {
             return Err(Problem::CoordinateWithoutJoint {
                 coord: CoordId(next_coord),
             });
+        }
+        for (c, coord) in coords.iter().enumerate() {
+            let (lo, hi) = coord.limits;
+            if lo.is_nan() || hi.is_nan() || lo > hi {
+                return Err(Problem::LimitsNotARange { coord: CoordId(c) });
+            }
+            if !(coord.friction.is_finite() && coord.friction >= 0.0) {
+                return Err(Problem::FrictionNotABound { coord: CoordId(c) });
+            }
         }
         Ok(Self {
             bodies,

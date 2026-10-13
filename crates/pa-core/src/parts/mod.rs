@@ -26,11 +26,14 @@
 
 pub mod assembly;
 pub mod faults;
+#[cfg(test)]
+pub(crate) mod fixtures;
 pub mod frame;
 pub mod key;
 pub mod mounts;
+pub mod verdicts;
 
-pub use assembly::{KeyAssembly, Regulation, RestingOn, Travel};
+pub use assembly::{KeyAssembly, Regulation, RestingOn};
 pub use faults::Fault;
 pub use frame::{FrameDesign, FrameRanges, PunchingStack};
 pub use key::KeyRanges;

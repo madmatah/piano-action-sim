@@ -68,9 +68,13 @@ pub struct KeyRanges {
     /// the key, the slot's mouth included: the key bears on a punching beside
     /// the slot, out of the sagittal plane. What the punchings read.
     pub underside_flat: [SurfaceRef; 2],
-    /// The wood of the flat beside the front mortise: the flat less the
-    /// slot's mouth, behind the slot and in front of it. What a front rail
-    /// pin standing outside its mortise but under the key reads.
+    /// The wood round the front mortise: the flat less the slot's mouth,
+    /// behind the slot and in front of it, each run chained at the slot's
+    /// mouth to the slot's wall there, which the mortise's cut draws. What a
+    /// front rail pin reads that stands outside its mortise but under the
+    /// key, that straddles the slot's edge, or that a turning key brings
+    /// against the end of its slot: the corner of the wood at the mouth is
+    /// convex, and a feature.
     pub beside_the_mortise: Vec<SurfaceRef>,
     /// The front mortise's top, facing down onto its pin.
     pub front_mortise_top: SurfaceRef,
@@ -131,6 +135,9 @@ impl KeyDesign {
         }
         underside.push(Point::new(wood_front, 0.0));
         let underside_segments = u16::try_from(underside.len() - 1).expect("a short chain");
+        // Where the flat stops at the slot's two edges, for the wood round it:
+        // the x the underside's points stand at.
+        let edges: Vec<f64> = underside.iter().map(|p| p.x).collect();
         // The flat's segments that are wood and not the slot's mouth, as runs
         // of consecutive segments: whatever of the flat lies over the slot is
         // not under the key's wood.
@@ -288,13 +295,36 @@ impl KeyDesign {
             part: key_front,
             segs: 0..1,
         };
-        let mut beside_the_mortise: Vec<SurfaceRef> = beside_runs
-            .into_iter()
-            .map(|segs| SurfaceRef {
+        // The wood round the slot: the underside beside it, and where the flat
+        // stops at one of the slot's edges, the slot's wall there, the cut
+        // read as the wood it is cut from runs (`crate::contact`). Chained at
+        // the slot's mouth, the wall makes the corner of the wood there a
+        // convex corner, which a pin straddling the slot's edge meets, and is
+        // itself what a pin standing off the middle of its slot meets as the
+        // key turns.
+        let back_wall = SurfaceRef {
+            part: front_mortise,
+            segs: 3..4,
+        };
+        let front_wall = SurfaceRef {
+            part: front_mortise,
+            segs: 1..2,
+        };
+        let at = |k: u16, x: f64| edges[usize::from(k)].to_bits() == x.to_bits();
+        let mut beside_the_mortise: Vec<SurfaceRef> = Vec::new();
+        for segs in beside_runs {
+            let (start, end) = (segs.start, segs.end);
+            if at(start, mortise_front) {
+                beside_the_mortise.push(front_wall.clone());
+            }
+            beside_the_mortise.push(SurfaceRef {
                 part: keystick,
                 segs,
-            })
-            .collect();
+            });
+            if at(end, mortise_back) {
+                beside_the_mortise.push(back_wall.clone());
+            }
+        }
         if wood(wood_front, self.front_edge) {
             beside_the_mortise.push(front_bottom.clone());
         }
@@ -522,10 +552,22 @@ mod tests {
             );
         }
         assert_eq!(
-            ranges.beside_the_mortise.len(),
-            3,
-            "behind, in front, the key front"
+            ranges
+                .beside_the_mortise
+                .iter()
+                .map(|r| (r.part, r.segs.clone()))
+                .collect::<Vec<_>>(),
+            vec![
+                (ranges.keystick, 1..2),
+                (ranges.front_mortise, 3..4),
+                (ranges.front_mortise, 1..2),
+                (ranges.keystick, 3..4),
+                (ranges.key_front, 0..1),
+            ],
+            "behind, the slot's back wall, its front wall, in front, the key front"
         );
+        // The walls stand upright, so the flat's length less the wood's is
+        // the mouth.
         let mouth = front - back;
         assert!((length(&flat) - length(&beside) - mouth).abs() < 1e-15);
 

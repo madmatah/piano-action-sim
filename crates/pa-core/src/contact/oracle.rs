@@ -172,6 +172,21 @@ impl Material {
     pub fn holds(&self, p: Point) -> bool {
         self.solids.iter().any(|s| s.holds(p)) && !self.cuts.iter().any(|c| c.holds(p))
     }
+
+    /// How deep `p` stands inside the material, metres: its distance to the
+    /// nearest sample of the material's boundary, its parts' outlines and its
+    /// cuts'; zero outside. A point on the boundary, touching, stands within
+    /// half a spacing of a sample, whichever side the crossing count puts it.
+    pub fn depth(&self, p: Point) -> f64 {
+        if !self.holds(p) {
+            return 0.0;
+        }
+        self.solids
+            .iter()
+            .chain(&self.cuts)
+            .map(|b| nearest(p, &b.polygon))
+            .fold(f64::INFINITY, f64::min)
+    }
 }
 
 fn distance(p: Point, q: Point) -> f64 {
@@ -236,15 +251,223 @@ impl Pair {
         }
     }
 
-    /// Whether any sample of either surface, or the centre, stands inside
-    /// the other side's material.
-    pub fn overlapping(&self) -> bool {
+    /// How deep any sample of either surface, or the centre, stands inside
+    /// the other side's material, metres: zero where none does. A surface
+    /// touching the material, through this pair or another, reads within
+    /// half a spacing.
+    pub fn overlap(&self) -> f64 {
         match self.centre {
-            Some(c) => self.in_a.holds(c),
-            None => {
-                self.a.iter().any(|&p| self.in_b.holds(p))
-                    || self.b.iter().any(|&p| self.in_a.holds(p))
+            Some(c) => self.in_a.depth(c),
+            None => self
+                .a
+                .iter()
+                .map(|&p| self.in_b.depth(p))
+                .chain(self.b.iter().map(|&p| self.in_a.depth(p)))
+                .fold(0.0, f64::max),
+        }
+    }
+}
+
+/// The brute-force oracle's polylines: each drawn line whole, each arc cut
+/// into chords no longer than [`SPACING`], in the world. A line needs no
+/// sample between its ends for a crossing or a distance to be read on it
+/// exactly; an arc's chords stand inside it by at most their sagitta,
+/// `SPACING² / 8r`. Still no feature, no primitive, no code the rows run:
+/// the outline, cut into straight pieces, and nothing else.
+pub mod polyline {
+    use super::SPACING;
+    use crate::contact::{Part, Role, Surface};
+    use crate::geometry::{Point, Seg};
+    use crate::mechanism::{BodyId, Mechanism, Placement, Pose};
+
+    /// A segment's points, its start and, along an arc, the chords' ends
+    /// before its end; the end left out, as the next segment starts there.
+    fn points(seg: Seg, out: &mut Vec<Point>) {
+        match seg {
+            Seg::Line { a, .. } => out.push(a),
+            Seg::Arc { c, r, from, to } => {
+                let (f, t) = (from.vector(), to.vector());
+                let start = libm::atan2(f.y, f.x);
+                let mut sweep = libm::atan2(f.x * t.y - f.y * t.x, f.x * t.x + f.y * t.y);
+                if sweep <= 0.0 {
+                    sweep += 2.0 * core::f64::consts::PI;
+                }
+                let n = ((r * sweep) / SPACING).ceil().max(1.0) as usize;
+                for k in 0..n {
+                    let angle = start + sweep * k as f64 / n as f64;
+                    out.push(Point::new(
+                        c.x + r * libm::cos(angle),
+                        c.y + r * libm::sin(angle),
+                    ));
+                }
             }
+        }
+    }
+
+    /// A part's drawn section, as a closed polygon, in the world.
+    pub fn polygon(part: &Part, placement: &Placement) -> Vec<Point> {
+        let mut out = Vec::new();
+        for seg in part.silhouette() {
+            points(seg, &mut out);
+        }
+        out.into_iter().map(|p| placement.world(p)).collect()
+    }
+
+    /// One surface, as polylines, one per range, in the world.
+    pub fn surface(parts: &[Part], surface: &Surface, placement: &Placement) -> Vec<Vec<Point>> {
+        surface
+            .ranges
+            .iter()
+            .map(|range| {
+                let sil = parts[range.part.index()].silhouette();
+                let mut out = Vec::new();
+                for s in range.segs.clone() {
+                    points(sil[usize::from(s)], &mut out);
+                }
+                out.push(sil[usize::from(range.segs.end) - 1].end());
+                out.into_iter().map(|p| placement.world(p)).collect()
+            })
+            .collect()
+    }
+
+    fn sub(u: Point, v: Point) -> Point {
+        Point::new(u.x - v.x, u.y - v.y)
+    }
+
+    fn dot(u: Point, v: Point) -> f64 {
+        u.x * v.x + u.y * v.y
+    }
+
+    /// How far `p` stands from the segment from `a` to `b`.
+    pub fn to_segment(p: Point, a: Point, b: Point) -> f64 {
+        let e = sub(b, a);
+        let e2 = dot(e, e);
+        let t = if e2 > 0.0 {
+            (dot(sub(p, a), e) / e2).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let d = sub(p, Point::new(a.x + t * e.x, a.y + t * e.y));
+        dot(d, d).sqrt()
+    }
+
+    /// How far `p` stands from an open polyline.
+    pub fn to_polyline(p: Point, line: &[Point]) -> f64 {
+        match line.len() {
+            0 => f64::INFINITY,
+            1 => to_segment(p, line[0], line[0]),
+            _ => line
+                .windows(2)
+                .map(|w| to_segment(p, w[0], w[1]))
+                .fold(f64::INFINITY, f64::min),
+        }
+    }
+
+    /// Whether two segments cross.
+    fn cross(a0: Point, a1: Point, b0: Point, b1: Point) -> bool {
+        let side = |p: Point, q: Point, r: Point| {
+            let (u, v) = (sub(q, p), sub(r, p));
+            u.x * v.y - u.y * v.x
+        };
+        let (d1, d2) = (side(b0, b1, a0), side(b0, b1, a1));
+        let (d3, d4) = (side(a0, a1, b0), side(a0, a1, b1));
+        d1 * d2 < 0.0 && d3 * d4 < 0.0
+    }
+
+    /// How far apart two open polylines stand: zero where they cross.
+    pub fn apart(a: &[Point], b: &[Point]) -> f64 {
+        let mut best = f64::INFINITY;
+        for wa in a.windows(2) {
+            for wb in b.windows(2) {
+                if cross(wa[0], wa[1], wb[0], wb[1]) {
+                    return 0.0;
+                }
+                best = best
+                    .min(to_segment(wa[0], wb[0], wb[1]))
+                    .min(to_segment(wa[1], wb[0], wb[1]))
+                    .min(to_segment(wb[0], wa[0], wa[1]))
+                    .min(to_segment(wb[1], wa[0], wa[1]));
+            }
+        }
+        best
+    }
+
+    /// Whether `p` is inside a closed polygon, by the parity of a ray's
+    /// crossings.
+    fn inside(polygon: &[Point], p: Point) -> bool {
+        let mut odd = false;
+        let n = polygon.len();
+        for i in 0..n {
+            let (a, b) = (polygon[i], polygon[(i + 1) % n]);
+            if (a.y > p.y) != (b.y > p.y) {
+                let x = a.x + (p.y - a.y) * (b.x - a.x) / (b.y - a.y);
+                if p.x < x {
+                    odd = !odd;
+                }
+            }
+        }
+        odd
+    }
+
+    /// How far `p` stands from a closed polygon's boundary.
+    fn to_boundary(polygon: &[Point], p: Point) -> f64 {
+        let n = polygon.len();
+        (0..n)
+            .map(|i| to_segment(p, polygon[i], polygon[(i + 1) % n]))
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    /// One body's material: the sections of the parts that make it, less its
+    /// cuts.
+    pub struct Region {
+        solids: Vec<Vec<Point>>,
+        cuts: Vec<Vec<Point>>,
+    }
+
+    impl Region {
+        /// `body`'s material at `pose`, of the parts `keep` keeps, less every
+        /// cut of the body unless `beside_the_cuts`: a key bears on a punching
+        /// beside its slot, out of the plane.
+        pub fn of(
+            mechanism: &Mechanism,
+            pose: &Pose,
+            body: BodyId,
+            keep: &dyn Fn(usize) -> bool,
+            beside_the_cuts: bool,
+        ) -> Self {
+            let placement = pose.placement(body);
+            let mut solids = Vec::new();
+            let mut cuts = Vec::new();
+            for (i, part) in mechanism.parts().iter().enumerate() {
+                if part.body != body {
+                    continue;
+                }
+                match part.role {
+                    Role::Cut if !beside_the_cuts => cuts.push(polygon(part, &placement)),
+                    Role::Cut => {}
+                    Role::Solid | Role::Lining => {
+                        if keep(i) {
+                            solids.push(polygon(part, &placement));
+                        }
+                    }
+                }
+            }
+            Self { solids, cuts }
+        }
+
+        /// How deep `p` stands inside the material, metres: its distance to
+        /// the nearest boundary of a part or a cut, zero outside.
+        pub fn depth(&self, p: Point) -> f64 {
+            let held =
+                self.solids.iter().any(|s| inside(s, p)) && !self.cuts.iter().any(|c| inside(c, p));
+            if !held {
+                return 0.0;
+            }
+            self.solids
+                .iter()
+                .chain(&self.cuts)
+                .map(|s| to_boundary(s, p))
+                .fold(f64::INFINITY, f64::min)
         }
     }
 }

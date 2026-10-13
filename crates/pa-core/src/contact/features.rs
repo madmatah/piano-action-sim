@@ -1,7 +1,7 @@
 //! The features of a pair's two sides, read once from the drawn outlines in
 //! their bodies' frames.
 
-use super::{ContactPair, PairGeometry, Part, PartId, Role, Surface, Sweep};
+use super::{ContactPair, PairGeometry, Part, PartId, Role, Surface, SurfaceRef, Sweep};
 use crate::geometry::{Dir, Disc, Face, Point, Seg};
 use crate::mechanism::BodyId;
 
@@ -107,17 +107,14 @@ fn ends_normals(seg: Seg) -> Option<(Dir, Dir)> {
     }
 }
 
-/// The face a straight segment presents: its right-hand normal on a part of
-/// material, its left-hand one on a cut, whose material lies outside it.
-fn face(seg: Seg, role: Role) -> Option<Face> {
+/// The face a straight segment presents, running with material on its left:
+/// its right-hand normal, out of the material.
+fn face(seg: Seg) -> Option<Face> {
     let Seg::Line { a, b } = seg else {
         return None;
     };
     let d = Dir::new(b.x - a.x, b.y - a.y)?.vector();
-    let normal = match role {
-        Role::Cut => Dir::new(-d.y, d.x)?,
-        Role::Solid | Role::Lining => Dir::new(d.y, -d.x)?,
-    };
+    let normal = Dir::new(d.y, -d.x)?;
     Some(Face { a, b, normal })
 }
 
@@ -147,35 +144,106 @@ fn same(p: Point, q: Point) -> bool {
     p.x.to_bits() == q.x.to_bits() && p.y.to_bits() == q.y.to_bits()
 }
 
-/// Reads one side: its faces, and unless its parts are cuts, its arcs and
-/// convex vertices, in the order the ranges run; and the centre of its
-/// drawn face.
+/// A segment run the other way. An arc cannot be: it always runs
+/// counter-clockwise, so a cut's arc, concave from the wood, has no
+/// reversed reading, and `None` stands for it.
+fn run_back(seg: Seg) -> Option<Seg> {
+    match seg {
+        Seg::Line { a, b } => Some(Seg::Line { a: b, b: a }),
+        Seg::Arc { .. } => None,
+    }
+}
+
+/// One range, as the material it bounds runs: each segment with the
+/// material on its left, and the index of the segment of the part's
+/// silhouette it is.
+///
+/// A material part's outline already runs so, counter-clockwise. A cut's
+/// runs counter-clockwise round its void, which is clockwise round the wood
+/// it is cut from: its range is read backwards, each segment reversed, so
+/// that it continues the wood's own outline where the cut opens onto it, as
+/// the walls of a mortise open onto the underside at its mouth. Also the
+/// segment before the range and the one after it, so read, in the part's own
+/// outline. `None` for a segment that has no such reading: a cut's arc.
+struct Traversal {
+    segs: Vec<(u16, Option<Seg>)>,
+    before: Option<Seg>,
+    after: Option<Seg>,
+    /// The part's silhouette index of the segment that starts at each
+    /// segment's start, as the part draws it: what names the vertex there.
+    starts: Vec<u16>,
+}
+
+fn traverse(range: &SurfaceRef, sil: &[Seg], role: Role) -> Traversal {
+    let n = sil.len();
+    let (start, end) = (usize::from(range.segs.start), usize::from(range.segs.end));
+    let index = |i: usize| u16::try_from(i % n).expect("a silhouette's index");
+    if role == Role::Cut {
+        let segs: Vec<(u16, Option<Seg>)> = (start..end)
+            .rev()
+            .map(|i| (index(i), run_back(sil[i])))
+            .collect();
+        // Run backwards, a segment starts where it ends as drawn, which is
+        // where the next one drawn starts.
+        let starts = (start..end).rev().map(|i| index(i + 1)).collect();
+        Traversal {
+            segs,
+            before: run_back(sil[end % n]),
+            after: run_back(sil[(start + n - 1) % n]),
+            starts,
+        }
+    } else {
+        Traversal {
+            segs: (start..end).map(|i| (index(i), Some(sil[i]))).collect(),
+            before: Some(sil[(start + n - 1) % n]),
+            after: Some(sil[end % n]),
+            starts: (start..end).map(index).collect(),
+        }
+    }
+}
+
+/// Reads one side: its faces, its arcs and its convex vertices, in the order
+/// the ranges run; and the centre of its drawn face.
+///
+/// Every range is read as the material it bounds runs ([`traverse`]), so a
+/// face presents the side away from the material, into the void of a cut
+/// (the top of a mortise faces down, onto its pin), and a vertex is a
+/// feature where that material's outline turns convex. A cut's own corners
+/// and arcs are concave from the wood and never are; where a cut's range
+/// continues a range of the wood, as a mortise's wall continues the
+/// underside at the slot's mouth, the corner between them is the wood's, and
+/// convex.
 fn side(surface: &Surface, parts: &[Part], centre_wanted: bool) -> SideFeatures {
     let silhouettes: Vec<Vec<Seg>> = surface
         .ranges
         .iter()
         .map(|r| parts[r.part.index()].silhouette())
         .collect();
+    let traversals: Vec<Traversal> = surface
+        .ranges
+        .iter()
+        .enumerate()
+        .map(|(k, r)| traverse(r, &silhouettes[k], parts[r.part.index()].role))
+        .collect();
+    let first_start = |t: &Traversal| t.segs.first().and_then(|(_, s)| s.map(|s| s.start()));
+    let last_end = |t: &Traversal| t.segs.last().and_then(|(_, s)| s.map(|s| s.end()));
+    let last_seg = |t: &Traversal| t.segs.last().and_then(|&(_, s)| s);
     let body = parts[surface.ranges[0].part.index()].body;
     let mut faces = Vec::new();
     let mut discs = Vec::new();
     for (k, range) in surface.ranges.iter().enumerate() {
         let part = &parts[range.part.index()];
-        let sil = &silhouettes[k];
-        let n = sil.len();
+        let t = &traversals[k];
         let material = part.role != Role::Cut;
         // The range just before, when it ends where this one starts.
-        let joined = k > 0 && {
-            let prev = &surface.ranges[k - 1];
-            same(
-                silhouettes[k - 1][usize::from(prev.segs.end) - 1].end(),
-                sil[usize::from(range.segs.start)].start(),
-            )
-        };
-        for s in range.segs.clone() {
-            let i = usize::from(s);
-            let seg = sil[i];
-            if let Some(f) = face(seg, part.role) {
+        let joined = k > 0
+            && match (last_end(&traversals[k - 1]), first_start(t)) {
+                (Some(p), Some(q)) => same(p, q),
+                _ => false,
+            };
+        for (idx, &(s, seg)) in t.segs.iter().enumerate() {
+            let Some(seg) = seg else { continue };
+            if let Some(f) = face(seg) {
                 faces.push((
                     Piece::Segment {
                         part: range.part,
@@ -184,10 +252,7 @@ fn side(surface: &Surface, parts: &[Part], centre_wanted: bool) -> SideFeatures 
                     f,
                 ));
             }
-            if !material {
-                continue;
-            }
-            if let Seg::Arc { c, r, from, to } = seg {
+            if let (true, Seg::Arc { c, r, from, to }) = (material, seg) {
                 discs.push((
                     Piece::Arc {
                         part: range.part,
@@ -204,46 +269,50 @@ fn side(surface: &Surface, parts: &[Part], centre_wanted: bool) -> SideFeatures 
             // The vertex this segment starts at: after the segment before it
             // in this range, or after the last of the range before when the
             // two are one chain, or else after its own outline's previous.
-            let previous = if s > range.segs.start {
-                sil[i - 1]
+            let previous = if idx > 0 {
+                t.segs[idx - 1].1
             } else if joined {
-                let prev = &surface.ranges[k - 1];
-                silhouettes[k - 1][usize::from(prev.segs.end) - 1]
+                last_seg(&traversals[k - 1])
             } else {
-                sil[(i + n - 1) % n]
+                t.before
             };
-            if let Some(d) = vertex(previous, seg) {
+            if let Some(d) = previous.and_then(|p| vertex(p, seg)) {
                 discs.push((
                     Piece::Vertex {
                         part: range.part,
-                        seg: s,
+                        seg: t.starts[idx],
                     },
                     d,
                 ));
             }
         }
         // The vertex the range ends at, unless the next range starts there
-        // and reads it as its own.
-        let last = usize::from(range.segs.end) - 1;
-        let continued = surface.ranges.get(k + 1).is_some_and(|next| {
-            same(
-                sil[last].end(),
-                silhouettes[k + 1][usize::from(next.segs.start)].start(),
-            )
-        });
-        let following = (last + 1) % n;
-        // A range round the whole outline has already read the vertex it
-        // closes on, as the start of its first segment.
-        let wrapped = following == usize::from(range.segs.start);
-        if material && !continued && !wrapped {
-            if let Some(d) = vertex(sil[last], sil[following]) {
-                discs.push((
-                    Piece::Vertex {
-                        part: range.part,
-                        seg: u16::try_from(following).expect("a silhouette's index"),
-                    },
-                    d,
-                ));
+        // and reads it as its own, or the range runs round the whole outline
+        // and has read it as the start of its first segment.
+        let continued =
+            traversals
+                .get(k + 1)
+                .is_some_and(|next| match (last_end(t), first_start(next)) {
+                    (Some(p), Some(q)) => same(p, q),
+                    _ => false,
+                });
+        let wrapped = usize::from(range.segs.end - range.segs.start) == silhouettes[k].len();
+        if !continued && !wrapped {
+            if let (Some(last), Some(after)) = (last_seg(t), t.after) {
+                if let Some(d) = vertex(last, after) {
+                    let n = silhouettes[k].len();
+                    let at = match part.role {
+                        Role::Cut => usize::from(range.segs.start),
+                        _ => usize::from(range.segs.end) % n,
+                    };
+                    discs.push((
+                        Piece::Vertex {
+                            part: range.part,
+                            seg: u16::try_from(at).expect("a silhouette's index"),
+                        },
+                        d,
+                    ));
+                }
             }
         }
     }
@@ -375,6 +444,57 @@ mod tests {
             Dir::NEG_Y,
             "the top of a cut faces down"
         );
+    }
+
+    /// The wood round a slot cut up from its underside: the underside behind
+    /// the slot, the slot's back wall, its front wall, the underside in
+    /// front, the walls read off the cut as the wood runs. The corners of the
+    /// wood at the slot's mouth are convex, with the sectors a corner of 90°
+    /// has there; the slot's own top corners are concave and no feature; a
+    /// wall presents its face into the slot.
+    #[test]
+    fn a_slot_cut_from_the_underside_has_convex_corners_at_its_mouth() {
+        let parts = vec![
+            part(
+                polygon(&[
+                    (0.0, 0.0),
+                    (1.5, 0.0),
+                    (2.5, 0.0),
+                    (4.0, 0.0),
+                    (4.0, 1.0),
+                    (0.0, 1.0),
+                ]),
+                Role::Solid,
+            ),
+            part(
+                polygon(&[(1.5, 0.0), (2.5, 0.0), (2.5, 0.6), (1.5, 0.6)]),
+                Role::Cut,
+            ),
+        ];
+        let wood = Surface::of(&[
+            range(0, 0..1),
+            range(1, 3..4),
+            range(1, 1..2),
+            range(0, 2..3),
+        ]);
+        let side = side(&wood, &parts, false);
+        let corners: Vec<(Point, Dir, Dir)> = side
+            .discs
+            .iter()
+            .map(|(_, d)| (d.centre, d.from, d.to))
+            .collect();
+        assert_eq!(
+            corners,
+            vec![
+                (Point::new(0.0, 0.0), Dir::NEG_X, Dir::NEG_Y),
+                (Point::new(1.5, 0.0), Dir::NEG_Y, Dir::X),
+                (Point::new(2.5, 0.0), Dir::NEG_X, Dir::NEG_Y),
+                (Point::new(4.0, 0.0), Dir::NEG_Y, Dir::X),
+            ],
+            "the block's two corners and the slot's two, nothing at the slot's top"
+        );
+        let normals: Vec<Dir> = side.faces.iter().map(|(_, f)| f.normal).collect();
+        assert_eq!(normals, vec![Dir::NEG_Y, Dir::X, Dir::NEG_X, Dir::NEG_Y]);
     }
 
     /// A concave corner is no feature: an L-shaped block has five convex

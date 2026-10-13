@@ -270,3 +270,56 @@ fn facing(faces: &[Face], placement: &Placement, normal: Point) -> Option<Face> 
         score(f).total_cmp(&score(g))
     })
 }
+
+impl Mechanism {
+    /// How far side B's drawn faces stand past side A's faces at `pose`,
+    /// metres: the deepest point of a B face, within the span of an A face,
+    /// on the material side of that face's line; zero where none does.
+    ///
+    /// For a pair read at its centre ([`super::PairGeometry::CentreBearing`])
+    /// this is the drawn face's overlap with the key that its idealization
+    /// leaves aside. Bounded, while the centre bears, by half the face's
+    /// width times the key's tilt; past every bound once the centre stands
+    /// off the key's underside, where the pair bears on nothing and the key
+    /// would come down through the face as drawn.
+    ///
+    /// # Panics
+    ///
+    /// When the mechanism has no pair `pair`.
+    pub fn face_overlap(&self, pose: &Pose, pair: u16) -> f64 {
+        let sides = &self.features[usize::from(pair)];
+        let (place_a, place_b) = (pose.placement(sides.a.body), pose.placement(sides.b.body));
+        let mut deepest = 0.0_f64;
+        for (_, fa) in &sides.a.faces {
+            let (a0, a1) = (place_a.world(fa.a), place_a.world(fa.b));
+            let e = sub(a1, a0);
+            let e2 = dot(e, e);
+            if e2.is_nan() || e2 <= 0.0 {
+                continue;
+            }
+            let n = place_a.rotate(fa.normal.vector());
+            for (_, fb) in &sides.b.faces {
+                let (b0, b1) = (place_b.world(fb.a), place_b.world(fb.b));
+                // Where along B's face its points stand within A's span:
+                // t, A's parameter, is linear in s, B's.
+                let (t0, t1) = (along(b0, (a0, a1)), along(b1, (a0, a1)));
+                let (mut lo, mut hi) = (0.0_f64, 1.0_f64);
+                if (t1 - t0).abs() > 0.0 {
+                    let (s0, s1) = ((0.0 - t0) / (t1 - t0), (1.0 - t0) / (t1 - t0));
+                    lo = lo.max(s0.min(s1));
+                    hi = hi.min(s0.max(s1));
+                } else if !(0.0..=1.0).contains(&t0) {
+                    continue;
+                }
+                if lo > hi {
+                    continue;
+                }
+                for s in [lo, hi] {
+                    let p = Point::new(b0.x + s * (b1.x - b0.x), b0.y + s * (b1.y - b0.y));
+                    deepest = deepest.max(-dot(sub(p, a0), n));
+                }
+            }
+        }
+        deepest
+    }
+}

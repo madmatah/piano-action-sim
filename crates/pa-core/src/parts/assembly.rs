@@ -151,7 +151,7 @@ const FLAT_ENOUGH: f64 = 1e-4;
 /// that is not touching — and loose enough for the cancellation a near-tangent
 /// quadratic suffers. It is a test applied to a closed-form root, not a
 /// convergence criterion: nothing iterates towards it.
-const CONTACT_TOLERANCE: f64 = 1e-7;
+pub(crate) const CONTACT_TOLERANCE: f64 = 1e-7;
 
 /// Solves `p·cos θ + q·sin θ = k` for `sin θ`.
 ///
@@ -211,8 +211,9 @@ pub fn nose_up_angle(sin_theta: f64) -> f64 {
 ///
 /// Half a millimetre: small enough that the contact point sits essentially over
 /// the punching, large enough to be a real curve rather than a numerical
-/// fiction. It is a shape parameter, not a tuning knob — [`KeyAssembly::travel`]
-/// is tested to be insensitive to it at the micrometre the trade regulates to.
+/// fiction. It is a shape parameter, not a tuning knob — the rest and bottom
+/// attitudes are tested to be insensitive to it at the micrometre the trade
+/// regulates to.
 pub const PUNCHING_EDGE_RADIUS: f64 = 0.0005;
 
 /// Which stop the key is resting against.
@@ -275,19 +276,6 @@ pub enum ReadAt {
     /// The measuring point, [`KeyAssembly::protocol`]'s distance back from the
     /// covering's lip. Where every touchweight is taken.
     MeasuringPoint,
-}
-
-/// The key's rest and bottom attitudes, and the trade quantities they give.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Travel {
-    /// Sine of the key angle at rest. Positive means front-down.
-    pub sin_rest: f64,
-    /// Sine of the key angle at the bottom of the dip.
-    pub sin_bottom: f64,
-    /// Height of the key's top surface at the front edge, at rest, metres.
-    pub key_height: f64,
-    /// Vertical travel of the front edge between rest and bottom, metres.
-    pub key_dip: f64,
 }
 
 impl KeyAssembly {
@@ -812,24 +800,6 @@ impl KeyAssembly {
         Some(self.key_height_at(at, s_rest) - self.key_height_at(at, s_bottom))
     }
 
-    /// Rest and bottom attitudes, and the two settings they define.
-    ///
-    /// Rest is taken with the action fitted — tail on the back rail cloth —
-    /// because that is where both key height and key dip are specified. What a
-    /// *bare* key does is a different question, answered by [`Self::free_rest`].
-    pub fn travel(&self) -> Option<Travel> {
-        let sin_rest = self.sin_angle_on_back_rail()?;
-        let sin_bottom = self.sin_angle_on_front_rail()?;
-        Some(Travel {
-            sin_rest,
-            sin_bottom,
-            // Both read by the protocol, at the front of the key, from the two
-            // contacts — not reconstructed from a lever arm times an angle.
-            key_height: self.key_height_at(ReadAt::FrontEdge, sin_rest),
-            key_dip: self.key_dip_at(ReadAt::FrontEdge)?,
-        })
-    }
-
     /// Which stop a **bare** key finds, with no action on the capstan.
     ///
     /// Decided by the sign of the static moment about the bearing: a key whose
@@ -1030,6 +1000,7 @@ impl Regulation {
 mod tests {
     use super::super::frame::PunchingStack;
     use super::*;
+    use crate::measure::oracle::Travelling;
 
     fn regulated() -> KeyAssembly {
         let key = KeyDesign::default();
@@ -2204,6 +2175,7 @@ mod protocol_tests {
     use super::super::frame::PunchingStack;
     use super::super::{FrameDesign, KeyDesign};
     use super::*;
+    use crate::measure::oracle::Travelling;
 
     fn bench() -> KeyAssembly {
         let key = KeyDesign::default();
@@ -2377,10 +2349,11 @@ mod protocol_tests {
     /// Level 4: the dip really is the travel between the **two contacts**.
     ///
     /// Computed here by placing the key at each contact angle, reading the
-    /// front of the key and subtracting, and it must agree with what
-    /// [`KeyAssembly::travel`] reports. That is the expression `key_dip_at`
-    /// evaluates, so this is not an independent route: what it checks is that
-    /// both ends are closed contacts and that `travel` reports `key_dip_at`.
+    /// front of the key and subtracting, and it must agree with what the
+    /// oracle's `travel` reports (`crate::measure::oracle::Travelling`). That
+    /// is the expression `key_dip_at` evaluates, so this is not an
+    /// independent route: what it checks is that both ends are closed
+    /// contacts and that `travel` reports `key_dip_at`.
     #[test]
     fn the_dip_is_the_distance_the_front_of_the_key_actually_moves() {
         let a = bench();

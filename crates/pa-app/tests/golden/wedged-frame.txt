@@ -13,6 +13,5 @@ papers.front 2
 papers.front.0 0.0005 0x3f40624dd2f1a9fc
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
 pose.sin_angle 0.012105650410767244 0x3f88cad8e4e3706d
-pose.depression 0.0 0x0000000000000000
 pose.measuring_point.x 0.24729664772123555 0x3fcfa76aa32fc30a
 pose.measuring_point.y 0.05453200675573436 0x3fabeb9e8333c754

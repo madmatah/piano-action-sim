@@ -19,18 +19,31 @@
 //!   point is taken, by the relative rotation times half the gap, which is
 //!   why the point is the midway one.
 //!
+//! # Only overlaps the parts hold
+//!
+//! A row against a face reads the distance to the face's line, so a point far
+//! behind a thin part reads as deep inside it though it has passed out
+//! through the far side. A row deeper than the row margin is kept only where
+//! its point stands inside the face's side's drawn material, and, of a
+//! corner's rows that deep against several faces, only the shallowest: the
+//! nearest face is the one it comes out through. A face's centre, which a
+//! centre bearing reads, gives a row deeper than the margin only where no
+//! other side of the material stands nearer it by more than the margin: the
+//! face is then the way it came in.
+//!
 //! # Within a margin
 //!
 //! A row is generated when its gap is at most the margin asked for. The
-//! static solve (planned) asks for [`ROW_MARGIN`] and bounds its steps so that
-//! no two declared surfaces approach each other by more than that between two
-//! readings, so that no pair of features can be stepped over. A reading of how
-//! far apart two parts stand asks for every row, with an infinite margin.
+//! static solve ([`crate::solve`]) asks for [`ROW_MARGIN`] and bounds its
+//! steps so that no two declared surfaces approach each other by more than
+//! that between two readings, so that no pair of features can be stepped
+//! over. A reading of how far apart two parts stand asks for every row, with
+//! an infinite margin.
 
 use super::features::{Feature, PairFeatures, Piece};
-use super::PairGeometry;
+use super::{PairGeometry, PartId};
 use crate::geometry::{
-    centre_on_face, disc_on_disc, disc_on_face, Dir, Disc, Face, Point, Proximity,
+    centre_on_face, disc_on_disc, disc_on_face, Dir, Disc, Face, Point, Proximity, Seg,
 };
 use crate::mechanism::{BodyId, Mechanism, Placement, Pose};
 
@@ -39,7 +52,7 @@ use crate::mechanism::{BodyId, Mechanism, Placement, Pose};
 ///
 /// A margin and not a contact tolerance: a row within it is read with its
 /// real gap, open or closed, so the solve sees a stop before it reaches it.
-/// The solve (planned) bounds every step so that no declared pair's surfaces
+/// The static solve bounds every step so that no declared pair's surfaces
 /// approach by more than the margin, which is what keeps it from stepping
 /// over a feature; the margin's size trades the rows it reads against the
 /// steps it may take, and a millimetre is about twelve of the thinnest
@@ -99,6 +112,7 @@ pub struct Rows {
     faces_b: Vec<(Piece, Face)>,
     discs_a: Vec<(Piece, Disc)>,
     discs_b: Vec<(Piece, Disc)>,
+    pending: Vec<(Candidate, Proximity)>,
 }
 
 impl Rows {
@@ -202,13 +216,81 @@ fn world_disc(placement: &Placement, d: &Disc) -> Disc {
     }
 }
 
-/// What one row is being built from: its pair, its feature, and the two
-/// bodies its sides are carried by.
+/// Which side of a pair.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Side {
+    A,
+    B,
+}
+
+/// A side's drawn material, as polygons: its parts, less its cuts.
+struct Material {
+    solids: Vec<Vec<Point>>,
+    cuts: Vec<Vec<Point>>,
+}
+
+impl Material {
+    /// Whether `p` is inside a part and outside every cut.
+    fn holds(&self, p: Point) -> bool {
+        self.solids.iter().any(|s| inside(s, p)) && !self.cuts.iter().any(|c| inside(c, p))
+    }
+
+    /// How deep `p` stands inside the material: its distance to the nearest
+    /// edge of a part or a cut; zero outside.
+    fn depth(&self, p: Point) -> f64 {
+        if !self.holds(p) {
+            return 0.0;
+        }
+        let edge = |a: Point, b: Point| {
+            let (ex, ey) = (b.x - a.x, b.y - a.y);
+            let e2 = ex * ex + ey * ey;
+            let t = if e2 > 0.0 {
+                (((p.x - a.x) * ex + (p.y - a.y) * ey) / e2).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let (dx, dy) = (p.x - a.x - t * ex, p.y - a.y - t * ey);
+            (dx * dx + dy * dy).sqrt()
+        };
+        self.solids
+            .iter()
+            .chain(&self.cuts)
+            .flat_map(|poly| {
+                let n = poly.len();
+                (0..n).map(move |i| (poly[i], poly[(i + 1) % n]))
+            })
+            .map(|(a, b)| edge(a, b))
+            .fold(f64::INFINITY, f64::min)
+    }
+}
+
+/// Whether `p` is inside a closed polygon, by the parity of a ray's
+/// crossings.
+fn inside(polygon: &[Point], p: Point) -> bool {
+    let mut odd = false;
+    let n = polygon.len();
+    for i in 0..n {
+        let (a, b) = (polygon[i], polygon[(i + 1) % n]);
+        if (a.y > p.y) != (b.y > p.y) {
+            let x = a.x + (p.y - a.y) * (b.x - a.x) / (b.y - a.y);
+            if p.x < x {
+                odd = !odd;
+            }
+        }
+    }
+    odd
+}
+
+/// What one row is being built from: its pair, its feature, the two bodies
+/// its sides are carried by, and the corner, edge or centre whose overlaps
+/// compete, where the other piece is a face.
+#[derive(Debug, Clone, Copy)]
 struct Candidate {
     pair: u16,
     feature: Feature,
     body_a: BodyId,
     body_b: BodyId,
+    disc: Option<Piece>,
 }
 
 impl Mechanism {
@@ -251,7 +333,7 @@ impl Mechanism {
                 .iter()
                 .map(|(piece, f)| (*piece, world_face(&place_a, f))),
         );
-        let candidate = |a_piece: Piece, b_piece: Piece| Candidate {
+        let candidate = |a_piece: Piece, b_piece: Piece, disc: Option<Piece>| Candidate {
             pair,
             feature: Feature {
                 a: a_piece,
@@ -259,15 +341,29 @@ impl Mechanism {
             },
             body_a: a.body,
             body_b: b.body,
+            disc,
         };
+        out.pending.clear();
         match geometry {
             PairGeometry::CentreBearing => {
                 let (piece, centre) = b.centre;
                 let centre = place_b.world(centre);
+                // A centre deeper than the margin behind the face's line is
+                // read only where the face is the way it came in: where no
+                // other side of the material stands nearer it by more than
+                // the margin. A punching's centre a hair past the key's front
+                // edge comes in through the key front once the key turns,
+                // and the line of the underside is then the long way out.
                 for k in 0..out.faces_a.len() {
                     let (a_piece, face) = out.faces_a[k];
                     if let Some(x) = centre_on_face(centre, &face) {
-                        self.push(pose, candidate(a_piece, piece), x, margin, out);
+                        if x.gap >= -ROW_MARGIN
+                            || self.material(pose, pair, Side::A).depth(centre)
+                                >= -x.gap - ROW_MARGIN
+                        {
+                            out.pending
+                                .push((candidate(a_piece, piece, Some(piece)), x));
+                        }
                     }
                 }
             }
@@ -294,7 +390,10 @@ impl Mechanism {
                     for k in 0..out.faces_b.len() {
                         let ((a_piece, disc), (b_piece, face)) = (out.discs_a[i], out.faces_b[k]);
                         if let Some(x) = disc_on_face(&disc, &face) {
-                            self.push(pose, candidate(a_piece, b_piece), x, margin, out);
+                            if self.real(pose, pair, Side::B, x.gap, x.on_a()) {
+                                out.pending
+                                    .push((candidate(a_piece, b_piece, Some(a_piece)), x));
+                            }
                         }
                     }
                 }
@@ -302,7 +401,11 @@ impl Mechanism {
                     for k in 0..out.faces_a.len() {
                         let ((b_piece, disc), (a_piece, face)) = (out.discs_b[i], out.faces_a[k]);
                         if let Some(x) = disc_on_face(&disc, &face) {
-                            self.push(pose, candidate(a_piece, b_piece), x.reversed(), margin, out);
+                            let x = x.reversed();
+                            if self.real(pose, pair, Side::A, x.gap, x.on_b()) {
+                                out.pending
+                                    .push((candidate(a_piece, b_piece, Some(b_piece)), x));
+                            }
                         }
                     }
                 }
@@ -310,12 +413,236 @@ impl Mechanism {
                     for k in 0..out.discs_b.len() {
                         let ((a_piece, da), (b_piece, db)) = (out.discs_a[i], out.discs_b[k]);
                         if let Some(x) = disc_on_disc(&da, &db) {
-                            self.push(pose, candidate(a_piece, b_piece), x, margin, out);
+                            out.pending.push((candidate(a_piece, b_piece, None), x));
                         }
                     }
                 }
             }
         }
+        // A corner sunk deeper than the margin into the material round two
+        // faces reads both, and only the nearer is where it comes out: of a
+        // corner's overlaps, those deeper than the margin are kept only if
+        // none is shallower.
+        let pending = core::mem::take(&mut out.pending);
+        for (i, &(c, x)) in pending.iter().enumerate() {
+            let shallower = c.disc.is_some_and(|disc| {
+                x.gap < -ROW_MARGIN
+                    && pending.iter().enumerate().any(|(j, (d, y))| {
+                        d.disc == Some(disc)
+                            && y.gap < 0.0
+                            && match y.gap.partial_cmp(&x.gap) {
+                                Some(core::cmp::Ordering::Greater) => true,
+                                Some(core::cmp::Ordering::Equal) => j < i,
+                                _ => false,
+                            }
+                    })
+            });
+            if !shallower {
+                self.push(pose, c, x, margin, out);
+            }
+        }
+        out.pending = pending;
+    }
+
+    /// Whether a row of pair `pair` against a face of its side `side` is an
+    /// overlap the drawn parts hold: always, but for a row deeper than the
+    /// row margin, whose point `p` on the other side must then stand inside
+    /// `side`'s material, the parts its ranges belong to, or every part of
+    /// its body for a side that is a cut's range, less the body's cuts but
+    /// for a pair read at its centre.
+    ///
+    /// A face's row reads the distance to the face's line, which is the
+    /// depth of an overlap only near the face: a point deeper than the margin
+    /// may have passed out through the material's far side, as a pin standing
+    /// clear in front of a shortened key stands far past the line of its
+    /// mortise's wall. No step of a static solve sinks a point deeper than
+    /// the margin, so a deep row is a start's, and only a real overlap is
+    /// one to resolve.
+    fn real(&self, pose: &Pose, pair: u16, side: Side, gap: f64, p: Point) -> bool {
+        gap >= -ROW_MARGIN || self.material(pose, pair, side).holds(p)
+    }
+
+    /// How deep the drawn parts of the declared pairs stand in one another at
+    /// `pose`, metres: the deepest that a point of the parts one side's
+    /// ranges belong to, sampled along their outlines, stands inside the
+    /// other side's drawn material; zero where nothing overlaps.
+    ///
+    /// Read off the outlines, not the rows: a part sunk far into another,
+    /// past an edge's centre or across a corner's sector, may read no row at
+    /// all (`docs/FOUNDATIONS.md` §6.6), and this is what a solve that must
+    /// start somewhere uses to start where nothing is sunk.
+    pub fn overlap(&self, pose: &Pose) -> f64 {
+        (0..self.pairs().len())
+            .map(|p| self.pair_overlap(pose, u16::try_from(p).expect("fewer than 65 536 pairs")))
+            .fold(0.0, f64::max)
+    }
+
+    /// How deep the two sides of pair `pair` stand in one another at `pose`,
+    /// metres, as [`Self::overlap`] reads it. A pair read at its centre
+    /// counts its centre and nothing else of its face: the face's edges
+    /// overlapping a tilted key is the idealization it declares.
+    pub fn pair_overlap(&self, pose: &Pose, pair: u16) -> f64 {
+        let parts = self.parts();
+        let declared = &self.pairs()[usize::from(pair)];
+        let mut deepest = 0.0_f64;
+        if declared.geometry == PairGeometry::CentreBearing {
+            let sides = &self.features[usize::from(pair)];
+            let centre = pose.placement(sides.b.body).world(sides.b.centre.1);
+            return self.material(pose, pair, Side::A).depth(centre);
+        }
+        for (from, into) in [(Side::A, Side::B), (Side::B, Side::A)] {
+            let surface = match from {
+                Side::A => &declared.a,
+                Side::B => &declared.b,
+            };
+            // The whole outline of every part the side's ranges belong to,
+            // not only the ranges: a pin standing up through a key, its top
+            // clear above the key's, is sunk in the wood by its sides.
+            let owners: Vec<usize> = surface
+                .ranges
+                .iter()
+                .map(|r| r.part.index())
+                .filter(|&i| parts[i].role != super::Role::Cut)
+                .collect();
+            deepest = deepest.max(self.sunk(pose, &owners, &self.material(pose, pair, into)));
+        }
+        deepest
+    }
+
+    /// How deep the parts `a` and the parts `b` stand in one another at
+    /// `pose`, metres: what [`Self::pair_overlap`] reads of a pair's sides,
+    /// read of parts no pair declares, each set's material its parts less
+    /// the cuts of the bodies that carry them.
+    pub fn parts_overlap(&self, pose: &Pose, a: &[PartId], b: &[PartId]) -> f64 {
+        let index = |ids: &[PartId]| -> Vec<usize> {
+            ids.iter()
+                .map(|id| id.index())
+                .filter(|&i| self.parts()[i].role != super::Role::Cut)
+                .collect()
+        };
+        let (a, b) = (index(a), index(b));
+        let into_b = self.sunk(pose, &a, &self.material_of(pose, &b));
+        let into_a = self.sunk(pose, &b, &self.material_of(pose, &a));
+        into_b.max(into_a)
+    }
+
+    /// The deepest that a point sampled along the outline of one of the
+    /// parts `owners` stands inside `material` at `pose`, metres: seventeen
+    /// points along each line, an arc as it is drawn, and none along a
+    /// segment that is a cut's mouth, the underside running on straight
+    /// across a mortise, which bounds no material.
+    fn sunk(&self, pose: &Pose, owners: &[usize], material: &Material) -> f64 {
+        let parts = self.parts();
+        let mut owners = owners.to_vec();
+        owners.sort_unstable();
+        owners.dedup();
+        let same =
+            |p: Point, q: Point| p.x.to_bits() == q.x.to_bits() && p.y.to_bits() == q.y.to_bits();
+        let mouths: Vec<(Point, Point)> = parts
+            .iter()
+            .filter(|c| c.role == super::Role::Cut)
+            .flat_map(|c| c.silhouette().into_iter().map(|g| (g.start(), g.end())))
+            .collect();
+        let mut deepest = 0.0_f64;
+        for i in owners {
+            let placement = pose.placement(parts[i].body);
+            for seg in parts[i].silhouette() {
+                let (a, b) = (seg.start(), seg.end());
+                if mouths
+                    .iter()
+                    .any(|&(c, d)| (same(a, c) && same(b, d)) || (same(a, d) && same(b, c)))
+                {
+                    continue;
+                }
+                let points: Vec<Point> = match seg {
+                    Seg::Line { a, b } => (0..=16)
+                        .map(|k| {
+                            let t = f64::from(k) / 16.0;
+                            Point::new(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y))
+                        })
+                        .collect(),
+                    Seg::Arc { .. } => seg.drawn(3),
+                };
+                for q in points {
+                    deepest = deepest.max(material.depth(placement.world(q)));
+                }
+            }
+        }
+        deepest
+    }
+
+    /// The drawn material of the parts `owners` at `pose`: their outlines,
+    /// less the cuts of every body that carries one of them.
+    fn material_of(&self, pose: &Pose, owners: &[usize]) -> Material {
+        let parts = self.parts();
+        let polygon = |i: usize| -> Vec<Point> {
+            let placement = pose.placement(parts[i].body);
+            parts[i]
+                .silhouette()
+                .iter()
+                .flat_map(|seg| seg.drawn(3))
+                .map(|q| placement.world(q))
+                .collect()
+        };
+        let bodies: Vec<BodyId> = owners.iter().map(|&i| parts[i].body).collect();
+        Material {
+            solids: owners.iter().map(|&i| polygon(i)).collect(),
+            cuts: (0..parts.len())
+                .filter(|&i| parts[i].role == super::Role::Cut && bodies.contains(&parts[i].body))
+                .map(polygon)
+                .collect(),
+        }
+    }
+
+    /// The drawn material of side `side` of pair `pair` at `pose`: the parts
+    /// its ranges belong to, or every part of its body for a side that is a
+    /// cut's range, less the body's cuts but for a pair read at its centre.
+    fn material(&self, pose: &Pose, pair: u16, side: Side) -> Material {
+        let declared = &self.pairs()[usize::from(pair)];
+        let surface = match side {
+            Side::A => &declared.a,
+            Side::B => &declared.b,
+        };
+        let parts = self.parts();
+        let body = parts[surface.ranges[0].part.index()].body;
+        let placement = pose.placement(body);
+        let own: Vec<usize> = surface
+            .ranges
+            .iter()
+            .map(|r| r.part.index())
+            .filter(|&i| parts[i].role != super::Role::Cut)
+            .collect();
+        let polygon = |i: usize| -> Vec<Point> {
+            parts[i]
+                .silhouette()
+                .iter()
+                .flat_map(|seg| seg.drawn(3))
+                .map(|q| placement.world(q))
+                .collect()
+        };
+        let centred = declared.geometry == PairGeometry::CentreBearing;
+        let mut material = Material {
+            solids: Vec::new(),
+            cuts: Vec::new(),
+        };
+        for (i, part) in parts.iter().enumerate() {
+            if part.body != body {
+                continue;
+            }
+            match part.role {
+                super::Role::Cut => {
+                    if !centred {
+                        material.cuts.push(polygon(i));
+                    }
+                }
+                _ => {
+                    if own.is_empty() || own.contains(&i) {
+                        material.solids.push(polygon(i));
+                    }
+                }
+            }
+        }
+        material
     }
 
     /// Adds the row, with its gradient and slip gradient, if its gap is
@@ -570,7 +897,7 @@ mod tests {
         let coords = m.coords().len();
         let mut rows = Rows::new();
         let (mut ups, mut downs) = (vec![Rows::new(); coords], vec![Rows::new(); coords]);
-        for _ in 0..1000 {
+        for _ in 0..2000 {
             let q = random_q(&m, &mut rng);
             let pose = m.pose(&q);
             m.rows(&pose, f64::INFINITY, &mut rows);
@@ -765,5 +1092,70 @@ mod tests {
             kept += near.len();
         }
         assert!(kept > 0, "some rows fell within the margin");
+    }
+}
+
+/// An axis-aligned box in the world: its least and greatest corner.
+#[derive(Debug, Clone, Copy)]
+struct Bounds {
+    lo: Point,
+    hi: Point,
+}
+
+impl Bounds {
+    fn of(points: &[Point], radius: f64) -> Self {
+        let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
+        let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
+        for p in points {
+            lo = Point::new(lo.x.min(p.x - radius), lo.y.min(p.y - radius));
+            hi = Point::new(hi.x.max(p.x + radius), hi.y.max(p.y + radius));
+        }
+        Self { lo, hi }
+    }
+
+    /// How far apart two boxes stand: zero where they overlap.
+    fn apart(&self, other: &Self) -> f64 {
+        let dx = (other.lo.x - self.hi.x)
+            .max(self.lo.x - other.hi.x)
+            .max(0.0);
+        let dy = (other.lo.y - self.hi.y)
+            .max(self.lo.y - other.hi.y)
+            .max(0.0);
+        (dx * dx + dy * dy).sqrt()
+    }
+}
+
+impl Mechanism {
+    /// A lower bound on how far apart the two sides of pair `pair` stand at
+    /// `pose`, metres: the least distance between a box round a piece of one
+    /// side and a box round a piece of the other, each box holding its
+    /// segment, or its arc's whole circle. Zero where two boxes overlap.
+    ///
+    /// What a static solve bounds its steps by for a pair it reads no row
+    /// of at any distance, where no gap says how far off the pair stands.
+    pub(crate) fn pair_bound(&self, pose: &Pose, pair: u16) -> f64 {
+        let sides = &self.features[usize::from(pair)];
+        let boxes = |side: &super::features::SideFeatures| -> Vec<Bounds> {
+            let placement = pose.placement(side.body);
+            let mut out: Vec<Bounds> = side
+                .faces
+                .iter()
+                .map(|(_, f)| Bounds::of(&[placement.world(f.a), placement.world(f.b)], 0.0))
+                .collect();
+            out.extend(
+                side.discs
+                    .iter()
+                    .map(|(_, d)| Bounds::of(&[placement.world(d.centre)], d.radius)),
+            );
+            out
+        };
+        let (a, b) = (boxes(&sides.a), boxes(&sides.b));
+        let mut least = f64::INFINITY;
+        for x in &a {
+            for y in &b {
+                least = least.min(x.apart(y));
+            }
+        }
+        least
     }
 }

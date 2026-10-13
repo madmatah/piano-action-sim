@@ -4,12 +4,14 @@
 //! A mount is a builder, not a type: the same key, with the same mass, goes
 //! into whichever mechanism a procedure needs, and the procedure reads it
 //! there. Built: the jig; the key on its frame turning about its balance
-//! bearing, with its contacts. Planned: the key free to lift off its balance
-//! punching.
+//! bearing, [`KeyMount::Pivot`], with its contacts. Planned: the key free to
+//! lift off its balance punching, the default once it is built.
 
 use super::frame::FrameRanges;
 use super::key::KeyRanges;
-use crate::contact::{ContactCode, ContactLaw, ContactPair, PairGeometry, Part, Surface};
+use crate::contact::{
+    ContactCode, ContactLaw, ContactPair, PairGeometry, Part, PartCode, PartId, Surface, ROW_MARGIN,
+};
 use crate::geometry::Point;
 use crate::mechanism::{Body, BodyId, Coord, CoordId, Joint, MassProps, Mechanism, Problem};
 
@@ -49,9 +51,109 @@ pub fn jig(mass: Option<MassProps>) -> Result<Mounted, Problem> {
     })
 }
 
-/// The key on its frame, turning about its balance bearing: the ground, which
-/// carries the frame, and the key hung from it by a revolute joint whose axis
-/// is `bearing`, in the keybed's frame, where the key's frame has its origin.
+/// How a key stands on its frame while it is read.
+///
+/// The same key parts and the same mass go into whichever mount a procedure
+/// needs; the mount says what the key may do there.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyMount {
+    /// Turning about a fixed axis through its balance bearing, the one
+    /// coordinate its angle, positive nose-up, within
+    /// `±`[`KEY_ANGLE_LIMIT`], its bushings' friction acting on it.
+    /// Hirschkorn's own simplification of the key, "like every joint, a
+    /// simple revolute joint" (`data/params/hirschkorn-boston-gp178-note52.json`,
+    /// note on Pg1). The key cannot lift off its balance punching on it: a
+    /// frame whose stops fight leaves it no angle at all.
+    Pivot,
+}
+
+impl KeyMount {
+    /// The key on its frame in this mount: [`pivot`] for
+    /// [`KeyMount::Pivot`].
+    pub fn on_frame(
+        self,
+        mass: Option<MassProps>,
+        bearing: Point,
+        friction: f64,
+        parts: Vec<Part>,
+        pairs: Vec<ContactPair>,
+    ) -> Result<Mounted, Problem> {
+        match self {
+            Self::Pivot => pivot(mass, bearing, friction, parts, pairs),
+        }
+    }
+}
+
+/// How far the key may turn either way on its frame, radians: 15°, the edge
+/// of the modelled world. Far past any stroke (a key's dip turns it about
+/// 2.3°), it bounds what a static solve searches, and a key that leans on it
+/// stands on nothing modelled.
+pub const KEY_ANGLE_LIMIT: f64 = core::f64::consts::PI / 12.0;
+
+/// The steps of the scan [`nominal_pose`] makes over the key's range: a
+/// degree.
+const NOMINAL_STEP: f64 = core::f64::consts::PI / 180.0;
+
+/// The key's nominal pose on its frame, where a static solve that seats it
+/// by rule starts: level, wherever its drawn parts overlap its frame there
+/// by no more than the row margin; otherwise the nearest attitude to level,
+/// a degree apart and nose-up before nose-down, at which they do; either
+/// way an overlap a solve resolves through its rows. On a frame that leaves
+/// it none, the attitude of least overlap, the nearest level among equals.
+///
+/// The overlap is read off the drawn outlines, not the rows: a static solve
+/// resolves an overlap by its contacts' rows, which read a part sunk deep
+/// into another truthfully only near the surface, or not at all. It is the
+/// deepest of what the declared pairs read ([`Mechanism::overlap`]) and of
+/// how deep the key stands in its front and back rails, which no pair
+/// declares: a key turned until it has gone right through a stop leaves
+/// the stop's parts clear, and only the rail under the stop says it is
+/// there.
+pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
+    let m = &mounted.mechanism;
+    let n = m.coords().len();
+    let (lo, hi) = m.coords()[mounted.angle.0].limits;
+    let ids = |keep: &dyn Fn(&Part) -> bool| -> Vec<PartId> {
+        (0..m.parts().len())
+            .filter(|&i| keep(&m.parts()[i]))
+            .map(|i| PartId(u16::try_from(i).expect("fewer than 65 536 parts")))
+            .collect()
+    };
+    let key = ids(&|p| p.body == mounted.key);
+    let rails = ids(&|p| {
+        p.body != mounted.key && matches!(p.code, PartCode::FrontRail | PartCode::BackRail)
+    });
+    let at = |angle: f64| {
+        let mut q = vec![0.0; n];
+        q[mounted.angle.0] = angle;
+        q
+    };
+    let overlap = |angle: f64| {
+        let pose = m.pose(&at(angle));
+        m.overlap(&pose).max(m.parts_overlap(&pose, &key, &rails))
+    };
+    let mut least = (0.0, overlap(0.0));
+    let steps = (hi.min(-lo) / NOMINAL_STEP) as i32;
+    'scan: for k in 1..=steps {
+        for angle in [f64::from(k) * NOMINAL_STEP, -f64::from(k) * NOMINAL_STEP] {
+            if least.1 <= ROW_MARGIN {
+                break 'scan;
+            }
+            let o = overlap(angle);
+            if o < least.1 {
+                least = (angle, o);
+            }
+        }
+    }
+    at(least.0)
+}
+
+/// The key on its frame, turning about its balance bearing
+/// ([`KeyMount::Pivot`]): the ground, which carries the frame, and the key
+/// hung from it by a revolute joint whose axis is `bearing`, in the keybed's
+/// frame, where the key's frame has its origin; its angle bounded by
+/// [`KEY_ANGLE_LIMIT`] either way, and its bushings' dry friction, a torque
+/// bound `friction` in newton-metres, acting on it.
 ///
 /// `parts` are the frame's on the ground and the key's on body 1, as
 /// [`super::FrameDesign::parts`] and [`super::KeyDesign::parts`] build them;
@@ -62,6 +164,7 @@ pub fn jig(mass: Option<MassProps>) -> Result<Mounted, Problem> {
 pub fn pivot(
     mass: Option<MassProps>,
     bearing: Point,
+    friction: f64,
     parts: Vec<Part>,
     pairs: Vec<ContactPair>,
 ) -> Result<Mounted, Problem> {
@@ -73,8 +176,11 @@ pub fn pivot(
         },
         mass,
     };
+    let angle = Coord::ANGLE
+        .limited(-KEY_ANGLE_LIMIT, KEY_ANGLE_LIMIT)
+        .with_friction(friction);
     Ok(Mounted {
-        mechanism: Mechanism::new(vec![Body::GROUND, key], vec![Coord::ANGLE])?
+        mechanism: Mechanism::new(vec![Body::GROUND, key], vec![angle])?
             .with_contacts(parts, pairs)?,
         key: BodyId(1),
         angle: CoordId(0),
@@ -94,14 +200,17 @@ pub fn pivot(
 ///   the cloth, on its edge, or on the key's own corner.
 /// - **The front rail pin in its mortise**: the pin's top corners against the
 ///   top of the mortise, a cut presenting its inside.
-/// - **The front rail pin on the wood**: the pin's top corners against the
-///   wood beside the mortise, which only a pin standing outside its mortise
-///   but under the key reaches.
+/// - **The front rail pin on the wood**: the pin's top and its corners
+///   against the wood round the mortise: the underside beside it, which a
+///   pin standing outside its mortise but under the key reaches; the corners
+///   of the wood at the slot's mouth, which one straddling the slot's edge
+///   meets; and the slot's walls along the key, which one standing off the
+///   middle of its slot meets as the key turns, the slot moving along the
+///   pin by its height above the bearing times the turn.
 ///
 /// The two pin pairs are declared only where the front rail has a pin. Which
-/// of the front pairs stops the key is the static solve's to find (planned);
-/// the one-coordinate statics still stop it on the higher of the punching and
-/// the pin's tip.
+/// of the front pairs stops the key is the static solve's to find
+/// ([`crate::measure::seat`]).
 pub fn key_on_frame(key: &KeyRanges, frame: &FrameRanges) -> Vec<ContactPair> {
     let pair = |code, a, b, geometry| ContactPair {
         code,
@@ -147,8 +256,9 @@ pub fn key_on_frame(key: &KeyRanges, frame: &FrameRanges) -> Vec<ContactPair> {
 mod tests {
     use super::*;
     use crate::contact::oracle::{self, SPACING};
-    use crate::contact::{HowItBears, Piece, Rows, Surface};
+    use crate::contact::{Feature, HowItBears, Piece, Rows, Surface};
     use crate::geometry::KeyBearing;
+    use crate::measure::oracle::Travelling;
     use crate::measure::TouchweightProtocol;
     use crate::mechanism::Pose;
     use crate::parts::assembly::{nose_up_angle, KeyAssembly, Regulation, Touching};
@@ -217,7 +327,7 @@ mod tests {
         let key = a.key.parts(BodyId(1), &mut parts);
         let pairs = key_on_frame(&key, &frame);
         let bearing = Point::new(0.0, a.frame.balance_bearing_height() + lift);
-        let m = pivot(None, bearing, parts, pairs).expect("the key's contacts are drawn");
+        let m = pivot(None, bearing, 0.0, parts, pairs).expect("the key's contacts are drawn");
         (m, key, frame)
     }
 
@@ -252,7 +362,7 @@ mod tests {
     /// range its parts declare**: the punching's drawn top against the
     /// underside's flat, the cloth's drawn top and sides against the whole
     /// underside, the pin's drawn top against the mortise's and against the
-    /// wood beside it. Nothing else is there to be read: a pair holds ranges,
+    /// wood round it. Nothing else is there to be read: a pair holds ranges,
     /// and the mechanism has checked each is inside its part's silhouette.
     #[test]
     fn every_contact_reads_a_range_its_parts_declare() {
@@ -383,11 +493,20 @@ mod tests {
     ///   from the nearest;
     /// - a pair whose rows stand apart reads the oracle's distance within
     ///   one spacing, the most the closest samples can be from the closest
-    ///   points, and the oracle sees no overlap where it stands clear by more;
+    ///   points, and the oracle sees no overlap where it stands clear by more,
+    ///   none deeper than the half spacing a touching surface reads at, where
+    ///   another pair of the same parts touches;
     /// - a row that overlaps by more than a spacing, the least the samples
     ///   can tell, has a surface point inside the other side's drawn
-    ///   material, as far from the other surface as the row is deep, within a
-    ///   spacing.
+    ///   material, and is at least as deep as that point stands from the
+    ///   other surface, within a spacing: a row reads the distance to its own
+    ///   face, which no nearer boundary of that material exceeds;
+    /// - of the overlapping rows of one corner or edge, the shallowest is as
+    ///   deep as the oracle reads, within a spacing, wherever it overlaps by
+    ///   no more than the row margin, the depth to which a static solve ever
+    ///   lets an overlap go. Deeper, inside the wood round a slot, where the
+    ///   nearer face may lie outside the corner's sector, it is only at
+    ///   least as deep.
     #[test]
     fn the_rows_agree_with_the_brute_force_oracle() {
         let mut cases: Vec<(String, KeyAssembly, f64, f64)> = Vec::new();
@@ -415,6 +534,9 @@ mod tests {
             for (p, pair) in m.mechanism.pairs().iter().enumerate() {
                 let p = u16::try_from(p).unwrap();
                 let o = oracle::Pair::read(&m.mechanism, &pose, pair);
+                // Each overlapping corner or edge: its shallowest row, and how
+                // deep the oracle reads its point.
+                let mut shallowest: Vec<(Feature, f64, f64)> = Vec::new();
                 for (_, row) in rows.of_pair(p) {
                     let (on_a, on_b) = (row.on_a(), row.on_b());
                     assert!(
@@ -435,13 +557,38 @@ mod tests {
                             );
                         };
                         assert!(
-                            (depth + row.gap).abs() <= SPACING,
-                            "{name}, {:?}: the row is {} m deep, the oracle {depth} m",
+                            -row.gap >= depth - SPACING,
+                            "{name}, {:?}: the row is {} m deep, its point {depth} m inside",
                             pair.code,
                             -row.gap
                         );
+                        // The corner or edge is the row's disc; on a face
+                        // against a face's centre, the centre.
+                        let f = row.feature;
+                        let key = match (f.a.is_disc(), f.b.is_disc()) {
+                            (true, false) => Feature { a: f.a, b: f.a },
+                            (false, _) => Feature { a: f.b, b: f.b },
+                            (true, true) => f,
+                        };
+                        match shallowest.iter_mut().find(|(k, ..)| *k == key) {
+                            Some(entry) if -row.gap < entry.1 => {
+                                entry.1 = -row.gap;
+                                entry.2 = depth;
+                            }
+                            Some(_) => {}
+                            None => shallowest.push((key, -row.gap, depth)),
+                        }
                         deep += 1;
                     }
+                }
+                for (key, row_depth, depth) in shallowest {
+                    assert!(
+                        (row_depth - depth).abs() <= SPACING
+                            || row_depth > crate::contact::ROW_MARGIN,
+                        "{name}, {:?}: the shallowest row of {key:?} is {row_depth} m deep, the \
+                         oracle {depth} m",
+                        pair.code
+                    );
                 }
                 if let Some(gap) = rows.gap(p).filter(|&g| g >= 0.0) {
                     let distance = o.apart();
@@ -450,9 +597,11 @@ mod tests {
                         "{name}, {:?}: the rows read {gap} m, the oracle {distance} m",
                         pair.code
                     );
+                    let overlap = o.overlap();
                     assert!(
-                        gap <= SPACING || !o.overlapping(),
-                        "{name}, {:?}: {gap} m apart, and the oracle sees an overlap",
+                        gap <= SPACING || overlap <= 0.5 * SPACING,
+                        "{name}, {:?}: {gap} m apart, and the oracle sees an overlap {overlap} m \
+                         deep",
                         pair.code
                     );
                     apart += 1;
@@ -665,6 +814,111 @@ mod tests {
         assert!(
             sunk > 0,
             "no attitude sank the corner past the edge's centre"
+        );
+    }
+
+    /// The rails of a mounted key on its frame, which no pair declares.
+    fn rails(m: &Mounted) -> (Vec<PartId>, Vec<PartId>) {
+        let parts = m.mechanism.parts();
+        let id = |i: usize| PartId(u16::try_from(i).unwrap());
+        let key = (0..parts.len())
+            .filter(|&i| parts[i].body == m.key)
+            .map(id)
+            .collect();
+        let rails = (0..parts.len())
+            .filter(|&i| matches!(parts[i].code, PartCode::FrontRail | PartCode::BackRail))
+            .map(id)
+            .collect();
+        (key, rails)
+    }
+
+    /// Consistency: **a front pin straddling the front edge of its slot
+    /// reads the wood, at rest.** With the front rail 2 to 5 mm forward of
+    /// where the bench builds it, the pin stands across the slot's front
+    /// edge, and with the key at rest on its cloth, nose-up, the slot's front
+    /// wall stands in the pin's top. The pin's pair on the wood has an
+    /// overlapping row there, the contact the static solve and the view
+    /// read: the wall's, as deep as the brute-force oracle reads the pin's
+    /// top in the wood, within one spacing, the most the closest sample can
+    /// be from the wall. Without the slot's walls in the wood round the
+    /// mortise, nothing of the pair reads the pin at this attitude at all.
+    #[test]
+    fn a_pin_straddling_its_slots_edge_reads_the_wood_at_rest() {
+        let rest = regulated()
+            .sin_angle_on_back_rail()
+            .expect("the key rests on its cloth");
+        for forward in [0.002, 0.003, 0.004, 0.005] {
+            let mut a = regulated();
+            a.frame.front_rail += forward;
+            let (m, _, _) = mounted(&a, 0.0);
+            let (pose, rows) = rows_at(&m, rest);
+            let p = pair_of(&m, ContactCode::FrontPinOnTheWood);
+            let overlapping: Vec<f64> = rows
+                .of_pair(p)
+                .map(|(_, r)| r.gap)
+                .filter(|&g| g < 0.0)
+                .collect();
+            let shallowest = overlapping
+                .iter()
+                .copied()
+                .fold(f64::NEG_INFINITY, f64::max);
+            assert!(
+                !overlapping.is_empty(),
+                "{forward} m forward, the pin stands in the wood at rest with no row"
+            );
+            let o = oracle::Pair::read(&m.mechanism, &pose, &m.mechanism.pairs()[usize::from(p)])
+                .overlap();
+            assert!(
+                (-shallowest - o).abs() <= SPACING,
+                "{forward} m forward: the wall's row is {} m deep, the oracle reads {o} m",
+                -shallowest
+            );
+        }
+    }
+
+    /// Consistency: **the nominal pose is level wherever the key can stand
+    /// level, the nearest attitude within the row margin where it cannot,
+    /// and never one past a stop.**
+    ///
+    /// On the regulated bench nothing overlaps with the key level. A key
+    /// shortened under its frame, its cloth lowered to let it stand nose-up,
+    /// has its front pin in its wood with the key level and for some degrees
+    /// nose-up: it starts nose-up, clear of the pin. A frame whose stops fight
+    /// by 5 mm leaves no attitude near level within the margin, while a key
+    /// turned until it has gone right through its cloth or its punching reads
+    /// clear of both, standing in the rail under it: the nominal pose is the
+    /// least overlap near level, not that attitude.
+    #[test]
+    fn the_nominal_pose_is_level_where_it_can_be_and_never_past_a_stop() {
+        let (m, _, _) = mounted(&regulated(), 0.0);
+        assert_eq!(nominal_pose(&m), vec![0.0]);
+
+        let mut short = regulated();
+        short.key.front_edge -= 0.018;
+        short.frame.back_rail_height -= 0.015;
+        let (m, _, _) = mounted(&short, 0.0);
+        let q = nominal_pose(&m);
+        assert!(q[0] > 0.0, "nose-up, off the pin: {q:?}");
+        assert!(m.mechanism.overlap(&m.mechanism.pose(&q)) <= ROW_MARGIN);
+
+        let mut wedged = regulated();
+        wedged.frame.back_rail_height =
+            wedged.frame.balance_bearing_height() + 0.005 - wedged.frame.back_rail_cloth;
+        let (m, _, _) = mounted(&wedged, 0.0);
+        let q = nominal_pose(&m);
+        assert!(q[0].abs() <= 2.0 * NOMINAL_STEP, "{q:?}");
+        let m = &m.mechanism;
+        assert!(m.overlap(&m.pose(&q)) > ROW_MARGIN, "the stops fight");
+        let (key, rails) = rails(&mounted(&wedged, 0.0).0);
+        let through = (1..=15)
+            .flat_map(|k| [f64::from(k), -f64::from(k)])
+            .find(|&k| {
+                let pose = m.pose(&[k * NOMINAL_STEP]);
+                m.overlap(&pose) <= ROW_MARGIN && m.parts_overlap(&pose, &key, &rails) > ROW_MARGIN
+            });
+        assert!(
+            through.is_some(),
+            "some attitude reads clear of the stops it has gone through"
         );
     }
 }

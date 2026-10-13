@@ -15,12 +15,15 @@ expected values.
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
 front, capsule, back check block, thinned tail and chamfer, a turned capstan,
 leads) stands on a parametric frame (balance, front and back rails, their pins,
-and punchings laid from a drawer of real papers). The statics have one degree of
-freedom, unilateral stops and set-valued friction at the balance: the key rests
-where its statics put it, and a weight between the up weight and the down weight
-moves nothing. Key height and key dip are solved from targets to punching
-stacks; front weight and key weight ratio are read by running Stanwood's jig on
-the model, the key a body on a pin held level and the scale reading the force
+and punchings laid from a drawer of real papers). The key turns on its balance
+pin against contacts read off the drawn parts, with set-valued friction at the
+balance: a static solve puts it where its weight and the weight on it leave it,
+a weight between the up weight and the down weight moves nothing, and the bench
+says that friction holds it. Key height and key dip are read with the key
+seated by the trade's gestures, its back held down at the capstan and its front
+pressed down, and solved from targets to punching stacks; front weight and key
+weight ratio are read by running Stanwood's jig on the model, the key a body on
+a pin held level and the scale reading the force
 that holds it; key friction weight is measured by Stanwood's procedure run on
 the model. Every touchweight is read at one measuring point, a setting of the
 bench, 13 mm back from the covering's lip by default. A frame edited out of fit
@@ -37,7 +40,7 @@ model that cannot predict front weight.
 
 | Part | What it is |
 |---|---|
-| `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, parts, the weighing protocols |
+| `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
 | `crates/pa-app` | the single-key bench, as a use case, and the golden sheet that records its every reading |
 | `crates/pa-cli` | `weigh`: the weighing sheet in a terminal; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section and in solid (React, react-three-fiber), from the same Rust compiled to WebAssembly |

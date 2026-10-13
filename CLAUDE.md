@@ -34,10 +34,13 @@ trade's own protocols, and come back with the expected values.**
 1. **One part definition feeds contacts and drawing**: both are built in Rust
    from the same fields and exported, and the browser only renders them,
    applying each body's pose as given. The drawn parts declare the ranges a
-   contact may read, and a contact pair holds those ranges and nothing else;
-   the one-coordinate statics that still place the key read stops of their
-   own, held to the drawn ranges by a test until the static solve reads the
-   contacts (planned, FOUNDATIONS §7.1). Check:
+   contact may read, and a contact pair holds those ranges and nothing else.
+   The static solve places the key on those contacts; the one-coordinate
+   statics left under the key friction weight protocol, the friction bound's
+   load, the regulation solve and the drawing of a frame whose stops fight
+   read stops of their own, held to the drawn ranges by a test until they
+   leave (planned, FOUNDATIONS §7.1).
+   Check:
    `every_contact_surface_is_a_range_of_a_drawn_part`,
    `every_stop_face_is_a_declared_range_of_a_drawn_part`.
 2. **Regulation is trade targets solved to geometry; the coordinate is
@@ -140,8 +143,8 @@ grep for a listed value finds only its warning; *not enforced*.
 ## Layout
 
 ```
-crates/pa-core     domain: geometry · mechanism · contact · parts · measure. No
-                   I/O, no web; libm its one dependency
+crates/pa-core     domain: geometry · mechanism · contact · solve · parts ·
+                   measure. No I/O, no web; libm its one dependency
 crates/pa-app      application: the single-key bench (KeyBench), the golden
                    sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;

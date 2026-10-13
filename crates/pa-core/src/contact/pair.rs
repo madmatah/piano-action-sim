@@ -15,9 +15,12 @@ pub enum ContactCode {
     /// The front rail pin's top against the top of the key's front mortise:
     /// the pin bottoming in its slot.
     FrontPinInTheMortise,
-    /// The front rail pin's top against the wood of the key's underside
-    /// beside the front mortise, which only a pin standing outside its
-    /// mortise but under the key reaches.
+    /// The front rail pin's top against the wood of the key round the front
+    /// mortise: the underside beside the slot, the corners of the wood at the
+    /// slot's mouth and the slot's walls along the key. A pin standing
+    /// outside its mortise but under the key reaches it, as does one
+    /// straddling the slot's edge, and one standing off the middle of its
+    /// slot meets a wall as the key turns and the slot moves along it.
     FrontPinOnTheWood,
 }
 

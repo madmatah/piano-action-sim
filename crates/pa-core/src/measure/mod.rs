@@ -14,7 +14,10 @@
 
 pub mod jig;
 #[cfg(test)]
-mod oracle;
+pub(crate) mod oracle;
+pub mod seat;
+#[cfg(test)]
+mod seat_corpus;
 
 use crate::geometry::Point;
 use crate::parts::KeyDesign;

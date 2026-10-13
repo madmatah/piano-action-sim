@@ -134,8 +134,14 @@ export interface Readout {
   front_paper_mm: number
   key_height_target_mm: number
   key_dip_target_mm: number
-  /** What is carrying the key: a stop, or its own friction. */
+  /** What holds the key where the weight has left it: a stop it rests on,
+   * or, between the up weight and the down weight, its friction. */
   finger: string
+  /** Whether friction alone holds the key where it is. */
+  held_by_friction: boolean
+  /** How far the weight stands inside the friction band, from its nearer
+   * edge, grams; `null` when a stop carries the key. */
+  friction_margin_g: number | null
   /** How far from level the key stands at the bottom of its travel, degrees,
    * nose-down positive. A design goal is zero; many keyboards miss. */
   out_of_level_deg: number
@@ -163,7 +169,6 @@ export interface Readout {
   gap_back_mm: number | null
   friction_band_g: number
   measured_kf_g: number | null
-  measured_dip_mm: number | null
   balance_papers_mm: number[]
   front_papers_mm: number[]
   paper_sizes_mm: number[]

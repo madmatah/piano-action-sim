@@ -20,24 +20,24 @@
 //! drawn and the papers on both punchings. Numbers are written as the shortest
 //! decimal that reads back to the same double, then as its bit pattern.
 //!
-//! Two readings are recorded one step earlier than the sheet shows them. The
-//! bench turns the bedding at the back into degrees with `atan`, and the
-//! out-of-level at the bottom with `asin`, both from the platform's maths
-//! library, whose last bit is allowed to differ between machines. The sheet
-//! records the slope and the sine the engine computes, which hold bit for bit
-//! wherever the tests run; the degrees are a function of them and of nothing
-//! else.
+//! One reading is recorded one step earlier than the sheet shows it. The
+//! bench turns the bedding at the back into degrees with `atan`, from the
+//! platform's maths library, whose last bit is allowed to differ between
+//! machines. The sheet records the slope the engine computes, which holds bit
+//! for bit wherever the tests run; the degrees are a function of it and of
+//! nothing else. The out-of-level at the bottom is the bottom seat's angle
+//! turned into degrees by a product, and is recorded as it is shown.
 //!
 //! # The fixtures
 //!
 //! The default bench, and four benches that each exercise a part of the
 //! statics the default does not: a frame whose stops fight, a back-heavy key,
 //! a dip stopped by the pin in its mortise, and a key shortened under a frame
-//! left where it was.
+//! left where it was, whose front pin then stands in its wood.
 
 use std::fmt::Write as _;
 
-use crate::key_bench::{BenchReadout, Fault, KeyBench, Which};
+use crate::key_bench::{BenchReadout, Fault, KeyBench, TouchVerdict, Which};
 
 /// One bench whose readings the golden sheet records.
 #[derive(Debug, Clone, Copy)]
@@ -177,13 +177,12 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
         lead_count,
         gap_front_mm,
         gap_back_mm,
-        measured_dip_mm,
         measured_kf_g,
         friction_band_g,
         key_height_target_mm,
         key_dip_target_mm,
         finger,
-        out_of_level_deg: _,
+        out_of_level_deg,
         bedding_at_the_back_deg: _,
         bears_at_the_back_mm,
         back_bearing,
@@ -202,19 +201,27 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     line(out, "readout.lead_count", &lead_count.to_string());
     optional(out, "readout.gap_front_mm", gap_front_mm);
     optional(out, "readout.gap_back_mm", gap_back_mm);
-    optional(out, "readout.measured_dip_mm", measured_dip_mm);
     optional(out, "readout.measured_kf_g", measured_kf_g);
     number(out, "readout.friction_band_g", friction_band_g);
     number(out, "readout.key_height_target_mm", key_height_target_mm);
     number(out, "readout.key_dip_target_mm", key_dip_target_mm);
-    line(out, "readout.finger", &format!("{finger:?}"));
-    // The two angles, one step before the platform's `asin` and `atan` turn
-    // them into the degrees the sheet shows (module documentation).
-    optional(
-        out,
-        "readout.out_of_level.sine",
-        bench.assembly().sin_angle_on_front_rail(),
-    );
+    match finger {
+        TouchVerdict::RestingOn { stop } => {
+            line(out, "readout.finger", &format!("RestingOn {stop:?}"));
+        }
+        TouchVerdict::HeldByFriction { touching, margin_g } => {
+            let on = touching.map_or_else(|| "nothing".to_owned(), |c| format!("{c:?}"));
+            line(
+                out,
+                "readout.finger",
+                &format!("HeldByFriction touching {on}"),
+            );
+            number(out, "readout.finger.margin_g", margin_g);
+        }
+    }
+    number(out, "readout.out_of_level_deg", out_of_level_deg);
+    // The slope, one step before the platform's `atan` turns it into the
+    // degrees the sheet shows (module documentation).
     optional(
         out,
         "readout.bedding_at_the_back.slope",
@@ -258,7 +265,6 @@ fn write_frame(out: &mut String, bench: &KeyBench) {
 
 fn write_pose(out: &mut String, bench: &KeyBench) {
     number(out, "pose.sin_angle", bench.sin_angle());
-    number(out, "pose.depression", bench.depression());
     // Where the view marks it: the key's pose applied to the point on the key.
     let point = bench.key_placement().world(bench.measuring_point_on_key());
     number(out, "pose.measuring_point.x", point.x);
@@ -297,7 +303,10 @@ mod tests {
                 .any(|f| matches!(f, Fault::PinOutsideTheMortise { .. })),
             "the pin must stand outside the mortise"
         );
-        assert!(short.readout().is_some(), "and the key still weighs");
+        assert!(
+            short.readout().is_none() && short.frame_fault().is_some(),
+            "and, standing in the key's wood, leave it no seat"
+        );
     }
 
     /// Fixture names are distinct, so no two sheets share a file.

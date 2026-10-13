@@ -8,6 +8,45 @@
 //! and nowhere else, so no application can reach it.
 
 use super::KR_PROTOCOL_LOAD_G;
+use crate::parts::assembly::{KeyAssembly, ReadAt};
+
+/// The key's rest and bottom attitudes by the one-coordinate statics, and
+/// the trade quantities they give.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Travel {
+    /// Sine of the key angle at rest. Positive means front-down.
+    pub sin_rest: f64,
+    /// Sine of the key angle at the bottom of the dip.
+    pub sin_bottom: f64,
+    /// Height of the key's top surface at the front edge, at rest, metres.
+    pub key_height: f64,
+    /// Vertical travel of the front edge between rest and bottom, metres.
+    pub key_dip: f64,
+}
+
+/// The key's rest and bottom by the one-coordinate statics, and the key
+/// height and dip they give: the closed-form angles of
+/// [`KeyAssembly::first_touch`], against which the seated pose
+/// ([`super::seat`]) is checked wherever the brute-force oracle confirms
+/// them. Leaves with the angle machinery it reads.
+pub trait Travelling {
+    /// Rest on the back rail cloth, bottom on the front stop, the key height
+    /// at rest and the dip, read at the key front.
+    fn travel(&self) -> Option<Travel>;
+}
+
+impl Travelling for KeyAssembly {
+    fn travel(&self) -> Option<Travel> {
+        let sin_rest = self.sin_angle_on_back_rail()?;
+        let sin_bottom = self.sin_angle_on_front_rail()?;
+        Some(Travel {
+            sin_rest,
+            sin_bottom,
+            key_height: self.key_height_at(ReadAt::FrontEdge, sin_rest),
+            key_dip: self.key_dip_at(ReadAt::FrontEdge)?,
+        })
+    }
+}
 
 /// The key on the level jig, by the closed forms of Stanwood's current
 /// protocols: the key's static moment about its balance pin over the

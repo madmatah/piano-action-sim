@@ -24,12 +24,13 @@ interface State {
  * Applies a bench state given in the URL, so that a particular setup can be
  * linked to rather than described.
  *
- *   ?press=0.6&leads=10@150,8@190
+ *   ?leads=10@150,8@190&weight=-20
  *
- * `press` is the fraction of the dip, `leads` a comma-separated list of
- * `grams@millimetres-from-the-balance-pin`. Anything unparseable is ignored
+ * `leads` is a comma-separated list of `grams@millimetres-from-the-balance-pin`,
+ * `weight` the grams on the measuring point. Anything unparseable is ignored
  * rather than guessed at: a malformed link should open the standard bench, not
- * a bench nobody asked for.
+ * a bench nobody asked for. There is no way to place the key by hand: it is
+ * only ever where a weight puts it.
  */
 function applyUrlState(b: Bench): void {
   const q = new URLSearchParams(window.location.search)
@@ -41,14 +42,17 @@ function applyUrlState(b: Bench): void {
     if (Number.isFinite(mass) && Number.isFinite(at)) b.add_lead(at, mass)
   }
 
-  // `press` places the key geometrically, for sharing a particular attitude
-  // in a link. It is deliberately not a control on the page: the bench's own
-  // way to move the key is to put weight on it.
-  const press = Number(q.get('press'))
-  if (Number.isFinite(press) && q.has('press')) b.set_depression(press)
-
   const weight = Number(q.get('weight'))
   if (Number.isFinite(weight) && q.has('weight')) b.set_finger_weight(weight)
+}
+
+/**
+ * `x` to `digits` places, a reading that rounds to nothing shown as 0, never
+ * as -0: a key level to a few attometres at the bottom of its dip is level.
+ */
+function fixed(x: number, digits: number): string {
+  const shown = x.toFixed(digits)
+  return Number(shown) === 0 ? (0).toFixed(digits) : shown
 }
 
 function Row({
@@ -73,10 +77,10 @@ function Row({
   return (
     <div className="row">
       <span className="label">{label}</span>
-      <span className="value">{value.toFixed(2)}</span>
+      <span className="value">{fixed(value, 2)}</span>
       <span className="unit">{unit}</span>
       <span className="target">
-        {target === undefined ? '' : `${targetLabel} ${target.toFixed(2)}`}
+        {target === undefined ? '' : `${targetLabel} ${fixed(target, 2)}`}
       </span>
     </div>
   )
@@ -268,7 +272,7 @@ export function App() {
   // The contacts the key bears on where it is drawn, by the engine's
   // identifiers: on the view's element too, where the smoke test reads them.
   const touching = state.scene.contacts.filter((c) => c.state === 'closed').map((c) => c.pair)
-  const gap = (mm: number | null) => (mm === null ? 'none' : `${mm.toFixed(3)} mm`)
+  const gap = (mm: number | null) => (mm === null ? 'none' : `${fixed(mm, 3)} mm`)
 
   return (
     <div className="bench">
@@ -379,20 +383,13 @@ export function App() {
               target={r.key_height_target_mm}
             />
             <Row label="key dip" value={r.key_dip_mm} unit="mm" target={r.key_dip_target_mm} />
-            {r.measured_dip_mm === null ? (
-              <p className="note">
-                The dip cannot be pressed out on this geometry, so there is no measured value to
-                show beside the solved {r.key_dip_mm.toFixed(2)} mm.
-              </p>
-            ) : (
-              <Row
-                label="key dip, pressed"
-                value={r.measured_dip_mm}
-                unit="mm"
-                target={r.key_dip_mm}
-                targetLabel="solved"
-              />
-            )}
+            <p className="note">
+              Both read at the front of the key with the key seated the way a technician seats it:
+              the back of the key held down at the capstan, where the action holds it, for the
+              height; the front then pressed down until a stop takes it, for the dip — the punching,
+              or the pin in its mortise if that comes first. Whatever the weight below is doing to
+              the key, these do not move.
+            </p>
             <Row label="key mass" value={r.key_mass_g} unit="g" />
             <Row label="out of level, key down" value={r.out_of_level_deg} unit="°" target={0} />
             <Row
@@ -677,12 +674,14 @@ export function App() {
                 act((b) => b.set_finger_weight(v))
               }}
             />
-            <div
-              className={`verdict ${
-                r.finger === 'held by friction alone' ? 'verdict-held' : 'verdict-stop'
-              }`}
-            >
+            <div className={`verdict ${r.held_by_friction ? 'verdict-held' : 'verdict-stop'}`}>
               the key is {r.finger}
+              {r.friction_margin_g === null ? null : (
+                <div className="gaps">
+                  the weight lies between U and D, {r.friction_margin_g.toFixed(1)} g inside the
+                  band
+                </div>
+              )}
               <div className="gaps">
                 gap at the front punching {gap(r.gap_front_mm)} · at the back rail cloth{' '}
                 {gap(r.gap_back_mm)}

@@ -270,6 +270,43 @@ for (const [weight, contact] of [
   console.log(`  ok  contacts: with ${weight} g the key bears on ${bears.join(', ')}`)
 }
 
+// A weight between the up weight and the down weight leaves the key where the
+// last weight left it, and the bench says that friction holds it there: on its
+// punching after a press, on its cloth after a lift. The weight is the sheet's
+// balance weight, the middle of the band, to the slider's half gram; the band
+// is the 14 g of friction set above, either side of it.
+const verdict = () =>
+  evaluate(`
+    (() => {
+      const v = document.querySelector('.verdict')
+      return v ? { held: v.classList.contains('verdict-held'), text: v.textContent } : null
+    })()
+  `)
+const middle = Math.round(2 * Number((await sheet())['balance weight BW'])) / 2
+if (!Number.isFinite(middle)) fail('the sheet shows no balance weight')
+for (const [via, contact] of [
+  [60, 'front_rail_punching'],
+  [-60, 'back_rail_cloth'],
+]) {
+  if ((await moveSlider('weight on the measuring point', via)) !== 'ok') {
+    fail('weight slider missing')
+  }
+  await settle()
+  if ((await moveSlider('weight on the measuring point', middle)) !== 'ok') {
+    fail('weight slider missing')
+  }
+  await settle()
+  const bears = await touching()
+  if (bears === null || !bears.includes(contact)) {
+    fail(`${middle} g, between U and D, moved the key off its ${contact}: it bears on ${bears}`)
+  }
+  const said = await verdict()
+  if (!said?.held) {
+    fail(`with ${middle} g, between U and D, the bench says: ${said?.text ?? 'nothing'}`)
+  }
+  console.log(`  ok  friction holds it: ${middle} g leaves the key on its ${contact}`)
+}
+
 // The section draws every part flat, each in its own body's frame, a cut as a
 // void in the key's wood. It is a different drawing from the solid's, and a
 // renderer that throws there blanks that view alone, so both are shown.
