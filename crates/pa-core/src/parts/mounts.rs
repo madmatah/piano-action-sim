@@ -7,8 +7,9 @@
 //! bearing, [`KeyMount::Pivot`], with its contacts. Planned: the key free to
 //! lift off its balance punching, the default once it is built.
 
-use super::frame::FrameRanges;
+use super::frame::{FrameDesign, FrameRanges, KeyKind};
 use super::key::KeyRanges;
+use super::KeyDesign;
 use crate::contact::{
     ContactCode, ContactLaw, ContactPair, PairGeometry, Part, PartCode, PartId, Surface, ROW_MARGIN,
 };
@@ -187,6 +188,64 @@ pub fn pivot(
     })
 }
 
+/// A key on its frame as the procedures read it: the key turning about its
+/// balance bearing ([`KeyMount::Pivot`]), its contacts with its frame, what
+/// the two sets of parts declare, and the points of the key the procedures
+/// load and read.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OnItsFrame {
+    /// The mechanism: the frame's parts on the ground, the key's on its body.
+    pub mounted: Mounted,
+    /// What the key's parts declare.
+    pub key: KeyRanges,
+    /// What the frame's parts declare.
+    pub frame: FrameRanges,
+    /// The capstan's contact point, in the key's frame: where a load
+    /// standing for the action acts.
+    pub capstan: Point,
+    /// The key front's top, in the key's frame: where key height and dip are
+    /// read.
+    pub front_top: Point,
+}
+
+/// `key` on `frame`, its key standing on the row of pins of `kind`, the
+/// papers laid on the two punchings as given, bottom first; the key's mass
+/// `mass`, `None` for a key nobody has weighed; its bushings' friction a
+/// torque bound of `friction` newton-metres; its bearing raised by `lift`
+/// metres off the balance punching, as a frame whose stops fight raises it.
+///
+/// The one place a key is put on its frame for a procedure to read, so that
+/// the bench's readings and the regulation solve that lays its papers read
+/// the same mechanism, part for part and bit for bit. The frame's parts come
+/// first, on the ground, then the key's, on body 1.
+#[allow(clippy::too_many_arguments)]
+pub fn on_its_frame(
+    key: &KeyDesign,
+    frame: &FrameDesign,
+    kind: KeyKind,
+    balance_papers: &[f64],
+    front_papers: &[f64],
+    mass: Option<MassProps>,
+    friction: f64,
+    lift: f64,
+) -> Result<OnItsFrame, Problem> {
+    let mut parts = Vec::new();
+    let frame_ranges = frame.parts(key, kind, balance_papers, front_papers, &mut parts);
+    let key_ranges = key.parts(BodyId(1), &mut parts);
+    let capstan = key_ranges.capstan_contact.point(&parts);
+    let front_top = key_ranges.key_front_top.point(&parts);
+    let pairs = key_on_frame(&key_ranges, &frame_ranges);
+    let bearing = Point::new(0.0, frame.balance_bearing_height() + lift);
+    let mounted = KeyMount::Pivot.on_frame(mass, bearing, friction, parts, pairs)?;
+    Ok(OnItsFrame {
+        mounted,
+        key: key_ranges,
+        frame: frame_ranges,
+        capstan,
+        front_top,
+    })
+}
+
 /// The key's contacts with its frame, each a pair of the ranges the two sets
 /// of parts declare, the key on side A.
 ///
@@ -257,39 +316,17 @@ mod tests {
     use super::*;
     use crate::contact::oracle::{self, SPACING};
     use crate::contact::{Feature, HowItBears, Piece, Rows, Surface};
-    use crate::geometry::KeyBearing;
+
     use crate::measure::oracle::Travelling;
-    use crate::measure::TouchweightProtocol;
+
     use crate::mechanism::Pose;
-    use crate::parts::assembly::{nose_up_angle, KeyAssembly, Regulation, Touching};
+    use crate::parts::assembly::{nose_up_angle, KeyAssembly, Touching};
     use crate::parts::frame::{papers_for, KeyKind};
-    use crate::parts::{FrameDesign, KeyDesign};
 
     /// The default key regulated on the default frame, as the bench builds
-    /// it: each felt kept, the rest of each stack laid in papers from the
-    /// drawer, and the stack taken at what those papers make.
+    /// it.
     fn regulated() -> KeyAssembly {
-        let key = KeyDesign::default();
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        for (stack, total) in [
-            (&mut frame.balance_punching, balance),
-            (&mut frame.front_punching, front),
-        ] {
-            stack.paper = papers_for(total - stack.felt).iter().sum();
-        }
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        crate::parts::fixtures::regulated()
     }
 
     /// The regulated bench, and the ways the golden sheet's fixtures and the

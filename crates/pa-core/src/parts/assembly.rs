@@ -6,9 +6,9 @@
 //! and a **key dip** and then builds the stack that produces them. The data
 //! model follows: the stored, normative value is the coordinate — the stack
 //! thickness — and the target travels beside it as intent, with the achieved
-//! value. [`Regulation::solve`] is that direction made explicit, and without it
-//! the bench could only ask "what does this stack give?", never the question a
-//! technician actually asks.
+//! value. The regulation solve ([`crate::regulation`]) is that direction made
+//! explicit, and without it the bench could only ask "what does this stack
+//! give?", never the question a technician actually asks.
 //!
 //! # The one thing a bare key does that a key in a piano does not
 //!
@@ -173,7 +173,7 @@ pub(crate) const CONTACT_TOLERANCE: f64 = 1e-7;
 ///
 /// So each root is put back into the **unsquared** condition and kept only if
 /// it satisfies it.
-fn sines_satisfying(p: f64, q: f64, k: f64) -> [Option<f64>; 2] {
+pub(crate) fn sines_satisfying(p: f64, q: f64, k: f64) -> [Option<f64>; 2] {
     let a = p * p + q * q;
     if a < 1e-18 {
         return [None, None];
@@ -871,202 +871,14 @@ impl KeyAssembly {
     }
 }
 
-/// Trade targets for the key, and the geometry that meets them.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Regulation {
-    /// Key height: top of the key at the front edge above the keybed, metres.
-    pub key_height: f64,
-    /// Key dip: travel of the front edge, metres.
-    pub key_dip: f64,
-}
-
-impl Regulation {
-    /// Solves the two punching stacks that meet these targets.
-    ///
-    /// Returns the balance and front stack **totals**, in metres. How the
-    /// technician splits each between paper and felt is his business and the
-    /// rest geometry does not care; what it changes is the compliance, which
-    /// this rigid model leaves out.
-    ///
-    /// The two equations are the two contacts. At rest the tail sits on the back
-    /// rail cloth and the key top reaches the target height; at the bottom the
-    /// underside sits on the front rail punching, the front edge having fallen
-    /// by the target dip. Both are linear in the unknowns once written in terms
-    /// of `sin θ`, so this is a closed-form solve and not a search.
-    ///
-    /// # Why it is placed twice
-    ///
-    /// Where the key bears on the cloth is **not** the middle of the strip. A
-    /// key stands nose-up at rest, so it meets the cloth at the strip's back
-    /// edge, 12 mm further from the pin — and a lever arm wrong by 12 mm in 150
-    /// puts the dip 0.8 mm off its target, which is eight times the tolerance
-    /// the trade works to. So the placement is made twice: once with the middle
-    /// of the strip, to have a frame to ask, and once with the bearing that
-    /// frame really produces. Two passes, both closed form, nothing iterating
-    /// and nothing to converge.
-    ///
-    /// What stays approximate on purpose is the **small-angle form** of the two
-    /// equations. It is used only to *place* the punchings; what the bench then
-    /// reads back is the exact contact of [`KeyAssembly::first_touch`], so the
-    /// residual shows up as a dip that misses its target by a few hundredths of
-    /// a millimetre.
-    ///
-    /// `None` when the placement equations have no solution on this geometry.
-    /// It does not see the front pin bottoming in its mortise: a dip the pin
-    /// forbids is returned as solved and shows as a miss on the sheet, a known
-    /// defect the general solver replaces.
-    pub fn solve(
-        &self,
-        key: &KeyDesign,
-        frame: &FrameDesign,
-        bearing_offset_from_pin: f64,
-    ) -> Option<(f64, f64)> {
-        let x_b = -bearing_offset_from_pin;
-        let nominal = Point::new(frame.sections.back.centre_x(frame.back_rail), 0.0);
-        let (balance, front) = self.place(key, frame, x_b, nominal)?;
-
-        // The frame that placement produces, asked where the key really bears.
-        // Only the stack's total matters here, so it goes in as paper.
-        let mut probed = frame.clone();
-        probed.balance_punching = crate::parts::frame::PunchingStack::new(balance, 0.0);
-        probed.front_punching = crate::parts::frame::PunchingStack::new(front, 0.0);
-        let probe = KeyAssembly {
-            key: key.clone(),
-            frame: probed,
-            bearing: KeyBearing {
-                offset_from_pin: bearing_offset_from_pin,
-            },
-            // Never weighed: the probe is asked where the key bears on its
-            // cloth, which is geometry, and nothing about it reads the
-            // measuring point.
-            protocol: TouchweightProtocol::default(),
-        };
-        self.place(
-            key,
-            frame,
-            x_b,
-            probe.first_touch(probe.back_stop())?.on_key,
-        )
-    }
-
-    /// Places the two stacks, given the arm the key bears on the cloth at.
-    ///
-    /// The small-angle form of the two contact equations, solved for the two
-    /// stack heights. Split out because it is evaluated twice — see
-    /// [`Self::solve`] — and a formula written twice is a formula that drifts.
-    fn place(
-        &self,
-        key: &KeyDesign,
-        frame: &FrameDesign,
-        x_b: f64,
-        back_bears: Point,
-    ) -> Option<(f64, f64)> {
-        let back_lever = back_bears.x - x_b;
-        let front_lever = key.front_edge - x_b;
-        let frp_lever = frame.front_rail - x_b;
-        if front_lever.abs() < 1e-9 || back_lever.abs() < 1e-9 {
-            return None;
-        }
-
-        // Rest: the key top at the front edge reaches the target height.
-        //   h_bearing - front_lever * sin_rest + stick + keytop = key_height
-        // Rest: the point of the underside that bears sits on the cloth. That
-        // point is not necessarily on the flat — under the tail it is on the
-        // chamfer, which has risen by then — so its own height counts.
-        //   h_bearing - back_lever * sin_rest + y_bears = h_back
-        // Subtract to eliminate h_bearing.
-        let h_back = frame.back_bearing_height();
-        let top = key.stick_height + key.keytop_thickness;
-        let sin_rest = (h_back + top - self.key_height - back_bears.y) / (front_lever - back_lever);
-        let h_bearing = h_back + back_lever * sin_rest - back_bears.y;
-
-        // Bottom: the front edge has fallen by the dip.
-        let sin_bottom = sin_rest + self.key_dip / front_lever;
-        let h_front_bearing = h_bearing - frp_lever * sin_bottom;
-
-        let balance_stack = h_bearing - frame.balance_rail_height;
-        let front_stack = h_front_bearing - frame.front_rail_height;
-        if !(balance_stack.is_finite() && front_stack.is_finite())
-            || balance_stack < 0.0
-            || front_stack < 0.0
-        {
-            return None;
-        }
-        Some((balance_stack, front_stack))
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::super::frame::PunchingStack;
+
     use super::*;
     use crate::measure::oracle::Travelling;
 
     fn regulated() -> KeyAssembly {
-        let key = KeyDesign::default();
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target
-            .solve(&key, &frame, 0.0)
-            .expect("the default targets must be reachable");
-        frame.balance_punching = PunchingStack::new(balance - 0.0020, 0.0020);
-        frame.front_punching = PunchingStack::new(front - 0.0030, 0.0030);
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
-    }
-
-    /// Level 4: the regulated key lands within the small-angle placement's
-    /// own error of its targets.
-    ///
-    /// The targets go in as trade specifications. What comes back out is read
-    /// from the exact contacts: the vertical distance the front edge moves
-    /// between them, and the height of the key top at rest.
-    #[test]
-    fn the_regulated_key_lands_within_the_placement_error_of_its_targets() {
-        let a = regulated();
-        let t = a.travel().expect("a regulated key has a travel");
-
-        // The punchings are placed by a closed-form small-angle solve, and what
-        // is read back is the exact circle-on-line contact, so the two may
-        // differ by a few micrometres. An exact placement would be as good, so
-        // only the bound is asserted. The stored, normative value is the
-        // coordinate, and the target travels beside it with the achieved
-        // value: you shim, you measure, and the measurement is what counts.
-        let miss = (t.key_dip - 0.0102).abs();
-
-        // How far apart they may be is **derived from the attitude**, because
-        // that is what the placement approximates away. A small-angle solve
-        // drops terms of order θ², and the length they multiply is the key
-        // top's height above the bearing — that is where turning the key
-        // couples into a vertical reading. The bound therefore grows with how
-        // far from level the key stands, which on a correctly set frame is the
-        // whole of the dip and not a rounding angle.
-        let s = a
-            .sin_angle_on_back_rail()
-            .unwrap()
-            .abs()
-            .max(a.sin_angle_on_front_rail().unwrap().abs());
-        let dropped = s * s * (a.key.stick_height + a.key.keytop_thickness);
-        assert!(
-            miss < dropped,
-            "the dip missed its target by {miss} m, more than the {dropped} m \
-             the small-angle placement can account for"
-        );
-
-        let height_miss = (t.key_height - 0.0650).abs();
-        assert!(
-            height_miss < dropped,
-            "key height missed by {height_miss} m, more than {dropped}"
-        );
+        crate::parts::fixtures::regulated()
     }
 
     /// The edge radius given to a punching is a shape, not a tuning knob.
@@ -1330,21 +1142,6 @@ mod tests {
             );
         }
     }
-
-    /// Unreachable targets are reported, not clamped.
-    #[test]
-    fn an_impossible_dip_is_refused() {
-        let key = KeyDesign::default();
-        let frame = FrameDesign::default();
-        let absurd = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.080,
-        };
-        assert!(
-            absurd.solve(&key, &frame, 0.0).is_none(),
-            "an 80 mm dip would need the front punching below the rail"
-        );
-    }
 }
 
 /// Where the key has settled, and what is holding it there.
@@ -1600,31 +1397,14 @@ impl KeyAssembly {
 
 #[cfg(test)]
 mod virtual_work_tests {
-    use super::super::frame::PunchingStack;
-    use super::super::{FrameDesign, KeyDesign, Lead};
+
+    use super::super::Lead;
     use super::*;
 
     fn bench() -> KeyAssembly {
-        let key = KeyDesign {
-            leads: vec![Lead::at(0.140, 0.012), Lead::at(-0.080, 0.009)],
-            ..KeyDesign::default()
-        };
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        frame.balance_punching = PunchingStack::new(balance - 0.0015, 0.0015);
-        frame.front_punching = PunchingStack::new(front - 0.0020, 0.0020);
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        let mut a = crate::parts::fixtures::regulated();
+        a.key.leads = vec![Lead::at(0.140, 0.012), Lead::at(-0.080, 0.009)];
+        a
     }
 
     /// Level 0: **virtual work over the whole chain**, not only gravity.
@@ -1724,28 +1504,11 @@ mod virtual_work_tests {
 
 #[cfg(test)]
 mod bearing_tests {
-    use super::super::frame::PunchingStack;
-    use super::super::{FrameDesign, KeyDesign};
+
     use super::*;
 
     fn bench() -> KeyAssembly {
-        let key = KeyDesign::default();
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        frame.balance_punching = PunchingStack::new(balance - 0.0015, 0.0015);
-        frame.front_punching = PunchingStack::new(front - 0.0020, 0.0020);
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        crate::parts::fixtures::regulated()
     }
 
     /// A rail hung off the end of the key is carried by the key's own corner.
@@ -2015,28 +1778,12 @@ mod bearing_tests {
 
 #[cfg(test)]
 mod settle_tests {
-    use super::super::frame::PunchingStack;
-    use super::super::{FrameDesign, KeyDesign, Lead};
+
+    use super::super::Lead;
     use super::*;
 
     fn bench() -> KeyAssembly {
-        let key = KeyDesign::default();
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        frame.balance_punching = PunchingStack::new(balance - 0.0015, 0.0015);
-        frame.front_punching = PunchingStack::new(front - 0.0020, 0.0020);
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        crate::parts::fixtures::regulated()
     }
 
     /// Six grams of key friction, as a torque about the bearing.
@@ -2172,29 +1919,12 @@ mod settle_tests {
 
 #[cfg(test)]
 mod protocol_tests {
-    use super::super::frame::PunchingStack;
-    use super::super::{FrameDesign, KeyDesign};
+
     use super::*;
     use crate::measure::oracle::Travelling;
 
     fn bench() -> KeyAssembly {
-        let key = KeyDesign::default();
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        frame.balance_punching = PunchingStack::new(balance - 0.0015, 0.0015);
-        frame.front_punching = PunchingStack::new(front - 0.0020, 0.0020);
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        crate::parts::fixtures::regulated()
     }
 
     /// Level 4: **key height is read from the keybed**, and the keybed is the
@@ -2375,31 +2105,14 @@ mod protocol_tests {
 
 #[cfg(test)]
 mod vertical_equilibrium_tests {
-    use super::super::frame::PunchingStack;
-    use super::super::{FrameDesign, KeyDesign, Lead};
+
+    use super::super::Lead;
     use super::*;
 
     fn bench() -> KeyAssembly {
-        let key = KeyDesign {
-            leads: vec![Lead::at(-0.120, 0.030)],
-            ..KeyDesign::default()
-        };
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        frame.balance_punching = PunchingStack::new(balance - 0.0015, 0.0015);
-        frame.front_punching = PunchingStack::new(front - 0.0020, 0.0020);
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        let mut a = crate::parts::fixtures::regulated();
+        a.key.leads = vec![Lead::at(-0.120, 0.030)];
+        a
     }
 
     /// Level 0: **the vertical forces balance**, and the stop takes its share.
@@ -2475,37 +2188,16 @@ mod vertical_equilibrium_tests {
 mod bridge_tests {
     use super::super::frame::{papers_for, FrameRanges, KeyKind};
     use super::super::key::KeyRanges;
-    use super::super::{FrameDesign, KeyDesign};
+
     use super::*;
     use crate::contact::{Part, SurfaceRef};
     use crate::geometry::Seg;
     use crate::mechanism::BodyId;
 
-    /// The default key regulated on the default frame, as the bench builds it:
-    /// each felt kept, the rest of each stack laid in papers from the drawer,
-    /// and the stack taken at what those papers make.
+    /// The default key regulated on the default frame, as the bench builds
+    /// it.
     fn regulated() -> KeyAssembly {
-        let key = KeyDesign::default();
-        let mut frame = FrameDesign::default();
-        let target = Regulation {
-            key_height: 0.0650,
-            key_dip: 0.0102,
-        };
-        let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-        for (stack, total) in [
-            (&mut frame.balance_punching, balance),
-            (&mut frame.front_punching, front),
-        ] {
-            stack.paper = papers_for(total - stack.felt).iter().sum();
-        }
-        KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            protocol: TouchweightProtocol::default(),
-        }
+        crate::parts::fixtures::regulated()
     }
 
     /// The regulated bench and the four ways the golden sheet's fixtures push

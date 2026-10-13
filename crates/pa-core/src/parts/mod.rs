@@ -33,7 +33,7 @@ pub mod key;
 pub mod mounts;
 pub mod verdicts;
 
-pub use assembly::{KeyAssembly, Regulation, RestingOn};
+pub use assembly::{KeyAssembly, RestingOn};
 pub use faults::Fault;
 pub use frame::{FrameDesign, FrameRanges, PunchingStack};
 pub use key::KeyRanges;

@@ -21,7 +21,9 @@ balance: a static solve puts it where its weight and the weight on it leave it,
 a weight between the up weight and the down weight moves nothing, and the bench
 says that friction holds it. Key height and key dip are read with the key
 seated by the trade's gestures, its back held down at the capstan and its front
-pressed down, and solved from targets to punching stacks; front weight and key
+pressed down, and solved from targets to punching stacks by that seated pose,
+laid in papers within one paper of the targets, a target a stop forbids refused
+with its shortfall in millimetres; front weight and key
 weight ratio are read by running Stanwood's jig on the model, the key a body on
 a pin held level and the scale reading the force
 that holds it; key friction weight is measured by Stanwood's procedure run on

@@ -114,6 +114,21 @@ const moveSlider = (label, value) =>
     })()
   `)
 
+/** Types a number into a labelled field, as a technician types a target. */
+const setField = (label, value) =>
+  evaluate(`
+    (() => {
+      const l = [...document.querySelectorAll('label.field')]
+        .find((x) => x.textContent.includes(${JSON.stringify(label)}))
+      if (!l) return 'no such field'
+      const input = l.querySelector('input')
+      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+      set.call(input, '${value}')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      return 'ok'
+    })()
+  `)
+
 const clickButton = (text) =>
   evaluate(`
     (() => {
@@ -232,6 +247,46 @@ if (unlevelled['key height'] !== leaded['key height']) {
 }
 console.log(`  ok  lift it off: key height back to ${unlevelled['key height']}`)
 
+// Regulation from targets reaches the engine, and so does its refusal. On this
+// frame the front rail pin bottoms in its mortise about 0.8 mm short of a
+// 12 mm dip: the bench must refuse it, say so in millimetres and name the pin,
+// and change nothing. A dip the pin allows is laid, and the sheet reads what
+// the papers give.
+const regulation = () =>
+  evaluate(`
+    (() => {
+      const p = document.querySelector('.regulated')
+      return p ? { laid: p.classList.contains('note'), text: p.textContent } : null
+    })()
+  `)
+if ((await setField('key dip', 12)) !== 'ok') fail('no key dip target')
+await settle()
+if ((await clickButton('regulate to these targets')) !== 'ok') fail('no regulate button')
+await settle()
+const refused = await regulation()
+if (
+  !refused ||
+  refused.laid ||
+  !/mortise/.test(refused.text) ||
+  !/\d\.\d\d mm/.test(refused.text)
+) {
+  fail(`a 12 mm dip was not refused with its shortfall: ${JSON.stringify(refused)}`)
+}
+const afterRefusal = await sheet()
+expectUnchanged('a refused regulation', unlevelled, afterRefusal, 'key dip')
+expectUnchanged('a refused regulation', unlevelled, afterRefusal, 'key height')
+console.log(`  ok  regulation refused: ${refused.text}`)
+
+if ((await setField('key dip', 10.6)) !== 'ok') fail('no key dip target')
+await settle()
+if ((await clickButton('regulate to these targets')) !== 'ok') fail('no regulate button')
+await settle()
+const laid = await regulation()
+if (!laid?.laid) fail(`a 10.6 mm dip was not laid: ${JSON.stringify(laid)}`)
+const regulated = await sheet()
+expectChanged('a regulation laid', afterRefusal, regulated, 'key dip')
+console.log(`  ok  regulation laid: ${laid.text}`)
+
 // The measuring point is a protocol setting every touchweight reads. Moving it
 // must change front weight and the key weight ratio by the lever, carry the
 // friction torque onto the new arm, and leave key height and dip alone: they
@@ -241,11 +296,11 @@ if ((await moveSlider('measuring point, back from', 20)) !== 'ok') {
 }
 await settle()
 const remeasured = await sheet()
-expectChanged('measuring point', unlevelled, remeasured, 'front weight FW')
-expectChanged('measuring point', unlevelled, remeasured, 'key weight ratio KR')
-expectChanged('measuring point', unlevelled, remeasured, 'friction weight F')
-expectUnchanged('measuring point', unlevelled, remeasured, 'key height')
-expectUnchanged('measuring point', unlevelled, remeasured, 'key dip')
+expectChanged('measuring point', regulated, remeasured, 'front weight FW')
+expectChanged('measuring point', regulated, remeasured, 'key weight ratio KR')
+expectChanged('measuring point', regulated, remeasured, 'friction weight F')
+expectUnchanged('measuring point', regulated, remeasured, 'key height')
+expectUnchanged('measuring point', regulated, remeasured, 'key dip')
 
 // The contacts the engine reads off the drawn parts reach the view: a weight
 // lifting the key puts it on its back rail cloth, a weight pressing it puts it

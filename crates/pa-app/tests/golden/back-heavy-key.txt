@@ -6,21 +6,21 @@
 readout.front_weight_g -8.093919058496057 0xc020301628a96c61
 readout.key_ratio 0.5242914979757087 0x3fe0c6fef6ac0c72
 readout.key_height_mm 64.98878883168035 0x40503f4850f3ade6
-readout.key_dip_mm 10.188788831680354 0x402460a8ee03d597
+readout.key_dip_mm 10.21172226763914 0x40246c66dc6eb0ac
 readout.down_weight_g 14.09391905849606 0x402c301628a96c62
 readout.up_weight_g 2.0939190584960583 0x4000c058a2a5b186
 readout.balance_weight_g 8.09391905849606 0x4020301628a96c62
 readout.friction_weight_g 6.0 0x4018000000000000
 readout.key_mass_g 151.1166896392422 0x4062e3bbebe90a79
 readout.lead_count 1
-readout.gap_front_mm 8.903330562433476 0x4021ce8157ee4215
-readout.gap_back_mm -5.421010862427522e-14 0xbd2e848000000000
+readout.gap_front_mm 8.923314898166891 0x4021d8bcbaf7129f
+readout.gap_back_mm -6.657001339060997e-14 0xbd32bce000000000
 readout.measured_kf_g none
 readout.friction_band_g 6.0 0x4018000000000000
 readout.key_height_target_mm 65.0 0x4050400000000000
 readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
 readout.finger RestingOn BackRailCloth
-readout.out_of_level_deg -2.4848083448933725e-17 0xbc7ca5dc1a63c1f8
+readout.out_of_level_deg 0.0050929581655275 0x3f74dc5a8c2c632d
 readout.bedding_at_the_back.slope 0.0071246812895846825 0x3f7d2ec512218b1f
 readout.bears_at_the_back_mm 212.00356225023413 0x406a801d2e94882f
 readout.back_bearing StopEdge
@@ -30,9 +30,10 @@ faults 0
 papers.balance 2
 papers.balance.0 0.0005 0x3f40624dd2f1a9fc
 papers.balance.1 0.0002 0x3f2a36e2eb1c432d
-papers.front 2
-papers.front.0 0.0005 0x3f40624dd2f1a9fc
+papers.front 3
+papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
-pose.sin_angle -0.03957035805525988 0xbfa44290e37a0930
+papers.front.2 8e-5 0x3f14f8b588e368f1
+pose.sin_angle -0.039570358055259935 0xbfa44290e37a0938
 pose.measuring_point.x 0.24577771699808515 0x3fcf75a4ec4bd11c
-pose.measuring_point.y 0.06455351489307255 0x3fb08694434ebe95
+pose.measuring_point.y 0.06455351489307257 0x3fb08694434ebe96

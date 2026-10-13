@@ -8,7 +8,7 @@
 
 import type { Bench } from '@pas/wasm'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { type Readout, readout, type Scene, scene, start } from './bench'
+import { type Readout, type Regulation, readout, regulate, type Scene, scene, start } from './bench'
 import { CONTACT_COLOUR, SagittalView, type ViewMode } from './SagittalView'
 
 interface State {
@@ -204,6 +204,12 @@ export function App() {
   // this before the panel first renders. NaN rather than a plausible number,
   // so that an unseeded value could never pass for the protocol's.
   const [measuringPoint, setMeasuringPoint] = useState(Number.NaN)
+  // The targets typed for the next regulation, seeded from the engine's at
+  // boot, and how the last one asked for came out: the engine's sentence,
+  // shown until anything else is done.
+  const [heightTarget, setHeightTarget] = useState(Number.NaN)
+  const [dipTarget, setDipTarget] = useState(Number.NaN)
+  const [regulation, setRegulation] = useState<Regulation | null>(null)
   const [newLeadMass, setNewLeadMass] = useState(10)
 
   // Every mutation goes through the engine and the whole view is re-read from
@@ -253,6 +259,8 @@ export function App() {
         setFrontPin(r.front_pin_mm)
         setFrontMortise(r.front_mortise_mm)
         setMeasuringPoint(r.measuring_point_from_lip_mm)
+        setHeightTarget(r.key_height_target_mm)
+        setDipTarget(r.key_dip_target_mm)
       }
       refresh()
     })
@@ -262,6 +270,14 @@ export function App() {
     const b = bench.current
     if (!b) return
     f(b)
+    setRegulation(null)
+    refresh()
+  }
+
+  const regulateTo = () => {
+    const b = bench.current
+    if (!b) return
+    setRegulation(regulate(b, heightTarget, dipTarget))
     refresh()
   }
 
@@ -415,6 +431,47 @@ export function App() {
             </p>
 
             <h2>Regulation</h2>
+            <div className="targets">
+              <label className="field">
+                key height
+                <input
+                  type="number"
+                  min={40}
+                  max={90}
+                  step={0.01}
+                  value={heightTarget}
+                  onChange={(e) => setHeightTarget(Number(e.target.value))}
+                />
+                mm
+              </label>
+              <label className="field">
+                key dip
+                <input
+                  type="number"
+                  min={0}
+                  max={20}
+                  step={0.01}
+                  value={dipTarget}
+                  onChange={(e) => setDipTarget(Number(e.target.value))}
+                />
+                mm
+              </label>
+              <button type="button" onClick={regulateTo}>
+                regulate to these targets
+              </button>
+            </div>
+            {regulation && (
+              <p className={`regulated ${regulation.laid ? 'note' : 'degenerate'}`}>
+                {regulation.said}
+              </p>
+            )}
+            <p className="note">
+              The bench lays the papers as a technician does: the key height first, on the balance
+              punching, then the dip on the front punching with the key as it then stands, each the
+              closest stack the drawer makes from below. So it lands within one paper of each
+              target, not on it, and the sheet shows both. A target no stack reaches is refused,
+              with what keeps it out and by how many millimetres, and nothing is changed.
+            </p>
             <p className="note">
               A punching stack is a <b>pile of papers</b>, not a thickness. The operation is “lay a
               two-tenths”, never “set it to 0.37”, so these are the papers in the drawer and the

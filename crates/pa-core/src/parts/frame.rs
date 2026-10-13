@@ -183,9 +183,9 @@ impl Default for FrameDesign {
     ///
     /// Within that, the three are **chosen for consistency, not invented
     /// freely**: each rail is placed so that the published targets are met
-    /// with a positive stack of real paper on it, and
-    /// [`super::Regulation::solve`] refuses a design where they cannot be
-    /// rather than clamping. The targets are published: key height 65.88 mm
+    /// with a positive stack of real paper on it, and the regulation solve
+    /// ([`crate::regulation`]) refuses a design where they cannot be, rather
+    /// than clamping. The targets are published: key height 65.88 mm
     /// Steinway New York, and key dip 10.16 mm Steinway NY / 9.9–10.6 Hamburg
     /// / 10.1–10.3 Kawai. [V]
     ///
@@ -193,7 +193,8 @@ impl Default for FrameDesign {
     /// regulating to those targets leaves positive paper on both rails. A felt
     /// thicker than the whole stack the regulation calls for is not a rounding
     /// problem, it is a wrong washer — and the solver refuses rather than
-    /// returning a negative shim.
+    /// returning a negative shim, naming the felt and by how much the target
+    /// is out of reach.
     fn default() -> Self {
         Self {
             balance_rail_height: 0.0266,
@@ -539,10 +540,20 @@ const PAPER_STEP: f64 = 0.000_01;
 
 /// The tallest stack worth searching for, metres.
 ///
-/// Beyond this the design is wrong and not the drawer, and
-/// [`super::Regulation::solve`] has already refused it; this only stops a wild
-/// number from sizing a table.
+/// Beyond this the design is wrong and not the drawer, and the regulation
+/// solve has already refused it ([`crate::regulation::STACK_SEARCH`]); this
+/// only stops a wild number from sizing a table.
 const PAPER_SEARCH_LIMIT: f64 = 0.100;
+
+/// How far short of a whole number of [`PAPER_STEP`]s a wanted thickness may
+/// fall and still count as that number, metres: a picometre.
+///
+/// A sum of papers carries the rounding of its additions, a few parts in
+/// 10¹⁶ of a millimetre, and a floor taken without this would read 0.70 mm
+/// written as 0.6999… as 0.69 mm and lose a whole step. A picometre is ten
+/// million times less than the step, so no thickness a technician can tell
+/// apart from the next step is ever rounded up to it.
+const PAPER_EPSILON: f64 = 1e-12;
 
 /// Builds the stack of real papers that comes closest to a wanted thickness
 /// without overshooting — thickest first, which is how a pile is laid.
@@ -559,13 +570,20 @@ const PAPER_SEARCH_LIMIT: f64 = 0.100;
 /// What is left over after that *is* a genuine miss. 0.37 mm is unreachable
 /// because every paper thin enough to help is an even number of hundredths; the
 /// honest answer is 0.36 and a stated 0.01 mm short, not a rounded 0.37.
+///
+/// **From below, always.** The wanted thickness is floored to the drawer's
+/// step, never rounded: 0.395 mm asks for 0.39 and gets 0.36, where rounding
+/// would have laid 0.40, five thousandths over what was asked. The regulation
+/// solve relies on it: a stack laid from below lands a key height under its
+/// target and a dip past it, each by less than one paper
+/// ([`crate::regulation`]).
 pub fn papers_for(total: f64) -> Vec<f64> {
     if !total.is_finite() || total <= 0.0 || total > PAPER_SEARCH_LIMIT {
         return Vec::new();
     }
     let steps: [usize; PAPER_KINDS] =
         core::array::from_fn(|i| (PAPER_THICKNESSES[i] / PAPER_STEP).round() as usize);
-    let target = (total / PAPER_STEP).round() as usize;
+    let target = ((total + PAPER_EPSILON) / PAPER_STEP).floor() as usize;
 
     // Fewest papers that reach exactly `n` steps, and which paper to peel off
     // the top of that stack to get there. `usize::MAX` means nothing reaches it.
@@ -1018,13 +1036,35 @@ mod drawer_tests {
     }
 
     /// A stack never overshoots, is laid thickest first, and holds only papers
-    /// that exist.
+    /// that exist: over whole hundredths, and over thicknesses between them,
+    /// which a regulation asks for and which rounding to the nearest step
+    /// would overshoot by up to half a step.
+    ///
+    /// The bound is the floor's own epsilon, a picometre.
     #[test]
     fn a_stack_is_laid_thickest_first_and_never_overshoots() {
-        for target in [0.0, 0.00005, 0.0001, 0.00037, 0.0005, 0.0012, 0.003, 0.0075] {
+        for target in [
+            0.0,
+            0.00005,
+            0.0001,
+            0.00037,
+            0.0005,
+            0.0012,
+            0.003,
+            0.0075,
+            0.000395,
+            0.000245,
+            0.000_899_9,
+            0.001_234_5,
+            0.000_079_9,
+            0.002_005,
+        ] {
             let stack = papers_for(target);
             let total: f64 = stack.iter().sum();
-            assert!(total <= target + 1e-12, "{target} m overshot: {stack:?}");
+            assert!(
+                total <= target + PAPER_EPSILON,
+                "{target} m overshot: {stack:?}"
+            );
             assert!(
                 stack.windows(2).all(|w| w[0] >= w[1]),
                 "{target} m: thick papers go under the thin ones, got {stack:?}"
@@ -1048,6 +1088,39 @@ mod drawer_tests {
         let stack = papers_for(0.00037);
         let total: f64 = stack.iter().sum();
         assert!((total - 0.00036).abs() < 1e-12, "got {stack:?}");
+    }
+
+    /// The audit's RUST-18: 0.395 mm, between two hundredths, is floored to
+    /// 0.39 mm, which the drawer reaches no closer than 0.36; rounding to the
+    /// nearest step laid 0.40, over what was asked.
+    #[test]
+    fn a_thickness_between_two_steps_is_taken_from_below() {
+        let total: f64 = papers_for(0.000395).iter().sum();
+        assert!((total - 0.00036).abs() < 1e-12, "laid {total} m");
+        let total: f64 = papers_for(0.000245).iter().sum();
+        assert!((total - 0.00024).abs() < 1e-12, "laid {total} m");
+    }
+
+    /// A sum of papers, carrying the rounding of its additions, gives the
+    /// same papers back: the floor's epsilon keeps a total written a hair
+    /// under its whole number of steps from losing one.
+    #[test]
+    fn a_sum_of_papers_is_laid_again_as_the_same_papers() {
+        for stack in [
+            vec![0.0005, 0.0002],
+            vec![0.0005, 0.0004],
+            vec![0.0004, 0.0004, 0.00008],
+            vec![
+                0.00125, 0.001, 0.00075, 0.0005, 0.0004, 0.0002, 0.00012, 0.00008,
+            ],
+        ] {
+            let total: f64 = stack.iter().sum();
+            let again: f64 = papers_for(total).iter().sum();
+            assert!(
+                (again - total).abs() < 1e-12,
+                "{stack:?} summed to {total} m, laid again as {again} m"
+            );
+        }
     }
 
     /// Nonsense in, nothing out — never a table sized from a wild number.

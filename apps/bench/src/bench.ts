@@ -189,6 +189,16 @@ export interface Readout {
   measuring_point_from_lip_mm: number
 }
 
+/** How a regulation the page asked for came out. */
+export interface Regulation {
+  /** Whether the papers were laid. When not, nothing on the bench changed. */
+  laid: boolean
+  /** What happened, in the engine's sentence: the papers laid and what they
+   * give, or the target out of reach, by how many millimetres and what keeps
+   * it out. */
+  said: string
+}
+
 let booting: Promise<Bench> | undefined
 
 /**
@@ -244,4 +254,12 @@ export function scene(b: Bench): Scene {
  */
 export function readout(b: Bench): Readout | null {
   return JSON.parse(b.readout()) as Readout | null
+}
+
+/**
+ * Regulates the key to a key height and a key dip, millimetres, and says how
+ * it came out. The engine lays the papers, or refuses and changes nothing.
+ */
+export function regulate(b: Bench, keyHeightMm: number, keyDipMm: number): Regulation | null {
+  return JSON.parse(b.regulate(keyHeightMm, keyDipMm)) as Regulation | null
 }

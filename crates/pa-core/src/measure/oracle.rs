@@ -8,7 +8,10 @@
 //! and nowhere else, so no application can reach it.
 
 use super::KR_PROTOCOL_LOAD_G;
-use crate::parts::assembly::{KeyAssembly, ReadAt};
+use crate::geometry::Point;
+use crate::parts::assembly::{sines_satisfying, KeyAssembly, ReadAt};
+use crate::parts::{FrameDesign, KeyDesign};
+use crate::regulation::Targets;
 
 /// The key's rest and bottom attitudes by the one-coordinate statics, and
 /// the trade quantities they give.
@@ -98,4 +101,126 @@ impl KeyWeighing {
     pub fn tared_scale_reading_g(&self) -> f64 {
         self.jig_reading_g(KR_PROTOCOL_LOAD_G, -self.capstan_arm)
     }
+}
+
+/// The key on a pivot at its balance bearing, solved exactly: the bearing's
+/// height that stands the key front's top at `key_height` while the key's
+/// point `bears`, in its own frame, stands at `stop_y` above the keybed, on
+/// its stop. `front_top` is the key front's top in the key's frame.
+///
+/// Two conditions of the rest, each the height of a point of the key, the
+/// bearing's height `h`, the attitude's sine `s` (front-down) and cosine `c`:
+/// `h − x s + y c` for the point `(x, y)`. Their difference has no `h` and is
+/// linear in `s` and `c`, so the attitude is a root of
+/// [`crate::parts::assembly::sines_satisfying`], the one nearest `near`, and
+/// `h` follows from either condition. Exact for a point fixed on the key on
+/// a stop's flat; a key bearing on its cloth's rounded edge slides along it,
+/// so `bears` and `stop_y` are the contact the seated pose finds at the
+/// answer.
+pub fn pivot_bearing_for_height(
+    front_top: Point,
+    bears: Point,
+    stop_y: f64,
+    key_height: f64,
+    near: f64,
+) -> Option<f64> {
+    let s = nearest(
+        sines_satisfying(
+            front_top.y - bears.y,
+            -(front_top.x - bears.x),
+            key_height - stop_y,
+        ),
+        near,
+    )?;
+    let c = (1.0 - s * s).sqrt();
+    Some(key_height + front_top.x * s - front_top.y * c)
+}
+
+/// The key on a pivot whose bearing stands at `bearing`, at rest with its
+/// point `bears` at `stop_y`: the attitude's sine, front-down, the root of
+/// one condition nearest `near`, and the height of the key front's top there.
+pub fn pivot_rest(
+    front_top: Point,
+    bears: Point,
+    stop_y: f64,
+    bearing: f64,
+    near: f64,
+) -> Option<(f64, f64)> {
+    let s = nearest(sines_satisfying(bears.y, -bears.x, stop_y - bearing), near)?;
+    let c = (1.0 - s * s).sqrt();
+    Some((s, bearing - front_top.x * s + front_top.y * c))
+}
+
+/// The key on a pivot whose bearing stands at `bearing`: the height of the
+/// front punching's top, its centre `punching_x` along the keybed, that
+/// stops the key front's top `dip` below `top_height`. The bottom attitude
+/// from the key front's height, the root nearest `near`; then the
+/// underside's flat, the line through the bearing at that attitude, read at
+/// the punching's centre, where a felt read at its centre bears.
+pub fn pivot_punching_for_dip(
+    front_top: Point,
+    bearing: f64,
+    top_height: f64,
+    dip: f64,
+    punching_x: f64,
+    near: f64,
+) -> Option<f64> {
+    let s = nearest(
+        sines_satisfying(front_top.y, -front_top.x, top_height - dip - bearing),
+        near,
+    )?;
+    let c = (1.0 - s * s).sqrt();
+    Some(bearing - punching_x * s / c)
+}
+
+/// Of two roots, the one nearest `near`.
+fn nearest(roots: [Option<f64>; 2], near: f64) -> Option<f64> {
+    roots
+        .into_iter()
+        .flatten()
+        .min_by(|a, b| (a - near).abs().total_cmp(&(b - near).abs()))
+}
+
+/// The placement the regulation solve replaced, kept to test it by: the two
+/// contact conditions in their small-angle form, solved for the two stack
+/// totals, metres, balance then front; `None` where they have no answer.
+///
+/// It takes the key top as level at both seats, dropping its height times
+/// one less the cosine of the attitude, and so misses the targets by that
+/// term, about 0.02 mm on the default bench; it reads the front punching
+/// alone, not the pin in its mortise. `back_bears` is where the key bears on
+/// its cloth, in its own frame, as the seated pose finds it, for the arm
+/// the rest turns about.
+pub fn small_angle_placement(
+    key: &KeyDesign,
+    frame: &FrameDesign,
+    targets: Targets,
+    back_bears: Point,
+) -> Option<(f64, f64)> {
+    let back_lever = back_bears.x;
+    let front_lever = key.front_edge;
+    let frp_lever = frame.front_rail;
+    if front_lever.abs() < 1e-9 || back_lever.abs() < 1e-9 {
+        return None;
+    }
+    // Rest: the key top at the front edge reaches the target height, and the
+    // point of the underside that bears sits on the cloth.
+    //   h_bearing - front_lever * sin_rest + stick + keytop = key_height
+    //   h_bearing - back_lever * sin_rest + y_bears = h_back
+    let h_back = frame.back_bearing_height();
+    let top = key.stick_height + key.keytop_thickness;
+    let sin_rest = (h_back + top - targets.key_height - back_bears.y) / (front_lever - back_lever);
+    let h_bearing = h_back + back_lever * sin_rest - back_bears.y;
+    // Bottom: the front edge has fallen by the dip.
+    let sin_bottom = sin_rest + targets.key_dip / front_lever;
+    let h_front_bearing = h_bearing - frp_lever * sin_bottom;
+    let balance_stack = h_bearing - frame.balance_rail_height;
+    let front_stack = h_front_bearing - frame.front_rail_height;
+    if !(balance_stack.is_finite() && front_stack.is_finite())
+        || balance_stack < 0.0
+        || front_stack < 0.0
+    {
+        return None;
+    }
+    Some((balance_stack, front_stack))
 }

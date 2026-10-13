@@ -80,7 +80,13 @@
 //! [`RESIDUAL_TOLERANCE`] times the load scale, and the step's box problem
 //! was solved, not left at its cap of sweeps: the residual is the step's
 //! own metric times the step, small whenever the step is, and only
-//! multipliers that solve their box problem make it an equilibrium's. It is
+//! multipliers that solve their box problem make it an equilibrium's. Where
+//! the step and the gaps pass and the residual does not, the residual is
+//! measured again with every gap already closed to within the tolerance taken
+//! as closed: the step's own includes the force of closing what rounding
+//! leaves of a gap, a few hundredths of a femtometre, which through a row
+//! with a centimetre's arm, at the metric an increment starts with, stands
+//! above the tolerance without being a force out of balance. It is
 //! refused with a code otherwise: [`Refusal::NotConverged`] at
 //! [`ITERATION_CAP`] steps; [`Refusal::NoEquilibrium`] when the rows admit no
 //! motion (two stops that fight) or the state leans on a coordinate's limit,
@@ -265,6 +271,8 @@ pub struct Statics {
     u_free: Vec<f64>,
     motion: Vec<f64>,
     nu: Vec<f64>,
+    u_closed: Vec<f64>,
+    nu_closed: Vec<f64>,
 }
 
 impl Default for Statics {
@@ -389,6 +397,8 @@ impl Statics {
             u_free: Vec::new(),
             motion: Vec::new(),
             nu: Vec::new(),
+            u_closed: Vec::new(),
+            nu_closed: Vec::new(),
         }
     }
 
@@ -626,13 +636,25 @@ impl Statics {
                 .map(|(r, _)| self.gaps[r])
                 .fold(f64::INFINITY, f64::min);
             report.residual = residual;
-            if solved
-                && step <= STEP_TOLERANCE
-                && least_gap >= -GAP_TOLERANCE
-                && residual <= RESIDUAL_TOLERANCE * load
-            {
+            let still = solved && step <= STEP_TOLERANCE && least_gap >= -GAP_TOLERANCE;
+            if still && residual <= RESIDUAL_TOLERANCE * load {
                 report.most_iterations = report.iterations;
                 return self.settled(m, q, &free_ids, &gf, report);
+            }
+            // Still, but the residual above its tolerance: it may be only the
+            // force of closing gaps already closed to within the tolerance.
+            if still {
+                if let Some((closed, exact)) =
+                    self.with_gaps_closed(&gf, &free_ids, &speeds, rho, &mut report)
+                {
+                    if closed <= RESIDUAL_TOLERANCE * load {
+                        core::mem::swap(&mut self.nu, &mut self.nu_closed);
+                        report.exact &= exact;
+                        report.residual = closed;
+                        report.most_iterations = report.iterations;
+                        return self.settled(m, q, &free_ids, &gf, report);
+                    }
+                }
             }
 
             // The trial point and the merit test.
@@ -803,6 +825,92 @@ impl Statics {
                 );
             }
         }
+    }
+
+    /// The stationarity residual at the current iterate, over each
+    /// coordinate's reach, with every contact and limit whose gap is closed
+    /// to within [`GAP_TOLERANCE`] taken as closed; `None` where its box
+    /// problem is not solved, or its step moves some point further than
+    /// [`STEP_TOLERANCE`]; with it, whether its box problem was solved
+    /// exactly. Its multipliers are left in `nu_closed`, for the caller to
+    /// adopt if the residual passes.
+    ///
+    /// The subproblem's own residual is its metric times its step, and its
+    /// step closes every gap, however little is left of it. A gap closed to
+    /// the rounding of positions a quarter of a metre out, some hundredths of
+    /// a femtometre, closed through a row whose arm is a centimetre, moves
+    /// the farthest point of the mechanism fifteen or more times as far, and
+    /// at the metric an increment starts with, the force of that motion
+    /// stands above a part in 10¹² of the loads. It is no force out of
+    /// balance: the gap is closed as far as any gap is ever closed. So the
+    /// same problem is solved again with those gaps at zero, the metric and
+    /// the rows as they are, and a state still under it, with a residual
+    /// within its tolerance, is an equilibrium of the increment: multipliers
+    /// in their boxes balance the loads, each complementary to a gap closed
+    /// to within the tolerance. The test is the same, and only the gaps
+    /// already within it are read as closed. It runs only where the
+    /// subproblem's own residual fails: an increment that passed on its
+    /// first test still does, and one that went on to take steps of a few
+    /// femtometres, until its metric had fallen far enough, now ends where it
+    /// stands.
+    fn with_gaps_closed(
+        &mut self,
+        gf: &[f64],
+        free_ids: &[usize],
+        speeds: &[f64],
+        rho: f64,
+        report: &mut SolveReport,
+    ) -> Option<(f64, bool)> {
+        let nf = free_ids.len();
+        let nr = self.kinds.len();
+        let a: Vec<f64> = speeds
+            .iter()
+            .map(|&s| rho * self.metric_scale * s * s)
+            .collect();
+        let d_free: Vec<f64> = (0..nf).map(|k| gf[free_ids[k]] / a[k]).collect();
+        self.u_closed.clear();
+        for r in 0..nr {
+            let closed = !matches!(self.kinds[r], Kind::Friction { .. })
+                && self.gaps[r].abs() <= GAP_TOLERANCE;
+            let mut v = if closed { 0.0 } else { self.offsets[r] };
+            for (k, &dk) in d_free.iter().enumerate() {
+                v += self.jac[r * nf + k] * dk;
+            }
+            self.u_closed.push(v);
+        }
+        self.nu_closed.clear();
+        self.nu_closed.resize(nr, 0.0);
+        let problem = BoxProblem {
+            w: &self.w,
+            u_free: &self.u_closed,
+            lo: &self.lo,
+            hi: &self.hi,
+            scale: &self.scale,
+            motion: &self.motion,
+            motion_tolerance: SWEEP_TOLERANCE,
+        };
+        let BoxOutcome::Solved(solved) = self.boxed.solve(&problem, &mut self.nu_closed) else {
+            return None;
+        };
+        report.sweeps += solved.sweeps;
+        report.exact_passes += solved.exact_passes;
+        if !solved.converged {
+            return None;
+        }
+        let (mut step, mut residual) = (0.0, 0.0_f64);
+        for k in 0..nf {
+            let (mut d, mut v) = (d_free[k], gf[free_ids[k]]);
+            for r in 0..nr {
+                d += self.y[k * nr + r] * self.nu_closed[r];
+                v += self.jac[r * nf + k] * self.nu_closed[r];
+            }
+            step += speeds[k] * d.abs();
+            residual = residual.max(v.abs() / speeds[k]);
+        }
+        if step > STEP_TOLERANCE {
+            return None;
+        }
+        Some((residual, solved.exact))
     }
 
     /// How far a step may move the farthest point of the mechanism, metres:
@@ -1463,6 +1571,43 @@ pub(crate) mod tests {
         );
     }
 
+    /// Consistency: **a still state out of balance is not taken for a rest.**
+    /// Under a metric 10¹² times stiffer than the solver's own, the
+    /// pendulum's first step moves its end by under a femtometre while
+    /// gravity is nowhere near balanced: the step and the gaps pass, the
+    /// residual does not, so the residual is read again with every gap
+    /// already closed to within [`GAP_TOLERANCE`] taken as closed. That must
+    /// fail too, from level, where no row is near, and from half a millimetre
+    /// above the floor, where the floor's row is within the margin but open:
+    /// only a gap closed to the tolerance may be read as closed, and only a
+    /// residual within its tolerance makes a rest. The solve goes on, each
+    /// accepted step softening the metric threefold, so it takes more than
+    /// the 25 steps that soften it by 10¹², and the pendulum comes to rest on
+    /// its floor where the solver's own metric puts it, within the bound
+    /// `scaling_the_metric_changes_no_rest` holds a scaled metric to.
+    #[test]
+    fn a_still_state_out_of_balance_is_not_taken_for_a_rest() {
+        let (l, r, floor) = (0.20, 0.005, -0.06);
+        let m = pendulum(0.120, 0.08, l, r, floor, 0.0);
+        let rest = Statics::new()
+            .solve(&m, &[0.0], &[], &[], Friction::Off)
+            .expect("the pendulum rests");
+        let arm = l * libm::cos(rest.q[0]);
+        let above = libm::asin((floor + r + 0.0005) / l);
+        for start in [0.0, above] {
+            let eq = Statics::with_metric_scaled(1e12)
+                .solve(&m, &[start], &[], &[], Friction::Off)
+                .unwrap_or_else(|e| panic!("from {start} rad: {e:?}"));
+            assert!(
+                near(eq.q[0], rest.q[0], 4.0 * GAP_TOLERANCE / arm),
+                "from {start} rad it stopped at {} rad, the rest is at {} rad",
+                eq.q[0],
+                rest.q[0]
+            );
+            assert!(eq.report.iterations > 25, "{:?}", eq.report);
+        }
+    }
+
     /// A free coordinate with no finite limit is refused: the search would
     /// not be bounded.
     #[test]
@@ -1501,5 +1646,93 @@ pub(crate) mod tests {
             ),
             other => panic!("{other:?}"),
         }
+    }
+
+    /// Consistency, found by a seeded search over lifts: **a key already
+    /// resting against the front wall of its slot, lifted again, comes to
+    /// rest there in one increment.** With the front rail 0.9 to 1.5 mm in
+    /// front of where the bench builds it, a lift raises the key until the
+    /// slot's front wall meets the pin's front top corner, on a row whose arm
+    /// about the bearing is under two centimetres. The next lift starts on
+    /// that wall, its gap closed to the rounding of positions a quarter of a
+    /// metre out, some hundredths of a femtometre either way. Closing such a
+    /// gap through that arm turns the key fifteen times as far at its
+    /// farthest point, and the proximal force of that motion, the first
+    /// step's metric times it, can stand above the residual's tolerance of a
+    /// part in 10¹² of the loads, while the merit test, which compares
+    /// energies at their rounding, turns the step back: the key never moves,
+    /// and each raise of the metric only grows that force. The state is an
+    /// equilibrium all along, the wall and the friction holding the key, so
+    /// every lift here must converge and pass the virtual-work inequality.
+    /// Past 1.5 mm forward the pin stands across the slot's front edge, its
+    /// face beyond the wall, and the key has no rest on a pivot: the
+    /// initialization refuses, naming the pin's pair.
+    #[test]
+    fn a_key_lifted_against_its_slots_front_wall_from_there_is_one_increment() {
+        use crate::contact::ContactCode;
+        use crate::parts::fixtures::{on_frame, regulated};
+        use crate::parts::frame::KeyKind;
+        use crate::parts::mounts::nominal_pose;
+
+        let mut rng = XorShift::new(25);
+        let mut statics = Statics::new();
+        let (mut lifts, mut on_the_wall, mut straddling) = (0, 0, 0);
+        for case in 0..40 {
+            let mut a = regulated();
+            let forward = 1e-3 * rng.uniform(0.9, 1.6);
+            a.frame.front_rail += forward;
+            let kf_g = rng.uniform(0.0, 15.0);
+            let b = kf_g * 1e-3 * G * a.measuring_point();
+            let k = on_frame(&a, KeyKind::Natural, b, true);
+            let m = &k.mounted.mechanism;
+            let wall = m
+                .pairs()
+                .iter()
+                .position(|p| p.code == ContactCode::FrontPinOnTheWood)
+                .expect("the pin has a pair on the wood");
+            let at = MaterialPoint {
+                body: k.mounted.key,
+                at: k.measuring_point,
+            };
+            let start = nominal_pose(&k.mounted);
+            let lifted = [PointLoad::weight(at, -0.08)];
+            let mut q = match statics.solve(m, &start, &lifted, &[], Friction::Off) {
+                Ok(eq) => eq.q,
+                Err(Refusal::NoEquilibrium { on }) if forward > 1.5e-3 => {
+                    assert!(
+                        on.iter().all(|h| matches!(h, Holder::Contact { pair, .. }
+                            if usize::from(*pair) == wall)),
+                        "case {case}: {on:?}"
+                    );
+                    straddling += 1;
+                    continue;
+                }
+                Err(refusal) => panic!("case {case}, {forward} m forward: {refusal:?}"),
+            };
+            for _ in 0..10 {
+                let w = rng.uniform(-80.0, -20.0);
+                let loads = [PointLoad::weight(at, w * 1e-3)];
+                let eq = statics
+                    .solve(m, &q, &loads, &[], Friction::On)
+                    .unwrap_or_else(|r| panic!("case {case}, {w} g: {r:?}"));
+                lifts += 1;
+                if eq.supports.iter().any(|s| {
+                    s.force > 0.0
+                        && matches!(s.by, Holder::Contact { pair, .. } if usize::from(pair) == wall)
+                }) {
+                    on_the_wall += 1;
+                }
+                assert_virtual_work(m, &eq, &loads, Friction::On, &q, &[0], 1e-6, 0x5107);
+                q = eq.q;
+            }
+        }
+        assert!(
+            straddling > 0 && lifts > 200,
+            "{straddling} straddling, {lifts} lifts"
+        );
+        assert!(
+            on_the_wall > lifts * 9 / 10,
+            "only {on_the_wall} of {lifts} on the wall"
+        );
     }
 }

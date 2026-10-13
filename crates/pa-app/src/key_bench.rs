@@ -30,13 +30,17 @@ pub use pa_core::parts::faults::Fault;
 /// offer the drawer without reaching past the application layer.
 pub use pa_core::parts::frame::PAPER_THICKNESSES;
 use pa_core::parts::frame::{papers_for, KeyKind};
-use pa_core::parts::mounts::{self, KeyMount, Mounted};
+use pa_core::parts::mounts::{self, Mounted, OnItsFrame};
 use pa_core::parts::verdicts::{holding, Holding};
-use pa_core::parts::{
-    FrameDesign, FrameRanges, KeyAssembly, KeyDesign, KeyRanges, Lead, PunchingStack, Regulation,
-};
+use pa_core::parts::{FrameDesign, FrameRanges, KeyAssembly, KeyDesign, KeyRanges, Lead};
+/// The regulation's targets and outcomes, re-exported so an adapter can ask
+/// for a regulation and say how it came out without reaching past the
+/// application layer.
+pub use pa_core::regulation::{Achieved, Limit, Target, Targets, Unsolvable};
+use pa_core::regulation::{Regulating, Stacks, TargetOutcome, STACK_SEARCH};
 use pa_core::solve::{Friction, Statics};
 use pa_core::G;
+use std::borrow::Cow;
 
 use crate::composite_key;
 
@@ -172,15 +176,22 @@ struct State {
     placement: Placement,
 }
 
-/// The key on its frame as a mechanism, and the two points of the key the
-/// procedures load and read, in its own frame.
-struct OnFrame {
-    mounted: Mounted,
-    /// The capstan's contact point: where the load standing for the action
-    /// acts.
-    capstan: Point,
-    /// The top of the key at its front: where key height and dip are read.
-    front_top: Point,
+/// Why a regulation the bench was asked for was not laid. The papers, the
+/// targets and the key stay as they were.
+#[derive(Debug, Clone, PartialEq)]
+pub enum NotRegulated {
+    /// A target no stack reaches: which, what keeps it out of reach, and how
+    /// far it lies out of reach in its own reading, metres.
+    Infeasible {
+        /// Which target.
+        target: Target,
+        /// What keeps it out of reach.
+        limited_by: Limit,
+        /// How far, metres.
+        shortfall_m: f64,
+    },
+    /// The solve cannot run at all on this key and frame.
+    Unsolvable(Unsolvable),
 }
 
 /// A contact as the view marks it: one row of one of the key's contacts with
@@ -338,6 +349,96 @@ fn why_no_seat(refusal: &SeatRefusal) -> &'static str {
     }
 }
 
+/// How far past a target, in millimetres, as the sentences say it: to the
+/// hundredth, a shortfall under that said as under a hundredth.
+fn hundredths(metres: f64) -> String {
+    let mm = metres * 1000.0;
+    if mm < 0.005 {
+        "under 0.01 mm".to_owned()
+    } else {
+        format!("{mm:.2} mm")
+    }
+}
+
+/// Why a regulation was not laid, as the sentence a technician is told: the
+/// target, what keeps it out of reach, and how far, in millimetres.
+pub fn why_not_regulated(why: &NotRegulated, targets: Targets) -> String {
+    let (target, limited_by, shortfall_m) = match *why {
+        NotRegulated::Infeasible {
+            target,
+            limited_by,
+            shortfall_m,
+        } => (target, limited_by, shortfall_m),
+        NotRegulated::Unsolvable(Unsolvable::NotFinite(_)) => {
+            return "a target is not a number.".to_owned();
+        }
+        NotRegulated::Unsolvable(Unsolvable::NoSeat(ref refusal)) => {
+            return format!(
+                "the key could not be seated while the papers were being tried: {}",
+                why_no_seat(refusal)
+            );
+        }
+    };
+    let (what, wanted) = match target {
+        Target::KeyHeight => ("key height", targets.key_height),
+        Target::KeyDip => ("key dip", targets.key_dip),
+    };
+    let search_mm = STACK_SEARCH * 1000.0;
+    let why: Cow<'static, str> = match (limited_by, target) {
+        (Limit::RailTooLow, Target::KeyHeight) => format!(
+            "it would take more than {search_mm:.0} mm of paper under the balance punching, \
+             the balance rail standing too low"
+        )
+        .into(),
+        (Limit::RailTooLow, Target::KeyDip) => format!(
+            "it would take more than {search_mm:.0} mm of paper on the front punching, the \
+             front rail standing too low"
+        )
+        .into(),
+        (Limit::FrontPinInMortise, Target::KeyDip) => {
+            "the front rail pin bottoms in its mortise before the key goes that deep".into()
+        }
+        (Limit::FrontPinInMortise, Target::KeyHeight) => {
+            "the front rail pin would bottom in its mortise with the key at rest that low".into()
+        }
+        (Limit::FrontPinOnTheWood, Target::KeyDip) => {
+            "the front rail pin meets the key's wood beside its mortise before the key goes \
+             that deep"
+                .into()
+        }
+        (Limit::FrontPinOnTheWood, Target::KeyHeight) => {
+            "the front rail pin stands under the key's wood, and only a key raised clear of it \
+             has a seat"
+                .into()
+        }
+        (Limit::FeltThickerThanTheStack, Target::KeyHeight) => {
+            "the balance punching's felt alone, with no paper under it, stands the key higher"
+                .into()
+        }
+        (Limit::FeltThickerThanTheStack, Target::KeyDip) => {
+            "the front punching's felt alone, with no paper under it, stops the key short".into()
+        }
+        (Limit::StopsFight, Target::KeyHeight) => {
+            "the front of the key would come down onto its front punching at rest, its tail on \
+             the cloth"
+                .into()
+        }
+        (Limit::StopsFight, Target::KeyDip) => {
+            "the front punching would meet the key at rest before the dip is that shallow".into()
+        }
+        (Limit::NoStopBelowTheFront, _) => {
+            "nothing stops the front of the key, the front punching's centre standing off its \
+             underside"
+                .into()
+        }
+    };
+    format!(
+        "{:.2} mm of {what} is out of reach, by {}: {why}.",
+        wanted * 1000.0,
+        hundredths(shortfall_m)
+    )
+}
+
 /// The bench.
 #[derive(Debug, Clone)]
 pub struct KeyBench {
@@ -348,8 +449,9 @@ pub struct KeyBench {
     friction: KeyPinFriction,
     /// The weight sitting on the measuring point, grams.
     finger_weight_g: f64,
-    /// The regulation the bench was asked for, kept beside what it achieved.
-    target: Regulation,
+    /// The targets of the regulation last laid, kept beside what the key
+    /// reads.
+    targets: Targets,
     /// The papers actually stacked under the balance punching, in the order
     /// they were laid.
     balance_papers: Vec<f64>,
@@ -366,25 +468,13 @@ pub struct KeyBench {
 }
 
 impl KeyBench {
-    /// A bench regulated to the given targets.
+    /// A bench regulated to the given targets: the key on the frame with the
+    /// felts it is given, and on them the papers the regulation solve lays
+    /// ([`pa_core::regulation`]).
     ///
-    /// `None` when the targets cannot be met on this geometry — which is a real
-    /// answer and not an error to swallow.
-    pub fn new(key: KeyDesign, mut frame: FrameDesign, target: Regulation) -> Option<Self> {
-        let (balance, front) = target.solve(&key, &frame, 0.0)?;
-        let (balance_felt, front_felt) = (frame.balance_punching.felt, frame.front_punching.felt);
-        // Keep the felt the technician fitted and put the difference in paper,
-        // which is what he would actually do.
-        frame.balance_punching = PunchingStack::new(
-            balance - frame.balance_punching.felt,
-            frame.balance_punching.felt,
-        );
-        frame.front_punching =
-            PunchingStack::new(front - frame.front_punching.felt, frame.front_punching.felt);
-        if frame.balance_punching.paper < 0.0 || frame.front_punching.paper < 0.0 {
-            return None;
-        }
-
+    /// Refused when the targets cannot be met on this geometry, with why:
+    /// a real answer and not an error to swallow.
+    pub fn new(key: KeyDesign, frame: FrameDesign, targets: Targets) -> Result<Self, NotRegulated> {
         let assembly = KeyAssembly {
             key,
             frame,
@@ -410,23 +500,17 @@ impl KeyBench {
             kind: KeyKind::Natural,
             friction,
             finger_weight_g: 0.0,
-            target,
-            // The solve gave a continuous thickness; express it as a stack a
-            // technician could actually build.
-            balance_papers: papers_for(balance - balance_felt),
-            front_papers: papers_for(front - front_felt),
+            targets,
+            balance_papers: Vec::new(),
+            front_papers: Vec::new(),
             state: None,
             reinitialized: false,
         };
-        // And then adopt what that stack really measures. Without this the
-        // geometry holds the continuous value while the drawer holds a
-        // slightly thinner pile, and the first paper laid silently corrects
-        // the difference as well as adding its own thickness, so adding and
-        // removing one paper does not cancel out.
-        bench.sync_stacks();
+        let (stacks, _) = bench.solve(targets)?;
+        bench.lay(&stacks);
         // Then put the key on the frame so built, with nothing on it.
         bench.initialize();
-        Some(bench)
+        Ok(bench)
     }
 
     /// The default bench: a middle natural, regulated to Steinway New York.
@@ -434,12 +518,74 @@ impl KeyBench {
         Self::new(
             KeyDesign::default(),
             FrameDesign::default(),
-            Regulation {
+            Targets {
                 key_height: 0.0650,
                 key_dip: 0.0102,
             },
         )
         .expect("the standard bench must be regulable")
+    }
+
+    /// The regulation solve on this key and frame, as the bench weighs and
+    /// reads them: the papers each target asks for, laid from the drawer,
+    /// and what they give.
+    fn solve(&self, targets: Targets) -> Result<(Stacks, Achieved), NotRegulated> {
+        let outcome = Regulating {
+            key: &self.assembly.key,
+            frame: &self.assembly.frame,
+            kind: self.kind,
+            mass: composite_key::mass(&self.assembly.key),
+            protocol: &self.assembly.protocol,
+        }
+        .solve(targets)
+        .map_err(NotRegulated::Unsolvable)?;
+        match outcome {
+            TargetOutcome::Met {
+                stacks, achieved, ..
+            } => Ok((stacks, achieved)),
+            TargetOutcome::Infeasible {
+                target,
+                limited_by,
+                shortfall_m,
+            } => Err(NotRegulated::Infeasible {
+                target,
+                limited_by,
+                shortfall_m,
+            }),
+        }
+    }
+
+    /// Lays the stacks' papers on the two punchings, in place of what was
+    /// there: the felts stay, the papers are the ones the drawer holds.
+    fn lay(&mut self, stacks: &Stacks) {
+        self.balance_papers = stacks.balance.papers.clone();
+        self.front_papers = stacks.front.papers.clone();
+        self.sync_stacks();
+    }
+
+    /// **Regulates the key to `targets`**: key height on the balance
+    /// punching first, then the dip on the front punching on the key as it
+    /// then stands, each laid in papers from the drawer, the closest total
+    /// from below ([`pa_core::regulation`]). The papers replace what was on
+    /// the punchings; the felts stay. Returns what the papers give, read by
+    /// the seated pose, which the sheet shows beside the targets: within one
+    /// paper of them.
+    ///
+    /// A target no stack reaches is refused, naming what keeps it out of
+    /// reach and by how much, and nothing changes: the papers, the targets
+    /// and the key stay as they were. A dip the front pin forbids is refused,
+    /// never laid as the nearest stack and shown as a miss.
+    pub fn regulate(&mut self, targets: Targets) -> Result<Achieved, NotRegulated> {
+        let (stacks, achieved) = self.solve(targets)?;
+        self.targets = targets;
+        self.lay(&stacks);
+        self.relax();
+        Ok(achieved)
+    }
+
+    /// The targets of the regulation last laid, metres.
+    pub fn targets(&self) -> Targets {
+        self.targets
     }
 
     /// Read-only view of the assembly.
@@ -702,7 +848,8 @@ impl KeyBench {
     }
 
     /// The key on its frame as a mechanism, with the points the procedures
-    /// load and read: [`KeyMount::Pivot`] about its balance bearing, raised
+    /// load and read ([`mounts::on_its_frame`], which the regulation solve
+    /// mounts the key with too): turning about its balance bearing, raised
     /// by `lift` as a frame whose stops fight raises it, its bushings'
     /// friction the bench's bound.
     ///
@@ -710,24 +857,17 @@ impl KeyBench {
     /// which is where every key the bench builds bears: the bench builds no
     /// bearing offset from the pin ([`KeyBearing`]), and the mount does not
     /// read one.
-    fn on_frame(&self, lift: f64) -> Result<OnFrame, Problem> {
-        let (parts, key, frame) = self.parts();
-        let capstan = key.capstan_contact.point(&parts);
-        let front_top = key.key_front_top.point(&parts);
-        let pairs = mounts::key_on_frame(&key, &frame);
-        let bearing = Point::new(0.0, self.assembly.frame.balance_bearing_height() + lift);
-        let mounted = KeyMount::Pivot.on_frame(
+    fn on_frame(&self, lift: f64) -> Result<OnItsFrame, Problem> {
+        mounts::on_its_frame(
+            &self.assembly.key,
+            &self.assembly.frame,
+            self.kind,
+            &self.balance_papers,
+            &self.front_papers,
             composite_key::mass(&self.assembly.key),
-            bearing,
             self.friction_bound() * G,
-            parts,
-            pairs,
-        )?;
-        Ok(OnFrame {
-            mounted,
-            capstan,
-            front_top,
-        })
+            lift,
+        )
     }
 
     /// The key on its frame as a mechanism: its parts and its frame's, the
@@ -746,7 +886,7 @@ impl KeyBench {
     /// trade's gestures ([`pa_core::measure::seat`]): where key height, dip
     /// and the bearings at the back and at the bottom are read, whatever the
     /// weight on the measuring point is doing.
-    fn seated(&self) -> Result<(OnFrame, Seats), SeatRefusal> {
+    fn seated(&self) -> Result<(OnItsFrame, Seats), SeatRefusal> {
         let k = self.on_frame(0.0).map_err(SeatRefusal::Mechanism)?;
         let seats = Seating {
             mounted: &k.mounted,
@@ -894,8 +1034,8 @@ impl KeyBench {
             gap_back_mm: gap_mm(ContactCode::BackRailCloth),
             friction_band_g: 1000.0 * self.friction_bound() / self.assembly.measuring_arm(),
             measured_kf_g: self.measure_key_friction_weight(),
-            key_height_target_mm: self.target.key_height * 1000.0,
-            key_dip_target_mm: self.target.key_dip * 1000.0,
+            key_height_target_mm: self.targets.key_height * 1000.0,
+            key_dip_target_mm: self.targets.key_dip * 1000.0,
             finger: self.verdict(&k.mounted, state)?,
             front_weight_g: jig.front_weight_g().ok()?,
             key_ratio: jig.key_ratio().ok()?,
@@ -1423,29 +1563,34 @@ mod tests {
             .expect("the standard bench reads");
 
         // Target and achieved are two numbers, and the bench carries both. They
-        // differ for three physical reasons, all of them reported rather than
-        // hidden: the punchings are *placed* by a small-angle solve and the
-        // result is *read* off the exact contact; the reading includes the
-        // vertical drop of the key top as it turns; and the stack is built
-        // from real papers, which cannot hit an arbitrary thickness.
+        // differ for one physical reason, reported rather than hidden: the
+        // stack is built from real papers, which cannot hit an arbitrary
+        // thickness. The regulation solve asks for exactly what each target
+        // needs, read by the same seated pose as the sheet, and the drawer lays
+        // the closest total from below.
         //
         // So the bound is not a tolerance anybody chose — it is **one
-        // paper**. The thinnest in the drawer is 0.08 mm, which at the front
-        // of the key is 0.08 x 258/225. A regulation that lands inside that is
-        // as close as the drawer allows; one that does not has a real error in
-        // it.
-        let one_paper_mm = PAPER_THICKNESSES[0] * 1000.0 * (258.0 / 225.0);
+        // paper**, seen through each stack's lever. The thinnest in the drawer
+        // is 0.08 mm: under the balance punching it raises the key front by
+        // 0.08 x (258 + 212) / 212, the key turning about where it bears on its
+        // cloth, 212 mm behind the pin; on the front punching it shallows the
+        // dip by 0.08 x 258/225. A regulation that lands inside that is as
+        // close as the drawer allows; one that does not has a real error in it.
+        let paper_mm = PAPER_THICKNESSES[0] * 1000.0;
+        let behind = r.bears_at_the_back_mm;
+        let one_paper_height_mm = paper_mm * (258.0 + behind) / behind;
+        let one_paper_dip_mm = paper_mm * (258.0 / 225.0);
 
         assert!((r.key_height_target_mm - 65.0).abs() < 1e-12);
         assert!((r.key_dip_target_mm - 10.2).abs() < 1e-12);
         assert!(
-            (r.key_height_mm - r.key_height_target_mm).abs() < one_paper_mm,
+            (r.key_height_mm - r.key_height_target_mm).abs() < one_paper_height_mm,
             "height achieved {} against target {}, missing by more than one paper",
             r.key_height_mm,
             r.key_height_target_mm
         );
         assert!(
-            (r.key_dip_mm - r.key_dip_target_mm).abs() < one_paper_mm,
+            (r.key_dip_mm - r.key_dip_target_mm).abs() < one_paper_dip_mm,
             "dip achieved {} against target {}, missing by more than one paper",
             r.key_dip_mm,
             r.key_dip_target_mm
@@ -1942,11 +2087,11 @@ mod contact_readout_tests {
                 back_rail,
                 ..FrameDesign::default()
             };
-            let target = Regulation {
+            let target = Targets {
                 key_height: 0.0650,
                 key_dip: 0.0102,
             };
-            let Some(b) = KeyBench::new(key, frame, target) else {
+            let Ok(b) = KeyBench::new(key, frame, target) else {
                 continue;
             };
             let drawn = b.outlines();
@@ -2276,6 +2421,169 @@ mod paper_tests {
 }
 
 #[cfg(test)]
+mod regulation_tests {
+    use super::*;
+
+    /// Everything the sheet and the papers say, to the bit.
+    fn everything(b: &KeyBench) -> String {
+        format!(
+            "{:?} {:?} {:?} {:?}",
+            b.readout(),
+            b.papers_on(Which::Balance),
+            b.papers_on(Which::Front),
+            b.targets()
+        )
+    }
+
+    /// Consistency: **regulating the bench lays the papers the solve asks
+    /// for, and the sheet reads what the solve says they give**, to the bit:
+    /// the solve reads the seated pose on the key mounted exactly as the
+    /// bench mounts it, the papers laid included. The targets on the sheet
+    /// become the new ones, every paper is one the drawer holds, and the key
+    /// is moved onto its new stacks from where it stood.
+    #[test]
+    fn regulating_lays_the_papers_and_the_sheet_reads_what_they_give() {
+        let mut b = KeyBench::standard();
+        let targets = Targets {
+            key_height: 0.0660,
+            key_dip: 0.0100,
+        };
+        let achieved = b.regulate(targets).expect("66 mm and 10 mm are reachable");
+        let r = b.readout().expect("the regulated bench reads");
+        assert_eq!(
+            r.key_height_mm.to_bits(),
+            (achieved.key_height * 1000.0).to_bits()
+        );
+        assert_eq!(
+            r.key_dip_mm.to_bits(),
+            (achieved.key_dip * 1000.0).to_bits()
+        );
+        assert_eq!(b.targets(), targets);
+        assert!((r.key_height_target_mm - 66.0).abs() < 1e-12);
+        assert!((r.key_dip_target_mm - 10.0).abs() < 1e-12);
+        for which in [Which::Balance, Which::Front] {
+            assert!(b
+                .papers_on(which)
+                .iter()
+                .all(|p| PAPER_THICKNESSES.contains(p)));
+        }
+        assert!(!b.reinitialized(), "the key follows its new stacks");
+    }
+
+    /// Consistency, and what the owner sees: **a dip the front pin forbids is
+    /// refused, with its shortfall in millimetres, and nothing changes.** On
+    /// the bench as built, 12 mm of dip is deeper than the front rail pin
+    /// lets the key go before it bottoms in its mortise, by 0.79 mm: refused,
+    /// naming the pin, and the papers, the targets, the key and every reading
+    /// stay as they were. The sentence says the target, the shortfall and
+    /// the part.
+    #[test]
+    fn a_dip_the_front_pin_forbids_is_refused_and_nothing_changes() {
+        let mut b = KeyBench::standard();
+        let before = everything(&b);
+        let targets = Targets {
+            key_height: 0.0650,
+            key_dip: 0.012,
+        };
+        let refused = b.regulate(targets).expect_err("the pin forbids 12 mm");
+        let NotRegulated::Infeasible {
+            target,
+            limited_by,
+            shortfall_m,
+        } = refused
+        else {
+            panic!("{refused:?}");
+        };
+        assert_eq!(
+            (target, limited_by),
+            (Target::KeyDip, Limit::FrontPinInMortise)
+        );
+        assert!(
+            (shortfall_m - 0.000_79).abs() < 0.000_005,
+            "short by {shortfall_m} m"
+        );
+        assert_eq!(
+            everything(&b),
+            before,
+            "a refused regulation changes nothing"
+        );
+        let said = why_not_regulated(&refused, targets);
+        for words in [
+            "12.00 mm of key dip",
+            "0.79 mm",
+            "front rail pin",
+            "mortise",
+        ] {
+            assert!(said.contains(words), "{said:?} does not say {words:?}");
+        }
+    }
+
+    /// Every refusal says its target in millimetres, how far it lies out of
+    /// reach and what keeps it out, one sentence each, for both targets and
+    /// every limit.
+    #[test]
+    fn every_refusal_says_its_target_its_shortfall_and_why() {
+        let targets = Targets {
+            key_height: 0.0650,
+            key_dip: 0.0102,
+        };
+        let limits = [
+            Limit::FrontPinInMortise,
+            Limit::FrontPinOnTheWood,
+            Limit::FeltThickerThanTheStack,
+            Limit::StopsFight,
+            Limit::NoStopBelowTheFront,
+            Limit::RailTooLow,
+        ];
+        let mut said = Vec::new();
+        for target in [Target::KeyHeight, Target::KeyDip] {
+            for limited_by in limits {
+                let sentence = why_not_regulated(
+                    &NotRegulated::Infeasible {
+                        target,
+                        limited_by,
+                        shortfall_m: 0.000_42,
+                    },
+                    targets,
+                );
+                let (wanted, what) = match target {
+                    Target::KeyHeight => ("65.00 mm of key height", "height"),
+                    Target::KeyDip => ("10.20 mm of key dip", "dip"),
+                };
+                assert!(
+                    sentence.starts_with(wanted)
+                        && sentence.contains("by 0.42 mm: ")
+                        && sentence.ends_with('.'),
+                    "{what}, {limited_by:?}: {sentence:?}"
+                );
+                said.push(sentence);
+            }
+        }
+        said.sort();
+        said.dedup();
+        assert_eq!(said.len(), 12, "each limit says its own reason");
+    }
+
+    /// A target that is not a number is refused, and changes nothing.
+    #[test]
+    fn a_target_that_is_not_a_number_changes_nothing() {
+        let mut b = KeyBench::standard();
+        let before = everything(&b);
+        let refused = b
+            .regulate(Targets {
+                key_height: f64::NAN,
+                key_dip: 0.0102,
+            })
+            .expect_err("not a number");
+        assert_eq!(
+            refused,
+            NotRegulated::Unsolvable(Unsolvable::NotFinite(Target::KeyHeight))
+        );
+        assert_eq!(everything(&b), before);
+    }
+}
+
+#[cfg(test)]
 mod protocol_roundtrip_tests {
     use super::*;
 
@@ -2515,7 +2823,13 @@ mod measuring_point_tests {
     /// the two arms. The arms are worked from the key's own front edge and
     /// covering overhang, not from the code that places the point. Key mass,
     /// height and dip are read off the key and at the key front, so they must
-    /// not move at all.
+    /// not move: the mass and the height to the bit, since nothing they are
+    /// read from reads the measuring point; the dip to within what the
+    /// bottom seat converges to, since the press that seats the key there
+    /// acts at the measuring point, and a static solve under another load
+    /// takes another path to the same stop, which it closes within
+    /// `GAP_TOLERANCE`, seen at the key front through the lever from the
+    /// front rail, 258 over 225 mm.
     #[test]
     fn moving_the_measuring_point_changes_front_weight_exactly_by_the_lever() {
         let mut b = KeyBench::standard();
@@ -2566,7 +2880,13 @@ mod measuring_point_tests {
         // The key itself has not changed, and neither has its key front.
         assert_eq!(after.key_mass_g, before.key_mass_g);
         assert_eq!(after.key_height_mm, before.key_height_mm);
-        assert_eq!(after.key_dip_mm, before.key_dip_mm);
+        let bottom = 2.0 * pa_core::solve::statics::GAP_TOLERANCE * 1000.0 * (258.0 / 225.0);
+        assert!(
+            (after.key_dip_mm - before.key_dip_mm).abs() <= bottom,
+            "the dip moved from {} to {} mm",
+            before.key_dip_mm,
+            after.key_dip_mm
+        );
     }
 
     /// Level 0: **every protocol reads the same measuring point.**

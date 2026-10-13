@@ -2,37 +2,60 @@
 //! the key mounted on its frame as the bench mounts it.
 
 use super::frame::{papers_for, FrameRanges, KeyKind};
-use super::mounts::{key_on_frame, pivot, Mounted};
-use super::{FrameDesign, KeyAssembly, KeyDesign, Regulation};
+use super::mounts::{on_its_frame, Mounted};
+use super::{FrameDesign, KeyAssembly, KeyDesign};
 use crate::geometry::{KeyBearing, Point};
 use crate::measure::seat::{Seating, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
-use crate::mechanism::{BodyId, MassProps};
+use crate::mechanism::MassProps;
+use crate::regulation::{Regulating, TargetOutcome, Targets};
+
+/// The bench's targets: 65.0 mm of key height and 10.2 mm of key dip.
+pub const TARGETS: Targets = Targets {
+    key_height: 0.0650,
+    key_dip: 0.0102,
+};
+
+/// The key's mass, as the bench weighs it: the volume model's.
+pub fn mass_of(key: &KeyDesign) -> Option<MassProps> {
+    key.mass_properties().map(|p| MassProps {
+        mass: p.mass,
+        com: p.com,
+    })
+}
 
 /// The default key regulated on the default frame, as the bench builds it:
-/// each felt kept, the rest of each stack laid in papers from the drawer,
-/// and the stack taken at what those papers make.
+/// each felt kept, and on it the papers the regulation solve lays from the
+/// drawer for [`TARGETS`]. Solved once, the first time a test asks.
 pub fn regulated() -> KeyAssembly {
+    static REGULATED: std::sync::OnceLock<KeyAssembly> = std::sync::OnceLock::new();
+    REGULATED.get_or_init(regulate_the_default).clone()
+}
+
+fn regulate_the_default() -> KeyAssembly {
     let key = KeyDesign::default();
     let mut frame = FrameDesign::default();
-    let target = Regulation {
-        key_height: 0.0650,
-        key_dip: 0.0102,
-    };
-    let (balance, front) = target.solve(&key, &frame, 0.0).unwrap();
-    for (stack, total) in [
-        (&mut frame.balance_punching, balance),
-        (&mut frame.front_punching, front),
-    ] {
-        stack.paper = papers_for(total - stack.felt).iter().sum();
+    let protocol = TouchweightProtocol::default();
+    let outcome = Regulating {
+        key: &key,
+        frame: &frame,
+        kind: KeyKind::Natural,
+        mass: mass_of(&key),
+        protocol: &protocol,
     }
+    .solve(TARGETS);
+    let Ok(TargetOutcome::Met { stacks, .. }) = outcome else {
+        panic!("the default targets are reachable on the default frame: {outcome:?}");
+    };
+    frame.balance_punching.paper = stacks.balance.papers.iter().sum();
+    frame.front_punching.paper = stacks.front.papers.iter().sum();
     KeyAssembly {
         key,
         frame,
         bearing: KeyBearing {
             offset_from_pin: 0.0,
         },
-        protocol: TouchweightProtocol::default(),
+        protocol,
     }
 }
 
@@ -66,34 +89,21 @@ impl OnFrame {
 
 /// `a`'s key on its frame, of `kind`, its bushings' friction bounded by
 /// `friction` newton-metres, its mass the volume model's, or none for
-/// `weighed: false`.
+/// `weighed: false`; the papers on its punchings laid from the drawer for
+/// the totals its frame holds.
 pub fn on_frame(a: &KeyAssembly, kind: KeyKind, friction: f64, weighed: bool) -> OnFrame {
-    let mut parts = Vec::new();
     let balance = papers_for(a.frame.balance_punching.paper);
     let front = papers_for(a.frame.front_punching.paper);
-    let frame = a.frame.parts(&a.key, kind, &balance, &front, &mut parts);
-    let key = a.key.parts(BodyId(1), &mut parts);
-    let pairs = key_on_frame(&key, &frame);
-    let mass = if weighed {
-        a.key.mass_properties().map(|p| MassProps {
-            mass: p.mass,
-            com: p.com,
-        })
-    } else {
-        None
-    };
-    let (capstan, front_top) = (
-        key.capstan_contact.point(&parts),
-        key.key_front_top.point(&parts),
-    );
-    let bearing = Point::new(0.0, a.frame.balance_bearing_height());
-    let mounted =
-        pivot(mass, bearing, friction, parts, pairs).expect("the key's contacts are drawn");
+    let mass = if weighed { mass_of(&a.key) } else { None };
+    let k = on_its_frame(
+        &a.key, &a.frame, kind, &balance, &front, mass, friction, 0.0,
+    )
+    .expect("the key's contacts are drawn");
     OnFrame {
-        mounted,
-        frame,
-        capstan,
+        mounted: k.mounted,
+        frame: k.frame,
+        capstan: k.capstan,
         measuring_point: a.protocol.measuring_point_on_key(&a.key),
-        front_top,
+        front_top: k.front_top,
     }
 }

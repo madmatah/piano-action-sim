@@ -39,8 +39,8 @@
 //! view marks; and how deep drawn parts stand in one another, read off their
 //! outlines ([`crate::mechanism::Mechanism::overlap`]), where a solve starts
 //! and whether a state it finds is one. The one-coordinate statics left under
-//! the key friction weight protocol and the regulation solve still read their
-//! own construction of the stops, built from the same fields: the underside
+//! the key friction weight protocol still read their own construction of the
+//! stops, built from the same fields: the underside
 //! of [`crate::parts::KeyDesign::underside_corners`] and the bearing heights
 //! of [`crate::parts::FrameDesign`]. A test holds every face they read to a
 //! declared range of a drawn part

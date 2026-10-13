@@ -35,17 +35,17 @@ trade's own protocols, and come back with the expected values.**
    from the same fields and exported, and the browser only renders them,
    applying each body's pose as given. The drawn parts declare the ranges a
    contact may read, and a contact pair holds those ranges and nothing else.
-   The static solve places the key on those contacts; the one-coordinate
-   statics left under the key friction weight protocol, the friction bound's
-   load, the regulation solve and the drawing of a frame whose stops fight
-   read stops of their own, held to the drawn ranges by a test until they
-   leave (planned, FOUNDATIONS §7.1).
+   The static solve places the key on those contacts, and the regulation
+   solve reads the key placed there; the one-coordinate statics left under
+   the key friction weight protocol, the friction bound's load and the
+   drawing of a frame whose stops fight read stops of their own, held to the
+   drawn ranges by a test until they leave (planned, FOUNDATIONS §7.1).
    Check:
    `every_contact_surface_is_a_range_of_a_drawn_part`,
    `every_stop_face_is_a_declared_range_of_a_drawn_part`.
 2. **Regulation is trade targets solved to geometry; the coordinate is
    normative**, the target kept beside it with its achieved value. Check:
-   `the_regulated_key_lands_within_the_placement_error_of_its_targets`.
+   `the_regulated_key_meets_its_targets_then_lands_within_one_paper`.
 3. **The simulator measures itself with the trade's protocols** run on the
    model, never a parameter read back; where a displayed value is still a
    formula or an input echoed back, FOUNDATIONS §2.2 says so. Check:
@@ -144,7 +144,8 @@ grep for a listed value finds only its warning; *not enforced*.
 
 ```
 crates/pa-core     domain: geometry · mechanism · contact · solve · parts ·
-                   measure. No I/O, no web; libm its one dependency
+                   measure · regulation. No I/O, no web; libm its one
+                   dependency
 crates/pa-app      application: the single-key bench (KeyBench), the golden
                    sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;

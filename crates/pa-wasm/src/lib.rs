@@ -22,8 +22,8 @@
 //! the browser permanently out of step.
 
 use pa_app::key_bench::{
-    ContactCode, ContactState, Fault, HowItBears, KeyBench, Material, Provenance, Role, Sweep,
-    TouchVerdict, Which, KEY, PAPER_THICKNESSES,
+    why_not_regulated, ContactCode, ContactState, Fault, HowItBears, KeyBench, Material,
+    Provenance, Role, Sweep, Targets, TouchVerdict, Which, KEY, PAPER_THICKNESSES,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -162,6 +162,17 @@ struct SceneDto {
     /// a fault is to say it, and a second place deciding the wording is a
     /// second place for it to drift from the geometry that found it.
     faults: Vec<String>,
+}
+
+/// How a regulation the page asked for came out: laid, or refused with the
+/// reason, as the sentence the regulation panel shows.
+#[derive(Serialize)]
+struct RegulationDto {
+    /// Whether the papers were laid. When not, nothing on the bench changed.
+    laid: bool,
+    /// What happened, in a sentence: the papers laid and what they give, or
+    /// the target out of reach, by how much and what keeps it out.
+    said: String,
 }
 
 /// Metres to millimetres, narrowed for drawing.
@@ -519,6 +530,46 @@ impl Bench {
             measuring_point_from_lip_mm: (self.inner.measuring_point_from_lip() * 1000.0) as f32,
         })
         .unwrap_or_else(|_| "null".to_owned())
+    }
+
+    /// Regulates the key to a key height and a key dip, millimetres: the
+    /// papers on both punchings laid from the drawer, key height first, then
+    /// the dip on the key as it then stands. Returns, as JSON, whether they
+    /// were laid and the sentence to show: what the papers give, within one
+    /// paper of the targets; or, refused, which target is out of reach, by
+    /// how many millimetres and what keeps it out, the bench unchanged.
+    pub fn regulate(&mut self, key_height_mm: f64, key_dip_mm: f64) -> String {
+        let targets = Targets {
+            key_height: key_height_mm * 1e-3,
+            key_dip: key_dip_mm * 1e-3,
+        };
+        let dto = match self.inner.regulate(targets) {
+            Ok(achieved) => {
+                let (balance, front) = self.inner.papers();
+                RegulationDto {
+                    laid: true,
+                    said: format!(
+                        "Laid {:.2} mm of paper under the balance punching and {:.2} mm on the \
+                         front punching: {:.2} mm of key height and {:.2} mm of dip, as near \
+                         {:.2} and {:.2} mm as the drawer's papers come from below.",
+                        balance * 1000.0,
+                        front * 1000.0,
+                        achieved.key_height * 1000.0,
+                        achieved.key_dip * 1000.0,
+                        key_height_mm,
+                        key_dip_mm
+                    ),
+                }
+            }
+            Err(why) => RegulationDto {
+                laid: false,
+                said: format!(
+                    "Refused, the papers left as they were: {}",
+                    why_not_regulated(&why, targets)
+                ),
+            },
+        };
+        serde_json::to_string(&dto).unwrap_or_else(|_| "null".to_owned())
     }
 
     /// Puts a weight on the measuring point, as a static increment from

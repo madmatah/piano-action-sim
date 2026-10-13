@@ -143,22 +143,42 @@ pub enum SeatRefusal {
     },
 }
 
+impl Seat {
+    /// The height above the keybed of `point`, a point of the key in its
+    /// frame, in this seat, metres.
+    pub fn height(&self, mounted: &Mounted, point: Point) -> f64 {
+        mounted
+            .mechanism
+            .pose(&self.q)
+            .world(MaterialPoint {
+                body: mounted.key,
+                at: point,
+            })
+            .y
+    }
+}
+
 impl Seats {
     /// The height above the keybed of `point`, a point of the key in its
     /// frame, at each seat, metres: at the top and at the bottom.
     pub fn heights(&self, mounted: &Mounted, point: Point) -> (f64, f64) {
-        let at = |q: &[f64]| {
-            mounted
-                .mechanism
-                .pose(q)
-                .world(MaterialPoint {
-                    body: mounted.key,
-                    at: point,
-                })
-                .y
-        };
-        (at(&self.top.q), at(&self.bottom.q))
+        (
+            self.top.height(mounted, point),
+            self.bottom.height(mounted, point),
+        )
     }
+}
+
+/// The preparation loads of the two seats, by the frozen rule.
+struct Preparation {
+    /// At the top: the load at the capstan.
+    top: [PointLoad; 1],
+    /// At the bottom: the load at the capstan and the press.
+    bottom: [PointLoad; 2],
+    /// The load at the capstan, newtons.
+    capstan_load: f64,
+    /// The press at the measuring point, newtons.
+    press: f64,
 }
 
 impl Seating<'_> {
@@ -166,8 +186,49 @@ impl Seating<'_> {
     /// says, with `statics`.
     pub fn seats(&self, statics: &mut Statics) -> Result<Seats, SeatRefusal> {
         let m = &self.mounted.mechanism;
-        let n = m.coords().len();
+        let prepared = self.preparation()?;
         let nominal = crate::parts::mounts::nominal_pose(self.mounted);
+        let top = self.seat(statics, &nominal, &prepared.top, true)?;
+        let bottom = self.seat(statics, &top.q, &prepared.bottom, false)?;
+        // A punching read at its centre bears on nothing once that centre
+        // stands past the key's underside; if its drawn face stands under the
+        // key all the same, the key has come down through it as drawn.
+        let pose = m.pose(&bottom.q);
+        let mut rows = crate::contact::Rows::new();
+        m.rows(&pose, f64::INFINITY, &mut rows);
+        for (p, pair) in m.pairs().iter().enumerate() {
+            let p = u16::try_from(p).expect("fewer than 65 536 pairs");
+            if pair.geometry == crate::contact::PairGeometry::CentreBearing
+                && rows.gap(p).is_none()
+                && m.face_overlap(&pose, p) > crate::parts::verdicts::TOUCHING
+            {
+                return Err(SeatRefusal::NoStopBelowTheFront);
+            }
+        }
+        Ok(Seats {
+            top,
+            bottom,
+            capstan_load: prepared.capstan_load,
+            press: prepared.press,
+        })
+    }
+
+    /// Seats the key at the top only, as [`Self::seats`] seats it there, the
+    /// same loads from the same start, so the same bits: what key height is
+    /// read from, without the bottom seat a procedure reading height alone
+    /// does not need.
+    pub fn top(&self, statics: &mut Statics) -> Result<Seat, SeatRefusal> {
+        let prepared = self.preparation()?;
+        let nominal = crate::parts::mounts::nominal_pose(self.mounted);
+        self.seat(statics, &nominal, &prepared.top, true)
+    }
+
+    /// The preparation loads, by the frozen rule of the module documentation;
+    /// refused where the capstan or the measuring point stands on the wrong
+    /// side of the bearing for its load to seat the key.
+    fn preparation(&self) -> Result<Preparation, SeatRefusal> {
+        let m = &self.mounted.mechanism;
+        let n = m.coords().len();
         let level = vec![0.0; n];
         let pose = m.pose(&level);
         let angle = self.mounted.angle;
@@ -194,31 +255,12 @@ impl Seating<'_> {
             at: MaterialPoint { body: key, at },
             force: Point::new(0.0, -newtons),
         };
-        let top_loads = [down(self.capstan, capstan_load)];
-        let bottom_loads = [
-            down(self.capstan, capstan_load),
-            down(self.measuring_point, press),
-        ];
-        let top = self.seat(statics, &nominal, &top_loads, true)?;
-        let bottom = self.seat(statics, &top.q, &bottom_loads, false)?;
-        // A punching read at its centre bears on nothing once that centre
-        // stands past the key's underside; if its drawn face stands under the
-        // key all the same, the key has come down through it as drawn.
-        let pose = m.pose(&bottom.q);
-        let mut rows = crate::contact::Rows::new();
-        m.rows(&pose, f64::INFINITY, &mut rows);
-        for (p, pair) in m.pairs().iter().enumerate() {
-            let p = u16::try_from(p).expect("fewer than 65 536 pairs");
-            if pair.geometry == crate::contact::PairGeometry::CentreBearing
-                && rows.gap(p).is_none()
-                && m.face_overlap(&pose, p) > crate::parts::verdicts::TOUCHING
-            {
-                return Err(SeatRefusal::NoStopBelowTheFront);
-            }
-        }
-        Ok(Seats {
-            top,
-            bottom,
+        Ok(Preparation {
+            top: [down(self.capstan, capstan_load)],
+            bottom: [
+                down(self.capstan, capstan_load),
+                down(self.measuring_point, press),
+            ],
             capstan_load,
             press,
         })
@@ -332,15 +374,19 @@ mod tests {
     /// Consistency: **on the regulated bench the seats are where the
     /// one-coordinate statics put the key**: the same rest on the cloth's
     /// back edge and the same bottom on the front punching, so the same key
-    /// height and dip. The two read the same drawn cloth; at the bottom the
-    /// key is level, where the built stop's disc and the felt's centre stand
-    /// at one height.
+    /// height and dip. The two read the same drawn cloth. At the bottom the
+    /// built stop is a disc of the punching's edge radius `r` under the
+    /// felt's centre, which at a tilt `φ` reaches `r (1 − cos φ)` further
+    /// than the centre does: picometres, on a key regulated level at the
+    /// bottom to within a paper.
     ///
     /// The bound is derived. The static solve closes each gap within
     /// [`GAP_TOLERANCE`], which the arm from the cloth's edge to the key
     /// front, against the arm to the edge, turns into height; the closed form
     /// and the pose each round their last bits on numbers of the key front's
-    /// height.
+    /// height. The disc's reach, at the front rail 225 mm out, moves the
+    /// bottom attitude by itself over that arm, and the dip by it through the
+    /// lever to the key front.
     #[test]
     fn the_seats_are_where_the_built_statics_put_the_key() {
         let a = regulated();
@@ -353,18 +399,22 @@ mod tests {
             "key height {top} against {}",
             t.key_height
         );
+        let phi = seats.bottom.q[0].abs();
+        let disc = crate::parts::assembly::PUNCHING_EDGE_RADIUS * (1.0 - libm::cos(phi));
         assert!(
-            ((top - bottom) - t.key_dip).abs() <= 2.0 * bound,
+            ((top - bottom) - t.key_dip).abs() <= 2.0 * bound + disc * 0.258 / 0.225,
             "key dip {} against {}",
             top - bottom,
             t.key_dip
         );
         assert_eq!(seats.top.held_by, vec![ContactCode::BackRailCloth]);
         assert_eq!(seats.bottom.held_by, vec![ContactCode::FrontRailPunching]);
-        let level = nose_up_angle(t.sin_bottom);
+        let built = nose_up_angle(t.sin_bottom);
         assert!(
-            (seats.bottom.q[0] - level).abs() < 1e-12,
-            "level at the bottom"
+            (seats.bottom.q[0] - built).abs()
+                <= (disc + 2.0 * GAP_TOLERANCE) / 0.225 + 8.0 * f64::EPSILON,
+            "the bottom at {} rad, the built statics' at {built} rad",
+            seats.bottom.q[0]
         );
     }
 

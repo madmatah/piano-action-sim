@@ -11,9 +11,10 @@ fault.0.by 0.016499999999999987 0x3f90e56041893748
 papers.balance 2
 papers.balance.0 0.0005 0x3f40624dd2f1a9fc
 papers.balance.1 0.0002 0x3f2a36e2eb1c432d
-papers.front 2
-papers.front.0 0.0005 0x3f40624dd2f1a9fc
+papers.front 3
+papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
+papers.front.2 8e-5 0x3f14f8b588e368f1
 pose.sin_angle 0.0 0x0000000000000000
 pose.measuring_point.x 0.229 0x3fcd4fdf3b645a1d
 pose.measuring_point.y 0.0548 0x3fac0ebedfa43fe6

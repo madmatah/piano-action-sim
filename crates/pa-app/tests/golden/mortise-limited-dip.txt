@@ -13,8 +13,8 @@ readout.balance_weight_g -6.480979726929044 0xc019ec85f314cc09
 readout.friction_weight_g 6.000000000000001 0x4018000000000001
 readout.key_mass_g 121.11668963924217 0x405e4777d7d214f0
 readout.lead_count 0
-readout.gap_front_mm 0.10112133848573525 0x3fb9e31689b956b1
-readout.gap_back_mm 7.523073372029499 0x401e17a08bc919be
+readout.gap_front_mm 0.12112133646588104 0x3fbf01ced2f80165
+readout.gap_back_mm 7.523073372029495 0x401e17a08bc919ba
 readout.measured_kf_g 6.029838719405234 0x40181e8e0a900000
 readout.friction_band_g 6.0 0x4018000000000000
 readout.key_height_target_mm 65.0 0x4050400000000000
@@ -30,9 +30,10 @@ faults 0
 papers.balance 2
 papers.balance.0 0.0005 0x3f40624dd2f1a9fc
 papers.balance.1 0.0002 0x3f2a36e2eb1c432d
-papers.front 2
-papers.front.0 0.0005 0x3f40624dd2f1a9fc
+papers.front 3
+papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
-pose.sin_angle -0.0004494281710477148 0xbf3d74274beac4ac
+papers.front.2 8e-5 0x3f14f8b588e368f1
+pose.sin_angle -0.00044942817104772875 0xbf3d74274beac5ad
 pose.measuring_point.x 0.24698828992231991 0x3fcf9d4ff1db0ce0
-pose.measuring_point.y 0.054911006132434804 0x3fac1d4b9f0efb8d
+pose.measuring_point.y 0.05491100613243481 0x3fac1d4b9f0efb8e
