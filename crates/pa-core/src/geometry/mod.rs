@@ -35,6 +35,42 @@ impl Point {
     }
 }
 
+/// A direction: a vector of unit length, in a body's frame or in the world.
+///
+/// Built only by normalizing, so an axis cannot carry a length that would
+/// scale its coordinate without anybody noticing.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Dir {
+    x: f64,
+    y: f64,
+}
+
+impl Dir {
+    /// Towards the player.
+    pub const X: Self = Self { x: 1.0, y: 0.0 };
+    /// Upwards.
+    pub const Y: Self = Self { x: 0.0, y: 1.0 };
+
+    /// The direction of `(x, y)`, or `None` for a vector with no length or
+    /// with a component that is not a finite number.
+    pub fn new(x: f64, y: f64) -> Option<Self> {
+        let length = (x * x + y * y).sqrt();
+        if length.is_finite() && length > 0.0 {
+            Some(Self {
+                x: x / length,
+                y: y / length,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// The direction as a vector of unit length.
+    pub const fn vector(self) -> Point {
+        Point::new(self.x, self.y)
+    }
+}
+
 /// One segment of a part outline.
 ///
 /// These two primitives are enough for the whole action: Hirschkorn and Thorin

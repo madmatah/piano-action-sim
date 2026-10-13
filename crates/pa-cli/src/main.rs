@@ -1,20 +1,58 @@
 //! Command-line adapter of `pa-app`.
 //!
-//! The same code that runs in the browser runs here natively. Its one command,
-//! `weigh`, prints the key weighing sheet, so that the numbers can be read and
-//! checked without a browser in the way.
+//! The same code that runs in the browser runs here natively. Two commands:
+//! `weigh` prints the key weighing sheet, so that the numbers can be read and
+//! checked without a browser in the way; `golden` writes the golden sheet,
+//! every reading of the default bench and of the fixture benches in full bits,
+//! which `crates/pa-app/tests/golden.rs` compares the engine against.
 
+use std::path::{Path, PathBuf};
+
+use pa_app::golden;
 use pa_app::key_bench::{BenchReadout, KeyBench};
+
+/// Where `golden` writes when it is not told, relative to the repository root.
+const GOLDEN_DIR: &str = "crates/pa-app/tests/golden";
 
 fn main() {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
         Some("weigh") | None => weigh(),
+        Some("golden") => {
+            let dir = args
+                .next()
+                .map_or_else(|| PathBuf::from(GOLDEN_DIR), PathBuf::from);
+            if let Err(e) = write_golden(&dir) {
+                eprintln!("pa-cli golden: {e}");
+                std::process::exit(1);
+            }
+        }
         Some(other) => {
-            eprintln!("pa-cli: unknown command {other:?}. Try: weigh");
+            eprintln!("pa-cli: unknown command {other:?}. Try: weigh, golden [DIR]");
             std::process::exit(2);
         }
     }
+}
+
+/// Writes one golden sheet per fixture into `dir`.
+///
+/// The directory must exist already. The default is relative to the
+/// repository root, so run from anywhere else it names nothing, and that is
+/// said in those words rather than as a failed write.
+fn write_golden(dir: &Path) -> Result<(), String> {
+    if !dir.is_dir() {
+        return Err(format!(
+            "{} is not a directory; run from the repository root, or name the directory",
+            dir.display()
+        ));
+    }
+    for fixture in &golden::FIXTURES {
+        let path = dir.join(fixture.file_name());
+        std::fs::write(&path, golden::sheet(fixture))
+            .map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+        println!("wrote {}", path.display());
+    }
+    Ok(())
 }
 
 /// Weighs the standard bench key, bare and then leaded, and prints both.

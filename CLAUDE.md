@@ -55,10 +55,11 @@ trade's own protocols, and come back with the expected values.**
 6. **No general-purpose physics engine in the core** (FOUNDATIONS §3.9); MuJoCo
    only ever as an optional oracle. Check: `cargo tree`, the `package.json`s.
 7. **`pa-core` has no I/O and no web dependency, and justifies each
-   dependency**: none today; `libm` with the first transcendental and `serde`
-   behind a feature with persistence are the planned ones. `pa-wasm` and
-   `pa-cli` adapt `pa-app` and add no physics. Check: the three manifests;
-   `grep -rnE 'std::(fs|io|net)|wasm_bindgen' crates/pa-core/src` finds nothing.
+   dependency** in its manifest: `libm` today, for every transcendental (rule
+   8); `serde` behind a feature, with persistence, is the planned one.
+   `pa-wasm` and `pa-cli` adapt `pa-app` and add no physics. Check: the three
+   manifests; `grep -rnE 'std::(fs|io|net)|wasm_bindgen' crates/pa-core/src`
+   finds nothing.
 8. **Determinism** (FOUNDATIONS §4.4): IEEE-754 only, a fixed order of
    operations and contacts, no `HashMap` iteration in the solver, every
    transcendental in `pa-core` (`pow` included) through the `libm` crate, no
@@ -67,9 +68,12 @@ trade's own protocols, and come back with the expected values.**
    a bisection whose fixed count resolves below what is read; fixed budgets
    elsewhere only where real time needs them. No time step, solver count or felt
    law is fixed by rule: each is a FOUNDATIONS §4 hypothesis, settled by its
-   test. Check: `grep -rn HashMap crates/pa-core/src` finds nothing, nor does
-   `grep -rnE '\.(sin|cos|tan|exp|ln|powf|powi|atan2?)\(' crates/pa-core/src`
-   outside tests.
+   test. Check: `grep -rn HashMap crates/pa-core/src` finds nothing; Clippy
+   refuses in `pa-core` every `f64` method IEEE-754 does not round exactly
+   (`crates/pa-core/clippy.toml`), a test allowing one explicitly; the golden
+   sheet (`crates/pa-app/tests/golden.rs`) fails when a reading moves by a
+   bit, and a change that means to move one rewrites it with
+   `cargo run -p pa-cli -- golden` and says why.
 9. **SI unless the name says otherwise.** Geometry and mechanics are SI; a value
    in a trade unit (grams in the weighing algebra; millimetres and grams at the
    boundary, in the display and in saved files) carries it in its name (`kf_g`,
@@ -132,11 +136,13 @@ grep for a listed value finds only its warning; *not enforced*.
 ## Layout
 
 ```
-crates/pa-core     domain: geometry · parts · measure. No I/O, no web, no deps.
-crates/pa-app      application: the single-key bench (KeyBench)
+crates/pa-core     domain: geometry · mechanism · parts · measure. No I/O, no
+                   web; libm its one dependency
+crates/pa-app      application: the single-key bench (KeyBench), the golden
+                   sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;
                    its package.json lets Turborepo drive wasm-pack
-crates/pa-cli      shell adapter of pa-app: `weigh`
+crates/pa-cli      shell adapter of pa-app: `weigh`, `golden`
 apps/bench         the bench: React, react-three-fiber
 data/params/       parameter records with provenance
 data/references/   primary corpus: gitignored, third-party copyright
@@ -156,6 +162,7 @@ cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build -p pa-wasm --target wasm32-unknown-unknown
 cargo run -p pa-cli -- weigh         # the weighing sheet, no browser
+cargo run -p pa-cli -- golden        # rewrites the golden sheet: say why
 pnpm check                           # Biome (`pnpm exec biome`, never npx)
 PATH="$HOME/.cargo/bin:$PATH" pnpm typecheck    # builds the wasm, then tsc
 PATH="$HOME/.cargo/bin:$PATH" pnpm build && bash scripts/smoke.sh

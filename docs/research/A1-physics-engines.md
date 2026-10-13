@@ -495,9 +495,10 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
 
 ## 5. C — Rust building blocks (crates.io, observed 11 October 2026)
 
-`pa-core` has no dependency; the `libm` crate, with the first transcendental,
-and `serde`, behind an optional feature for persistence, are its planned ones
-(FOUNDATIONS §4.4, §7.4). The table records what exists.
+`pa-core` has one dependency, the `libm` crate, through which every
+transcendental goes (FOUNDATIONS §4.4); `serde`, behind an optional feature for
+persistence, is the planned other (FOUNDATIONS §7.4). The table records what
+exists.
 
 | Crate | Version | Last update | Role, verdict |
 |---|---|---|---|
@@ -561,8 +562,8 @@ Transcendentals break this:
   code into the native binary and into the WebAssembly module, so both agree
   bit for bit, in every browser; the standard library's `f64::sin` calls the
   platform's library natively, and differs (FOUNDATIONS §4.4). `pa-core` calls
-  no transcendental; the `libm` crate is planned with the first one
-  (FOUNDATIONS §4.4).
+  its transcendentals through the `libm` crate, and Clippy refuses the
+  standard library's there (FOUNDATIONS §4.4).
 
 A technician who reads 52 g of down weight with a set of settings must read the
 same 52 g on another machine the next day: reproducibility is structural to the
@@ -618,10 +619,10 @@ relative coordinates, with the formulas not to use.
 ## 8. Architecture
 
 The layering this study arrives at is the one built (FOUNDATIONS §7.1): a domain
-crate, `pa-core`, in Rust, with no I/O, no web and no dependency, tested
-natively; an application crate, `pa-app`; and two adapters that add no physics,
-`pa-wasm` for the browser and `pa-cli` for the shell. The bench renders with
-three.js 0.186.1 through react-three-fiber (FOUNDATIONS §3.11).
+crate, `pa-core`, in Rust, with no I/O, no web and one dependency, `libm`,
+tested natively; an application crate, `pa-app`; and two adapters that add no
+physics, `pa-wasm` for the browser and `pa-cli` for the shell. The bench renders
+with three.js 0.186.1 through react-three-fiber (FOUNDATIONS §3.11).
 
 What the domain is to gain, each a plan or a hypothesis of FOUNDATIONS:
 - contact geometry with exact analytic lever arms: circle against line and
@@ -633,8 +634,9 @@ What the domain is to gain, each a plan or a hypothesis of FOUNDATIONS:
   unknowns at velocity level, the quasi-static solver as its static limit (§4.2,
   a hypothesis);
 - sensitivities by finite differences (§5.3, level 5);
-- arithmetic reproducible under the conditions of §4.4, with the `libm` crate at
-  the first transcendental.
+- arithmetic reproducible under the conditions of §4.4: every transcendental
+  through the `libm` crate (built), native and WebAssembly results compared bit
+  for bit (planned).
 
 **Order of work**: FOUNDATIONS §8 holds the stages, by sub-assembly along
 Stanwood's equation, with the dynamics prototype that settles the step, the

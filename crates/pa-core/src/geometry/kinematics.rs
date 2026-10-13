@@ -117,9 +117,10 @@ impl Rot {
 
     /// Builds a rotation from an angle in radians.
     ///
-    /// Test-only: it calls the platform's `sin` and `cos`, and no production
-    /// code in this crate does.
+    /// Test-only: it calls the platform's `sin` and `cos`, which the crate's
+    /// lint refuses in production code, to build reference rotations.
     #[cfg(test)]
+    #[allow(clippy::disallowed_methods)]
     pub fn from_angle(theta: f64) -> Self {
         Self {
             cos: theta.cos(),

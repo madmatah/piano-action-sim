@@ -15,7 +15,8 @@
 //! an animation of leading, not leading.
 
 use pa_core::geometry::{KeyBearing, Point};
-use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, KeyWeighing, TouchweightProtocol};
+use pa_core::measure::jig::KeyJig;
+use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, TouchweightProtocol};
 pub use pa_core::parts::assembly::Fault;
 use pa_core::parts::assembly::Settled;
 /// The punching thicknesses a drawer holds, re-exported so an adapter can
@@ -26,12 +27,16 @@ use pa_core::parts::frame::{papers_for, FrameLayout, KeyKind};
 pub use pa_core::parts::Sweep;
 use pa_core::parts::{FrameDesign, KeyAssembly, KeyDesign, Lead, PunchingStack, Regulation};
 
+use crate::composite_key;
+
 /// Everything the bench can report, in the trade's own units.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BenchReadout {
-    /// Front weight, grams, signed. Negative when the keystick is back-heavy.
+    /// Front weight, grams, signed: the key run on Stanwood's jig, level, its
+    /// scale under the measuring point. Negative when the key is back-heavy.
     pub front_weight_g: f64,
-    /// Key weight ratio, dimensionless, force convention.
+    /// Key weight ratio, dimensionless, force convention: the tared jig read
+    /// with 10 g on the capstan's contact point.
     pub key_ratio: f64,
     /// Key height at the front edge, millimetres above the keybed.
     pub key_height_mm: f64,
@@ -488,11 +493,8 @@ impl KeyBench {
     /// key turns, so comparing extremes across two attitudes compares two
     /// different corners.
     pub fn measuring_point_world(&self) -> Point {
-        let key = &self.assembly.key;
-        self.to_world(Point::new(
-            self.assembly.measuring_point(),
-            key.stick_height + key.keytop_thickness,
-        ))
+        let protocol = &self.assembly.protocol;
+        self.to_world(protocol.measuring_point_on_key(&self.assembly.key))
     }
 
     /// Maps a point from the key's own frame into the keybed frame.
@@ -524,16 +526,17 @@ impl KeyBench {
     }
 
     /// Weighs the key and reads every observable the bench reports.
+    ///
+    /// Front weight and the key weight ratio are the jig run on the model, the
+    /// key's mass the composite key's derivation ([`composite_key`]). The
+    /// weights on the frame are still the closed form taken with the key
+    /// level.
     pub fn readout(&self) -> Option<BenchReadout> {
         let key = &self.assembly.key;
         let props = key.mass_properties()?;
         let travel = self.assembly.travel()?;
 
-        let weighing = KeyWeighing {
-            static_moment_about_pin: props.static_moment_x(),
-            measuring_arm: self.assembly.measuring_point(),
-            capstan_arm: -key.capstan,
-        };
+        let jig = KeyJig::new(key, &self.assembly.protocol, composite_key::mass(key)).ok()?;
         let on_frame = KeyOnFrame {
             mass: props.mass,
             static_moment: self.assembly.static_moment_about_bearing()?,
@@ -568,8 +571,8 @@ impl KeyBench {
             key_height_target_mm: self.target.key_height * 1000.0,
             key_dip_target_mm: self.target.key_dip * 1000.0,
             finger: self.finger_verdict()?,
-            front_weight_g: weighing.front_weight_g(),
-            key_ratio: weighing.key_ratio(),
+            front_weight_g: jig.front_weight_g().ok()?,
+            key_ratio: jig.key_ratio().ok()?,
             key_height_mm: travel.key_height * 1000.0,
             key_dip_mm: travel.key_dip * 1000.0,
             down_weight_g: down,

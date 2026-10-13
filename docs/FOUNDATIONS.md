@@ -140,14 +140,37 @@ millimetres past the limit (pin outside its mortise, punching off the flat of
 the underside, cloth outside the chamfer); placing the frame again is a
 deliberate act.
 
+**The general mechanism, its first part.** Bodies in a tree, the ground first,
+each hung from its parent by a pin or a slide with one coordinate, an angle or a
+length; poses by one forward pass, whose only transcendentals are one sine and
+one cosine per pin, through `libm` (§4.4); the Jacobian column of any material
+point for any coordinate, by the lever-arm identity of §6.2 extended to every
+ancestor joint; gravity at each body's centre of mass and forces fixed in the
+world, with their potential and generalized forces; and coordinates prescribed
+for one procedure, with the reaction that holds each. The mechanism never
+computes a body's mass; it is handed one. The composite key's is derived from
+its volume model by one adapter in `pa-app`, the composite key's derivation
+(§2.3). Its first client is the jig (§2.2). Planned: contacts over all
+coordinates, coordinate limits, axis friction and the static solve that finds
+the coordinates a procedure leaves free (§8); until then the key on its frame
+keeps the one-degree-of-freedom statics above.
+
 ### 2.2 The protocols, as they are
 
-- **Front weight and key weight ratio** are read on a simulated jig: the key
-  level, pivoting about its balance pin's axis as on Stanwood's wedge jig, its
-  measuring point on the scale, the ratio with 10 g at the capstan [V,
-  Stanwood 2000; `data/params/touchweight-protocol.json`]. A jig pivots the
-  key at the pin, so it cannot see where the key bears on its balance punching;
-  only a reading on the frame can (§5.2 a).
+- **Front weight and key weight ratio** are Stanwood's jig run on the model
+  [V, Stanwood 2000; `data/params/touchweight-protocol.json`]. The key hangs
+  from the jig by a pin at its balance pin's axis, a mechanism of §2.1 whose
+  pin turns without friction, an assumption; its angle is held level, the
+  covering's top horizontal where his bubble level sits. Holding it there takes
+  a reaction on that angle, and the scale, standing under the measuring point,
+  reads that reaction over g times the measuring point's arm: signed, so a
+  back-heavy key reads negative, as his protocol for a negative front weight
+  reads it. The ratio is the reading tared with the key on the jig, then with
+  10 g centred on the capstan's contact point, over the load with its sign
+  turned. The closed forms, static moment over arm and capstan arm over arm,
+  are test oracles the jig matches to round-off. A jig pivots the key at the
+  pin, so it cannot see where the key bears on its balance punching; only a
+  reading on the frame can (§5.2 a).
 - **Key friction weight** is a procedure run on the model, Stanwood's: zero the
   front weight with a temporary weight, put the key back on its frame, find the
   least weight on the measuring point that makes it leave its back rail cloth (a
@@ -178,9 +201,9 @@ deliberate act.
   same static moment and the same friction torque read on another arm, and
   leaves key height and dip where they are.
 
-**Planned:** every displayed weighing quantity becomes a procedure run on the
-model (D the least weight that starts the key down from rest, U the greatest
-that lets it rise from the bottom), the closed forms kept as test oracles.
+**Planned:** D, U, BW and F become procedures run on the model too (D the
+least weight that starts the key down from rest, U the greatest that lets it
+rise from the bottom), their closed forms joining the jig's as test oracles.
 
 ### 2.3 Named simplifications
 
@@ -629,11 +652,16 @@ it either.
 
 The toolchain pins, Rust 1.99.0 and Node 26, keep tools, lints and formatting
 identical between machines; the `libm` crate, not the pins, makes native and
-WebAssembly results agree. Built: no `HashMap` and no transcendental in the
-domain's production code (`pa-app` calls `atan` and `asin` for displayed angles);
+WebAssembly results agree. Built: `libm` is `pa-core`'s one dependency, and the
+sine and cosine of every pose go through it (§2.1); Clippy refuses in `pa-core`
+every `f64` method IEEE-754 does not round exactly, `sin` to `hypot`, `powi`
+included (`crates/pa-core/clippy.toml`), so no transcendental in the domain
+reaches the platform's maths library, and a test that wants one for a reference
+value allows it explicitly. `pa-app` still calls the platform's `atan` and
+`asin` for two displayed angles. No `HashMap` in the domain's production code;
 two bisections, the settle solve's 24 steps and the friction protocol's 32,
-resolve far below anything read. Planned: the `libm` crate, with the first
-transcendental.
+resolve far below anything read. The golden sheet (§7.1) holds the engine's
+readings bit for bit wherever the tests run.
 
 ### 4.5 Rigid bodies
 
@@ -725,7 +753,7 @@ traps (§6.3).
 
 | Level | What it checks | Kind | Status |
 |---|---|---|---|
-| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the unilateral virtual-work inequality at every settled state; the key ratio guard | consistency | built |
+| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; the unilateral virtual-work inequality at every settled state; the key ratio guard | consistency | built |
 | 0 | the mass matrix against finite differences of the kinetic energy; normals continuous across the hybrid profiles; every coordinate acted on by a contact or a spring | consistency | planned |
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
@@ -812,8 +840,10 @@ pointing from B to A, and O the pivot about which a coordinate turns its body:
 That is the instantaneous lever arm, what every ratio of the trade is made of.
 For a coordinate relative to a parent (jack, lever), O is its own pin, and the
 parent's coordinate turns the child's points about the parent's pivot. Built for
-circle against line and circle against circle, tested against central finite
-differences. **Do not use** ∂g/∂θ_B = −(ẑ × (x_c − o_B))·n_B −
+circle against line and circle against circle, and as the mechanism's Jacobian
+column for any material point over every ancestor joint (§2.1), each tested
+against central finite differences.
+**Do not use** ∂g/∂θ_B = −(ẑ × (x_c − o_B))·n_B −
 (c_A − p_B)·(ẑ × n_B) for a circle on A against a line on B: the second term is
 spurious (a circle at (0, 2) of radius 1 against a line through (5, 0) on a body
 turning about the origin has a true derivative of 0; that formula gives −5). And
@@ -935,10 +965,11 @@ wins, so pedal force falls as notes are played.
 **Built.**
 
 ```
-crates/pa-core     the domain: geometry, parts, measure. No I/O, no web, no dependencies.
-crates/pa-app      the application: the single-key bench, KeyBench
+crates/pa-core     the domain: geometry, mechanism, parts, measure. No I/O, no web;
+                   one dependency, libm (§4.4)
+crates/pa-app      the application: the single-key bench, KeyBench; the golden sheet
 crates/pa-wasm     the browser's adapter of pa-app; the only crate that knows JavaScript
-crates/pa-cli      the shell's adapter of pa-app: `weigh`
+crates/pa-cli      the shell's adapter of pa-app: `weigh`, `golden`
 apps/bench         the bench page: React, react-three-fiber
 tools/smoke        drives the real page over the Chrome DevTools protocol
 scripts/verify.sh  every gate, run locally by `pnpm verify`
@@ -951,6 +982,15 @@ wasm-pack. The CI workflow (`.github/workflows/ci.yml`) runs the format check,
 Clippy with warnings as errors, the tests and the WebAssembly build for Rust,
 and Biome, the type-check, the build, the tests and the smoke test for the web;
 `scripts/verify.sh` runs the same gates locally.
+
+**The golden sheet** records every reading of the default bench and of four
+fixture benches (a frame whose stops fight, a back-heavy key, a dip stopped by
+the front pin in its mortise, a key shortened under its frame) in full bits, in
+`crates/pa-app/tests/golden/`. `pa-cli golden` writes it and `cargo test`
+compares the engine with it, so a change shows every number it moves; one that
+means to move a number rewrites the sheet and says why. The two angles the
+sheet shows in degrees are recorded as the slope and the sine they come from,
+because the platform's `atan` and `asin` may differ in the last bit.
 
 **The engine and its applications.** The crates are the engine (§1.1) and
 `apps/bench` its first application. Planned: the engine's interface is what
@@ -1074,7 +1114,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree and the jig built (§2.1, §2.2); the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

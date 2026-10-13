@@ -1,6 +1,6 @@
 [package]
 name = "pa-cli"
-description = "Command-line adapter of pa-app: prints the key weighing sheet."
+description = "Command-line adapter of pa-app: prints the key weighing sheet, and writes the golden sheet."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

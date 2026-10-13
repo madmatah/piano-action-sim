@@ -1413,6 +1413,9 @@ mod tests {
     /// no measured parameter and no solver, only the claim that energy and
     /// force are two views of the same thing.
     #[test]
+    // A finite difference in the angle itself: the reference angles come from
+    // the platform's `asin` and `sin`, which the lint refuses outside tests.
+    #[allow(clippy::disallowed_methods)]
     fn gravity_torque_is_minus_the_gradient_of_the_potential() {
         let a = regulated();
         let h = 1e-7;
@@ -1439,6 +1442,9 @@ mod tests {
     /// And the same identity with leads fitted, since a point mass is where the
     /// two views are easiest to let drift apart.
     #[test]
+    // A finite difference in the angle itself: the reference angles come from
+    // the platform's `asin` and `sin`, which the lint refuses outside tests.
+    #[allow(clippy::disallowed_methods)]
     fn virtual_work_still_holds_once_the_key_is_leaded() {
         let mut a = regulated();
         a.key.leads = vec![
@@ -1766,6 +1772,9 @@ mod virtual_work_tests {
     /// than through an arm written out by hand, which is where a cosine or a
     /// lever gets lost.
     #[test]
+    // A finite difference in the angle itself: the reference angles come from
+    // the platform's `asin` and `sin`, which the lint refuses outside tests.
+    #[allow(clippy::disallowed_methods)]
     fn net_torque_is_minus_the_gradient_of_the_whole_potential() {
         let a = bench();
         let h = 1e-7;

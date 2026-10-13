@@ -1,0 +1,40 @@
+# golden sheet: mortise-limited-dip
+# the standard bench with the front rail pin 1 mm prouder: the pin bottoms in its mortise before the key reaches its front punching
+# Every reading in full bits: the shortest decimal that reads back to the
+# same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
+# a change that moves a reading rewrites this file and says why.
+readout.front_weight_g 6.480979726929041 0x4019ec85f314cc06
+readout.key_ratio 0.5242914979757085 0x3fe0c6fef6ac0c70
+readout.key_height_mm 64.98878883168035 0x40503f4850f3ade6
+readout.key_dip_mm 10.07412468761662 0x402425f3abca477a
+readout.down_weight_g -0.4809797269290425 0xbfdec85f314cc07b
+readout.up_weight_g -12.480979726929045 0xc028f642f98a6605
+readout.balance_weight_g -6.480979726929044 0xc019ec85f314cc09
+readout.friction_weight_g 6.000000000000001 0x4018000000000001
+readout.key_mass_g 121.11668963924217 0x405e4777d7d214f0
+readout.lead_count 0
+readout.gap_front_mm 8.803017277101468 0x40219b25149e8c2c
+readout.gap_back_mm -8.673617379884035e-16 0xbccf400000000000
+readout.measured_dip_mm 10.07412468761662 0x402425f3abca477a
+readout.measured_kf_g 6.029838719405234 0x40181e8e0a900000
+readout.friction_band_g 6.0 0x4018000000000000
+readout.key_height_target_mm 65.0 0x4050400000000000
+readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
+readout.finger FrontPunching
+readout.out_of_level.sine -0.00044444462002759275 0xbf3d208b1b9f716a
+readout.bedding_at_the_back.slope 0.0071246812895846435 0x3f7d2ec512218af2
+readout.bears_at_the_back_mm 212.00356225023413 0x406a801d2e94882f
+readout.back_bearing StopEdge
+readout.stopped_by_the_mortise true
+frame_fault none
+faults 0
+papers.balance 2
+papers.balance.0 0.0005 0x3f40624dd2f1a9fc
+papers.balance.1 0.0002 0x3f2a36e2eb1c432d
+papers.front 2
+papers.front.0 0.0005 0x3f40624dd2f1a9fc
+papers.front.1 0.0004 0x3f3a36e2eb1c432d
+pose.sin_angle -0.03957035805525962 0xbfa44290e37a090b
+pose.depression 0.0 0x0000000000000000
+pose.measuring_point.x 0.24577771699808515 0x3fcf75a4ec4bd11c
+pose.measuring_point.y 0.06455351489307248 0x3fb08694434ebe90

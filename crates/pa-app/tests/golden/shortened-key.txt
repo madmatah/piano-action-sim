@@ -1,0 +1,42 @@
+# golden sheet: shortened-key
+# the standard bench with the key front brought back 18 mm, the frame left where it was: the front pin stands outside its mortise, under the key
+# Every reading in full bits: the shortest decimal that reads back to the
+# same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
+# a change that moves a reading rewrites this file and says why.
+readout.front_weight_g 2.2813045962946448 0x4002401c9fca665d
+readout.key_ratio 0.5655021834061136 0x3fe2189808f1779e
+readout.key_height_mm 64.27652238668567 0x405011b28af3db51
+readout.key_dip_mm 9.476522386685671 0x4022f3fabe0540ef
+readout.down_weight_g 4.190311124229373 0x4010c2e0eb5a8546
+readout.up_weight_g -8.752920316818662 0xc021817ec59275d1
+readout.balance_weight_g -2.2813045962946443 0xc002401c9fca665c
+readout.friction_weight_g 6.471615720524017 0x4019e2ef3b3fb874
+readout.key_mass_g 116.94482963924216 0x405d3c7816bc358a
+readout.lead_count 0
+readout.gap_front_mm 8.902938955768478 0x4021ce4e03ca9eb9
+readout.gap_back_mm -8.673617379884035e-16 0xbccf400000000000
+readout.measured_dip_mm 9.476522386685671 0x4022f3fabe0540ef
+readout.measured_kf_g 6.5059405053034425 0x401a061544900000
+readout.friction_band_g 6.471615720524017 0x4019e2ef3b3fb874
+readout.key_height_target_mm 65.0 0x4050400000000000
+readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
+readout.finger BackRailCloth
+readout.out_of_level.sine 0.0 0x0000000000000000
+readout.bedding_at_the_back.slope 0.0071246812895846435 0x3f7d2ec512218af2
+readout.bears_at_the_back_mm 212.00356225023413 0x406a801d2e94882f
+readout.back_bearing StopEdge
+readout.stopped_by_the_mortise false
+frame_fault none
+faults 1
+fault.0 PinOutsideTheMortise
+fault.0.by 0.016499999999999987 0x3f90e56041893748
+papers.balance 2
+papers.balance.0 0.0005 0x3f40624dd2f1a9fc
+papers.balance.1 0.0002 0x3f2a36e2eb1c432d
+papers.front 2
+papers.front.0 0.0005 0x3f40624dd2f1a9fc
+papers.front.1 0.0004 0x3f3a36e2eb1c432d
+pose.sin_angle -0.03957035805525962 0xbfa44290e37a090b
+pose.depression 0.0 0x0000000000000000
+pose.measuring_point.x 0.22779181483802285 0x3fcd28483d834d46
+pose.measuring_point.y 0.06384124844807781 0x3fb057e66a3865e8

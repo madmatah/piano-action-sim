@@ -250,11 +250,11 @@ piano-action-sim/
 ├─ biome.json
 ├─ .github/workflows/ci.yml   # the gates of scripts/verify.sh, in two jobs
 ├─ crates/
-│  ├─ pa-core/                # the domain: no I/O, no web, no dependencies
+│  ├─ pa-core/                # the domain: no I/O, no web; libm its one dependency
 │  ├─ pa-app/                 # the application: the single-key bench
 │  ├─ pa-wasm/                # the only cdylib: wasm-bindgen, serde_json
 │  │   └─ package.json        # "build": "wasm-pack build --target web --out-dir pkg"
-│  └─ pa-cli/                 # the shell's adapter: `weigh`
+│  └─ pa-cli/                 # the shell's adapter: `weigh`, `golden`
 ├─ apps/
 │  └─ bench/                  # React, react-three-fiber, Vite, Vitest
 ├─ tools/smoke/               # drives the built page over the Chrome DevTools protocol

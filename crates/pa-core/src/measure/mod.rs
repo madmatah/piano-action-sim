@@ -4,7 +4,19 @@
 //! measures it, not the way it is easiest to probe numerically. If the simulator
 //! reports a let-off, it must be the hammer-to-string distance at the instant
 //! the jack leaves the knuckle — not the value of a parameter.
+//!
+//! Front weight and the key weight ratio are read that way: [`jig`] mounts the
+//! key on Stanwood's jig as a mechanism and reads the scale off the reaction
+//! that holds it level. Down, up, balance and friction weight are still the
+//! closed form of [`KeyOnFrame`], taken with the key level. The closed forms a
+//! procedure replaces stay in an oracle module that only this crate's tests
+//! compile, to check the procedure against.
 
+pub mod jig;
+#[cfg(test)]
+mod oracle;
+
+use crate::geometry::Point;
 use crate::parts::KeyDesign;
 
 /// Touchweight quantities, after Stanwood's *New Touchweight Metrology*.
@@ -20,7 +32,7 @@ use crate::parts::KeyDesign;
 ///   key — *"if the scale reads -5.5 the Key Weight Ratio (KR) would be
 ///   0.55"*. So `KR ≈ 0.50…0.60`, dimensionless, and `WBW = KR × WW` is
 ///   necessarily **smaller** than `WW`, because a reducing lever cannot
-///   amplify. ([`KeyWeighing::key_ratio`] runs that protocol.)
+///   amplify. ([`jig::KeyJig::key_ratio`] runs that protocol on the model.)
 /// * **Geometric convention**: the ratio of lever arms, front over capstan,
 ///   *"nominally 2:1 for modern pianos"*. That is the reciprocal of the first.
 ///
@@ -109,50 +121,6 @@ impl Touchweight {
     }
 }
 
-/// The key weighed on its own, by Stanwood's **current** protocols.
-///
-/// # Which paper, and why it matters
-///
-/// The metrology was published in 1996 and the **protocols were superseded in
-/// February 2000** by *"Standard Protocols of the New Touchweight Metrology"*,
-/// which this type follows. Three of the changes bear on the key, and taking the
-/// 1996 text would have got two of them wrong:
-///
-/// 1. **Front weight** is read with the key set level **with a bubble level**,
-///    not merely "in a horizontal attitude similar to when the key is at rest" —
-///    *"the guesswork of the horizontal angle is eliminated"*. And the key now
-///    sits on an **extra-long balance-rail pin** through the wedge rather than
-///    balanced on the wedge edge, so it cannot tip over.
-/// 2. **Key weight ratio** is taken with a **10 g** weight at the capstan, not
-///    100 g: *"if the scale reads −5.5 the Key Weight Ratio (KR) would be 0.55"*.
-///    The older 100 g method *"gave results accurate to three decimal places,
-///    which is more accurate than needed"*.
-/// 3. **Negative front weight is a measured value, not an impossibility.** A
-///    dummy weight is tared on the pan, then placed on top of the key to hold it
-///    down, and *"the Front Weight (FW) is read directly off the scale as a
-///    negative value"*. An unleaded treble key really is back-heavy, and the
-///    protocol exists because that case *"sooner or later occurs"*. [V]
-///
-/// # One distinction that will bite if it is not named
-///
-/// The glossary defines front weight as what *"the level key, **tipped on its
-/// balance-pin point**, exerts at the measuring point"*. On the jig the pivot is
-/// the **pin**. In the assembled action the key bears on the **punching**, whose
-/// effective bearing point is offset from the pin and is itself adjustable —
-/// Stanwood's own technique of cutting the balance rail punching moves it
-/// deliberately. So the lever arm of the weighing jig and the lever arm in the
-/// piano are not the same number, and [`KeyWeighing`] keeps them apart.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct KeyWeighing {
-    /// Static moment of the key about the **balance pin**, kg·m, positive
-    /// forwards. This is the jig's pivot.
-    pub static_moment_about_pin: f64,
-    /// Balance pin to measuring point, metres.
-    pub measuring_arm: f64,
-    /// Balance pin to capstan, metres, as the positive distance behind the pin.
-    pub capstan_arm: f64,
-}
-
 /// How far back from the front lip of the key every weight is centred, metres:
 /// the default of [`TouchweightProtocol::measuring_point_from_lip`].
 ///
@@ -181,10 +149,10 @@ pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
 /// it stays out of [`KeyDesign`], which the outline and the mass are built
 /// from, and the assembly being weighed holds it once
 /// ([`crate::parts::KeyAssembly::protocol`]). Every protocol reads the
-/// measuring point through [`crate::parts::KeyAssembly::measuring_point`] —
-/// front weight and the key weight ratio on the jig, D, U, BW and F, key
-/// friction weight, and the weight the settle solve puts on the key — so no
-/// two of them can be weighed at different points.
+/// measuring point through [`Self::measuring_point`] — front weight and the
+/// key weight ratio on the jig, D, U, BW and F, key friction weight, and the
+/// weight the settle solve puts on the key — so no two of them can be weighed
+/// at different points.
 ///
 /// # Which lip
 ///
@@ -215,6 +183,18 @@ impl TouchweightProtocol {
     pub fn measuring_point(&self, key: &KeyDesign) -> f64 {
         key.lip() - self.measuring_point_from_lip
     }
+
+    /// The measuring point as a point of the key, in the key's frame: on the
+    /// covering's top, [`Self::measuring_point`] in front of the balance pin.
+    ///
+    /// Where the weights are centred; on the jig the roller under the key
+    /// bears directly below it.
+    pub fn measuring_point_on_key(&self, key: &KeyDesign) -> Point {
+        Point::new(
+            self.measuring_point(key),
+            key.stick_height + key.keytop_thickness,
+        )
+    }
 }
 
 impl Default for TouchweightProtocol {
@@ -223,67 +203,6 @@ impl Default for TouchweightProtocol {
         Self {
             measuring_point_from_lip: MEASURING_POINT_FROM_LIP,
         }
-    }
-}
-
-impl KeyWeighing {
-    /// **What the jig's scale reads** when `load_g` grams sit at `at` metres
-    /// along the levelled key, with the scale tared, in grams.
-    ///
-    /// One statics routine, two protocols. The front weight and the key weight
-    /// ratio are read on the *same* fixture — key level, pivoted on its
-    /// balance-rail pin, front resting on a roller over the pan — and they
-    /// differ only in what is put on the key and whether the tare has been
-    /// pressed. Expressing both through this means they cannot drift apart:
-    /// two independent formulas could, and the lever each one carries is the
-    /// same lever.
-    ///
-    /// Moments about the pin, with a downward load at `at` and the roller
-    /// pushing up at the measuring point: `load · at − R · arm = 0`. So the
-    /// scale reads `load · at / arm`, which is negative for anything placed
-    /// behind the pin — the front lifts off the roller, exactly as the
-    /// protocol's worked example says.
-    pub fn jig_reading_g(&self, load_g: f64, at: f64) -> f64 {
-        load_g * at / self.measuring_arm
-    }
-
-    /// Front weight in **grams**, signed.
-    ///
-    /// *"The amount of static weight, to the nearest 0.1 gram, that the level
-    /// key, tipped on its balance-pin point, exerts at the measuring point."*
-    /// Negative when the keystick is back-heavy, which the protocol provides for.
-    pub fn front_weight_g(&self) -> f64 {
-        // The key's own weight, read on the jig before the tare: its whole
-        // mass acting at its centre of gravity. Routed through the same
-        // reading as everything else rather than written out again.
-        self.jig_reading_g(
-            1000.0 * self.static_moment_about_pin / self.measuring_arm,
-            self.measuring_arm,
-        )
-    }
-
-    /// Key weight ratio, dimensionless, force convention.
-    ///
-    /// *"The ratio of downward force on the capstan/heel versus the
-    /// corresponding upward force at the measuring point as translated through
-    /// the key."* Taring the scale first removes the key's own weight, so what
-    /// is left is a pure lever ratio — which is why this depends on the two arms
-    /// and on nothing else, and why a level-0 test can check it with no masses.
-    pub fn key_ratio(&self) -> f64 {
-        // Run the protocol rather than quote the arms: tare, put the standard
-        // load on the capstan, read the scale, divide. The capstan is behind
-        // the pin, so its coordinate is negative and the reading comes out
-        // negative; the ratio is its magnitude over the load.
-        -self.jig_reading_g(KR_PROTOCOL_LOAD_G, -self.capstan_arm) / KR_PROTOCOL_LOAD_G
-    }
-
-    /// What the tared scale reads with the protocol's 10 g at the capstan, grams.
-    ///
-    /// Negative, as the worked example in the source is: the load pushes the back
-    /// of the key down, so the front lifts off the roller. Reproducing the sign
-    /// is how a reader checks the model is answering the question the jig asks.
-    pub fn tared_scale_reading_g(&self) -> f64 {
-        self.jig_reading_g(KR_PROTOCOL_LOAD_G, -self.capstan_arm)
     }
 }
 
@@ -487,58 +406,6 @@ mod tests {
         }
     }
 
-    /// Level 0: the key ratio is the ratio of the two arms, and nothing else.
-    ///
-    /// No masses appear, because the protocol tares them away. The expected
-    /// value is worked from the default key's dimensions, not read off the
-    /// code: the capstan 129.5 mm behind the balance pin, and the measuring
-    /// point 13 mm back from the covering's lip, which stands 2 mm proud of
-    /// the key front at 258 mm — so 247 mm in front. It must land inside the
-    /// published 0.50–0.60 band for a natural.
-    #[test]
-    fn key_ratio_is_the_arm_ratio_and_lands_in_the_published_band() {
-        let d = KeyDesign::default();
-        let w = KeyWeighing {
-            static_moment_about_pin: 0.0,
-            measuring_arm: arm(&d),
-            capstan_arm: -d.capstan,
-        };
-
-        let expected = 0.1295 / (0.258 + 0.002 - 0.013);
-        assert!(
-            (w.key_ratio() - expected).abs() < 1e-12,
-            "key ratio {} is not the arm ratio {expected}",
-            w.key_ratio()
-        );
-        assert!(
-            (0.50..=0.60).contains(&w.key_ratio()),
-            "key ratio {} is outside the published band for a natural",
-            w.key_ratio()
-        );
-
-        // And the jig must read what the protocol's worked example reads: a
-        // negative number whose magnitude, over the 10 g load, is the ratio.
-        let reading = w.tared_scale_reading_g();
-        assert!(reading < 0.0, "the front lifts off the roller: {reading}");
-        assert!((reading / -KR_PROTOCOL_LOAD_G - w.key_ratio()).abs() < 1e-12);
-    }
-
-    /// Level 0: a mass-free key ratio really is mass-free.
-    #[test]
-    fn loading_the_key_does_not_change_its_ratio() {
-        let d = KeyDesign::default();
-        let light = KeyWeighing {
-            static_moment_about_pin: 0.0,
-            measuring_arm: arm(&d),
-            capstan_arm: -d.capstan,
-        };
-        let heavy = KeyWeighing {
-            static_moment_about_pin: 0.040,
-            ..light
-        };
-        assert!((light.key_ratio() - heavy.key_ratio()).abs() < 1e-15);
-    }
-
     /// Level 4: with no action on the key, the equation of balance closes on
     /// zero.
     ///
@@ -547,23 +414,31 @@ mod tests {
     /// be exactly the negative of the front weight. This is the whole equation
     /// checked at the only point where its answer is known in advance, and it
     /// catches a sign error that no amount of plausible-looking arithmetic would.
+    ///
+    /// Front weight is read on the jig, by the procedure; the balance weight
+    /// still comes from the closed form on the frame, with the bearing at the
+    /// pin. The two agree to round-off: the balance weight takes six roundings
+    /// on numbers no larger than `|D| + |U|`, the jig's front weight five on a
+    /// smaller one, so `16 ε (|D| + |U|)` bounds their sum.
     #[test]
     fn the_equation_of_balance_closes_on_a_bare_key() {
         let (design, on_frame) = default_key_on_frame(kf(6.0));
         let props = design.mass_properties().unwrap();
-
-        let weighing = KeyWeighing {
-            static_moment_about_pin: props.static_moment_x(),
-            measuring_arm: arm(&design),
-            capstan_arm: -design.capstan,
+        let mass = crate::mechanism::MassProps {
+            mass: props.mass,
+            com: props.com,
         };
+        let front_weight = jig::KeyJig::new(&design, &TouchweightProtocol::default(), Some(mass))
+            .expect("the default key on the jig")
+            .front_weight_g()
+            .expect("a weighed key");
         let branches = on_frame.branches().expect("the default key weighs");
 
+        let bound = 16.0 * f64::EPSILON * (branches.down.abs() + branches.up.abs());
         assert!(
-            (branches.balance_weight() + weighing.front_weight_g()).abs() < 1e-9,
-            "BW {} + FW {} must be zero with no action on the key",
+            (branches.balance_weight() + front_weight).abs() <= bound,
+            "BW {} + FW {front_weight} must be zero with no action on the key",
             branches.balance_weight(),
-            weighing.front_weight_g()
         );
     }
 
@@ -647,133 +522,6 @@ mod tests {
             "F = {}",
             b.friction_weight()
         );
-    }
-
-    /// Level 4: **front weight is read 13 mm back from the covering's lip, and
-    /// the datum is load-bearing.**
-    ///
-    /// Not a numerical probe at a convenient place: the datum the 2000 glossary
-    /// fixes, *"on the top of the key 13mm or 1/2" back from the front lip of
-    /// the key"*, the lip taken as the covering's. Three things are checked. The
-    /// arm really is the lip less 13 mm, the lip standing `keytop_overhang`
-    /// proud of the key front; moving the datum changes the number by the
-    /// lever ratio, which is what makes it a *protocol* rather than a
-    /// convention — read a weight somewhere else and you have a different
-    /// weight; and the two readings of "front lip", the covering's and the key
-    /// front beneath it, are 2 mm of arm apart.
-    #[test]
-    fn front_weight_is_read_at_the_protocol_datum_and_the_datum_matters() {
-        let d = KeyDesign::default();
-        let props = d.mass_properties().unwrap();
-        let lip = d.front_edge + d.keytop_overhang;
-
-        assert!(
-            (arm(&d) - (lip - 0.013)).abs() < 1e-15,
-            "the measuring arm must be the covering's lip less 13 mm"
-        );
-
-        let at = |lever: f64| {
-            KeyWeighing {
-                static_moment_about_pin: props.static_moment_x(),
-                measuring_arm: lever,
-                capstan_arm: -d.capstan,
-            }
-            .front_weight_g()
-        };
-
-        let protocol = at(arm(&d));
-        // The same key read at the very lip instead: a longer arm, so a
-        // smaller weight, in exact inverse proportion.
-        let at_lip = at(lip);
-        assert!(
-            at_lip.abs() < protocol.abs(),
-            "a longer arm must read a smaller weight: {protocol} -> {at_lip}"
-        );
-        assert!(
-            (protocol * arm(&d) - at_lip * lip).abs() < 1e-9,
-            "front weight times its arm is the static moment, and must not depend \
-             on where it was read"
-        );
-
-        // Measured from the key front instead, 13 mm stands 2 mm further back:
-        // the same static moment over a 2 mm shorter arm, 0.8 % heavier.
-        let from_key_front = at(d.front_edge - 0.013);
-        assert!(
-            (from_key_front / protocol - arm(&d) / (arm(&d) - d.keytop_overhang)).abs() < 1e-12,
-            "the key front reads {from_key_front} g against {protocol} g at the lip"
-        );
-
-        // And the half-inch alternative the same glossary offers differs by
-        // 0.3 mm of arm, which is below the 0.1 g the scale resolves.
-        let half_inch = at(lip - MEASURING_POINT_HALF_INCH);
-        assert!(
-            (half_inch - protocol).abs() < 0.1,
-            "13 mm and 1/2 inch must agree inside the scale's resolution: \
-             {protocol} vs {half_inch}"
-        );
-    }
-
-    /// Level 4: the key-ratio protocol reproduces the source's worked example.
-    ///
-    /// *"If the scale reads −5.5 the Key Weight Ratio (KR) would be 0.55."*
-    /// Building a key whose arms give 0.55 and checking the jig reads −5.5 is
-    /// the whole protocol, run in reverse, on a number somebody else published.
-    #[test]
-    fn the_key_ratio_jig_reproduces_the_published_worked_example() {
-        let w = KeyWeighing {
-            static_moment_about_pin: 0.031,
-            measuring_arm: 0.240,
-            capstan_arm: 0.240 * 0.55,
-        };
-        assert!((w.key_ratio() - 0.55).abs() < 1e-12);
-        assert!(
-            (w.tared_scale_reading_g() + 5.5).abs() < 1e-12,
-            "the jig must read −5.5 g, got {}",
-            w.tared_scale_reading_g()
-        );
-    }
-
-    /// Level 4: **one fixture, two protocols, and they agree with each other.**
-    ///
-    /// Front weight and key weight ratio are read on the same jig, and the
-    /// only thing that separates them is what is put on the key. So putting
-    /// the key's own weight through the key-ratio reading must give the front
-    /// weight, and putting the standard load at the capstan through the
-    /// front-weight route must give the ratio. Two formulas could satisfy
-    /// their own tests and still disagree about the lever they share; one
-    /// routine cannot.
-    #[test]
-    fn the_two_jig_protocols_are_the_same_fixture() {
-        let d = KeyDesign::default();
-        let props = d.mass_properties().unwrap();
-        let w = KeyWeighing {
-            static_moment_about_pin: props.static_moment_x(),
-            measuring_arm: arm(&d),
-            capstan_arm: -d.capstan,
-        };
-
-        // A load equal to the front weight, placed at the measuring point,
-        // reads exactly the front weight: that is what "front weight" means.
-        assert!(
-            (w.jig_reading_g(w.front_weight_g(), w.measuring_arm) - w.front_weight_g()).abs()
-                < 1e-9
-        );
-
-        // And the ratio is the reading at the capstan over the load, whichever
-        // load is used — it is a ratio, so the standard 10 g is a convention
-        // and not a dependency.
-        for load in [1.0, 10.0, 100.0] {
-            let ratio = -w.jig_reading_g(load, -w.capstan_arm) / load;
-            assert!(
-                (ratio - w.key_ratio()).abs() < 1e-12,
-                "with {load} g at the capstan the ratio read {ratio}"
-            );
-        }
-
-        // Anything placed *at* the pin reads nothing, because it has no arm.
-        assert!(w.jig_reading_g(50.0, 0.0).abs() < 1e-15);
-        // And anything behind it lifts the front off the roller.
-        assert!(w.jig_reading_g(50.0, -0.050) < 0.0);
     }
 
     /// A degenerate geometry is an error, not a `NaN`.

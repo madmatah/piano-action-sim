@@ -20,6 +20,7 @@
 
 pub mod assembly;
 pub mod frame;
+pub mod mounts;
 
 pub use assembly::{KeyAssembly, Regulation, RestingOn, Travel};
 pub use frame::{FrameDesign, PunchingStack};
@@ -639,6 +640,19 @@ impl KeyDesign {
         self.stick_height
     }
 
+    /// The capstan's contact point, in the key's frame: the top of its head,
+    /// on its axis.
+    ///
+    /// Where the wippen's heel bears, and where the key weight ratio's 10 g is
+    /// centred on the jig, *"on a vertical axis which passes through the
+    /// capstan/heel contact point"* [V, Stanwood 2000, p. 22].
+    pub fn capstan_contact(&self) -> Point {
+        Point::new(
+            self.capstan,
+            self.capstan_seat() + self.capstan_screw.height,
+        )
+    }
+
     /// The capstan's half-profile in the key's frame, ready to be turned.
     ///
     /// Separate from the key's own outline because a screw is **not a prism**:
@@ -730,7 +744,7 @@ impl KeyDesign {
             },
             Anchor {
                 id: "capstan",
-                at: Point::new(self.capstan, self.stick_height + self.capstan_screw.height),
+                at: self.capstan_contact(),
             },
             // The lip and not the measuring point: where a weight is centred
             // is the protocol's, and a key asked for its own measuring point

@@ -9,9 +9,12 @@
 //! | Module | Responsibility |
 //! |---|---|
 //! | [`geometry`] | planar primitives and exact contact kinematics |
+//! | [`mechanism`] | bodies in a tree: poses, Jacobian columns, loads, prescribed coordinates and their reactions |
 //! | [`parts`] | the key and its frame as parametric parts, and their mass properties |
 //! | [`parts::assembly`] | the key on its frame: stops, rest, travel, regulation, settle |
+//! | [`parts::mounts`] | the mechanisms a key is put in to be read: the jig |
 //! | [`measure`] | the trade's weighing quantities, as the technician's protocols define them |
+//! | [`measure::jig`] | Stanwood's front weight jig, run on the mechanism |
 //!
 //! # What holds today, and what holds it
 //!
@@ -37,6 +40,7 @@
 
 pub mod geometry;
 pub mod measure;
+pub mod mechanism;
 pub mod parts;
 
 /// Standard gravity, m/s². Fixed here so that no caller can vary it silently.

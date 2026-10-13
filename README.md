@@ -15,15 +15,16 @@ expected values.
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
 front, capsule, back check block, thinned tail and chamfer, a turned capstan,
 leads) stands on a parametric frame (balance, front and back rails, their pins,
-and punchings laid from a drawer of real papers). The statics have one degree
-of freedom, unilateral stops and set-valued friction at the balance: the key
-rests where its statics put it, and a weight between the up weight and the down
-weight moves nothing. Key height and key dip are solved from targets to punching
-stacks; front weight and key weight ratio are read on a simulated jig; key
-friction weight is measured by Stanwood's procedure run on the model. Every
-touchweight is read at one measuring point, a setting of the bench, 13 mm back
-from the covering's lip by default. A frame edited out of fit with its key is
-drawn as it is, its faults named in millimetres.
+and punchings laid from a drawer of real papers). The statics have one degree of
+freedom, unilateral stops and set-valued friction at the balance: the key rests
+where its statics put it, and a weight between the up weight and the down weight
+moves nothing. Key height and key dip are solved from targets to punching
+stacks; front weight and key weight ratio are read by running Stanwood's jig on
+the model, the key a body on a pin held level and the scale reading the force
+that holds it; key friction weight is measured by Stanwood's procedure run on
+the model. Every touchweight is read at one measuring point, a setting of the
+bench, 13 mm back from the covering's lip by default. A frame edited out of fit
+with its key is drawn as it is, its faults named in millimetres.
 
 Down weight, up weight and balance weight on the weighing sheet come from a
 closed form taken with the key level, and friction weight is its input, a
@@ -34,9 +35,9 @@ model that cannot predict front weight.
 
 | Part | What it is |
 |---|---|
-| `crates/pa-core` | the domain in Rust: geometry, parts, the weighing algebra |
-| `crates/pa-app` | the single-key bench, as a use case |
-| `crates/pa-cli` | `weigh`: the weighing sheet in a terminal |
+| `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, parts, the weighing protocols |
+| `crates/pa-app` | the single-key bench, as a use case, and the golden sheet that records its every reading |
+| `crates/pa-cli` | `weigh`: the weighing sheet in a terminal; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section and in solid (React, react-three-fiber), from the same Rust compiled to WebAssembly |
 
 ## What is planned
@@ -44,11 +45,13 @@ model that cannot predict front weight.
 In this order, each stage with its engine and its view
 ([`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §8):
 
-- a throwaway one-note dynamics prototype on Hirschkorn's published Boston
-  GP-178 data, to settle the time step, the solver and the felt law;
-- a general quasi-static core with the key as its first client, a parameter
-  registry that loads `data/params/`, a validation layer, and an interface in
-  English and French;
+- a general quasi-static core with the key as its first client, on
+  Hirschkorn's published Boston GP-178 key, a parameter registry that loads
+  `data/params/`, a validation layer, and an interface in English and French
+  (its first part, the mechanism and the jig, is built);
+- the felt law and the flexible hammer, which the one-note dynamics prototype
+  (`tools/dynamics-prototype/`, built) left open after settling the time step
+  and the solver;
 - the wippen, then the hammer, until Stanwood's equation of balance closes
   (stages 1b to 1d);
 - the jack, the repetition lever, let-off, drop and checking: the action in

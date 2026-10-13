@@ -633,9 +633,9 @@ cross-check that convergence studies and published data provide (FOUNDATIONS §4
 and a regularized friction in one of them would make the cross-check compare two
 different models (FOUNDATIONS §3.5).
 
-**How the boundary falls** (planned). The pure domain, with no dependency, holds the
-analytic contact geometry (the three primitives), the material laws, the kinematic
-tree and the regulation observables. A `Contact` port exposes
+**How the boundary falls** (planned). The pure domain, with no I/O and no web,
+holds the analytic contact geometry (the three primitives), the material laws, the
+kinematic tree and the regulation observables. A `Contact` port exposes
 `{ gap(q), dgap_dq(q), normal(q), tangent(q), contact_point(q), relative_tangential_velocity(q, q̇) }`.
 The dynamic solver and its static limit consume **the same contact geometry, felt
 laws and friction sets**; they differ in whether inertia is kept.
@@ -896,10 +896,10 @@ a colleague's machine. Without that, the tool is not a measuring instrument; it 
 an animation.
 
 The arithmetic is identical bit for bit on every machine when the conditions of
-FOUNDATIONS §4.4 hold. Built: no `HashMap` and no transcendental in the domain's
-production code, and two fixed bisections that resolve far below anything read;
-planned: the `libm` crate, with the first transcendental (FOUNDATIONS §4.4).
-Checklist:
+FOUNDATIONS §4.4 hold. Built: no `HashMap` in the domain's production code;
+every transcendental there through the `libm` crate, Clippy refusing the
+standard library's; and two fixed bisections that resolve far below anything
+read (FOUNDATIONS §4.4). Checklist:
 
 1. **A fixed time step on the real-time path.** No `dt` derived from
    `requestAnimationFrame`: a fixed-step accumulator, the renderer interpolating

@@ -1,0 +1,40 @@
+# golden sheet: back-heavy-key
+# the standard bench with 30 g of lead 120 mm behind the balance pin: a key whose front weight is negative
+# Every reading in full bits: the shortest decimal that reads back to the
+# same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
+# a change that moves a reading rewrites this file and says why.
+readout.front_weight_g -8.093919058496057 0xc020301628a96c61
+readout.key_ratio 0.5242914979757087 0x3fe0c6fef6ac0c72
+readout.key_height_mm 64.98878883168035 0x40503f4850f3ade6
+readout.key_dip_mm 10.188788831680354 0x402460a8ee03d597
+readout.down_weight_g 14.09391905849606 0x402c301628a96c62
+readout.up_weight_g 2.0939190584960583 0x4000c058a2a5b186
+readout.balance_weight_g 8.09391905849606 0x4020301628a96c62
+readout.friction_weight_g 6.0 0x4018000000000000
+readout.key_mass_g 151.1166896392422 0x4062e3bbebe90a79
+readout.lead_count 1
+readout.gap_front_mm 8.902938955768482 0x4021ce4e03ca9ebb
+readout.gap_back_mm -8.673617379884035e-16 0xbccf400000000000
+readout.measured_dip_mm 10.188788831680354 0x402460a8ee03d597
+readout.measured_kf_g none
+readout.friction_band_g 6.0 0x4018000000000000
+readout.key_height_target_mm 65.0 0x4050400000000000
+readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
+readout.finger BackRailCloth
+readout.out_of_level.sine 0.0 0x0000000000000000
+readout.bedding_at_the_back.slope 0.0071246812895846435 0x3f7d2ec512218af2
+readout.bears_at_the_back_mm 212.00356225023413 0x406a801d2e94882f
+readout.back_bearing StopEdge
+readout.stopped_by_the_mortise false
+frame_fault none
+faults 0
+papers.balance 2
+papers.balance.0 0.0005 0x3f40624dd2f1a9fc
+papers.balance.1 0.0002 0x3f2a36e2eb1c432d
+papers.front 2
+papers.front.0 0.0005 0x3f40624dd2f1a9fc
+papers.front.1 0.0004 0x3f3a36e2eb1c432d
+pose.sin_angle -0.03957035805525962 0xbfa44290e37a090b
+pose.depression 0.0 0x0000000000000000
+pose.measuring_point.x 0.24577771699808515 0x3fcf75a4ec4bd11c
+pose.measuring_point.y 0.06455351489307248 0x3fb08694434ebe90

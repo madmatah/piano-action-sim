@@ -1,13 +1,26 @@
 [package]
 name = "pa-core"
-description = "Domain core: parametric part geometry, planar contact kinematics, the key on its frame, and the trade's weighing quantities."
+description = "Domain core: parametric part geometry, bodies in a tree, planar contact kinematics, the key on its frame, and the trade's weighing protocols."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
-# No dependencies: the domain compiles and tests offline.
+# One dependency, and the reason for it. Every transcendental the domain
+# computes (the sine and cosine that place a turned body; later any power or
+# exponential of a contact law) goes through `libm`, a pure-Rust port of musl's
+# maths library: the same operations in the same order natively and in
+# WebAssembly, so the same bits on every machine. The platform's own `sin` or
+# `pow`, and a JavaScript engine's, may differ in the last bit, and a difference
+# there is a different number on the sheet. `crates/pa-core/clippy.toml` refuses
+# the `f64` methods that would bypass it. `libm`'s default `arch` feature swaps
+# in hardware instructions only for operations IEEE-754 rounds exactly (sqrt,
+# fma, floor and the like), which changes speed and never bits. `libm` itself
+# has no dependencies, so once it is in the local registry the domain compiles
+# and tests offline. Cargo.lock pins the version: a new one may move a last
+# bit, so updating it may change the engine's numbers and is done on purpose.
 [dependencies]
+libm = "0.2.16"
 
 [lints.rust]
 missing_docs = "warn"
