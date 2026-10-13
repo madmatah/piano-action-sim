@@ -83,7 +83,7 @@ own, modelled as a surface).
 | Mortaise d'enfoncement + garniture | front mortise + bushing | Lateral guidance | C | Play, friction |
 | Capsule de touche | key button / chase | Carries the balance mortise | 0 | — |
 | Patin ("shoe") de balancier | key shoe | Extra thickness under the key (older pianos) | 0 | Typically **4–6 mm**; only an **external** shoe counts in the geometry [V, Reyburn, p. 4] |
-| Plombs de touche | key leads | Counterbalance the hammers | 0 | Ø ½" or ⅜" (12.7 or 9.5 mm) usual, 10 and 12 mm in the French edition [V, Spurlock, p. 8; Spurlock FR, p. 10]; position and number, which with the key's own mass set its front weight. The bench carries leads as point masses on the model; measuring a key whole, leads included, is planned (FOUNDATIONS §2.1, §2.3) |
+| Plombs de touche | key leads | Counterbalance the hammers | 0 | Ø ½" or ⅜" (12.7 or 9.5 mm) usual, 10 and 12 mm in the French edition [V, Spurlock, p. 8; Spurlock FR, p. 10]; position and number, which with the key's own mass set its front weight. The bench models no lead: a key is weighed whole, its leads in it, its mass and front weight typed (FOUNDATIONS §2.1, §2.3) |
 | Pilote (de touche) | capstan (screw) | Transmits to the wippen heel | 0 adjustable (screwing) | **Height**, which sets the blow distance [V, Steinway ch. 2, p. 6]; longitudinal position, which sets the ratio [V, Spurlock, p. 3]; straight or angled [V, Reyburn, p. 4]; surface condition (friction) |
 | Talon (queue) de touche | key end / tail | Lifts the damper under-lever | C | Key-end felt |
 | Revêtement | key covering / keytop | — | 0 | Thickness; height of the sharps |

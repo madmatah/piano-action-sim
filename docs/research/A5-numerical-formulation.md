@@ -143,9 +143,9 @@ M(q) q̈ + C(q, q̇) q̇ = τ_g(q) + τ_spring(q) + τ_fric(q̇) + Σ_i J_i(q)�
   small, but not negligible during let-off, when the jack turns fast relative to
   the wippen.
 - `τ_g(q)`: gravity. The key's comes from its measured mass and front weight,
-  leads included: a key arrives leaded and is measured whole (FOUNDATIONS §2.3,
-  planned). Mass added to the key, as in the non-confusion test of §8, is a point
-  mass `(x_i, m_i)` on top of it.
+  leads included: a key arrives leaded and is weighed whole (FOUNDATIONS §2.1,
+  §2.3). A test weight set on the key, as in the first non-confusion test
+  (FOUNDATIONS §5.3), is a point mass `(x_i, m_i)` on top of it.
 - `τ_spring`: Hirschkorn measures `T = −0.073·(θ_r − 0.832)` N·m on the
   lever-to-wippen angle and a roughly constant 0.0042 N·m on the jack [V,
   Hirschkorn 2004 §A.4]. Thorin's springs take the linear form
@@ -1237,7 +1237,7 @@ finite differences (FOUNDATIONS §5.3). Questions the tool must answer:
   aftertouch; FOUNDATIONS §5.3.)
 - let-off button `+0.1 mm` → change in the let-off and in the velocity at let-off?
 - repetition spring force `+10 %` → change in U and in the re-engagement time?
-- `+1 g` on the key at `x` mm from the balance rail → change in BW (and not in F)?
+- the key's front weight `+1 g`, its mass the same → change in BW (and not in F)?
 - pin friction `×1.2` → change in F = (D−U)/2 (and not in BW)?
 
 The last two are **non-confusion** tests: a change of mass must move BW without

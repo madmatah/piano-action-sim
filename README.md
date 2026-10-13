@@ -13,32 +13,34 @@ expected values.
 ## What is built
 
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
-front, capsule, back check block, thinned tail and chamfer, a turned capstan,
-leads) stands on a parametric frame (balance, front and back rails, their pins,
-and punchings laid from a drawer of real papers). The key turns on its balance
-pin against contacts read off the drawn parts, with set-valued friction at the
-balance: a static solve puts it where its weight and the weight on it leave it,
-a weight between the up weight and the down weight moves nothing, and the bench
-says that friction holds it. Key height and key dip are read with the key seated
-by the trade's gestures, its back held down at the capstan and its front pressed
-down, and solved from targets to punching stacks by that seated pose, laid in
-papers within one paper of the targets, a target a stop forbids refused with its
-shortfall in millimetres; front weight and key weight ratio are read by running
-Stanwood's jig on the model, the key a body on a pin held level and the scale
-reading the force that holds it; down weight and up weight are walked a gram at
-a time from the key resting at the top and at the bottom of its stroke until it
-goes all the way, and balance and friction weight are read from those two; the
-key friction weight is read by Stanwood's protocol, zeroed on the levelled jig,
-and by its variant zeroed where the key rests on its frame. A key friction
-weight is typed as Stanwood's protocol reads it, and the bushings are set to the
-torque at which that protocol, run on the model, reads it back; one no bushings
-read is refused with why. Weights are read as gram weights give them, down
-weight and key friction weight rounded up to the gram, up weight down, a
-threshold the walk cannot tell from a whole gram read as that gram, with each
-value in full beside it, its trust, and the counts of the solves it took. Every
-touchweight is read at one measuring point, a setting of the bench, 13 mm back
-from the covering's lip by default. A frame edited out of fit with its key is
-drawn as it is, its faults named in millimetres. The key's contacts with its
+front, capsule, back check block, thinned tail and chamfer, a turned capstan)
+stands on a parametric frame (balance, front and back rails, their pins, and
+punchings laid from a drawer of real papers). A key is weighed whole, its leads
+in it: its mass and its front weight are typed, and the bench keeps the static
+moment the front weight gives on the arm it was read at. The key turns on its
+balance pin against contacts read off the drawn parts, with set-valued friction
+at the balance: a static solve puts it where its weight and the weight on it
+leave it, a weight between the up weight and the down weight moves nothing, and
+the bench says that friction holds it. Key height and key dip are read with the
+key seated by the trade's gestures, its back held down at the capstan and its
+front pressed down, and solved from targets to punching stacks by that seated
+pose, laid in papers within one paper of the targets, a target a stop forbids
+refused with its shortfall in millimetres; front weight and key weight ratio are
+read by running Stanwood's jig on the model, the key a body on a pin held level
+and the scale reading the force that holds it; down weight and up weight are
+walked a gram at a time from the key resting at the top and at the bottom of its
+stroke until it goes all the way, and balance and friction weight are read from
+those two; the key friction weight is read by Stanwood's protocol, zeroed on the
+levelled jig, and by its variant zeroed where the key rests on its frame. A key
+friction weight is typed as Stanwood's protocol reads it, and the bushings are
+set to the torque at which that protocol, run on the model, reads it back; one
+no bushings read is refused with why. Weights are read as gram weights give
+them, down weight and key friction weight rounded up to the gram, up weight
+down, a threshold the walk cannot tell from a whole gram read as that gram, with
+each value in full beside it, its trust, and the counts of the solves it took.
+Every touchweight is read at one measuring point, a setting of the bench, 13 mm
+back from the covering's lip by default. A frame edited out of fit with its key
+is drawn as it is, its faults named in millimetres. The key's contacts with its
 frame are read off the drawn parts, as signed gaps with their gradients over
 every coordinate, and marked on the section and the solid.
 

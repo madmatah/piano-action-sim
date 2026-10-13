@@ -1,16 +1,18 @@
 //! The composite key's mass, derived.
 //!
 //! The bench's default key is a composite (`docs/FOUNDATIONS.md` §2.3): the
-//! owner's measured section, a capstan and a key front no source gives. Nobody
-//! has weighed it, so its mass and centre of mass are derived from its volume:
+//! owner's measured section, a capstan and a key front no source gives. Until
+//! it is weighed, its mass and centre of mass are derived from its volume:
 //! the keystick integrated as a uniform 22 mm prism of an assumed 430 kg/m³,
-//! the steel capstan turned from its profile, and the leads as point masses
-//! ([`pa_core::parts::KeyDesign::mass_properties`]).
+//! and the steel capstan turned from its profile
+//! ([`pa_core::parts::KeyDesign::mass_properties`]). Once it is weighed
+//! ([`pa_core::parts::KeyMass`]), the derivation still gives the height of
+//! its centre of mass, which no scale gives.
 //!
-//! The mechanism takes a key's mass as data, as it will take a weighed key's
-//! or a published one's, and never computes it from an outline. This adapter
-//! is where the composite key's is made, and the only place: it is the
-//! composite key's derivation, and it leaves with the composite key.
+//! The mechanism takes a key's mass as data, as it takes a weighed key's and
+//! will take a published one's, and never computes it from an outline. This
+//! adapter is where the composite key's is made, and the only place: it is
+//! the composite key's derivation, and it leaves with the composite key.
 
 use pa_core::mechanism::MassProps;
 use pa_core::parts::KeyDesign;

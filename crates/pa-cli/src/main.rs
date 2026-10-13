@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use pa_app::golden;
-use pa_app::key_bench::{KeyBench, ProcedureId, Sheet, Trust, Unit};
+use pa_app::key_bench::{KeyBench, KeyMass, ProcedureId, Sheet, Trust, Unit};
 
 /// Where `golden` writes when it is not told, relative to the repository root.
 const GOLDEN_DIR: &str = "crates/pa-app/tests/golden";
@@ -55,10 +55,11 @@ fn write_golden(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Weighs the standard bench key, bare and then leaded, and prints both.
+/// Weighs the standard bench key, its mass its volume model's, then
+/// re-weighed with its front weight a gram heavier, and prints both.
 fn weigh() {
     let mut bench = KeyBench::standard();
-    let bare = bench.sheet();
+    let before = bench.sheet();
 
     println!("  KEY WEIGHING SHEET");
     println!("  single key on its frame, stack removed");
@@ -75,30 +76,52 @@ fn weigh() {
     println!("  from those two; each value in full beside it, with its procedure,");
     println!("  its trust and the static solves it took.");
     println!();
-    print_sheet("bare key, no leads", &bench, &bare);
+    print_sheet("the key as its volume model gives it", &bench, &before);
 
-    // The leading workshop, as a technician would use it: put weight in and
-    // watch the touch come down.
-    bench.add_lead(0.150, 10.0);
-    bench.add_lead(0.190, 10.0);
-    let leaded = bench.sheet();
+    // The key re-weighed as a technician weighs one, whole: the same mass on
+    // the scale, its front weight read a gram heavier where the sheet reads
+    // it.
+    let mass_g = bench.readout().map(|r| r.key_mass_g);
+    let front_g = match before.get(ProcedureId::FrontWeight) {
+        Some(Ok(m)) => Some(m.value),
+        _ => None,
+    };
+    let (Some(mass_g), Some(front_g)) = (mass_g, front_g) else {
+        println!();
+        println!("  the key cannot be re-weighed: its mass or its front weight is not read.");
+        return;
+    };
+    let from_lip = bench.measuring_point_from_lip();
+    if let Err(why) = bench.weigh_key(mass_g, front_g + 1.0, from_lip) {
+        println!();
+        println!(
+            "  the key's weighing is refused: {}",
+            bench.why_not_weighed(&why)
+        );
+        return;
+    }
+    let after = bench.sheet();
     println!();
-    print_sheet("with 2 x 10 g at 150 and 190 mm", &bench, &leaded);
+    print_sheet(
+        "re-weighed: the same mass, its front weight 1 g heavier",
+        &bench,
+        &after,
+    );
 
-    let moved = |p: ProcedureId| match (bare.get(p), leaded.get(p)) {
+    let moved = |p: ProcedureId| match (before.get(p), after.get(p)) {
         (Some(Ok(a)), Some(Ok(b))) => format!("{:+7.2} g", shown(b.value - a.value)),
         _ => "refused".to_owned(),
     };
     println!();
     println!(
-        "  lead effect        BW {}      FW {}      F {}",
+        "  1 g more FW        BW {}      FW {}      F {}",
         moved(ProcedureId::BalanceWeight),
         moved(ProcedureId::FrontWeight),
         moved(ProcedureId::FrictionWeight)
     );
-    println!("                     leads change balance, not friction: F moves only");
-    println!("                     by what the key's tilt between its two seats does");
-    println!("                     to the leads' arms, under the gram it is read to.");
+    println!("                     front weight changes balance, not friction: F moves");
+    println!("                     only by what the key's tilt between its two seats");
+    println!("                     does to the arms, under the gram it is read to.");
 }
 
 /// What the trade calls each reading, as the sheet prints it.
@@ -170,10 +193,20 @@ fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
         println!("  {rides}");
     }
     match bench.readout() {
-        Some(r) => {
-            println!("  {:<22}{:>8.2} g", "key mass", r.key_mass_g);
-            println!("  {:<22}{:>8}", "leads fitted", r.lead_count);
-        }
+        Some(r) => match bench.key_mass() {
+            KeyMass::Estimated => println!(
+                "  {:<22}{:>8.2} g    derived from its volume at an assumed density",
+                "key mass", r.key_mass_g
+            ),
+            KeyMass::Weighed { datum, .. } => println!(
+                "  {:<22}{:>8.2} g    weighed whole, its front weight {:.2} g read {:.1} mm \
+                 back from the lip",
+                "key mass",
+                r.key_mass_g,
+                datum.grams,
+                datum.from_lip_m * 1000.0
+            ),
+        },
         None => println!(
             "  the key cannot be seated: {}",
             bench.frame_fault().unwrap_or_default()

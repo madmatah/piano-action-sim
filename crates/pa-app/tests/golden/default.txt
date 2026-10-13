@@ -26,29 +26,29 @@ sheet.key_dip.fingerprint statics/1
 sheet.down_weight.value -0.21848894331472657 0xbfcbf77219098440
 sheet.down_weight.shown 0.0 0x0000000000000000
 sheet.down_weight.unit g
-sheet.down_weight.trust indicative key_mass,key_friction,geometry
+sheet.down_weight.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
 sheet.down_weight.fingerprint statics/1
 sheet.down_weight.walk.from_g -6.248327505326445 0xc018fe4990c84c22
 sheet.up_weight.value -12.481446348523583 0xc028f68022c35ff4
 sheet.up_weight.shown -13.0 0xc02a000000000000
 sheet.up_weight.unit g
-sheet.up_weight.trust indicative key_mass,key_friction,geometry
+sheet.up_weight.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
 sheet.up_weight.fingerprint statics/1
 sheet.up_weight.walk.from_g -6.481499754285303 0xc019ed0e4586bfe9
 sheet.balance_weight.value -6.349967645919155 0xc019665deb278605
 sheet.balance_weight.shown -6.5 0xc01a000000000000
 sheet.balance_weight.unit g
-sheet.balance_weight.trust indicative key_mass,key_friction,geometry
+sheet.balance_weight.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
 sheet.balance_weight.fingerprint statics/1
 sheet.friction_weight.value 6.131478702604428 0x401886a25a5f39e3
 sheet.friction_weight.shown 6.5 0x401a000000000000
 sheet.friction_weight.unit g
-sheet.friction_weight.trust indicative key_mass,key_friction,geometry
+sheet.friction_weight.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
 sheet.friction_weight.fingerprint statics/1
 sheet.key_friction_weight_zeroed_on_the_jig.value 6.352764131552559 0x4019693b0020e15d
 sheet.key_friction_weight_zeroed_on_the_jig.shown 7.0 0x401c000000000000
 sheet.key_friction_weight_zeroed_on_the_jig.unit g
-sheet.key_friction_weight_zeroed_on_the_jig.trust indicative key_mass,key_friction,geometry
+sheet.key_friction_weight_zeroed_on_the_jig.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
 sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/1
 sheet.key_friction_weight_zeroed_on_the_jig.walk.from_g 0.32292556954083956 0x3fd4aad0020e15c9
 sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.mass_g 16.008019925514738 0x4030020d9805cd5a
@@ -64,7 +64,6 @@ sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 15.2213512
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x -0.1 0xbfb999999999999a
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_y 0.0245 0x3f9916872b020c4a
 readout.key_mass_g 121.11668963924217 0x405e4777d7d214f0
-readout.lead_count 0
 readout.gap_front_mm -5.2674554781449896e-11 0xbdccf548d7a00000
 readout.gap_back_mm 7.6240974591110735 0x401e7f1367819854
 readout.key_friction_weight_g 6.0 0x4018000000000000

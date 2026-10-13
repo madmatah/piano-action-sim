@@ -125,6 +125,13 @@ const moveSlider = (label, value) =>
     })()
   `)
 
+/** What a labelled field holds, as typed. */
+const fieldValue = (label) =>
+  evaluate(`
+    [...document.querySelectorAll('label.field')]
+      .find((x) => x.textContent.includes(${JSON.stringify(label)}))?.querySelector('input')?.value ?? null
+  `)
+
 /** Types a number into a labelled field, as a technician types a target. */
 const setField = (label, value) =>
   evaluate(`
@@ -217,22 +224,6 @@ const start = await waitFor('the engine to boot and fill the weighing sheet', as
   const s = await sheet()
   return Object.keys(s).length > 0 ? s : undefined
 })
-
-// If the page was opened with leads in its URL, exactly that many must be
-// fitted. React's StrictMode runs an effect body twice, so one-time setup
-// placed in the caller's effect is applied twice: a URL asking for three leads
-// fits six, and the only visible symptom is a key mass 66 g too high.
-// Boot-time setup belongs inside the memoised boot promise.
-const asked = await evaluate(
-  `(new URLSearchParams(location.search).get('leads') ?? '').split(',').filter(Boolean).length`,
-)
-if (asked > 0) {
-  const fitted = await evaluate(`document.querySelectorAll('.leads li').length`)
-  if (fitted !== asked) {
-    fail(`the URL asked for ${asked} lead(s) and ${fitted} are fitted`)
-  }
-  console.log(`  ok  url state: ${asked} lead(s) asked for, ${fitted} fitted`)
-}
 
 // Every weight is read the way gram weights give it: the down weight and the
 // key friction weights as the least whole gram that does it, the up weight as
@@ -332,26 +323,80 @@ for (const key of ['key_friction_weight_zeroed_on_the_jig', 'friction_weight']) 
 console.log(`  ok  refused: ${frictionRefused}`)
 await expectFrictionShown('0 g refused', keptRead.key_friction_weight_zeroed_on_the_jig?.exact)
 
-// The leading workshop must reach the engine, and 10 g of lead move the
-// balance weight and not the friction weight: the lead's arm and the
-// measuring point's change with the key's tilt between its two seats by
-// under a thousandth of their ratio, so the friction weight in full moves by
-// under 10 g × 0.001 / 2, well within 0.05 g.
-if ((await clickButton('150 mm')) !== 'ok') fail('lead button missing')
+// The key's weighing must reach the engine: the key re-weighed whole, its
+// mass as the fields hold it and its front weight typed a gram heavier, read
+// where the sheet reads it. The sheet's front weight then reads what was
+// typed, to the f32 the boundary narrows it to, under a millionth of a gram
+// at 8 g; and the gram moves the balance weight and not the friction weight:
+// the measuring point's arm differs between the two seats by under one per
+// cent, so the friction weight in full moves by under 1 g × 1 % / 2, well
+// within 0.05 g.
+const typedFront = Number(await fieldValue('front weight'))
+if (!Number.isFinite(typedFront)) fail('no front weight in the weighing fields')
+if ((await setField('front weight', typedFront + 1)) !== 'ok') fail('no front weight field')
 await settle()
-const leaded = await sheet()
-const leadedRead = await measured()
-expectChanged('add lead', moreFriction, leaded, 'key mass')
-expectChanged('add lead', moreFriction, leaded, 'balance weight BW')
-expectUnchanged('add lead', moreFriction, leaded, 'friction weight F')
-expectWithin('add lead', moreFrictionRead, leadedRead, 'friction_weight', 0.05)
+if ((await clickButton('weigh the key')) !== 'ok') fail('no button to weigh the key')
+await settle()
+const reweighed = await sheet()
+const reweighedRead = await measured()
+if (!(Math.abs(reweighedRead.front_weight?.exact - (typedFront + 1)) <= 1e-5)) {
+  fail(
+    `${typedFront + 1} g of front weight typed reads ${JSON.stringify(reweighedRead.front_weight)}`,
+  )
+}
+console.log(`  ok  weighed: ${typedFront + 1} g typed, the sheet reads it back`)
+expectChanged('re-weigh', moreFriction, reweighed, 'balance weight BW')
+expectUnchanged('re-weigh', moreFriction, reweighed, 'friction weight F')
+expectWithin('re-weigh', moreFrictionRead, reweighedRead, 'friction_weight', 0.05)
+
+// Every field of the weighing reaches the engine as typed, the key mass and
+// where the front weight was read too: the key weighed at 130 g, its 10 g of
+// front weight read 30 mm back from the lip. The line under the fields says
+// what the engine holds, the sheet's key mass is the one typed, and the sheet
+// reads the front weight at its own measuring point, 13 mm back: the same
+// static moment on a longer arm, so lighter than the 10 g typed. Then the key
+// is weighed again as re-weighed above, and the sheet is that one again.
+const weighedLine = () => evaluate(`document.querySelector('.note.weighed')?.textContent ?? null`)
+const typedMass = await fieldValue('key mass')
+const typedFrom = await fieldValue('read at')
+const weighAs = async (mass, front, from) => {
+  for (const [label, value] of [
+    ['key mass', mass],
+    ['front weight', front],
+    ['read at', from],
+  ]) {
+    if ((await setField(label, value)) !== 'ok') fail(`no ${label} field`)
+  }
+  await settle()
+  if ((await clickButton('weigh the key')) !== 'ok') fail('no button to weigh the key')
+  await settle()
+}
+await weighAs(130, 10, 30)
+const heldAs = await weighedLine()
+if (heldAs !== 'Weighed: 130.00 g, its front weight 10.00 g read 30.0 mm back from the lip.') {
+  fail(`130 g, and 10 g of front weight read 30 mm back, typed; the engine holds: ${heldAs}`)
+}
+const further = await sheet()
+const furtherRead = await measured()
+if (further['key mass'] !== '130.00') {
+  fail(`130 g typed, the sheet's key mass reads ${further['key mass']}`)
+}
+if (!(furtherRead.front_weight?.exact < 10)) {
+  fail(`10 g read 30 mm back reads ${JSON.stringify(furtherRead.front_weight)} 13 mm back`)
+}
+console.log(`  ok  ${heldAs} The sheet reads ${furtherRead.front_weight.exact} g 13 mm back`)
+await weighAs(typedMass, typedFront + 1, typedFrom)
+if (JSON.stringify(await measured()) !== JSON.stringify(reweighedRead)) {
+  fail(`weighed again as before, the sheet reads ${JSON.stringify(await measured())}`)
+}
+console.log('  ok  weighed again as before: the same sheet')
 
 // Regulation must reach the engine too. A punching stack is a pile of papers,
 // so the operation is a button in the drawer and not a slider.
 if ((await clickInStack('key height', '0.20')) !== 'ok') fail('no 0.20 paper in the drawer')
 await settle()
 const levelled = await sheet()
-expectChanged('lay a paper', leaded, levelled, 'key height')
+expectChanged('lay a paper', reweighed, levelled, 'key height')
 
 // And lifting *that* paper back off must restore the key exactly. A regulation
 // that is not reversible is not a regulation.
@@ -365,9 +410,9 @@ if ((await clickInStack('key height', 'lift off', 'last')) !== 'ok') {
 }
 await settle()
 const unlevelled = await sheet()
-if (unlevelled['key height'] !== leaded['key height']) {
+if (unlevelled['key height'] !== reweighed['key height']) {
   fail(
-    `lifting the paper off left key height at ${unlevelled['key height']}, was ${leaded['key height']}`,
+    `lifting the paper off left key height at ${unlevelled['key height']}, was ${reweighed['key height']}`,
   )
 }
 console.log(`  ok  lift it off: key height back to ${unlevelled['key height']}`)
@@ -424,11 +469,6 @@ const regulateDisabled = () =>
         .find((x) => x.textContent.trim() === 'regulate to these targets')
       return b ? b.disabled : null
     })()
-  `)
-const fieldValue = (label) =>
-  evaluate(`
-    [...document.querySelectorAll('label.field')]
-      .find((x) => x.textContent.includes(${JSON.stringify(label)}))?.querySelector('input')?.value ?? null
   `)
 const heightTyped = await fieldValue('key height')
 if (heightTyped === null || heightTyped === '') fail('no key height target to empty')

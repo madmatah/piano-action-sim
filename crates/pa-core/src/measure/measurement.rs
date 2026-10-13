@@ -97,9 +97,11 @@ impl ProcedureId {
     /// With rigid stops, key height, key dip and the key weight ratio do not
     /// depend on the key's mass, nor does the key friction weight zeroed on
     /// the frame, whose temporary weight cancels the key's balance whatever
-    /// it is. Stanwood's does: its temporary weight cancels the level key's
-    /// moment, and what is left of the key's at its rest attitude is in the
-    /// reading.
+    /// it is. Front weight reads the key level, so its mass and static moment
+    /// and not the height of its centre of mass. Every weighing on the frame
+    /// reads the key tilted, and that height with it; Stanwood's key friction
+    /// weight too: its temporary weight cancels the level key's moment, and
+    /// what is left of the key's at its rest attitude is in the reading.
     pub fn reads(self) -> &'static [Input] {
         match self {
             Self::FrontWeight => &[Input::KeyMass, Input::Geometry],
@@ -108,9 +110,12 @@ impl ProcedureId {
             | Self::UpWeight
             | Self::BalanceWeight
             | Self::FrictionWeight
-            | Self::KeyFrictionWeightZeroedOnTheJig => {
-                &[Input::KeyMass, Input::KeyFriction, Input::Geometry]
-            }
+            | Self::KeyFrictionWeightZeroedOnTheJig => &[
+                Input::KeyMass,
+                Input::CentreOfMassHeight,
+                Input::KeyFriction,
+                Input::Geometry,
+            ],
             Self::KeyFrictionWeightZeroedOnTheFrame => &[Input::KeyFriction, Input::Geometry],
         }
     }
@@ -198,8 +203,13 @@ impl Rounding {
 /// a measurement or an indication.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Input {
-    /// The key's mass and centre of mass.
+    /// The key's mass and its static moment about the balance pin, which
+    /// stands its centre of mass along the key: what a scale and the front
+    /// weight give.
     KeyMass,
+    /// The height of the key's centre of mass, which no scale gives: a
+    /// reading of the key tilted on its frame reads it.
+    CentreOfMassHeight,
     /// The friction of the key's bushings.
     KeyFriction,
     /// The dimensions of the key and its frame the procedure reads.
@@ -211,6 +221,7 @@ impl Input {
     pub fn code(self) -> &'static str {
         match self {
             Self::KeyMass => "key_mass",
+            Self::CentreOfMassHeight => "centre_of_mass_height",
             Self::KeyFriction => "key_friction",
             Self::Geometry => "geometry",
         }
@@ -225,7 +236,8 @@ pub enum Basis {
     /// Read from a published source, with its record.
     Published,
     /// Derived from other values by a rule: the composite key's mass, from
-    /// its volume at an assumed density.
+    /// its volume at an assumed density, and the height of a weighed key's
+    /// centre of mass, from the same volume.
     Estimated,
     /// Assumed, pending measurement.
     Assumed,
@@ -244,8 +256,10 @@ impl Basis {
 /// What each input of a bench rests on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bases {
-    /// The key's mass and centre of mass.
+    /// The key's mass and static moment.
     pub key_mass: Basis,
+    /// The height of the key's centre of mass.
+    pub centre_of_mass_height: Basis,
     /// The friction of the key's bushings.
     pub key_friction: Basis,
     /// The dimensions of the key and its frame.
@@ -257,6 +271,7 @@ impl Bases {
     pub fn of(&self, input: Input) -> Basis {
         match input {
             Input::KeyMass => self.key_mass,
+            Input::CentreOfMassHeight => self.centre_of_mass_height,
             Input::KeyFriction => self.key_friction,
             Input::Geometry => self.geometry,
         }
@@ -482,11 +497,14 @@ mod tests {
     /// Consistency: a reading whose inputs are all measured is a
     /// measurement, and one that reads an assumed or estimated input names
     /// it, in the order the procedure reads them; an input set by the
-    /// bench's user is his to answer for.
+    /// bench's user is his to answer for. A key weighed by hand, the height
+    /// of its centre of mass estimated, reads its front weight as a
+    /// measurement and its down weight as an indication, naming that height.
     #[test]
     fn trust_names_what_is_not_measured() {
         let measured = Bases {
             key_mass: Basis::Measured,
+            centre_of_mass_height: Basis::Published,
             key_friction: Basis::SetByHand,
             geometry: Basis::Published,
         };
@@ -494,8 +512,24 @@ mod tests {
             Trust::of(ProcedureId::DownWeight.reads(), &measured),
             Trust::Metrological
         );
+        let weighed = Bases {
+            key_mass: Basis::SetByHand,
+            centre_of_mass_height: Basis::Estimated,
+            ..measured
+        };
+        assert_eq!(
+            Trust::of(ProcedureId::FrontWeight.reads(), &weighed),
+            Trust::Metrological
+        );
+        assert_eq!(
+            Trust::of(ProcedureId::DownWeight.reads(), &weighed),
+            Trust::Indicative {
+                because: vec![Input::CentreOfMassHeight]
+            }
+        );
         let composite = Bases {
             key_mass: Basis::Estimated,
+            centre_of_mass_height: Basis::Estimated,
             key_friction: Basis::Assumed,
             geometry: Basis::Assumed,
         };

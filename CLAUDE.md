@@ -109,10 +109,10 @@ trade's own protocols, and come back with the expected values.**
 
 - **Drive in position, compare forces; keep the Bad-Model guard** (FOUNDATIONS
   §5.1), from the dynamics prototype on. *Not mechanically checked.*
-- **Keep the non-confusion tests**: 1 g of lead moves BW, not F; axis friction
-  ×1.2 moves F, not BW; through the procedures, within what the tilt between
-  the key's two seats derives, never a tolerance widened to pass. Check:
-  `one_gram_of_lead_moves_balance_weight_*`,
+- **Keep the non-confusion tests**: 1 g of mass on the key moves BW, not F;
+  axis friction ×1.2 moves F, not BW; through the procedures, within what the
+  tilt between the key's two seats derives, never a tolerance widened to pass.
+  Check: `one_gram_of_mass_moves_balance_weight_*`,
   `scaling_friction_moves_friction_weight_*`, `tools/smoke/`.
 - **A validation test says so in its doc comment**; every other test is a
   consistency check, and a round trip through the model's own code never

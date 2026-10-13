@@ -57,7 +57,7 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import type { Contact, Lead, Marker, Outline, Pose, Scene } from './bench'
+import type { Contact, Marker, Outline, Pose, Scene } from './bench'
 import {
   axisSegments,
   contactStrokes,
@@ -240,27 +240,6 @@ function Lathed({ profile, axisX, colour }: { profile: number[]; axisX: number; 
   )
 }
 
-/**
- * The leads, as discs let in through the side of the key: their axis lies
- * across the keyboard, so their face shows on the section.
- *
- * `width` is the keystick's, read off the engine's own outline. Writing
- * 22 mm here instead would size one half of the disc from a literal while the
- * other half — its radius — is already computed in Rust from the real width.
- */
-function SolidLeads({ leads, width }: { leads: Lead[]; width: number }) {
-  return (
-    <>
-      {leads.map((l, i) => (
-        <mesh key={i} position={[l.x, l.y, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[l.radius, l.radius, width * 1.02, 28]} />
-          <meshLambertMaterial color="#54535c" />
-        </mesh>
-      ))}
-    </>
-  )
-}
-
 // ---- the section ----------------------------------------------------------
 
 /** A flat fill in the sagittal plane, painted in its layer. */
@@ -385,25 +364,6 @@ function SectionPart({
   )
 }
 
-/** The leads in the section: their faces, over the key's wood. */
-function SectionLeads({ leads }: { leads: Lead[] }) {
-  return (
-    <>
-      {leads.map((l, i) => (
-        <mesh key={i} position={[l.x, l.y, 0]} renderOrder={LAYER.marks}>
-          <circleGeometry args={[l.radius, 28]} />
-          <meshBasicMaterial
-            color="#54535c"
-            depthTest={false}
-            side={THREE.DoubleSide}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
-    </>
-  )
-}
-
 // ---- both -----------------------------------------------------------------
 
 /**
@@ -476,17 +436,13 @@ function Body({
   pose,
   outlines,
   mode,
-  leads,
   marker,
-  keyWidth,
 }: {
   body: number
   pose: Pose
   outlines: Outline[]
   mode: ViewMode
-  leads: Lead[]
   marker: Marker | undefined
-  keyWidth: number
 }) {
   const matrix = useMemo(() => poseMatrix(pose), [pose])
   const cuts = outlines.filter((o) => o.role === 'cut')
@@ -495,26 +451,23 @@ function Body({
   return (
     <group matrix={matrix} matrixAutoUpdate={false}>
       {mode === 'solid' ? (
-        <>
-          {parts.map((o, i) =>
-            o.sweep === 'revolved' ? (
-              <Lathed
-                key={`${o.code}-${i}`}
-                profile={o.points}
-                axisX={o.axis_x}
-                colour={colourOf(o)}
-              />
-            ) : (
-              <Extruded
-                key={`${o.code}-${i}`}
-                points={o.points}
-                width={o.width}
-                colour={colourOf(o)}
-              />
-            ),
-          )}
-          <SolidLeads leads={leads} width={keyWidth} />
-        </>
+        parts.map((o, i) =>
+          o.sweep === 'revolved' ? (
+            <Lathed
+              key={`${o.code}-${i}`}
+              profile={o.points}
+              axisX={o.axis_x}
+              colour={colourOf(o)}
+            />
+          ) : (
+            <Extruded
+              key={`${o.code}-${i}`}
+              points={o.points}
+              width={o.width}
+              colour={colourOf(o)}
+            />
+          ),
+        )
       ) : (
         <>
           {cuts.map((o, i) => (
@@ -552,7 +505,6 @@ function Body({
               />
             )
           })}
-          <SectionLeads leads={leads} />
         </>
       )}
       {marker && <MeasuringPoint at={marker.at} />}
@@ -575,10 +527,6 @@ const CAMERA: Record<
 
 export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) {
   const preset = CAMERA[mode]
-  // The keystick's width, off the engine's own outline. The leads are drawn
-  // across it, and their radius is already computed in Rust from the same
-  // number.
-  const keyWidth = scene.outlines.find((o) => o.code === 'keystick')?.width ?? 0
 
   return (
     <Canvas
@@ -609,9 +557,7 @@ export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) 
             pose={pose}
             outlines={scene.outlines.filter((o) => o.body === body)}
             mode={mode}
-            leads={scene.leads.filter((l) => l.body === body)}
             marker={scene.measuring_point.body === body ? scene.measuring_point : undefined}
-            keyWidth={keyWidth}
           />
         ))}
         <Contacts contacts={scene.contacts} />

@@ -5,9 +5,9 @@
 //! Two kinds of thing cross this boundary and they are treated differently.
 //!
 //! **Geometry and readouts change when the technician changes something** — a
-//! punching, a lead, a target — which is at human speed, a few times a second at
-//! most. Those cross as JSON. It is a few hundred numbers, parsed once per edit,
-//! and the clarity is worth more than the microseconds.
+//! punching, a weighing, a target — which is at human speed, a few times a
+//! second at most. Those cross as JSON. It is a few hundred numbers, parsed once
+//! per edit, and the clarity is worth more than the microseconds.
 //!
 //! **Per-step state**, once a time stepper exists, will change many times per
 //! frame and will not cross as JSON. It will cross through the linear memory as
@@ -24,7 +24,7 @@
 use pa_app::golden;
 use pa_app::key_bench::{
     stops_named, why_not_regulated, ContactCode, ContactState, Fault, HowItBears, KeyBench,
-    Material, Provenance, Role, Sweep, Targets, TouchVerdict, Trust, Unit, Which, KEY,
+    KeyMass, Material, Provenance, Role, Sweep, Targets, TouchVerdict, Trust, Unit, Which, KEY,
     PAPER_THICKNESSES,
 };
 use serde::Serialize;
@@ -90,21 +90,6 @@ struct PoseDto {
     sin: f32,
 }
 
-/// A lead, as a circle to draw on its body.
-#[derive(Serialize)]
-struct LeadDto {
-    /// The body it rides on, an index into the scene's poses.
-    body: usize,
-    /// Centre, millimetres, in the body's frame.
-    x: f32,
-    y: f32,
-    radius: f32,
-    mass_g: f32,
-    /// Position along the key from the balance pin, millimetres. The number the
-    /// technician actually works with.
-    from_balance_mm: f32,
-}
-
 /// A point marked on a body.
 #[derive(Serialize)]
 struct MarkerDto {
@@ -142,7 +127,6 @@ struct SceneDto {
     outlines: Vec<OutlineDto>,
     /// One per body, in body order: where each body's frame stands.
     poses: Vec<PoseDto>,
-    leads: Vec<LeadDto>,
     /// The measuring point. Drawn because a reader must see where the engine
     /// thinks it is weighing.
     measuring_point: MarkerDto,
@@ -266,14 +250,29 @@ struct ReadingDto {
     refused: Option<String>,
 }
 
+/// The key's weighing, as it was typed.
+#[derive(Serialize)]
+struct WeighedDto {
+    /// Its mass on the scale, grams.
+    mass_g: f32,
+    /// Its front weight as the jig's scale read it, grams.
+    front_weight_g: f32,
+    /// How far back from the covering's lip the roller stood, millimetres.
+    from_lip_mm: f32,
+}
+
 /// The trade quantities, in the trade's units.
 #[derive(Serialize)]
 struct ReadoutDto {
     /// Every reading of the weighing sheet, in its order, each by its
     /// procedure run on the model.
     sheet: Vec<ReadingDto>,
+    /// The key's mass, grams: as it was weighed, or derived from its volume
+    /// until it is.
     key_mass_g: f32,
-    lead_count: u32,
+    /// The key's weighing as it was typed; `null` while its mass is derived
+    /// from its volume.
+    weighed: Option<WeighedDto>,
     balance_paper_mm: f32,
     front_paper_mm: f32,
     key_height_target_mm: f32,
@@ -478,21 +477,6 @@ impl Bench {
             })
             .collect();
 
-        let leads = self
-            .inner
-            .lead_discs()
-            .into_iter()
-            .zip(self.inner.leads())
-            .map(|((c, r), (from_balance, mass_g))| LeadDto {
-                body: KEY.0,
-                x: mm(c.x),
-                y: mm(c.y),
-                radius: mm(r),
-                mass_g: mass_g as f32,
-                from_balance_mm: mm(from_balance),
-            })
-            .collect();
-
         let contacts = self
             .inner
             .contacts()
@@ -514,7 +498,6 @@ impl Bench {
         serde_json::to_string(&SceneDto {
             outlines,
             poses,
-            leads,
             measuring_point: MarkerDto {
                 body: KEY.0,
                 at: [mm(m.x), mm(m.y)],
@@ -597,7 +580,14 @@ impl Bench {
         serde_json::to_string(&ReadoutDto {
             sheet,
             key_mass_g: r.key_mass_g as f32,
-            lead_count: r.lead_count as u32,
+            weighed: match self.inner.key_mass() {
+                KeyMass::Estimated => None,
+                KeyMass::Weighed { mass, datum, .. } => Some(WeighedDto {
+                    mass_g: (mass * 1000.0) as f32,
+                    front_weight_g: datum.grams as f32,
+                    from_lip_mm: mm(datum.from_lip_m),
+                }),
+            },
             balance_paper_mm: (balance_paper * 1000.0) as f32,
             front_paper_mm: (front_paper * 1000.0) as f32,
             key_height_target_mm: r.key_height_target_mm as f32,
@@ -708,19 +698,25 @@ impl Bench {
         self.inner.set_measuring_point_from_lip(mm * 1e-3);
     }
 
-    /// Fits a lead, position in millimetres from the balance pin, mass in grams.
-    pub fn add_lead(&mut self, from_balance_mm: f64, mass_g: f64) {
-        self.inner.add_lead(from_balance_mm * 1e-3, mass_g);
-    }
-
-    /// Moves lead `i`, position in millimetres from the balance pin.
-    pub fn move_lead(&mut self, i: usize, from_balance_mm: f64) {
-        self.inner.move_lead(i, from_balance_mm * 1e-3);
-    }
-
-    /// Removes lead `i`.
-    pub fn remove_lead(&mut self, i: usize) {
-        self.inner.remove_lead(i);
+    /// Weighs the key whole, as it arrives, its leads in it: its mass in
+    /// grams, and its front weight in grams read on the levelled jig
+    /// `from_lip_mm` millimetres back from the covering's lip. Returns why it
+    /// was refused, the key's weighing left as it was, or nothing when it was
+    /// taken.
+    pub fn weigh_key(
+        &mut self,
+        mass_g: f64,
+        front_weight_g: f64,
+        from_lip_mm: f64,
+    ) -> Option<String> {
+        let why = self
+            .inner
+            .weigh_key(mass_g, front_weight_g, from_lip_mm * 1e-3)
+            .err()?;
+        Some(format!(
+            "Refused, the key's weighing left as it was: {}",
+            self.inner.why_not_weighed(&why)
+        ))
     }
 
     /// Paper under the balance punching, millimetres. Key levelling.

@@ -214,7 +214,7 @@ mod tests {
     use super::super::oracle::KeyWeighing;
     use super::super::MEASURING_POINT_HALF_INCH;
     use super::*;
-    use crate::parts::Lead;
+    use crate::parts::KeyMass;
 
     /// The key's mass properties from the volume model, as the bench's
     /// composite key takes them.
@@ -226,15 +226,24 @@ mod tests {
         }
     }
 
+    /// The default key weighed whole: `mass_g` grams, and a front weight of
+    /// `front_weight_g` grams read 13 mm back from its lip.
+    fn weighed(mass_g: f64, front_weight_g: f64) -> MassProps {
+        let key = KeyDesign::default();
+        KeyMass::weighed(&key, mass_g, front_weight_g, 0.013)
+            .expect("a key's weighing")
+            .props(mass_of(&key))
+    }
+
     fn jig(key: &KeyDesign, protocol: &TouchweightProtocol) -> KeyJig {
         KeyJig::new(key, protocol, Some(mass_of(key))).expect("a key on the jig")
     }
 
-    /// The closed form of the same key on the same jig: static moment about
-    /// the pin over the measuring arm, capstan arm over the same.
-    fn oracle(key: &KeyDesign, protocol: &TouchweightProtocol) -> KeyWeighing {
+    /// The closed form of a key of mass `mass` on the jig: static moment
+    /// about the pin over the measuring arm, capstan arm over the same.
+    fn oracle(key: &KeyDesign, protocol: &TouchweightProtocol, mass: MassProps) -> KeyWeighing {
         KeyWeighing {
-            static_moment_about_pin: key.mass_properties().unwrap().static_moment_x(),
+            static_moment_about_pin: mass.mass * mass.com.x,
             measuring_arm: protocol.measuring_point(key),
             capstan_arm: -key.capstan,
         }
@@ -250,45 +259,48 @@ mod tests {
         (a - b).abs() <= 16.0 * f64::EPSILON * magnitude
     }
 
-    /// Keys that exercise every term: the default, leaded in front and
-    /// behind, a capstan moved, a key front brought in, and the measuring
-    /// point at the lip, at the glossary's half inch and at 30 mm.
-    fn keys() -> Vec<(KeyDesign, TouchweightProtocol)> {
+    /// Keys that exercise every term, each with its mass: the default, by
+    /// its volume model and weighed heavy in front and heavy behind; a
+    /// capstan moved, a key front brought in; and the measuring point at the
+    /// lip, at the glossary's half inch and at 30 mm.
+    fn keys() -> Vec<(KeyDesign, TouchweightProtocol, MassProps)> {
         let protocol = |from_lip: f64| TouchweightProtocol {
             measuring_point_from_lip: from_lip,
         };
         let default = KeyDesign::default();
-        let leaded = |leads: Vec<Lead>| KeyDesign {
-            leads,
-            ..KeyDesign::default()
+        let by_volume = |key: KeyDesign, protocol| {
+            let mass = mass_of(&key);
+            (key, protocol, mass)
         };
         vec![
-            (default.clone(), TouchweightProtocol::default()),
+            by_volume(default.clone(), TouchweightProtocol::default()),
             (
-                leaded(vec![Lead::at(0.150, 0.010), Lead::at(0.190, 0.010)]),
+                default.clone(),
                 TouchweightProtocol::default(),
+                weighed(141.1, 21.0),
             ),
             (
-                leaded(vec![Lead::at(-0.120, 0.030)]),
+                default.clone(),
                 TouchweightProtocol::default(),
+                weighed(151.1, -8.1),
             ),
-            (
+            by_volume(
                 KeyDesign {
                     capstan: -0.110,
                     ..KeyDesign::default()
                 },
                 TouchweightProtocol::default(),
             ),
-            (
+            by_volume(
                 KeyDesign {
                     front_edge: 0.240,
                     ..KeyDesign::default()
                 },
                 TouchweightProtocol::default(),
             ),
-            (default.clone(), protocol(0.0)),
-            (default.clone(), protocol(MEASURING_POINT_HALF_INCH)),
-            (default, protocol(0.030)),
+            by_volume(default.clone(), protocol(0.0)),
+            by_volume(default.clone(), protocol(MEASURING_POINT_HALF_INCH)),
+            by_volume(default, protocol(0.030)),
         ]
     }
 
@@ -302,8 +314,9 @@ mod tests {
     /// the hand calculation does.
     #[test]
     fn the_jig_reads_what_the_closed_form_reads() {
-        for (key, protocol) in keys() {
-            let (jig, oracle) = (jig(&key, &protocol), oracle(&key, &protocol));
+        for (key, protocol, mass) in keys() {
+            let jig = KeyJig::new(&key, &protocol, Some(mass)).expect("a key on the jig");
+            let oracle = oracle(&key, &protocol, mass);
 
             let fw = jig
                 .front_weight_g()

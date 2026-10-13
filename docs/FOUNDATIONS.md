@@ -109,13 +109,31 @@ what is glued to it or cut from it (the covering; the key front over the end
 grain, the covering's lip overhanging it; the capsule where the balance mortise
 is cut; the back check block; the thinned tail and its damper felt; the chamfer
 that lets the tail bed flat on its cloth) [V, `data/params/key-section.json`].
-The capstan is a turned steel part, integrated as a solid of revolution; leads
-are point masses added, moved and removed on the model. Planned: leads leave
-the model, a key being measured whole, its leads included (§2.3). Each piece
+The capstan is a turned steel part, integrated as a solid of revolution. No lead
+is modelled: a key's leads are in its weighing (below). Each piece
 is a part of its own, with its own material, on the key's body: the covering
 and the key front are of their own materials, the capsule and the back check
 block of one wood that is not the keystick's, and the front mortise is a cut,
 a void in the keystick open at its underside.
+
+**The key is weighed whole**, as a key that arrives leaded is weighed, its leads
+in it and their masses unknown: its mass on a scale, and its front weight on
+Stanwood's jig (§2.2) with the distance back from the covering's lip it was read
+at, typed on the bench in grams and millimetres. The bench keeps the mass and
+the static moment about the balance pin, the front weight times the arm it was
+read on, with that reading as its datum, as it keeps a friction as a torque with
+the radius it was read at (§2.2): moving the measuring point afterwards, or
+editing the key, reads the same moment on another arm, and the front weight the
+jig reads follows by the lever. The moment over the key's weight stands its
+centre of mass along the key. Its height, which no scale gives, is the volume
+model's estimate (§2.3), and every reading it reaches names it (§2.2): it acts
+only through the key's tilt on its frame, about 0.02 g of down weight per
+millimetre on the default key, 2.3° nose-up at its top seat. Until the key is
+weighed, the volume model's estimate stands for its whole mass. A weighing no
+key could have is refused with its reason, the bench left as it was: a mass of
+nothing, a front weight read off the covering, a centre of mass the two readings
+put off the key. What one more lead would do somewhere along the key is not
+computed.
 
 **The frame**, `FrameDesign`, is three different rails: the balance rail with
 its crown and round pin, the front rail with its oblong pin, the back rail with
@@ -156,13 +174,14 @@ point for any coordinate, by the lever-arm identity of §6.2 extended to every
 ancestor joint; gravity at each body's centre of mass and forces fixed in the
 world, with their potential and generalized forces; and coordinates prescribed
 for one procedure, with the reaction that holds each. The mechanism never
-computes a body's mass; it is handed one. The composite key's is derived from
-its volume model by one adapter in `pa-app`, the composite key's derivation
-(§2.3). Its first client is the jig (§2.2). Each coordinate carries its limits,
-an interval it cannot leave, and its joint's dry friction, a torque bound that
-holds it still against any generalized force inside it; the static solve below
-finds the coordinates a procedure leaves free. The key on its frame has two: the
-height of its slide and its angle.
+computes a body's mass; it is handed one: the key's as it was weighed, or, until
+it is, as one adapter in `pa-app`, the composite key's derivation, derives it
+from its volume model (§2.3), which also gives a weighed key the height of its
+centre of mass. Its first client is the jig (§2.2). Each coordinate carries its
+limits, an interval it cannot leave, and its joint's dry friction, a torque
+bound that holds it still against any generalized force inside it; the static
+solve below finds the coordinates a procedure leaves free. The key on its frame
+has two: the height of its slide and its angle.
 
 **Contacts, read off the drawn parts.** Each of the key's contacts with its
 frame is a pair of ranges of drawn parts and nothing else: the front punching's
@@ -356,8 +375,8 @@ the default bench, a quarter of the thinnest paper, and would not see the pin.
 on. Loading the bench puts the key on its frame from its nominal pose under the
 weight, friction off, or from above where that finds no state, as the seats do,
 in a state that needs no friction to stay; every later action, a weight, a
-paper, a lead, any edit, is an increment from the state the last one left; a key
-standing on its balance punching rises and falls with it as papers are laid
+paper, a weighing, any edit, is an increment from the state the last one left; a
+key standing on its balance punching rises and falls with it as papers are laid
 under it. Between the up weight and the down weight the key stays where it is,
 on either stop. A weight that lifts the key off its frame finds no equilibrium:
 the key stays drawn where the last one left it, and the bench says the weight
@@ -498,13 +517,21 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   editing the key changes the grams every protocol reads, and not the
   bushings. The default bushings are not typed: an assumed torque, 6 g at
   the measuring point with the key level.
-- **Trust.** Each procedure declares what it reads, the key's mass, its
-  friction, the dimensions of key and frame, and a reading resting on an
-  estimated or assumed input is indicative and names it. On the composite
-  default every reading is: its mass is derived from its volume at an
-  assumed density, its friction is assumed until it is set, and several of
-  its dimensions have no record (§2.3, §3.8). The key's mass on the sheet is
-  that derivation, an input and not a weighing.
+- **Trust.** Each procedure declares what it reads, the key's mass and static
+  moment, the height of its centre of mass, its friction, the dimensions of key
+  and frame, and a reading resting on an estimated or assumed input is
+  indicative and names it. Front weight reads the key level, and so not the
+  height of its centre of mass; D, U, BW, F and Stanwood's key friction weight
+  read the key tilted on its frame, and that height with it. Key height, dip
+  and the key weight ratio read no mass, nor does the key friction weight
+  zeroed on the frame, whose temporary weight cancels the key's balance where
+  it rests. On the composite default every reading is indicative: its mass and
+  centre of mass are derived from its volume at an assumed density, its
+  friction is assumed until it is set, and several of its dimensions have no
+  record (§2.3, §3.8). The key's mass on the sheet is that derivation, an input
+  and not a weighing, until the key is weighed (§2.1): its mass and static
+  moment are then set by hand, and the height of its centre of mass is still
+  the estimate, which D, U, BW, F and Stanwood's key friction weight name.
 - **Datums.** Key height and dip are read at the key front, the face of the
   plate over the end grain, 258 mm in front of the balance pin on the default
   key. Every touchweight is read at the measuring point, 13 mm by default (§3.1)
@@ -524,13 +551,13 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   grand keystick is far narrower behind its head; the covering counts as wood;
   the hollow behind the capstan is absent: several grams of doubt on a front
   weight read to the gram, and a measured stick mass rescales the total without
-  moving the centre of mass. Planned: per-key mass properties, measured by the
-  trade's protocol and never derived from a wood volume, each key being cut to
-  its own plan shape: its mass; its front weight, which gives its static moment
-  about the balance pin; and, for the dynamics, its inertia. The three are
-  independent: a key carrying 16 g of front weight in leads alone has 8,000,
-  5,700 or 2,920 g·cm² about its balance point depending on where the leads
-  sit [V, Nakamura, *Practical application of moment of inertia*, Part 2,
+  moving the centre of mass. So a key's mass is weighed, per key, by the trade's
+  protocol, never derived from a wood volume, each key being cut to its own plan
+  shape: built, its mass and its front weight, which gives its static moment
+  about the balance pin (§2.1); planned, for the dynamics, its inertia. The
+  three are independent: a key carrying 16 g of front weight in leads alone has
+  8,000, 5,700 or 2,920 g·cm² about its balance point depending on where the
+  leads sit [V, Nakamura, *Practical application of moment of inertia*, Part 2,
   Fig. 9]. The trade computes inertia from a traced template and wood densities
   [V, Nakamura, Part 1] or rates it from static weights [V, Stanwood, SNAP,
   2023], and measures it nowhere; Hirschkorn swung each part as a pendulum on a
@@ -539,9 +566,12 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   therefore neither measured nor shown: it is an internal parameter of the
   dynamics, each part's taken from Hirschkorn's published action and the key's
   estimated from its outline matched to its mass and front weight, marked
-  estimated (planned). The volume model then draws a key and never weighs it,
-  and leads leave the model: a key arrives leaded, with lead masses nobody
-  knows, and is measured whole.
+  estimated (planned). Until a key is weighed, the volume model stands for its
+  whole mass, and once it is, for the height of its centre of mass, which no
+  scale gives; planned: that height estimated from the drawn section's area
+  centroid, and the volume model gone, the outline drawing a key and never
+  weighing it. No lead is modelled: a key arrives leaded, with lead masses
+  nobody knows, and is weighed whole.
 - **The default key is a composite**: the owner's measured key section, a
   capstan 129.5 mm behind the balance pin that no source gives, and a key front
   258 mm out, which puts the measuring point at 247 mm. Planned, with the
@@ -618,17 +648,20 @@ what keeps them out and by how much, and not sent while a target field holds no
 number; the punching papers; the key friction weight, typed in grams at the
 measuring point as Stanwood's protocol reads it, and refused with why where no
 bushings read it); punchings and cloth (felts, front rail pin and mortise, back
-rail cloth); the key; the frame (rails, placing the frame); touch (a weight on
+rail cloth); the key, and the key weighed whole (its mass and its front weight
+typed in grams, with the distance back from the lip the front weight was read at
+in millimetres, what each is for said beside them, and refused with why where no
+key could weigh so); the frame (rails, placing the frame); touch (a weight on
 the measuring point; what holds the key: a stop or its friction with how far the
 weight stands from moving it, its two stops where they fight with how far above
 its balance punching it rides, the stops it touches where it stands lifted off
 its punching otherwise and its friction where they need it, or nothing, a key
 off its pin and its frame; the gaps at
 the front punching and the back rail cloth; and how far the
-punchings' drawn edges overlap the key); the leading workshop, which goes with
-the leads (§2.3). Faults are listed in millimetres, every number on the sheet is
-computed in Rust, and the page is in English. `pa-cli weigh` prints every
-reading with its procedure, its trust and the static solves it took.
+punchings' drawn edges overlap the key). Faults are listed in millimetres, every
+number on the sheet is computed in Rust, and the page is in English.
+`pa-cli weigh` prints every reading with its procedure, its trust and the static
+solves it took.
 
 ## 3. Decisions that stand
 
@@ -1138,18 +1171,20 @@ traps (§6.3).
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
 | 3 | published data, §5.2 (b) and (c) | validation | planned |
-| 4 | the trade's protocols run on the model: the jig, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
+| 4 | the trade's protocols run on the model: the jig, reading a key weighed whole back where its front weight was read and by the lever elsewhere, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
 | 4 | let-off, drop, checking, aftertouch and blow distance as the trade measures them; §5.2 (a) | consistency, and validation where the measurement is independent | planned |
 | 5 | sensitivities by finite differences: what moves when a setting changes | consistency | planned |
 
 **Non-confusion tests** (built, through the procedures and through the whole
-chain in the smoke test): 1 g of lead (of mass on the key, once leads leave
-the model) moves BW and not F; axis friction times 1.2 moves F and not BW.
-With a constant friction bound both hold but for the tilt between the key's
-two seats, where D and U are read: a few thousandths of a gram of F for the
-gram of lead, a few hundredths of BW for the friction, each tolerance derived
-from the two seats' arms and the walk's resolution, never widened. They guard
-against coding mix-ups until friction depends on load.
+chain in the smoke test): 1 g of mass set on the key, a test weight standing on
+it while it is seated and walked, moves BW and not F, and the smoke test runs it
+as the trade would, the key re-weighed with its front weight a gram heavier;
+axis friction times 1.2 moves F and not BW. With a constant friction bound both
+hold but for the tilt between the key's two seats, where D and U are read: a few
+thousandths of a gram of F for the gram of mass, a few hundredths of BW for the
+friction, each tolerance derived from the two seats' arms and the walk's
+resolution, never widened. They guard against coding mix-ups until friction
+depends on load.
 
 **Sensitivities.** Spurlock's rule, +1 g of hammer weight for +5 to +7 g on both
 down weight and up weight [V, Spurlock], checks the lever chain's consistency:
@@ -1429,22 +1464,23 @@ key's always measured (§2.3).
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
 double mount cannot construct two engines) and drives it with one setter per
-value; the two the engine may refuse, a regulation and a key friction weight,
-answer with the sentence saying why, the bench left as it was. It reads two JSON
-documents: the scene and the readout. The scene holds every part's outline in
-its own body's frame, in millimetres, with its material and the provenance of
-each stretch; one pose per body, an origin, a cosine and a sine, which the view
-applies and computes none of; the leads and the measuring point on the key; the
-contacts within a millimetre of closing, each its two surface points in the
-keybed's frame, its gap and whether it is closed, open or overlapping; and the
-faults. The readout holds the settings, the weighing sheet and what holds the
-key, all absent when the key cannot be seated: the sheet a list of readings by
-their procedures' codes, each what the trade reads it as with its value in full,
-its resolution, its trust and the temporary weight where it has one, or the
-sentence saying why it is refused. A function returns any fixture's golden
-sheet, for the test that holds the module to the native bits. Faults, verdicts
-and refusals are English sentences built in Rust, in `pa-app` and in the
-adapter, and the TypeScript types mirror both documents by hand.
+value; the three the engine may refuse, a regulation, a key friction weight and
+a weighing of the key, answer with the sentence saying why, the bench left as it
+was. It reads two JSON documents: the scene and the readout. The scene holds
+every part's outline in its own body's frame, in millimetres, with its material
+and the provenance of each stretch; one pose per body, an origin, a cosine and a
+sine, which the view applies and computes none of; the measuring
+point on the key; the contacts within a millimetre of closing, each its two
+surface points in the keybed's frame, its gap and whether it is closed, open or
+overlapping; and the faults. The readout holds the settings, the key's weighing
+as typed among them, the weighing sheet and what holds the key, all absent when
+the key cannot be seated: the sheet a list of readings by their procedures'
+codes, each what the trade reads it as with its value in full, its resolution,
+its trust and the temporary weight where it has one, or the sentence saying why
+it is refused. A function returns any fixture's golden sheet, for the test that
+holds the module to the native bits. Faults, verdicts and refusals are English
+sentences built in Rust, in `pa-app` and in the adapter, and the TypeScript
+types mirror both documents by hand.
 
 **Planned.** Settings and weighing come back separately: the settings always
 valid, each adjustable value with its unit, admissible range and step; the

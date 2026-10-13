@@ -12,7 +12,7 @@
 //! | [`mechanism`] | bodies in a tree: poses, Jacobian columns, loads, coordinate limits and friction, prescribed coordinates and their reactions, the parts the bodies carry and the contacts declared between them |
 //! | [`contact`] | parts on bodies, the ranges of their outlines a contact may read, contact pairs and their rows over every coordinate, how deep drawn parts stand in one another, and how a key bears on a stop |
 //! | [`solve`] | the static solve: one load increment, its box problem and the dense algebra under it |
-//! | [`parts`] | the key and its frame as parametric designs, the parts they build, and the composite key's mass |
+//! | [`parts`] | the key and its frame as parametric designs, the parts they build, the composite key's mass, and what is known of a key's mass, weighed whole or estimated |
 //! | [`parts::faults`] | what about a key and its frame no keyboard could be built from, read off the drawn parts |
 //! | [`parts::mounts`] | the mechanisms a key is put in to be read, the jig and the key on its frame, free to lift off its balance punching or turning on a pivot, the key's contacts with its frame, the solve that lets it lift, and its nominal pose there |
 //! | [`parts::verdicts`] | what holds a key where it stands, from determinate quantities |

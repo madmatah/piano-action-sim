@@ -30,7 +30,6 @@ sheet.friction_weight refused From { reading: DownWeight }
 sheet.key_friction_weight_zeroed_on_the_jig refused Walk(NoTravel)
 sheet.key_friction_weight_zeroed_on_the_frame refused Walk(NoTravel)
 readout.key_mass_g 121.11668963924217 0x405e4777d7d214f0
-readout.lead_count 0
 readout.gap_front_mm -4.431676380034499e-15 0xbcf3f56000000000
 readout.gap_back_mm 4.3368086899420177e-16 0x3cbf400000000000
 readout.key_friction_weight_g 6.0 0x4018000000000000

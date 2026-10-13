@@ -18,6 +18,7 @@ import {
   scene,
   setKeyFrictionWeight,
   start,
+  weighKey,
 } from './bench'
 import { typedNumber } from './fields'
 import { CONTACT_COLOUR, SagittalView, type ViewMode } from './SagittalView'
@@ -35,23 +36,15 @@ interface State {
  * Applies a bench state given in the URL, so that a particular setup can be
  * linked to rather than described.
  *
- *   ?leads=10@150,8@190&weight=-20
+ *   ?weight=-20
  *
- * `leads` is a comma-separated list of `grams@millimetres-from-the-balance-pin`,
- * `weight` the grams on the measuring point. Anything unparseable is ignored
- * rather than guessed at: a malformed link should open the standard bench, not
- * a bench nobody asked for. There is no way to place the key by hand: it is
- * only ever where a weight puts it.
+ * `weight` is the grams on the measuring point. Anything unparseable is
+ * ignored rather than guessed at: a malformed link should open the standard
+ * bench, not a bench nobody asked for. There is no way to place the key by
+ * hand: it is only ever where a weight puts it.
  */
 function applyUrlState(b: Bench): void {
   const q = new URLSearchParams(window.location.search)
-
-  for (const spec of (q.get('leads') ?? '').split(',')) {
-    const m = /^\s*([\d.]+)@(-?[\d.]+)\s*$/.exec(spec)
-    if (!m) continue
-    const [mass, at] = [Number(m[1]), Number(m[2])]
-    if (Number.isFinite(mass) && Number.isFinite(at)) b.add_lead(at, mass)
-  }
 
   const weight = Number(q.get('weight'))
   if (Number.isFinite(weight) && q.has('weight')) b.set_finger_weight(weight)
@@ -113,9 +106,19 @@ const LABEL: Record<string, string> = {
 
 /** What makes a reading indicative, as the sheet's note says it. */
 const BECAUSE: Record<string, string> = {
-  key_mass: 'the key’s mass is derived from its volume at an assumed wood density',
+  key_mass:
+    'the key’s mass is derived from its volume at an assumed wood density until you weigh it',
+  centre_of_mass_height:
+    'the height of the key’s centre of mass is estimated from its volume, which no scale gives',
   key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
   geometry: 'some of its dimensions have no record',
+}
+
+/** Names as a sentence lists them: "a", "a and b", "a, b and c". */
+function listed(names: string[]): string {
+  return names.length < 2
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 /**
@@ -337,7 +340,14 @@ export function App() {
   const [heightTarget, setHeightTarget] = useState('')
   const [dipTarget, setDipTarget] = useState('')
   const [regulation, setRegulation] = useState<Regulation | null>(null)
-  const [newLeadMass, setNewLeadMass] = useState(10)
+  // The key's weighing as typed, seeded at boot from what the engine holds of
+  // the key, and why the last one asked for was refused, the engine's
+  // sentence, shown until anything else is done. Kept as the text in the
+  // fields, read as numbers only when they hold them (`typedNumber`).
+  const [weighMass, setWeighMass] = useState('')
+  const [weighFront, setWeighFront] = useState('')
+  const [weighFrom, setWeighFrom] = useState('')
+  const [weighRefused, setWeighRefused] = useState<string | null>(null)
 
   // Every mutation goes through the engine and the whole view is re-read from
   // it. No value on this page is computed in TypeScript.
@@ -394,6 +404,13 @@ export function App() {
         setMeasuringPoint(r.measuring_point_from_lip_mm)
         setHeightTarget(String(r.key_height_target_mm))
         setDipTarget(String(r.key_dip_target_mm))
+        // The weighing fields start from the key as the engine holds it: its
+        // mass, its front weight as the scale reads it, at the measuring
+        // point the sheet reads it at.
+        const fw = reading(r, 'front_weight')
+        setWeighMass(fixed(r.key_mass_g, 1))
+        setWeighFront(fw?.shown == null ? '' : fixed(fw.shown, 1))
+        setWeighFrom(fixed(r.measuring_point_from_lip_mm, 1))
       }
       refresh()
     })
@@ -405,6 +422,7 @@ export function App() {
     const out = f(b)
     setRegulation(null)
     setFrictionRefused(null)
+    setWeighRefused(null)
     refresh()
     return out
   }
@@ -422,6 +440,22 @@ export function App() {
     if (!b || height === null || dip === null) return
     setRegulation(regulate(b, height, dip))
     refresh()
+  }
+
+  // The same for the key's weighing: nothing is sent until all three fields
+  // hold a number.
+  const weighedMass = typedNumber(weighMass)
+  const weighedFront = typedNumber(weighFront)
+  const weighedFrom = typedNumber(weighFrom)
+  const weighNeeds = [
+    ...(weighedMass === null ? ['the key mass'] : []),
+    ...(weighedFront === null ? ['the front weight'] : []),
+    ...(weighedFrom === null ? ['the distance from the lip'] : []),
+  ]
+  const weighTheKey = () => {
+    if (weighedMass === null || weighedFront === null || weighedFrom === null) return
+    const refused = act((b) => weighKey(b, weighedMass, weighedFront, weighedFrom)) ?? null
+    setWeighRefused(refused)
   }
 
   if (!state) return <div className="booting">starting the engine…</div>
@@ -797,6 +831,75 @@ export function App() {
               }}
             />
 
+            <h2>The key, weighed whole</h2>
+            <p className="note">
+              A key arrives leaded, with leads nobody knows the masses of, so it is weighed whole,
+              its leads in it: type what the scale and the jig give for it.
+            </p>
+            <div className="targets">
+              <label className="field">
+                key mass
+                <input
+                  type="number"
+                  min={1}
+                  step={0.1}
+                  value={weighMass}
+                  onChange={(e) => setWeighMass(e.target.value)}
+                />
+                g
+              </label>
+              <label className="field">
+                front weight
+                <input
+                  type="number"
+                  step={0.1}
+                  value={weighFront}
+                  onChange={(e) => setWeighFront(e.target.value)}
+                />
+                g
+              </label>
+              <label className="field">
+                read at
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={weighFrom}
+                  onChange={(e) => setWeighFrom(e.target.value)}
+                />
+                mm from the lip
+              </label>
+              <button type="button" onClick={weighTheKey} disabled={weighNeeds.length > 0}>
+                weigh the key
+              </button>
+            </div>
+            {weighNeeds.length > 0 && (
+              <p className="weighing-needs degenerate">
+                {listed(weighNeeds)} {weighNeeds.length === 1 ? 'needs' : 'need'} a number: the key
+                is weighed when all three have one.
+              </p>
+            )}
+            {weighRefused && <p className="weigh-refused degenerate">{weighRefused}</p>}
+            <p className="note weighed">
+              {r.weighed === null
+                ? `Not weighed yet: its ${fixed(r.key_mass_g, 2)} g, and where its centre of mass stands, are derived from its volume at an assumed wood density.`
+                : `Weighed: ${fixed(r.weighed.mass_g, 2)} g, its front weight ${fixed(r.weighed.front_weight_g, 2)} g read ${fixed(r.weighed.from_lip_mm, 1)} mm back from the lip.`}
+            </p>
+            <p className="note">
+              The <b>key mass</b> is the whole key on a scale, capstan and leads included: the
+              weight gravity pulls at its centre of mass. The <b>front weight</b> is the levelled
+              key's weight on the jig's scale, the key turning on its balance pin and the roller
+              under the measuring point; times the arm it was read on, it is the key's static moment
+              about the pin, which places its centre of mass along the key. <b>Read at</b> is where
+              the roller stood, back from the covering's lip: the arm it was read on. The bench
+              keeps that static moment, so moving the measuring point afterwards, or changing the
+              key, reads the same moment on another arm, and the front weight on the sheet follows
+              by the lever. The height of the centre of mass, which no scale gives, stays an
+              estimate from the key's volume: it acts only through the key's tilt on its frame, a
+              few hundredths of a gram of down weight per millimetre, and the sheet marks every
+              reading it reaches.
+            </p>
+
             <h2>The frame</h2>
             <Slider
               label="balance rail"
@@ -940,46 +1043,6 @@ export function App() {
               a slider over a computed travel could park it in a position no weight produces, which
               is the one thing a measuring instrument must not do.
             </p>
-
-            <h2>Leading workshop</h2>
-            <div className="leadadd">
-              <input
-                type="number"
-                min={1}
-                max={60}
-                step={1}
-                value={newLeadMass}
-                onChange={(e) => setNewLeadMass(Number(e.target.value))}
-              />
-              <span>g at</span>
-              <button type="button" onClick={() => act((b) => b.add_lead(150, newLeadMass))}>
-                150 mm
-              </button>
-              <button type="button" onClick={() => act((b) => b.add_lead(190, newLeadMass))}>
-                190 mm
-              </button>
-            </div>
-            <ul className="leads">
-              {state.scene.leads.map((l, i) => (
-                <li key={i}>
-                  <span>
-                    {l.mass_g.toFixed(0)} g at {l.from_balance_mm.toFixed(0)} mm
-                  </span>
-                  <input
-                    type="range"
-                    min={20}
-                    max={240}
-                    step={1}
-                    value={l.from_balance_mm}
-                    onChange={(e) => act((b) => b.move_lead(i, Number(e.target.value)))}
-                  />
-                  <button type="button" onClick={() => act((b) => b.remove_lead(i))}>
-                    remove
-                  </button>
-                </li>
-              ))}
-              {state.scene.leads.length === 0 && <li className="empty">no leads fitted</li>}
-            </ul>
           </>
         )}
       </aside>

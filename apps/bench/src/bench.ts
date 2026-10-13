@@ -64,17 +64,6 @@ export interface Pose {
   sin: number
 }
 
-/** A lead, as the circle to draw on its body and the numbers to label it with. */
-export interface Lead {
-  /** The body it rides on: an index into `Scene.poses`. */
-  body: number
-  x: number
-  y: number
-  radius: number
-  mass_g: number
-  from_balance_mm: number
-}
-
 /** A point marked on a body, millimetres in the body's frame. */
 export interface Marker {
   body: number
@@ -115,7 +104,6 @@ export interface Scene {
   /** One per body, in body order: the ground, the slide the key lifts off its
    * balance punching on, the key. */
   poses: Pose[]
-  leads: Lead[]
   measuring_point: Marker
   /** The contacts within a millimetre of closing, where the key is drawn. */
   contacts: Contact[]
@@ -154,8 +142,8 @@ export interface Reading {
   resolution: number
   /** Whether every input it reads is measured or published. */
   trust: 'metrological' | 'indicative'
-  /** The inputs that make it indicative: `key_mass`, `key_friction`,
-   * `geometry`. */
+  /** The inputs that make it indicative: `key_mass`,
+   * `centre_of_mass_height`, `key_friction`, `geometry`. */
   because: string[]
   /** The temporary weight a key friction weight stood on the key, grams. */
   temporary_weight_g: number | null
@@ -165,11 +153,25 @@ export interface Reading {
   refused: string | null
 }
 
+/** The key's weighing, as it was typed. */
+export interface Weighed {
+  /** Its mass on the scale, grams. */
+  mass_g: number
+  /** Its front weight as the jig's scale read it, grams. */
+  front_weight_g: number
+  /** How far back from the covering's lip the roller stood, millimetres. */
+  from_lip_mm: number
+}
+
 export interface Readout {
   /** Every reading of the weighing sheet, in its order. */
   sheet: Reading[]
+  /** The key's mass, grams: as it was weighed, or derived from its volume
+   * until it is. */
   key_mass_g: number
-  lead_count: number
+  /** The key's weighing as it was typed; `null` while its mass is derived
+   * from its volume. */
+  weighed: Weighed | null
   balance_paper_mm: number
   front_paper_mm: number
   key_height_target_mm: number
@@ -286,9 +288,9 @@ export function start(apply?: (b: Bench) => void): Promise<Bench> {
     const bench = new Bench()
     // Any one-time setup belongs **inside** the memoised promise, not in the
     // caller's effect. React's StrictMode runs an effect body twice, so a
-    // `start().then(b => applyUrlState(b))` applies it twice: a URL asking for
-    // three leads fits six, and the only symptom is a key mass 66 g too high.
-    // It is the same shape of bug as booting twice.
+    // `start().then(b => applyUrlState(b))` applies it twice: harmless for a
+    // weight that is set, wrong for anything that adds, a paper laid twice
+    // being two papers. It is the same shape of bug as booting twice.
     apply?.(bench)
     return bench
   })()
@@ -324,4 +326,20 @@ export function regulate(b: Bench, keyHeightMm: number, keyDipMm: number): Regul
  */
 export function setKeyFrictionWeight(b: Bench, grams: number): string | null {
   return b.set_key_friction_weight(grams) ?? null
+}
+
+/**
+ * Weighs the key whole, as it arrives, its leads in it: its mass in grams, and
+ * its front weight in grams read on the levelled jig `fromLipMm` back from the
+ * covering's lip. The engine keeps the static moment the front weight gives.
+ * Returns the engine's sentence saying why it refused, the key's weighing left
+ * as it was, or `null` when it was taken.
+ */
+export function weighKey(
+  b: Bench,
+  massG: number,
+  frontWeightG: number,
+  fromLipMm: number,
+): string | null {
+  return b.weigh_key(massG, frontWeightG, fromLipMm) ?? null
 }

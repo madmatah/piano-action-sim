@@ -764,13 +764,15 @@ mod tests {
     use crate::parts::fixtures::{mass_of, regulated, Setup};
     use crate::parts::frame::{papers_for, KeyKind};
     use crate::parts::mounts::{on_its_frame, KeyMount};
-    use crate::parts::Lead;
+    use crate::parts::KeyMass;
     use crate::solve::statics::RESIDUAL_TOLERANCE;
 
-    /// The composite bench's inputs: its mass derived from its volume, its
-    /// friction and its dimensions assumed.
+    /// The composite bench's inputs: its mass and the height of its centre
+    /// of mass derived from its volume, its friction and its dimensions
+    /// assumed.
     const COMPOSITE: Bases = Bases {
         key_mass: Basis::Estimated,
+        centre_of_mass_height: Basis::Estimated,
         key_friction: Basis::Assumed,
         geometry: Basis::Assumed,
     };
@@ -817,6 +819,15 @@ mod tests {
     /// `a`'s key weighed by its volume model.
     fn bench(a: &Setup, kf_g: f64) -> Bench {
         bench_with(a, kf_g, mass_of(&a.key))
+    }
+
+    /// `a`'s key weighed whole, back-heavy: 151.1 g, and a front weight of
+    /// −8.1 g read 13 mm back from its lip; the height of its centre of mass
+    /// its volume model's.
+    fn back_heavy(a: &Setup) -> Option<MassProps> {
+        let estimate = mass_of(&a.key).expect("a key that is not degenerate");
+        let weighed = KeyMass::weighed(&a.key, 151.1, -8.1, 0.013).expect("a key's weighing");
+        Some(weighed.props(estimate))
     }
 
     impl Bench {
@@ -882,16 +893,15 @@ mod tests {
         halved + decided
     }
 
-    /// The keys the tests weigh: the regulated bench, the same key with
-    /// three times the friction, with none, and leaded back-heavy.
-    fn keys() -> Vec<(&'static str, Setup, f64)> {
-        let mut heavy = regulated();
-        heavy.key.leads = vec![Lead::at(-0.120, 0.030)];
+    /// The benches the tests weigh: the regulated bench, the same key with
+    /// three times the friction, with none, and weighed back-heavy.
+    fn keys() -> Vec<(&'static str, Bench)> {
+        let a = regulated();
         vec![
-            ("the regulated bench", regulated(), 6.0),
-            ("three times the friction", regulated(), 18.0),
-            ("no friction", regulated(), 0.0),
-            ("a back-heavy key", heavy, 6.0),
+            ("the regulated bench", bench(&a, 6.0)),
+            ("three times the friction", bench(&a, 18.0)),
+            ("no friction", bench(&a, 0.0)),
+            ("a back-heavy key", bench_with(&a, 6.0, back_heavy(&a))),
         ]
     }
 
@@ -905,8 +915,7 @@ mod tests {
     /// hand says, and carries it on to the other seat.
     #[test]
     fn down_and_up_are_the_band_at_the_seats_attitudes() {
-        for (name, a, kf_g) in keys() {
-            let b = bench(&a, kf_g);
+        for (name, b) in keys() {
             let sheet = b.sheet();
             let (top, bottom) = b.seats();
             let (d, u) = (
@@ -952,14 +961,13 @@ mod tests {
     /// moves by its tilt terms, bounded by hand ([`tilt`]).
     #[test]
     fn down_and_up_are_the_level_closed_form_within_the_tilt() {
-        for (name, a, kf_g) in keys() {
-            let b = bench(&a, kf_g);
+        for (name, b) in keys() {
             let sheet = b.sheet();
             let (top, bottom) = b.seats();
             let mass = b.mass.unwrap();
             let level = KeyOnFrame {
                 weight_moment_n_m: mass.mass * G * mass.com.x,
-                measuring_arm_m: a.protocol.measuring_point(&a.key),
+                measuring_arm_m: b.a.protocol.measuring_point(&b.a.key),
                 friction_n_m: b.friction.bound_n_m,
             }
             .branches();
@@ -1012,8 +1020,7 @@ mod tests {
     /// resolutions.
     #[test]
     fn halving_the_walks_step_changes_nothing() {
-        for (name, a, kf_g) in keys() {
-            let b = bench(&a, kf_g);
+        for (name, b) in keys() {
             let w = b.weighing();
             let seating = w.seating(&[]);
             let mut statics = Statics::new();
@@ -1043,36 +1050,83 @@ mod tests {
         grams * (at.x * c - at.y * s) / (point.x * c - point.y * s)
     }
 
+    /// The test weight of the first non-confusion test: `grams` set on the
+    /// key's top `x` metres in front of its balance pin, riding on the key
+    /// and pulling straight down. Built here and nowhere else: outside the
+    /// tests no mass is set on a key but the weights its protocols use, a
+    /// key's leads being in its weighing.
+    fn test_weight(b: &Bench, x: f64, grams: f64) -> PointLoad {
+        let at = b
+            .on_frame
+            .key
+            .top_at(b.on_frame.mounted.mechanism.parts(), x)
+            .expect("the key has a top there");
+        PointLoad::weight(
+            MaterialPoint {
+                body: b.on_frame.mounted.key,
+                at,
+            },
+            grams * 1e-3,
+        )
+    }
+
+    /// The sheet's balance and friction weight in full, with `standing` on
+    /// the key through every procedure they come from: the key seated with
+    /// it on, and walked from each seat with it on; and the key's angle at
+    /// its two seats.
+    fn balance_and_friction(b: &Bench, standing: &[PointLoad]) -> (f64, f64, f64, f64) {
+        let weighing = b.weighing();
+        let seating = weighing.seating(standing);
+        let mut statics = Statics::new();
+        let seats = seating.seats(&mut statics).expect("the key seats");
+        let [d, u] = [Stroke::Down, Stroke::Up].map(|stroke| {
+            seating
+                .walk(&mut statics, &seats, stroke)
+                .expect("the key walks")
+                .grams
+        });
+        let angle = b.on_frame.mounted.angle.0;
+        (
+            0.5 * (d + u),
+            0.5 * (d - u),
+            seats.top.q[angle],
+            seats.bottom.q[angle],
+        )
+    }
+
     /// Level 0, consistency, the first non-confusion test, through the
-    /// procedures: **one gram of lead moves the balance weight and leaves
-    /// the friction weight alone.** A technician checks this before anything
-    /// else, and a developer never would.
+    /// procedures: **one gram of mass set on the key moves the balance
+    /// weight and leaves the friction weight alone.** A technician checks
+    /// this before anything else, and a developer never would.
     ///
-    /// The lead's weight moves each edge of the band by its moment read at
-    /// the measuring point, at the attitude of the seat that edge is read
-    /// at: so the balance weight by the mean of the two, about 0.61 g for a
-    /// gram 150 mm out, and the friction weight by half their difference,
-    /// what the key's tilt between its two seats does to the lead's arm and
-    /// the measuring point's: the tolerance, derived from the two seats'
-    /// arms, a few thousandths of a gram, with the walks' resolution.
+    /// The test weight stands on the key's top 150 mm in front of its pin
+    /// while the key is seated and walked from each seat, as the sheet reads
+    /// balance and friction weight, and with nothing on it those are the
+    /// sheet's to the bit. Its weight moves each edge of the band by its
+    /// moment read at the measuring point, at the attitude of the seat that
+    /// edge is read at: so the balance weight by the mean of the two, about
+    /// 0.61 g, and the friction weight by half their difference, what the
+    /// key's tilt between its two seats does to the weight's arm and the
+    /// measuring point's: the tolerance, derived from the two seats' arms, a
+    /// few thousandths of a gram, with the walks' resolution.
     #[test]
-    fn one_gram_of_lead_moves_balance_weight_without_touching_friction() {
-        let bare = bench(&regulated(), 6.0);
-        let mut a = regulated();
-        let lead = Lead::at(0.150, 0.001);
-        a.key.leads = vec![lead];
-        let leaded = bench(&a, 6.0);
-        let (s0, s1) = (bare.sheet(), leaded.sheet());
-        let (top, bottom) = leaded.seats();
-        let at = Point::new(lead.from_balance, lead.height);
-        let (on_top, on_bottom) = (
-            reflected(&leaded, at, 1.0, top),
-            reflected(&leaded, at, 1.0, bottom),
+    fn one_gram_of_mass_moves_balance_weight_without_touching_friction() {
+        let b = bench(&regulated(), 6.0);
+        let sheet = b.sheet();
+        let (bw0, f0, ..) = balance_and_friction(&b, &[]);
+        assert_eq!(
+            bw0.to_bits(),
+            value(&sheet, ProcedureId::BalanceWeight).to_bits()
         );
-        let moved_bw =
-            value(&s1, ProcedureId::BalanceWeight) - value(&s0, ProcedureId::BalanceWeight);
-        let moved_f =
-            value(&s1, ProcedureId::FrictionWeight) - value(&s0, ProcedureId::FrictionWeight);
+        assert_eq!(
+            f0.to_bits(),
+            value(&sheet, ProcedureId::FrictionWeight).to_bits()
+        );
+        let weight = test_weight(&b, 0.150, 1.0);
+        let (bw1, f1, top, bottom) = balance_and_friction(&b, &[weight]);
+        let at = weight.at.at;
+        let (on_top, on_bottom) = (reflected(&b, at, 1.0, top), reflected(&b, at, 1.0, bottom));
+        let (moved_bw, moved_f) = (bw1 - bw0, f1 - f0);
         let tolerance = 2.0 * resolution();
         assert!(
             (moved_bw + 0.5 * (on_top + on_bottom)).abs() <= tolerance,
@@ -1082,7 +1136,7 @@ mod tests {
         let tilt = 0.5 * (on_bottom - on_top);
         assert!(
             (moved_f - tilt).abs() <= tolerance,
-            "the lead moved F by {moved_f} g, the tilt between the seats accounts for {tilt} g"
+            "the gram moved F by {moved_f} g, the tilt between the seats accounts for {tilt} g"
         );
         assert!(tilt.abs() < 0.01, "and that is a few thousandths of a gram");
         assert!(moved_bw < -0.5, "BW must fall by about 0.61 g: {moved_bw}");
@@ -1151,8 +1205,8 @@ mod tests {
     /// covering's (the audit's RUST-7: the protocol runs on both).
     #[test]
     fn stanwoods_key_friction_weight_is_the_friction_and_the_tilts_residue() {
-        for (name, a, kf_g) in keys() {
-            let b = bench(&a, kf_g);
+        for (name, b) in keys() {
+            let a = &b.a;
             let sheet = b.sheet();
             let kf = read(&sheet, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
             let (mass, station) = temporary(kf);
@@ -1194,8 +1248,8 @@ mod tests {
     /// friction set at the level arm reads half a percent heavier.
     #[test]
     fn the_key_friction_weight_zeroed_on_the_frame_is_the_friction_over_the_tilted_arm() {
-        for (name, a, kf_g) in keys() {
-            let b = bench(&a, kf_g);
+        for (name, b) in keys() {
+            let a = &b.a;
             let sheet = b.sheet();
             let kf = value(&sheet, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
             let (top, _) = b.seats();
@@ -1474,13 +1528,12 @@ mod tests {
     /// heavy behind.
     #[test]
     fn bushings_with_no_friction_read_no_key_friction_weight() {
-        let mut heavy = regulated();
-        heavy.key.leads = vec![Lead::at(-0.120, 0.030)];
-        for (name, a) in [
-            ("the regulated bench", regulated()),
-            ("a back-heavy key", heavy),
+        let a = regulated();
+        for (name, b) in [
+            ("the regulated bench", bench(&a, 0.0)),
+            ("a back-heavy key", bench_with(&a, 0.0, back_heavy(&a))),
         ] {
-            let sheet = bench(&a, 0.0).sheet();
+            let sheet = b.sheet();
             let kf = read(&sheet, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
             assert!(
                 kf.value > 0.0 && kf.value <= resolution(),
@@ -1491,19 +1544,19 @@ mod tests {
         }
     }
 
-    /// The keys a key friction weight is typed on: heavy in front, heavy
-    /// behind, and weighed at the half inch.
-    fn typed_on() -> Vec<(&'static str, Setup)> {
-        let mut heavy = regulated();
-        heavy.key.leads = vec![Lead::at(-0.120, 0.030)];
+    /// The keys a key friction weight is typed on, each with its mass:
+    /// heavy in front, heavy behind, and weighed at the half inch.
+    fn typed_on() -> Vec<(&'static str, Setup, Option<MassProps>)> {
+        let a = regulated();
         let mut half_inch = regulated();
         half_inch.protocol = TouchweightProtocol {
             measuring_point_from_lip: MEASURING_POINT_HALF_INCH,
         };
+        let half_inch_mass = mass_of(&half_inch.key);
         vec![
-            ("the regulated bench", regulated()),
-            ("a back-heavy key", heavy),
-            ("at the half inch", half_inch),
+            ("the regulated bench", a.clone(), mass_of(&a.key)),
+            ("a back-heavy key", a.clone(), back_heavy(&a)),
+            ("at the half inch", half_inch, half_inch_mass),
         ]
     }
 
@@ -1519,11 +1572,10 @@ mod tests {
     /// at the half inch.
     #[test]
     fn a_key_friction_weight_typed_reads_back_by_stanwoods_procedure() {
-        for (name, a) in typed_on() {
-            let mass = mass_of(&a.key);
+        for (name, a, mass) in typed_on() {
             let point = a.protocol.measuring_point_on_key(&a.key);
             // Bushings to start from: the search replaces them.
-            let b = bench(&a, 6.0);
+            let b = bench_with(&a, 6.0, mass);
             for typed in [1.0, 6.0, 9.5, 14.0] {
                 let found = b
                     .weighing()

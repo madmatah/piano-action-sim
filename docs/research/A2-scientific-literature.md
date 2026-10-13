@@ -1155,7 +1155,11 @@ As an automated test suite, in order of increasing cost. The levels are FOUNDATI
 | V0.2 Equivalent inertia referred to the key | J = 0.0221 kg·m², on the simplified model | consistency | Thorin 2013, Table 2.2 [V] |
 | V0.3 Down weight and up weight of Thorin's demonstrator, quasi-static | F_down ≈ 0.70 N and F_up ≈ 0.38 N at the key end (about 71 and 39 g); C_w = 0.132 N·m, C_d = 0.039 N·m | validation, of the parameter set's lineage too (§4.2, §7.2) | Thorin 2013 §2.2, Table 2.2 [V] |
 | V0.4 Stanwood consistency | BW = (D+U)/2, F = (D−U)/2, R = (BW+FW−WBW)/SW, **all** from the same model | consistency | Stanwood 2014, Appendix A [V] |
-| V0.5 Leading the key to the technicians' targets | D ≈ 50 g, U ≈ 25 g (without damper), reached by the scripted procedure | consistency, a protocol run on the model | Thorin 2013, Appendix A [V] |
+
+The last step of Thorin's procedure leads the key, only where it cannot be
+avoided, to a down weight close to 50 g and an up weight of 25 g without damper
+(§13). No test leads a key: the bench models no lead, a key being weighed whole,
+its leads in it (FOUNDATIONS §2.1).
 
 **Dynamic, one isolated note**
 | Test | Target | Kind | Source |

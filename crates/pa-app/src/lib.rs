@@ -7,9 +7,10 @@
 //! One use case lives here: [`key_bench`], the single-key weighing bench. The
 //! regulation solve it calls, which turns trade targets into punching stacks,
 //! is domain code: [`pa_core::regulation`]. The bench's
-//! composite key has no measured mass; [`composite_key`] derives one from its
-//! volume for the mechanism, which takes a mass as data and never computes
-//! one. The closed forms on the frame still read the volume model directly.
+//! composite key has no measured mass until it is weighed whole;
+//! [`composite_key`] derives one from its volume for the mechanism, which
+//! takes a mass as data and never computes one, and the height of a weighed
+//! key's centre of mass, which no scale gives.
 //! Beside them, [`golden`] records every reading of the bench and of a set of
 //! fixture benches in full bits, so that a change to the engine shows every
 //! number it moves.

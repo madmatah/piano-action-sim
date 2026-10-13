@@ -81,8 +81,8 @@ pub const FIXTURES: [Fixture; 5] = [
     },
     Fixture {
         name: "back-heavy-key",
-        what: "the standard bench with 30 g of lead 120 mm behind the balance pin: a key \
-               whose front weight is negative",
+        what: "the standard bench with its key weighed back-heavy: 151.12 g, and a front \
+               weight of -8.09 g read 13 mm back from its lip",
         build: back_heavy_key,
     },
     Fixture {
@@ -108,9 +108,15 @@ fn wedged_frame() -> KeyBench {
     bench
 }
 
+/// The key weighed whole and back-heavy, typed in full: the mass and the
+/// front weight at 13 mm of the composite key with 30 g more, 120 mm behind
+/// its balance pin, so the same mass and static moment, the height of its
+/// centre of mass the volume model's.
 fn back_heavy_key() -> KeyBench {
     let mut bench = KeyBench::standard();
-    bench.add_lead(-0.120, 30.0);
+    bench
+        .weigh_key(151.116_689_639_242_2, -8.093_919_058_496_057, 0.013)
+        .expect("a back-heavy key is weighed");
     bench
 }
 
@@ -239,7 +245,6 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     // the readout is a compile error here until the sheet records it.
     let BenchReadout {
         key_mass_g,
-        lead_count,
         gap_front_mm,
         gap_back_mm,
         key_friction_weight_g,
@@ -254,7 +259,6 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     } = readout;
 
     number(out, "readout.key_mass_g", key_mass_g);
-    line(out, "readout.lead_count", &lead_count.to_string());
     optional(out, "readout.gap_front_mm", gap_front_mm);
     optional(out, "readout.gap_back_mm", gap_back_mm);
     number(out, "readout.key_friction_weight_g", key_friction_weight_g);

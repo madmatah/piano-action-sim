@@ -1,5 +1,5 @@
-//! Parametric part definitions, the parts they build, and the mass properties
-//! of the composite key.
+//! Parametric part definitions, the parts they build, the mass properties
+//! of the composite key, and what is known of a key's mass.
 //!
 //! # Two things built from one key
 //!
@@ -11,10 +11,16 @@
 //! [`KeyDesign::outline_vertices`] integrated as a uniform prism and the
 //! capstan turned from its profile, is the composite key's mass: an
 //! assumption with no record, drawn by nothing, which the parts tile exactly
-//! (`the_drawn_key_tiles_the_polygon_its_mass_is_integrated_over`). A key's
-//! mass properties are to be measured rather than derived from a volume
-//! (`docs/FOUNDATIONS.md` §2.3), and the volume model leaves with the composite
-//! key.
+//! (`the_drawn_key_tiles_the_polygon_its_mass_is_integrated_over`).
+//!
+//! # A key's mass is weighed
+//!
+//! A key is weighed whole, its leads in it: its mass and its front weight,
+//! which gives its static moment about the balance pin ([`key_mass`]). Until
+//! it is, the volume model's estimate stands for the whole of its mass; once
+//! it is, for the height of its centre of mass alone, which no scale gives.
+//! The volume model leaves with the composite key (`docs/FOUNDATIONS.md`
+//! §2.3).
 //!
 //! # The key's local frame
 //!
@@ -29,12 +35,14 @@ pub mod faults;
 pub(crate) mod fixtures;
 pub mod frame;
 pub mod key;
+pub mod key_mass;
 pub mod mounts;
 pub mod verdicts;
 
 pub use faults::Fault;
 pub use frame::{FrameDesign, FrameRanges, PunchingStack};
 pub use key::KeyRanges;
+pub use key_mass::{FrontWeightReading, KeyMass, NotAWeighing};
 
 use crate::contact::{Part, PartId};
 use crate::geometry::{Point, Seg};
@@ -75,8 +83,7 @@ pub struct MassProperties {
 }
 
 impl MassProperties {
-    /// The properties of nothing: a legitimate value, since a key with no leads
-    /// has no lead contribution.
+    /// The properties of nothing: what two bodies of no mass combine into.
     pub const ZERO: Self = Self {
         mass: 0.0,
         com: Point::new(0.0, 0.0),
@@ -126,7 +133,7 @@ impl MassProperties {
         })
     }
 
-    /// A point mass at `at`: a key lead, a screw, a lump of solder.
+    /// A point mass at `at`. Only the tests call it.
     pub fn point_mass(at: Point, mass: f64) -> Self {
         Self {
             mass,
@@ -355,29 +362,6 @@ impl Default for Capstan {
     }
 }
 
-/// A lead let into the side of a key.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Lead {
-    /// Position along the key, metres from the balance pin, positive forwards.
-    pub from_balance: f64,
-    /// Height of its centre above the key's reference underside, metres.
-    pub height: f64,
-    /// Mass, kg.
-    pub mass: f64,
-}
-
-impl Lead {
-    /// A lead of the given mass at the given distance in front of the balance
-    /// pin, at mid-height of a standard keystick.
-    pub fn at(from_balance: f64, mass: f64) -> Self {
-        Self {
-            from_balance,
-            height: 0.010,
-            mass,
-        }
-    }
-}
-
 /// Everything about one key that the choice of parts fixes.
 ///
 /// Longitudinal dimensions are signed distances from the balance pin, positive
@@ -512,8 +496,6 @@ pub struct KeyDesign {
     pub density: f64,
     /// The capstan screwed into the back of the key.
     pub capstan_screw: Capstan,
-    /// Leads, in the order a technician would list them.
-    pub leads: Vec<Lead>,
     /// Measured total mass of the bare keystick, kg, when it has been weighed.
     ///
     /// When present it scales the derived distribution rather than replacing it:
@@ -693,22 +675,11 @@ impl KeyDesign {
         }
     }
 
-    /// Mass properties of the leads alone.
-    pub fn lead_mass_properties(&self) -> MassProperties {
-        self.leads.iter().fold(MassProperties::ZERO, |acc, l| {
-            acc.combined(MassProperties::point_mass(
-                Point::new(l.from_balance, l.height),
-                l.mass,
-            ))
-        })
-    }
-
-    /// Mass properties of the whole key, stick plus leads.
+    /// Mass properties of the whole key as its volume model gives them: the
+    /// keystick and its capstan, [`Self::stick_mass_properties`]. No lead is
+    /// modelled: a real key's leads are in its weighing ([`KeyMass`]).
     pub fn mass_properties(&self) -> Option<MassProperties> {
-        Some(
-            self.stick_mass_properties()?
-                .combined(self.lead_mass_properties()),
-        )
+        self.stick_mass_properties()
     }
 }
 
@@ -756,7 +727,6 @@ impl Default for KeyDesign {
             width: 0.022,
             density: 430.0,
             capstan_screw: Capstan::default(),
-            leads: Vec::new(),
             measured_stick_mass: None,
         }
     }
@@ -831,28 +801,6 @@ mod tests {
         assert!(
             polygon_mass_properties(&KeyDesign::default().outline_vertices(), 0.0, 430.0).is_none(),
             "zero width is degenerate"
-        );
-    }
-
-    /// Point masses add where they are put, and nowhere else.
-    #[test]
-    fn leads_move_the_centre_of_mass_towards_themselves() {
-        let bare = KeyDesign::default();
-        let bare_com = bare.mass_properties().unwrap().com.x;
-
-        let mut leaded = bare.clone();
-        leaded.leads = vec![Lead::at(0.150, 0.015)];
-        let leaded_props = leaded.mass_properties().unwrap();
-
-        assert!(
-            leaded_props.com.x > bare_com,
-            "a lead in front of the balance pin must move the centre of mass forward: \
-             {bare_com} -> {}",
-            leaded_props.com.x
-        );
-        assert!(
-            (leaded_props.mass - bare.mass_properties().unwrap().mass - 0.015).abs() < 1e-15,
-            "the lead's own mass must be added exactly once"
         );
     }
 
