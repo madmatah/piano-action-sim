@@ -3,8 +3,9 @@ import type { Contact } from "./Contact";
 import type { ContactState } from "./ContactState";
 
 /**
- * A contact the view marks, in the keybed's frame: where the contact rows
- * put its two points, not where a body's pose carries them.
+ * A contact the view marks, in the keybed's frame: one active row, where
+ * the contact rows put its two points, not where a body's pose carries
+ * them, with its normal and what it carries.
  */
 export type MarkedContact = { 
 /**
@@ -14,11 +15,11 @@ pair: Contact,
 /**
  * Where the key's surface is, millimetres.
  */
-on_key: [number, number], 
+on_key_mm: [number, number], 
 /**
  * Where the frame's surface is, millimetres.
  */
-on_frame: [number, number], 
+on_frame_mm: [number, number], 
 /**
  * The signed gap between them, millimetres: negative where the drawn
  * parts overlap.
@@ -27,4 +28,15 @@ gap_mm: number,
 /**
  * Closed, open or overlapping.
  */
-state: ContactState, };
+state: ContactState, 
+/**
+ * The row's unit normal, from the frame's surface towards the key's.
+ */
+normal: [number, number], 
+/**
+ * The force the row pushed the key with in the last equilibrium,
+ * grams-force: its multiplier, one admissible split of the loads where
+ * friction or redundant rows share them, never a verdict; zero on a
+ * row that carried nothing.
+ */
+force_g: number, };

@@ -161,7 +161,7 @@ pub fn faults(parts: &[Part], key: &KeyRanges, frame: &FrameRanges) -> Vec<Fault
 
 #[cfg(test)]
 mod tests {
-    use super::super::frame::{papers_for, FrameDesign, KeyKind};
+    use super::super::frame::{FrameDesign, KeyKind};
     use super::super::KeyDesign;
     use super::*;
     use crate::mechanism::BodyId;
@@ -170,9 +170,7 @@ mod tests {
     /// the bench would draw.
     fn faults_of(key: &KeyDesign, frame: &FrameDesign) -> Vec<Fault> {
         let mut parts = Vec::new();
-        let balance = papers_for(frame.balance_punching.paper);
-        let front = papers_for(frame.front_punching.paper);
-        let frame_ranges = frame.parts(key, KeyKind::Natural, &balance, &front, &mut parts);
+        let frame_ranges = frame.parts(key, KeyKind::Natural, &mut parts);
         let key_ranges = key.parts(BodyId(1), &mut parts);
         faults(&parts, &key_ranges, &frame_ranges)
     }

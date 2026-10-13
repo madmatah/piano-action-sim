@@ -37,10 +37,12 @@ things an application composes:
 - **a realistic rendering in 3D**, beside the technical section that validates
   the geometry (§3.11).
 
-Built: the physics, configurator and diagnostics of the key on its frame, and
-the technical section and solid view of the bench, the engine's first
-application. Planned: the rest, and an interface shaped so that a new
-application composes these five without changing the engine (§7).
+Built: the physics, configurator and diagnostics of the key on its frame, the
+technical section and solid view of the bench, the engine's first
+application, and the interface it composes them through: every setting
+addressed by a path, every operation run as an action, each edit validated
+before any solve, logged and replayable to the same state (§7.2, §7.3).
+Planned: the rest, the state saved and reopened (§7.4) among it.
 
 ### 1.2 Uses
 
@@ -55,11 +57,12 @@ The applications in view, others to follow:
 3. **Discover the action**: parts in section and in solid, contacts visible,
    motion slowed until escapement can be watched. Section and solid of the key
    and frame, with the key's contacts marked on them, built; motion planned.
-4. **Design an action.** Parts and frame are edited freely. What cannot work is
-   avoided or limited, refused or clamped with its reason; what can be handled
-   is handled, so a frame that does not fit its key is drawn as it is, its
-   faults named in millimetres. Faults for the key and frame built; a
-   validation layer naming every impossible configuration planned (§7.3).
+4. **Design an action.** Parts and frame are edited freely. What no part could
+   be built as is refused with its reason, the limiting dimension and the
+   shortfall in millimetres; what can be handled is handled, so a frame that
+   does not fit its key is drawn as it is, its faults named in millimetres.
+   Faults for the key and frame, and the validation layer that refuses a key
+   no one could cut, built (§7.3).
 5. **Play a score on 88 notes**, dampers and three pedals included. Planned.
 6. **A game whose task is to regulate a piano.** Planned.
 
@@ -618,9 +621,11 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   nose-up on its balance punching, as a strong pull turns a key on a raised
   balance rail or a lowered cloth, its underside meeting the top of the
   balance rail behind the pin.
-- **No validation layer**: a front edge close to the capsule makes the outline
-  cross itself, and the front pin and mortise at their maximum put the pin
-  through the top of the key, both weighed with no fault raised.
+- **What the validation layer does not see**: the rails against one another,
+  so a front rail moved back onto the balance rail is drawn through it; and
+  the capstan's thread against its hole, so a capstan screwed up past its
+  shaft's length, within the 2 to 30 mm the bench admits, is drawn standing
+  above the wood (§7.3).
 - **Drawing**: one row of pins; flat-topped pins; a flat balance crown only.
   The balance mortise is not drawn, none of its dimensions being measured, so
   the balance pin stands hidden in the key's wood; the front mortise's place
@@ -662,9 +667,15 @@ lifted off its punching otherwise and its friction where they need it, or
 nothing, a key off its pin and its frame; the gaps at the front punching and the
 back rail cloth; the bushings' friction, named once, as the key friction weight
 Stanwood's protocol reads; and how far the punchings' drawn edges overlap the
-key). Every slider shows the value the engine holds, the key friction weight's
-as the sheet reads it and every other as the settings hold it, and keeps no copy
-of it; the target and weighing fields hold what is typed until it is sent.
+key). The panels and their controls are the ones the engine's registry
+describes, in its order, each control's range, step and unit the engine's
+(§7.2); the page adds the readings and the notes around them. Every slider
+shows the value the engine holds, the key friction weight's as the sheet reads
+it and every other as the settings hold it, and keeps no copy of it; a slider
+moved where no key could be built is refused, the slider back where the
+setting stands and the page saying why right under it, with the limiting
+dimension and the shortfall (§7.3); the target and weighing fields hold what
+is typed until it is sent.
 Faults are listed in millimetres, every number on the page is computed in
 Rust, and every sentence is the English catalogue's, composed from the codes the
 engine sends (§3.12).
@@ -728,8 +739,9 @@ someone redoes the downstream one, and a designer pushing a geometry until it
 breaks needs to know where: both are what the tool teaches. Ruled out:
 cascading, which hides the lesson, and refusing every state out of
 specification, which forbids design. The limit is honesty: what cannot be
-computed or drawn truthfully is refused or clamped, with its reason (§7.3).
-Built for the frame (§2.1); planned for regulation settings, as badges.
+computed or drawn truthfully is refused, never clamped, with its reason, the
+limiting dimension and the shortfall, before any solve (§7.3). Built for the
+key and its frame (§2.1, §7.3); planned for regulation settings, as badges.
 
 ### 3.4 Regulation as targets; the coordinate is normative
 
@@ -1410,8 +1422,10 @@ wins, so pedal force falls as notes are played.
 
 ```
 crates/pa-core     the domain: geometry, mechanism, contact, solve, parts, measure,
-                   regulation. No I/O, no web; one dependency, libm (§4.4)
-crates/pa-app      the application: the single-key bench, KeyBench; the golden sheet
+                   regulation, registry, validate. No I/O, no web; one
+                   dependency, libm (§4.4)
+crates/pa-app      the application: the single-key bench as an instrument, set by
+                   path and by action, and its registry; the golden sheet
 crates/pa-wasm     the browser's adapter of pa-app; the only crate that knows JavaScript
 crates/pa-cli      the shell's adapter of pa-app: `weigh`, `golden`
 apps/bench         the bench page: React, react-three-fiber
@@ -1442,12 +1456,13 @@ in degrees, is recorded as the slope it comes from, because the platform's
 `atan` may differ in the last bit.
 
 **The engine and its applications.** The crates are the engine (§1.1) and
-`apps/bench` its first application. Planned: the engine's interface is what
-applications are written against. The boundary of §7.2, the parameter registry
-and validation layer of §7.3 and persistence (§7.4) make the configurator, the
-diagnostics and the state an application composes; a rendering package and an
-interface package are extracted from the bench when a second application needs
-them, not created empty before.
+`apps/bench` its first application. Built: the engine's interface is what an
+application is written against, the instrument of `pa-app` (§7.2): its
+registry and validation layer (§7.3) make the configurator, its documents the
+diagnostics, and its log and state hash a state that replays. Planned:
+persistence (§7.4); a rendering package and an interface package extracted
+from the bench when a second application needs them, not created empty
+before.
 
 **One definition per part.** The key and its frame are built as parts: one
 closed outline of lines and arcs for each piece of material, on the body that
@@ -1474,60 +1489,123 @@ key's always measured (§2.3).
 ### 7.2 The WebAssembly boundary
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
-double mount cannot construct two engines) and reads five JSON documents, each
-apart (`crates/pa-app/src/boundary.rs`). The **settings**: every value the
-controls set, the key's weighing as typed and the bushings' friction as the
-torque it is stored as among them, always valid whatever the frame does; the
-key friction weight its control shows is the sheet's reading of that torque.
-The **sheet**: every reading by its procedure's code, read (its value in
-full, what the trade reads it as by the protocol's rounding, its unit and
-resolution, its trust, its conditions and the solves it took) or refused with
-its reason, whether or not the key can be seated, so that a frame that cannot
-seat its key reads its jig and refuses the rest line by line. The
-**diagnostics**: why the key cannot be seated, how it rides where its stops
-fight, the faults, how it stands at its two seats, what holds it under the
-weight on its measuring point and the gaps there, and how far the punchings'
-drawn edges overlap it. The **state**: one pose per body, an origin, a cosine and
-a sine, which the view applies and computes none of; the measuring point on the
-key; the contacts within a millimetre of closing, each its two surface points in
-the keybed's frame, its gap and whether it is closed, open or overlapping. The
-**scene**: every part's outline in its own body's frame, in millimetres, with its
-material and the provenance of each stretch, which the page keeps while the
-geometry does not change. Faults, verdicts and refusals cross as codes with
-their parameters in the trade's units, each unit in its parameter's name
-(`{"code":"pin_outside_mortise","by_mm":16.5}`); they mirror the domain's enums
-through matches with no catch-all arm, so a refusal added in `pa-core` and not
-mapped is a compile error. The page words them from its catalogue (§3.12) and
-writes each reading to its protocol's resolution. Each setting has its own
-setter; the three the engine may refuse, a regulation, a key friction weight and
-a weighing of the key, answer with the refusal's code, the bench left as it was.
-The TypeScript types of every document are generated from the Rust ones by
-`ts-rs` into `crates/pa-wasm/types/`, committed and re-exported by `@pas/wasm`
-as `@pas/wasm/types`, never edited by hand: a test in `pa-app` generates them
-and fails, rewriting them, wherever the committed files differ. `pa-cli` prints
-the same codes. A function returns any fixture's golden sheet, for the test that
-holds the module to the native bits.
+double mount cannot construct two engines) and reads six JSON documents, each
+apart (`crates/pa-app/src/boundary.rs`). The **registry**: every setting's
+path, its unit in its name (`frame.front_rail.pin_height_mm`), what it
+measures, its layer, the range it admits and how it moves, and whether `set`
+reaches it or an action does; and the page that presents them, panel by
+panel, each control with the code its label is worded by and the range its
+slider offers (§7.3). The **settings**: every value the controls set, nested
+as the paths are, so the value at a path is read at that path, the key's
+weighing as typed and the bushings' friction as the torque it is stored as
+among them, always valid whatever the frame does; the key friction weight
+its control shows is the sheet's reading of that torque. The **sheet**: every
+reading by its procedure's code, read (its value in full, what the trade
+reads it as by the protocol's rounding, its unit and resolution, its trust,
+its conditions and the solves it took) or refused with its reason, whether
+or not the key can be seated, so that a frame that cannot seat its key reads
+its jig and refuses the rest line by line. The **diagnostics**: why the key
+cannot be seated, how it rides where its stops fight, the faults, how it
+stands at its two seats, what holds it under the weight on its measuring
+point and the gaps there, how far the punchings' drawn edges overlap it, and
+the last edit refused since one was taken, with why. The **state**: one pose
+per body, an origin, a cosine and a sine, which the view applies and computes
+none of; the measuring point on the key; the contacts within a millimetre of
+closing, each its two surface points in the keybed's frame, its gap, whether
+it is closed, open or overlapping, its row's normal, and the force the row
+carried in the last equilibrium, one admissible split of the loads where
+friction or redundant rows share them (§2.1), never read as a verdict. The
+**scene**: every part's outline in its own body's frame, in millimetres, with
+its material and the provenance of each stretch, which the page keeps while
+the geometry does not change. Every number in a trade unit carries it in its
+name. Faults, verdicts, refusals and problems cross as codes with their
+parameters in the trade's units, each unit in its parameter's name
+(`{"code":"pin_outside_mortise","by_mm":16.5}`); they mirror the domain's
+enums through matches with no catch-all arm, so a refusal added in `pa-core`
+and not mapped is a compile error. The page words them from its catalogue
+(§3.12) and writes each reading to its protocol's resolution.
 
-**Planned.** Settings addressed by path and actions by name, `set(path, value)`
-and `act`, described by `describe()` with each setting's unit, admissible range
-and step (§7.3), in place of one setter per value. Outlines cross only when the
-geometry changes, and poses at each step. Per-step state is a flat `f64` buffer
-read through a pointer and a length, the JavaScript view rebuilt whenever
-`memory.buffer` changes, since growing linear memory detaches old views. A step
-that produces a non-finite value stops and keeps the last finite state, so none
-is ever published.
+The page changes the bench by two calls. `set(path, value)` sets a setting in
+the unit its path names; `act(action)` runs an operation: laying a paper from
+the drawer or lifting one, regulating to a key height and a key dip, weighing
+the key whole, typing the key friction weight Stanwood's protocol reads,
+placing the frame under the key. Each answers that it was done, the papers a
+regulation laid and what they give, or why it was refused, by its code, the
+bench left as it was to the bit. After every edit taken the key is solved one
+increment from where it stood, so it is always drawn at an equilibrium. Every
+edit taken is logged, and the log replayed on the bench it started from gives
+the same state, which `state_hash` names: FNV-1a over the bit patterns of
+every normative coordinate, of where the last equilibrium left the key and
+of what each contact row carried there, in a fixed order, a hash whose
+algorithm no Rust release changes. The
+TypeScript types of every document and of the actions are generated from the
+Rust ones by `ts-rs` into `crates/pa-wasm/types/`, committed and re-exported
+by `@pas/wasm` as `@pas/wasm/types`, never edited by hand: a test in
+`pa-app` generates them and fails, rewriting them, wherever the committed
+files differ. `pa-cli` changes the bench by the same calls and prints the same
+codes. A function returns any fixture's golden sheet, for the test that holds
+the module to the native bits.
+
+The page is drawn from the registry (`apps/bench/src/Control.tsx`): one
+component draws whichever control the registry describes, a slider over a
+setting, a punching's papers laid from the drawer and lifted, fields sent
+together by one action, the key friction weight, a button; its value read
+from the settings at its path, its range, step and unit the engine's, its
+label the catalogue's by the code the registry gives it. A form's fields
+open on what the bench holds for each quantity, as the registry says where to
+read it. An edit refused is said right after the control that made it, from
+the diagnostics. Each control carries the engine's identifier, `data-path`
+for a setting and `data-action` for an action, as each reading carries its
+procedure's, and the smoke test drives the page by those, never by its
+wording, so it drives a page in any language.
+
+**Planned.** Outlines cross only when the geometry
+changes, and poses at each step. Per-step state is a flat `f64` buffer read
+through a pointer and a length, the JavaScript view rebuilt whenever
+`memory.buffer` changes, since growing linear memory detaches old views. A
+step that produces a non-finite value stops and keeps the last finite state,
+so none is ever published.
 
 ### 7.3 The parameter registry and the validation layer
 
-**Planned.** Every setting has a stable path, a unit, an admissible range, a
-layer, an actuator with its step, and a provenance; the WebAssembly interface
-(`set(path, value)`, `describe()`), the panels and the saved files are generated
-from it, and the defaults load from `data/params/` with a test that each has a
-record. `validate(design, regulation)` runs on every load and every edit, before
-any solve: the outline does not cross itself, features lie inside the keystick,
-the capstan clears the blocks, dimensions are positive, inputs are finite. A
-violation names the limiting dimension and the shortfall; an action regulated
-into jamming is a state to report, not an error.
+**Built.** Every setting is declared in `pa-core` beside the field it sets
+(`pa_core::registry`): what it measures, the range a part can physically have
+in SI, how it moves, its layer (design, regulation, protocol, experiment) and
+whether it is set directly, aimed at as a target or typed as it was read on
+a real part. A regulating screw turns continuously, with no quantum; a
+paper is one the drawer holds. `pa-app` composes the declarations under
+paths, each with the trade unit in its name, converting once between the
+domain's SI and that unit, a position behind the balance pin read as the
+distance behind it; and adds what only an application knows, the page that
+presents them: its panels in order, each control with the path it sets or the
+action it runs, the range a slider offers inside the one the setting admits,
+the code it is worded by, and where a form's field reads its first value. A key friction weight is typed and shown in grams at the
+measuring point, as Stanwood's protocol reads it, through the action that
+inverts the protocol; what the registry stores is the torque. The papers are
+a list on each punching, held once in the frame and changed only by laying or
+lifting a paper; ratios have no path (rule 11).
+
+`validate` (`pa_core::validate`) runs on every edit and on every design an
+instrument is built from, before any solve, and refuses what no part could
+be built as, naming the limiting dimension and the shortfall: a value that is
+not a number or an infinity, anywhere in the design; a value outside its
+setting's range; a paper no drawer holds; a key weighed at no mass; an
+outline crossing itself, a glued part run into the next along the key's top
+(a key front brought back until its covering runs into the key button) or the
+chamfer past the key front; the capstan in a glued block, or behind the back
+check block off the keystick's full height; the front mortise off the flat of
+the underside, or cut through the top of the keystick; the measuring point
+off the covering. A refused edit leaves the instrument as it was, to the bit
+of its state hash, and the diagnostics keep it. Everything an assembled
+keyboard can be, however badly regulated, is computed and reported, not
+refused: a pin standing proud of its mortise is a state, the key riding on
+it; an action regulated into jamming is a state to report, not an error.
+
+**Planned.** The defaults loaded from `data/params/` with a test that each has
+a record, and each setting's provenance beside it; the paths a profile needs
+beyond the bench's page, the tail's end, the front mortise's place and
+length, the key's row, with the profiles that set them; the rails checked
+against one another and the capstan's thread against its hole (§2.3).
 
 ### 7.4 Persistence
 
@@ -1604,7 +1682,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), and the boundary in codes and numbers, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), built; the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

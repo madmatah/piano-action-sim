@@ -356,6 +356,81 @@ impl Mounted {
     }
 }
 
+/// What each contact row carries in one equilibrium of a mounted key: the
+/// rows the static solve read, with the force each pushed with, and the
+/// balance punching's push where the solve held the key on it.
+///
+/// One admissible split of the loads, the one the solve returned: where
+/// friction or redundant rows share a load, rigid statics leave the split
+/// open (`docs/FOUNDATIONS.md` §2.1), and no verdict is read from it
+/// ([`crate::parts::verdicts`]). It is what a view draws to show where the
+/// key bears and roughly how hard.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Carried {
+    supports: Vec<crate::solve::Support>,
+    /// The balance punching's pair and its push, newtons, where the solve
+    /// held the key on its punching and the punching's rows are not among
+    /// the supports.
+    punching: Option<(u16, f64)>,
+}
+
+impl Carried {
+    /// Nothing carried: a key that no equilibrium holds.
+    pub const NOTHING: Self = Self {
+        supports: Vec::new(),
+        punching: None,
+    };
+
+    /// The force the row of `pair` meeting at `feature` pushes with,
+    /// newtons: zero for a row the equilibrium left open or did not read.
+    pub fn force(&self, pair: u16, feature: crate::contact::Feature) -> f64 {
+        match self.punching {
+            Some((p, push)) if p == pair => push,
+            _ => self
+                .supports
+                .iter()
+                .find(|s| s.by == Holder::Contact { pair, feature })
+                .map_or(0.0, |s| s.force),
+        }
+    }
+
+    /// The rows the equilibrium read, in the solve's order, each with its
+    /// gap, its force and its normal.
+    pub fn supports(&self) -> &[crate::solve::Support] {
+        &self.supports
+    }
+
+    /// The balance punching's pair and its push, newtons, where the solve
+    /// held the key on its punching and the punching's rows are not among
+    /// the supports.
+    pub fn punching(&self) -> Option<(u16, f64)> {
+        self.punching
+    }
+}
+
+impl Mounted {
+    /// What each row carries in `eq`, an equilibrium of this key
+    /// ([`Self::solve`]). Where the solve held the key on its punching, the
+    /// slide's reaction is the punching's push straight up, and its
+    /// multiplier along the underside's normal, tilted with the key, that
+    /// reaction over the cosine of the key's angle.
+    pub fn carried(&self, eq: &Equilibrium) -> Carried {
+        let punching = self.lift.as_ref().and_then(|lift| {
+            let listed = eq
+                .supports
+                .iter()
+                .any(|s| matches!(s.by, Holder::Contact { pair, .. } if pair == lift.pair));
+            let reaction = eq.reactions[lift.coord.0];
+            (!listed && reaction != 0.0)
+                .then(|| (lift.pair, reaction / libm::cos(eq.q[self.angle.0])))
+        });
+        Carried {
+            supports: eq.supports.clone(),
+            punching,
+        }
+    }
+}
+
 /// The key's nominal pose on its frame, where a static solve that seats it
 /// by rule starts.
 ///
@@ -797,9 +872,9 @@ pub struct OnItsFrame {
 }
 
 /// `key` on `frame` in `mount`, its key standing on the row of pins of
-/// `kind`, the papers laid on the two punchings as given, bottom first; the
-/// key's mass `mass`, `None` for a key nobody has weighed; its bushings'
-/// friction a torque bound of `friction` newton-metres.
+/// `kind`, the papers its punchings hold drawn on them; the key's mass
+/// `mass`, `None` for a key nobody has weighed; its bushings' friction a
+/// torque bound of `friction` newton-metres.
 ///
 /// The one place a key is put on its frame for a procedure to read, so that
 /// the bench's readings and the regulation solve that lays its papers read
@@ -808,19 +883,16 @@ pub struct OnItsFrame {
 /// about its own balance pin, on its row: the natural's at the origin of the
 /// keybed's frame, the sharp's the row's offset behind it, where the frame
 /// draws that pin and its punching.
-#[allow(clippy::too_many_arguments)]
 pub fn on_its_frame(
     mount: KeyMount,
     key: &KeyDesign,
     frame: &FrameDesign,
     kind: KeyKind,
-    balance_papers: &[f64],
-    front_papers: &[f64],
     mass: Option<MassProps>,
     friction: f64,
 ) -> Result<OnItsFrame, Problem> {
     let mut parts = Vec::new();
-    let frame_ranges = frame.parts(key, kind, balance_papers, front_papers, &mut parts);
+    let frame_ranges = frame.parts(key, kind, &mut parts);
     let key_ranges = key.parts(mount.key_body(), &mut parts);
     let capstan = key_ranges.capstan_contact.point(&parts);
     let front_top = key_ranges.key_front_top.point(&parts);
@@ -969,7 +1041,7 @@ mod tests {
     use crate::contact::{Feature, HowItBears, Piece, Rows, Surface};
     use crate::mechanism::Pose;
     use crate::parts::fixtures::{on_frame, Setup};
-    use crate::parts::frame::{papers_for, KeyKind, CLOTH_EDGE_RADIUS};
+    use crate::parts::frame::{KeyKind, CLOTH_EDGE_RADIUS};
     use crate::solve::Statics;
 
     /// The default key regulated on the default frame, as the bench builds
@@ -1014,15 +1086,11 @@ mod tests {
     /// The assembly's parts as the bench draws them, the contacts between
     /// them, and the key on them, free to lift off its punching.
     fn mounted(a: &Setup) -> (Mounted, KeyRanges, FrameRanges) {
-        let balance = papers_for(a.frame.balance_punching.paper);
-        let front = papers_for(a.frame.front_punching.paper);
         let k = on_its_frame(
             KeyMount::OnPunching,
             &a.key,
             &a.frame,
             KeyKind::Natural,
-            &balance,
-            &front,
             None,
             0.0,
         )
@@ -1636,21 +1704,10 @@ mod tests {
     #[test]
     fn held_on_its_punching_the_key_is_the_key_on_a_pivot() {
         let a = regulated();
-        let balance = papers_for(a.frame.balance_punching.paper);
-        let front = papers_for(a.frame.front_punching.paper);
         let build = |mount| {
-            on_its_frame(
-                mount,
-                &a.key,
-                &a.frame,
-                KeyKind::Natural,
-                &balance,
-                &front,
-                None,
-                0.0,
-            )
-            .unwrap()
-            .mounted
+            on_its_frame(mount, &a.key, &a.frame, KeyKind::Natural, None, 0.0)
+                .unwrap()
+                .mounted
         };
         let (free, pinned) = (build(KeyMount::OnPunching), build(KeyMount::Pivot));
         for theta in [-0.1, -0.04, 0.0, 0.02, 0.0397, 0.1] {

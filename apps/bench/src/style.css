@@ -265,7 +265,8 @@ button:hover {
   color: var(--muted);
   font-size: 0.72rem;
 }
-.replace {
+/* A button that runs an action on its own, as placing the frame. */
+button.action {
   margin-top: 0.6rem;
 }
 

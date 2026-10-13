@@ -23,6 +23,8 @@
 //! | [`measure::weighing`] | every reading of the weighing sheet, by its procedure, and the bushings a typed key friction weight reads on, by Stanwood's protocol inverted |
 //! | [`measure::measurement`] | a reading with its value, what the trade reads it as, its conditions and its trust |
 //! | [`regulation`] | the regulation solve: key height and dip targets to the papers laid on the two punchings, by the seated pose itself |
+//! | [`registry`] | what each setting of a part admits, declared beside the part's fields: its quantity, hard range, step, layer and kind |
+//! | [`validate`] | the validation layer: what no part could be built as, refused with the limiting dimension and the shortfall before any solve |
 //!
 //! # What holds today, and what holds it
 //!
@@ -51,6 +53,12 @@
 //!    admissible torque, never a regularized law, a box row of the static
 //!    solve ([`solve::statics`]), stored as a torque with the radius it was
 //!    read at ([`mechanism::AxisFriction`]).
+//! 5. **What no part could be built as is refused before any solve**, never
+//!    clamped: each part declares what its settings admit beside its fields
+//!    ([`registry::ParamSpec`]), and [`validate::validate`] refuses a design
+//!    that breaks them or whose drawn parts could not be cut, naming the
+//!    limiting dimension and the shortfall. Everything an assembled keyboard
+//!    can be is computed and reported instead.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -60,8 +68,10 @@ pub mod geometry;
 pub mod measure;
 pub mod mechanism;
 pub mod parts;
+pub mod registry;
 pub mod regulation;
 pub mod solve;
+pub mod validate;
 
 /// Standard gravity, m/s². Fixed here so that no caller can vary it silently.
 pub const G: f64 = 9.806_65;

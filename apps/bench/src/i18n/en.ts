@@ -8,10 +8,14 @@
  */
 import type {
   Contact,
+  EditRefusal,
   FrictionRefusal,
+  Label,
   Limit,
   Part,
+  Problem,
   Riding,
+  SettingUnit,
   Solve,
   Target,
   TemporaryWeight,
@@ -28,7 +32,7 @@ import {
   STATION_MM,
   TEMPORARY_WEIGHT_G,
 } from '../format'
-import { type Catalogue, type Named, type Worded, word } from './catalogue'
+import { type Catalogue, type Labelled, type Named, type Worded, word } from './catalogue'
 
 /** `x` to the decimals `resolution` is shown to. */
 const to = (x: number, resolution: number): string => fixed(x, decimals(resolution))
@@ -215,14 +219,12 @@ const LIMIT_WHY: {
 const regulationWhy: Catalogue['regulation']['why'] = {
   regulation_infeasible: ({ target, wanted_mm, limited_by, shortfall_mm, search_mm }) =>
     `${fixed(wanted_mm, 2)} mm of ${TARGET[target]} is out of reach, by ${hundredths(shortfall_mm)}: ${LIMIT_WHY[limited_by][target](search_mm)}.`,
-  target_not_finite: () => 'a target is not a number.',
   no_seat: ({ why }) =>
     `the key could not be seated while the papers were being tried: ${word(refusal, why.code, why)}`,
 }
 
 /** Why a key friction weight typed was refused. */
 const frictionWhy: Worded<FrictionRefusal> = {
-  not_finite: () => 'a key friction weight that is not a number.',
   protocol_refused: ({ why }) =>
     `Stanwood's protocol cannot read a key friction weight on this key: ${word(refusal, why.code, why)}`,
   under_no_friction: ({ typed_g, least_g }) =>
@@ -233,13 +235,110 @@ const frictionWhy: Worded<FrictionRefusal> = {
 
 /** Why a weighing of the key was refused. */
 const weighingWhy: Worded<WeighingRefusal> = {
-  not_finite: () => 'a mass, a front weight or a distance from the lip that is not a number.',
-  mass_not_positive: () => 'a key weighs more than nothing.',
   roller_off_the_covering: ({ from_lip_mm, covering_mm }) =>
     `a front weight is read on the covering, in front of the balance pin, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
   centre_of_mass_off_the_key: ({ at_mm }) =>
     `that front weight on that mass stands the key's centre of mass ${fixed(Math.abs(at_mm), 0)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
 }
+
+/** Where a part runs, as a problem names it, the capstan's off the keystick
+ * said where it would stand. */
+const OFF_THE_KEYSTICK = (part: Part): string =>
+  part === 'capstan'
+    ? "the capstan would stand behind the back check block, on the key's thinned tail or past its end, off the keystick's full height"
+    : `the ${PART[part]} would stand off the flat of the key's underside`
+
+/** A setting's unit, as a value in it is written. */
+const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
+
+/** The units a path's name may end in, the longest first. */
+const SUFFIXES: readonly SettingUnit[] = ['gmm', 'mm', 'g']
+
+/** The unit a path's name ends in, as a value in it is written after it,
+ * space included: every path carries its unit in its name. */
+function unitIn(path: string): string {
+  const unit = SUFFIXES.find((u) => path.endsWith(`_${u}`))
+  return unit === undefined ? '' : ` ${UNIT[unit]}`
+}
+
+/** What no part could be built as, or what the bench has not. */
+const problem: Worded<Problem> = {
+  not_finite: () => 'a value that is not a number.',
+  out_of_range: ({ param, value, min, max }) => {
+    const u = unitIn(param)
+    return `${fixed(value, 2)}${u} is not a value this part can have${min === null ? '' : `, no less than ${fixed(min, 2)}${u}`}${max === null ? '' : `${min === null ? ',' : ' and'} no more than ${fixed(max, 2)}${u}`}.`
+  },
+  not_in_the_drawer: ({ thickness_mm, drawer_mm }) =>
+    `no drawer holds a ${fixed(thickness_mm, 2)} mm paper: it holds ${list(drawer_mm.map((mm) => fixed(mm, 2)))} mm.`,
+  mass_not_positive: () => 'a key weighs more than nothing.',
+  outline_crosses_itself: ({ back, front, by_mm }) =>
+    `the ${PART[back]} and the ${PART[front]} would overlap by ${fixed(by_mm, 1)} mm along the key: no key is cut like that.`,
+  feature_outside_keystick: ({ part, by_mm }) =>
+    `${OFF_THE_KEYSTICK(part)}, by ${fixed(by_mm, 1)} mm.`,
+  capstan_in_block: ({ block, by_mm }) =>
+    `the capstan would stand ${fixed(by_mm, 1)} mm into the ${PART[block]}.`,
+  mortise_through_key_top: ({ depth_mm, wood_mm }) =>
+    `a front mortise ${fixed(depth_mm, 1)} mm deep goes through the ${fixed(wood_mm, 1)} mm of the keystick.`,
+  measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
+    `the measuring point stands on the covering, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
+  unknown_path: ({ path }) => `the bench has no setting ${path}.`,
+  set_by_action: ({ path }) => `${path} is not set directly: it is laid, regulated or weighed.`,
+  no_such_paper: ({ index, papers }) =>
+    `the stack holds ${papers} ${papers === 1 ? 'paper' : 'papers'}: there is no paper ${index + 1} to lift off.`,
+  not_an_action: () => 'the bench knows no such operation.',
+}
+
+/** Why any edit was refused. */
+const editRefusal: Worded<EditRefusal> = {
+  ...problem,
+  ...regulationWhy,
+  ...weighingWhy,
+  ...frictionWhy,
+}
+
+/** An edit refused that leaves nothing in particular as it was. */
+const nothingChanged = (why: EditRefusal): string =>
+  `Refused, nothing changed: ${word(editRefusal, why.code, why)}`
+
+/** What each control is worded by, by its label's code. */
+const control: { readonly [K in Label]: Labelled } = {
+  measuring_point: { label: 'measuring point, back from the key’s front lip' },
+  key_height: { label: 'key height' },
+  key_dip: { label: 'key dip' },
+  regulate: { label: 'regulate to these targets' },
+  balance_stack: { label: 'balance punching — key height' },
+  front_stack: { label: 'front punching — key dip' },
+  key_friction_weight: { label: 'key friction weight' },
+  balance_felt: { label: 'balance felt' },
+  front_felt: { label: 'front felt' },
+  front_pin: { label: 'front rail pin, above the rail' },
+  front_mortise: { label: 'front mortise, above the underside' },
+  back_cloth: { label: 'back rail cloth' },
+  capstan: { label: 'capstan behind the balance pin' },
+  front_edge: { label: 'front edge from the balance pin' },
+  capstan_height: { label: 'capstan height' },
+  key_mass: { label: 'key mass' },
+  front_weight: { label: 'front weight' },
+  read_at: { label: 'read at', unit: (mm) => `${mm} from the lip` },
+  weigh: { label: 'weigh the key' },
+  balance_rail: { label: 'balance rail' },
+  front_rail: { label: 'front rail' },
+  back_rail: { label: 'back rail' },
+  front_rail_at: { label: 'front rail, in front of the balance pin' },
+  back_rail_at: { label: 'back rail, behind the balance pin' },
+  place: { label: 'place the frame under the key' },
+  weight: { label: 'weight on the measuring point' },
+}
+
+/** A weighing's field, as a sentence names it. */
+const weighed = (field: Label): string =>
+  field === 'key_mass'
+    ? 'the key mass'
+    : field === 'front_weight'
+      ? 'the front weight'
+      : field === 'read_at'
+        ? 'the distance from the lip'
+        : `the ${control[field].label}`
 
 /** What holds the key, after "the key is". */
 const verdict: Worded<Verdict> = {
@@ -296,10 +395,49 @@ export const en: Catalogue = {
   stopsFight: (r) =>
     `The stops fight: ${r} The key is drawn riding on them; what needs no stroke is read below, and the weights that need one are refused.`,
   riding,
+  problem,
+  editRefusal,
+  refused: {
+    set: nothingChanged,
+    add_paper: nothingChanged,
+    remove_paper: nothingChanged,
+    place_frame_under_key: nothingChanged,
+    reset: nothingChanged,
+    regulate: (why) => `Refused, the papers left as they were: ${word(editRefusal, why.code, why)}`,
+    weigh_key: (why) =>
+      `Refused, the key's weighing left as it was: ${word(editRefusal, why.code, why)}`,
+    set_friction_from_key_friction_weight: (why) =>
+      `Refused, the bushings left as they were: ${word(editRefusal, why.code, why)}`,
+  },
+  needsNumber: {
+    regulate: (fields) => {
+      const names = fields.map((f) => control[f].label)
+      const one = names.length === 1
+      return `${names.join(' and ')} ${one ? 'needs' : 'need'} a number, in millimetres: nothing is regulated until ${one ? 'it has' : 'they have'} one.`
+    },
+    weigh_key: (fields) => {
+      const names = fields.map(weighed)
+      return `${list(names)} ${names.length === 1 ? 'needs' : 'need'} a number: the key is weighed when all three have one.`
+    },
+    add_paper: null,
+    remove_paper: null,
+    place_frame_under_key: null,
+    set_friction_from_key_friction_weight: null,
+    reset: null,
+  },
+
+  panel: {
+    sheet: 'Weighing sheet',
+    regulation: 'Regulation',
+    punchings: 'Punchings and cloth',
+    key: 'The key',
+    weighing: 'The key, weighed whole',
+    frame: 'The frame',
+    touch: 'Touch',
+  },
+  control,
 
   sheet: {
-    heading: 'Weighing sheet',
-    measuringPoint: { label: 'measuring point, back from the key’s front lip', unit: 'mm' },
     measuringPointNote:
       'The lip is the covering’s, which overhangs the key front. Moving the point changes every weight on this sheet by the lever and nothing about the key: the same static moment, and the same friction torque, read on another arm. Key height and dip are read at the key front, and do not move.',
     gramWeights:
@@ -343,7 +481,7 @@ export const en: Catalogue = {
     key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
     geometry: 'some of its dimensions have no record',
   },
-  unit: { g: 'g', mm: 'mm', ratio: '' },
+  unit: { g: 'g', mm: 'mm', ratio: '', gmm: UNIT.gmm },
   backBearing: {
     flat: 'flat on the cloth',
     on_the_cloth_edge: 'on the edge of the cloth',
@@ -352,19 +490,8 @@ export const en: Catalogue = {
   refusal,
 
   regulation: {
-    heading: 'Regulation',
-    keyHeight: { label: 'key height', unit: 'mm' },
-    keyDip: { label: 'key dip', unit: 'mm' },
-    regulate: 'regulate to these targets',
-    needsNumber: (fields) => {
-      const names = fields.map((f) => TARGET[f])
-      const one = names.length === 1
-      return `${names.join(' and ')} ${one ? 'needs' : 'need'} a number, in millimetres: nothing is regulated until ${one ? 'it has' : 'they have'} one.`
-    },
-    outcome: (r) =>
-      r.outcome === 'laid'
-        ? `Laid ${fixed(r.balance_mm, 2)} mm of paper under the balance punching and ${fixed(r.front_mm, 2)} mm on the front punching: ${fixed(r.key_height_mm, 2)} mm of key height and ${fixed(r.key_dip_mm, 2)} mm of dip, as near ${fixed(r.asked_key_height_mm, 2)} and ${fixed(r.asked_key_dip_mm, 2)} mm as the drawer's papers come from below.`
-        : `Refused, the papers left as they were: ${word(regulationWhy, r.why.code, r.why)}`,
+    laid: (r) =>
+      `Laid ${fixed(r.balance_mm, 2)} mm of paper under the balance punching and ${fixed(r.front_mm, 2)} mm on the front punching: ${fixed(r.key_height_mm, 2)} mm of key height and ${fixed(r.key_dip_mm, 2)} mm of dip, as near ${fixed(r.asked_key_height_mm, 2)} and ${fixed(r.asked_key_dip_mm, 2)} mm as the drawer's papers come from below.`,
     why: regulationWhy,
     layingNote:
       'The bench lays the papers as a technician does: the key height first, on the balance punching, then the dip on the front punching with the key as it then stands, each the closest stack the drawer makes from below. So it lands within one paper of each target, not on it, and the sheet shows both. A target no stack reaches is refused, with what keeps it out and by how many millimetres, and nothing is changed.',
@@ -373,8 +500,6 @@ export const en: Catalogue = {
   },
 
   papers: {
-    balance: 'balance punching — key height',
-    front: 'front punching — key dip',
     stack: (title, totalMm, count) =>
       `${title} **${totalMm} mm** in ${count} ${count === 1 ? 'paper' : 'papers'}`,
     add: 'add',
@@ -384,20 +509,12 @@ export const en: Catalogue = {
   },
 
   friction: {
-    control: { label: 'key friction weight', unit: 'g' },
-    refused: (why) =>
-      `Refused, the bushings left as they were: ${word(frictionWhy, why.code, why)}`,
     why: frictionWhy,
     note: 'The key friction weight is typed as Stanwood’s protocol reads it, zeroed on the levelled jig: the bench sets the bushings to the torque at which that protocol, run on this key, reads back what is typed, and the sheet shows it. The bushings then stay as they are. Moving the measuring point or changing the key changes the grams they read, as it would at the bench, and this slider follows the sheet.',
   },
 
   punchings: {
-    heading: 'Punchings and cloth',
     note: 'Paper is how you adjust, felt is what you fit. The rest geometry cares only about the total; the split will matter once the felts are allowed to compress.',
-    balanceFelt: { label: 'balance felt', unit: 'mm' },
-    frontFelt: { label: 'front felt', unit: 'mm' },
-    frontPin: { label: 'front rail pin, above the rail', unit: 'mm' },
-    frontMortise: { label: 'front mortise, above the underside', unit: 'mm' },
     stopsAtTheBottom: (byTheMortise) =>
       `The key stops on its front punching *or* on the pin reaching the top of its mortise, whichever comes first.${
         byTheMortise === null
@@ -406,38 +523,16 @@ export const en: Catalogue = {
             ? ' Right now it is the pin: the dip below is shorter than the punchings alone would give.'
             : ' Right now it is the punching, as on a sane frame.'
       }`,
-    backCloth: { label: 'back rail cloth', unit: 'mm' },
   },
 
   key: {
-    heading: 'The key',
     ratioNote:
       'The key weight ratio is **not** a control. It is the ratio of two arms, so it follows from the geometry exactly as the action ratio does; a slider for it would have to pick which dimension to move. Changing a dimension does not re-solve the punchings either: the regulation drifts and the sheet shows the miss, because that is what happens on a real keyboard.',
-    capstan: { label: 'capstan behind the balance pin', unit: 'mm' },
-    frontEdge: { label: 'front edge from the balance pin', unit: 'mm' },
-    capstanHeight: { label: 'capstan height', unit: 'mm' },
   },
 
   weighing: {
-    heading: 'The key, weighed whole',
     intro:
       'A key arrives leaded, with leads nobody knows the masses of, so it is weighed whole, its leads in it: type what the scale and the jig give for it.',
-    mass: { label: 'key mass', unit: 'g' },
-    frontWeight: { label: 'front weight', unit: 'g' },
-    readAt: { label: 'read at', unit: 'mm from the lip' },
-    weigh: 'weigh the key',
-    needsNumber: (fields) => {
-      const names = fields.map((f) =>
-        f === 'mass'
-          ? 'the key mass'
-          : f === 'front_weight'
-            ? 'the front weight'
-            : 'the distance from the lip',
-      )
-      return `${list(names)} ${names.length === 1 ? 'needs' : 'need'} a number: the key is weighed when all three have one.`
-    },
-    refused: (why) =>
-      `Refused, the key's weighing left as it was: ${word(weighingWhy, why.code, why)}`,
     why: weighingWhy,
     notWeighed: (massG) =>
       `Not weighed yet: its ${massG === null ? 'mass' : `${to(massG, MASS_G)} g`}, and where its centre of mass stands, are derived from its volume at an assumed wood density.`,
@@ -447,24 +542,15 @@ export const en: Catalogue = {
   },
 
   frame: {
-    heading: 'The frame',
-    balanceRail: { label: 'balance rail', unit: 'mm' },
-    frontRail: { label: 'front rail', unit: 'mm' },
-    backRail: { label: 'back rail', unit: 'mm' },
     railsNote:
       "And where the two outer rails **stand** along the key. These are the frame's own numbers, not the key's: a rail is screwed to the keybed, so lengthening a key moves its mortise and its chamfer and leaves the rails behind. That is a design worth seeing go wrong, which is why nothing here corrects itself — the sheet names the miss instead.",
-    frontRailAt: { label: 'front rail, in front of the balance pin', unit: 'mm' },
-    backRailAt: { label: 'back rail, behind the balance pin', unit: 'mm' },
-    place: 'place the frame under the key',
     placeNote:
       'Moves the rails and **nothing else**. The key bears on the cloth at a new arm afterwards, so the key height and the dip will have drifted off their targets and the sheet will show it — shimming is a separate operation on a real bench too.',
   },
 
   touch: {
-    heading: 'Touch',
     intro:
       'Put a weight on the measuring point. Three things can happen, not two: above the down weight the key descends, below the up weight it rises, and **between them it does nothing at all**. That gap is the friction.',
-    weight: { label: 'weight on the measuring point', unit: 'g' },
     verdict,
     theKeyIs: (verdict) => `the key is ${verdict}`,
     margin: (g) => `the weight lies between U and D, ${to(g, MASS_G)} g from moving the key`,
@@ -480,7 +566,7 @@ export const en: Catalogue = {
       `The punchings are read at their centre: a felt washer under a key carries the load over its whole face, and the bench takes it at the middle, under the balance pin for the balance punching. A key standing out of level on one overlaps the drawn felt's edge by what the felt would compress${
         overlaps.length === 0
           ? ''
-          : `, here ${overlaps.map((o) => `${to(o.mm, LENGTH_MM)} mm at the ${CONTACT[o.pair]}`).join(' and ')}`
+          : `, here ${overlaps.map((o) => `${to(o.overlap_mm, LENGTH_MM)} mm at the ${CONTACT[o.pair]}`).join(' and ')}`
       }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. The contacts marked on the view are where the key bears, and what stands within a millimetre of it.`,
     noPressNote:
       'There is no “press the key” control. The key is only ever where the physics puts it — a slider over a computed travel could park it in a position no weight produces, which is the one thing a measuring instrument must not do.',

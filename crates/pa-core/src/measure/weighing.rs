@@ -762,7 +762,7 @@ mod tests {
     use crate::measure::{TouchweightProtocol, MEASURING_POINT_HALF_INCH};
     use crate::mechanism::{AxisFriction, MassProps};
     use crate::parts::fixtures::{mass_of, regulated, Setup};
-    use crate::parts::frame::{papers_for, KeyKind};
+    use crate::parts::frame::KeyKind;
     use crate::parts::mounts::{on_its_frame, KeyMount};
     use crate::parts::KeyMass;
     use crate::solve::statics::RESIDUAL_TOLERANCE;
@@ -795,16 +795,12 @@ mod tests {
 
     /// `a`'s key on bushings of `friction`, of mass `mass`.
     fn bench_on(a: &Setup, friction: AxisFriction, mass: Option<MassProps>) -> Bench {
-        let balance = papers_for(a.frame.balance_punching.paper);
-        let front = papers_for(a.frame.front_punching.paper);
         Bench {
             on_frame: on_its_frame(
                 KeyMount::OnPunching,
                 &a.key,
                 &a.frame,
                 KeyKind::Natural,
-                &balance,
-                &front,
                 mass,
                 friction.bound_n_m,
             )

@@ -94,10 +94,14 @@ trade's own protocols, and come back with the expected values.**
    returning kg·m. Check: review; `grep -rnE '_(mm|g)\b' crates/pa-core/src`
    lists the suffixed names.
 10. **Upstream settings drift, they do not cascade; faults are reported, not
-    refused.** Only what cannot be computed or drawn truthfully is refused or
-    clamped, with its reason; the validation layer that catches all of it is
-    planned (FOUNDATIONS §7.3). Check:
-    `a_fault_shrinks_to_nothing_as_the_frame_comes_right`.
+    refused.** Only what cannot be computed or drawn truthfully is refused,
+    never clamped: by the validation layer (`pa_core::validate`, FOUNDATIONS
+    §7.3), before any solve, naming the limiting dimension and the shortfall,
+    the instrument left as it was to the bit of its state hash. Check:
+    `a_fault_shrinks_to_nothing_as_the_frame_comes_right`,
+    `each_problem_is_refused_and_leaves_the_instrument_as_it_was`,
+    `everything_an_assembled_keyboard_can_be_is_taken`,
+    `no_number_that_is_not_finite_reaches_the_core`.
 11. **Ratios are outputs**, changed only through geometry. The key ratio's force
     convention (≈ 0.5–0.7, the one in the equation of balance) and geometric
     one ("nominally 2:1") are reciprocals; swapping them inflates the wippen
@@ -152,9 +156,10 @@ grep for a listed value finds only its warning; *not enforced*.
 
 ```
 crates/pa-core     domain: geometry · mechanism · contact · solve · parts ·
-                   measure · regulation. No I/O, no web; libm its one
-                   dependency
-crates/pa-app      application: the single-key bench (KeyBench), the golden
+                   measure · regulation · registry · validate. No I/O, no
+                   web; libm its one dependency
+crates/pa-app      application: the single-key bench as an Instrument (set by
+                   path, act by action, the composed registry), the golden
                    sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;
                    its package.json lets Turborepo drive wasm-pack

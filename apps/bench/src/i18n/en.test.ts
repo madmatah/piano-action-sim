@@ -5,7 +5,7 @@
  */
 import type { Limit, Target } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
-import { word } from './catalogue'
+import { unitBeside, word } from './catalogue'
 import { en as t } from './en'
 
 /** Every limit, by a record the type-check holds complete. */
@@ -22,16 +22,13 @@ const LIMITS = Object.keys({
 describe('a refused regulation', () => {
   it('says the target, the shortfall and the part that keeps it out', () => {
     expect(
-      t.regulation.outcome({
-        outcome: 'refused',
-        why: {
-          code: 'regulation_infeasible',
-          target: 'key_dip',
-          wanted_mm: 12,
-          limited_by: 'front_pin_in_mortise',
-          shortfall_mm: 0.79,
-          search_mm: 20,
-        },
+      t.refused.regulate({
+        code: 'regulation_infeasible',
+        target: 'key_dip',
+        wanted_mm: 12,
+        limited_by: 'front_pin_in_mortise',
+        shortfall_mm: 0.79,
+        search_mm: 20,
       }),
     ).toBe(
       'Refused, the papers left as they were: 12.00 mm of key dip is out of reach, by 0.79 mm: the front rail pin bottoms in its mortise before the key goes that deep.',
@@ -81,7 +78,7 @@ describe('a refused regulation', () => {
 describe('a refused weighing', () => {
   it('says why each is no key', () => {
     for (const [why, words] of [
-      [{ code: 'mass_not_positive' }, 'more than nothing'],
+      [{ code: 'mass_not_positive', mass_g: 0 }, 'more than nothing'],
       [
         { code: 'roller_off_the_covering', from_lip_mm: 200, covering_mm: 155 },
         '200.0 mm from the lip is off it',
@@ -91,9 +88,9 @@ describe('a refused weighing', () => {
         { code: 'centre_of_mass_off_the_key', at_mm: -1020 },
         'behind the balance pin, past its tail',
       ],
-      [{ code: 'not_finite' }, 'not a number'],
+      [{ code: 'not_finite', param: 'key.weighing.mass_g' }, 'not a number'],
     ] as const) {
-      const said = t.weighing.refused(why)
+      const said = t.refused.weigh_key(why)
       expect(said.startsWith("Refused, the key's weighing left as it was: "), said).toBe(true)
       expect(said).toContain(words)
     }
@@ -102,13 +99,17 @@ describe('a refused weighing', () => {
 
 describe('a refused key friction weight', () => {
   it('says what no friction reads, beside what was typed', () => {
-    const said = t.friction.refused({ code: 'under_no_friction', typed_g: 0, least_g: 0.3229 })
+    const said = t.refused.set_friction_from_key_friction_weight({
+      code: 'under_no_friction',
+      typed_g: 0,
+      least_g: 0.3229,
+    })
     for (const words of ['0.00 g', '0.32 g', 'no friction at all']) expect(said).toContain(words)
   })
 
   it('says why the protocol cannot be read, a riding key told how it rides', () => {
     const riding = { front: 'front_rail_punching', lift_mm: 2.2725 } as const
-    const said = t.friction.refused({
+    const said = t.refused.set_friction_from_key_friction_weight({
       code: 'protocol_refused',
       why: { code: 'no_travel', riding },
     })
@@ -170,6 +171,115 @@ describe('what holds the key', () => {
   it('names the friction once, as Stanwood’s protocol reads it', () => {
     expect(t.touch.bushings('7')).toContain('key friction weight of 7 g')
     expect(t.touch.bushings(null)).not.toMatch(/\d/)
+  })
+})
+
+describe('a problem', () => {
+  it('names what no part could be built as, the limiting dimension and how far past it', () => {
+    expect(
+      word(t.editRefusal, 'outline_crosses_itself', {
+        code: 'outline_crosses_itself',
+        back: 'key_button',
+        front: 'keytop',
+        by_mm: 14,
+      }),
+    ).toBe(
+      'the key button and the keytop would overlap by 14.0 mm along the key: no key is cut like that.',
+    )
+    expect(
+      word(t.editRefusal, 'capstan_in_block', {
+        code: 'capstan_in_block',
+        block: 'back_check_block',
+        by_mm: 9.5,
+      }),
+    ).toBe('the capstan would stand 9.5 mm into the back check block.')
+    expect(
+      word(t.editRefusal, 'mortise_through_key_top', {
+        code: 'mortise_through_key_top',
+        depth_mm: 30,
+        wood_mm: 24.5,
+        by_mm: 5.5,
+      }),
+    ).toBe('a front mortise 30.0 mm deep goes through the 24.5 mm of the keystick.')
+    expect(
+      t.refused.set({
+        code: 'outline_crosses_itself',
+        back: 'key_button',
+        front: 'keytop',
+        by_mm: 14,
+      }),
+    ).toBe(
+      'Refused, nothing changed: the key button and the keytop would overlap by 14.0 mm along the key: no key is cut like that.',
+    )
+  })
+
+  it('says a value out of range in the unit its path names', () => {
+    expect(
+      word(t.problem, 'out_of_range', {
+        code: 'out_of_range',
+        param: 'regulation.key_height_mm',
+        value: 500,
+        min: 0,
+        max: 200,
+      }),
+    ).toBe(
+      '500.00 mm is not a value this part can have, no less than 0.00 mm and no more than 200.00 mm.',
+    )
+    expect(
+      word(t.problem, 'out_of_range', {
+        code: 'out_of_range',
+        param: 'key.friction.torque_gmm',
+        value: -1,
+        min: 0,
+        max: null,
+      }),
+    ).toBe('-1.00 g·mm is not a value this part can have, no less than 0.00 g·mm.')
+  })
+})
+
+describe('a form', () => {
+  it('says which fields hold no number, each as its form names it', () => {
+    expect(t.needsNumber.regulate?.(['key_height'])).toBe(
+      'key height needs a number, in millimetres: nothing is regulated until it has one.',
+    )
+    expect(t.needsNumber.regulate?.(['key_height', 'key_dip'])).toBe(
+      'key height and key dip need a number, in millimetres: nothing is regulated until they have one.',
+    )
+    expect(t.needsNumber.weigh_key?.(['key_mass', 'read_at'])).toBe(
+      'the key mass and the distance from the lip need a number: the key is weighed when all three have one.',
+    )
+    expect(t.needsNumber.add_paper).toBeNull()
+  })
+
+  it('says the papers a regulation laid and what they give', () => {
+    expect(
+      t.regulation.laid({
+        outcome: 'laid',
+        balance_mm: 0.7,
+        front_mm: 0.52,
+        key_height_mm: 64.99,
+        key_dip_mm: 10.62,
+        asked_key_height_mm: 65,
+        asked_key_dip_mm: 10.6,
+      }),
+    ).toBe(
+      "Laid 0.70 mm of paper under the balance punching and 0.52 mm on the front punching: 64.99 mm of key height and 10.62 mm of dip, as near 65.00 and 10.60 mm as the drawer's papers come from below.",
+    )
+  })
+
+  it('says what the key is weighed as, each reading to its resolution', () => {
+    expect(t.weighing.weighed(130, 10, 30)).toBe(
+      'Weighed: 130.00 g, its front weight 10.00 g read 30.0 mm back from the lip.',
+    )
+    expect(t.weighing.notWeighed(121.123)).toBe(
+      'Not weighed yet: its 121.12 g, and where its centre of mass stands, are derived from its volume at an assumed wood density.',
+    )
+  })
+
+  it('words a control by its label, its unit beside its value', () => {
+    expect(t.control.front_edge.label).toBe('front edge from the balance pin')
+    expect(unitBeside(t.control.front_edge, t.unit.mm)).toBe('mm')
+    expect(unitBeside(t.control.read_at, t.unit.mm)).toBe('mm from the lip')
   })
 })
 

@@ -15,7 +15,7 @@
 //!
 //! # What a sheet holds
 //!
-//! Every reading of the weighing sheet ([`KeyBench::sheet`]): its value in
+//! Every reading of the weighing sheet ([`Instrument::sheet`]): its value in
 //! full, what the trade reads it as, its trust, and for the key friction
 //! weights the temporary weight and where it stood; or why it is refused.
 //! Then every field of [`BenchReadout`] (or that there is none, when the
@@ -39,13 +39,18 @@
 //! statics the default does not: a frame whose stops fight, its key riding
 //! on them off its balance punching; a back-heavy key; a dip stopped by the
 //! pin in its mortise; and a key shortened under a frame left where it was,
-//! whose front pin then stands under its wood and carries it.
+//! whose front pin then stands under its wood and carries it. Each is built
+//! as an interface builds it, through the instrument's own calls, a path
+//! set or an action taken: the value a fixture sets is the one it computes
+//! in metres, sent in the path's millimetres, which turn back into the same
+//! metres to the bit.
 
 use std::fmt::Write as _;
 
-use crate::key_bench::{
-    BenchReadout, Fault, KeyBench, Measurement, Riding, TouchVerdict, Trust, Which,
+use crate::instrument::{
+    Action, BenchReadout, Fault, Instrument, Measurement, Riding, Stack, TouchVerdict, Trust,
 };
+use crate::registry::path;
 
 /// One bench whose readings the golden sheet records.
 #[derive(Debug, Clone, Copy)]
@@ -55,7 +60,7 @@ pub struct Fixture {
     /// What the bench is, in a line.
     pub what: &'static str,
     /// Builds the bench.
-    pub build: fn() -> KeyBench,
+    pub build: fn() -> Instrument,
 }
 
 impl Fixture {
@@ -71,7 +76,7 @@ pub const FIXTURES: [Fixture; 5] = [
         name: "default",
         what: "the standard bench: a middle natural on its frame, regulated to 65.0 mm of \
                key height and 10.2 mm of key dip",
-        build: KeyBench::standard,
+        build: Instrument::standard,
     },
     Fixture {
         name: "wedged-frame",
@@ -100,11 +105,13 @@ pub const FIXTURES: [Fixture; 5] = [
     },
 ];
 
-fn wedged_frame() -> KeyBench {
-    let mut bench = KeyBench::standard();
+fn wedged_frame() -> Instrument {
+    let mut bench = Instrument::standard();
     let frame = bench.frame();
     let height = frame.balance_bearing_height() + 0.005 - frame.back_rail_cloth;
-    bench.set_back_rail_height(height);
+    bench
+        .set(path::BACK_RAIL_HEIGHT, height * 1000.0)
+        .expect("a back rail raised under its key");
     bench
 }
 
@@ -112,25 +119,33 @@ fn wedged_frame() -> KeyBench {
 /// front weight at 13 mm of the composite key with 30 g more, 120 mm behind
 /// its balance pin, so the same mass and static moment, the height of its
 /// centre of mass the volume model's.
-fn back_heavy_key() -> KeyBench {
-    let mut bench = KeyBench::standard();
+fn back_heavy_key() -> Instrument {
+    let mut bench = Instrument::standard();
     bench
-        .weigh_key(151.116_689_639_242_2, -8.093_919_058_496_057, 0.013)
+        .act(Action::WeighKey {
+            mass_g: 151.116_689_639_242_2,
+            front_weight_g: -8.093_919_058_496_057,
+            from_lip_mm: 13.0,
+        })
         .expect("a back-heavy key is weighed");
     bench
 }
 
-fn mortise_limited_dip() -> KeyBench {
-    let mut bench = KeyBench::standard();
-    let (pin, _) = bench.front_pin_and_mortise();
-    bench.set_front_pin_height(pin + 0.001);
+fn mortise_limited_dip() -> Instrument {
+    let mut bench = Instrument::standard();
+    let pin = bench.frame().sections.front.pin_height;
+    bench
+        .set(path::FRONT_PIN_HEIGHT, (pin + 0.001) * 1000.0)
+        .expect("a front pin a millimetre prouder");
     bench
 }
 
-fn shortened_key() -> KeyBench {
-    let mut bench = KeyBench::standard();
-    let (_, front_edge, _) = bench.key_dimensions();
-    bench.set_front_edge(front_edge - 0.018);
+fn shortened_key() -> Instrument {
+    let mut bench = Instrument::standard();
+    let front_edge = bench.key().front_edge;
+    bench
+        .set(path::FRONT_EDGE, (front_edge - 0.018) * 1000.0)
+        .expect("a key front brought back");
     bench
 }
 
@@ -173,7 +188,7 @@ fn optional(out: &mut String, name: &str, x: Option<f64>) {
     }
 }
 
-fn write_sheet(out: &mut String, bench: &KeyBench) {
+fn write_sheet(out: &mut String, bench: &Instrument) {
     let sheet = bench.sheet();
     for reading in &sheet.readings {
         let name = format!("sheet.{}", reading.procedure.code());
@@ -236,7 +251,7 @@ fn write_measurement(out: &mut String, name: &str, m: &Measurement) {
     }
 }
 
-fn write_readout(out: &mut String, bench: &KeyBench) {
+fn write_readout(out: &mut String, bench: &Instrument) {
     let Some(readout) = bench.readout() else {
         line(out, "readout", "none");
         return;
@@ -322,7 +337,7 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     );
 }
 
-fn write_frame(out: &mut String, bench: &KeyBench) {
+fn write_frame(out: &mut String, bench: &Instrument) {
     match bench.frame_fault() {
         Some(why) => line(out, "frame_fault", &format!("{why:?}")),
         None => line(out, "frame_fault", "none"),
@@ -347,8 +362,8 @@ fn write_frame(out: &mut String, bench: &KeyBench) {
         line(out, &format!("fault.{i}"), &code);
         number(out, &format!("fault.{i}.by"), by);
     }
-    for (which, name) in [(Which::Balance, "balance"), (Which::Front, "front")] {
-        let papers = bench.papers_on(which);
+    for (stack, name) in [(Stack::Balance, "balance"), (Stack::Front, "front")] {
+        let papers = bench.papers(stack);
         line(out, &format!("papers.{name}"), &papers.len().to_string());
         for (i, paper) in papers.iter().enumerate() {
             number(out, &format!("papers.{name}.{i}"), *paper);
@@ -356,7 +371,7 @@ fn write_frame(out: &mut String, bench: &KeyBench) {
     }
 }
 
-fn write_pose(out: &mut String, bench: &KeyBench) {
+fn write_pose(out: &mut String, bench: &Instrument) {
     number(out, "pose.sin_angle", bench.sin_angle());
     // Where the view marks it: the key's pose applied to the point on the key.
     let point = bench.key_placement().world(bench.measuring_point_on_key());
@@ -372,7 +387,7 @@ mod tests {
     /// for holds, so the sheet records that case and not the default again.
     #[test]
     fn every_fixture_exercises_what_it_names() {
-        use crate::key_bench::{ContactCode, ProcedureId, Refused, WalkRefusal};
+        use crate::instrument::{ContactCode, ProcedureId, Refused, WalkRefusal};
         let wedged = wedged_frame();
         let riding = wedged.riding().expect("the stops must fight, the key ride");
         assert_eq!(riding.front, ContactCode::FrontRailPunching);
@@ -386,7 +401,7 @@ mod tests {
 
         let back_heavy = back_heavy_key().sheet();
         let front_weight = back_heavy
-            .get(crate::key_bench::ProcedureId::FrontWeight)
+            .get(crate::instrument::ProcedureId::FrontWeight)
             .and_then(|r| r.as_ref().ok())
             .expect("a back-heavy key weighs")
             .value;

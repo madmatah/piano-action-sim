@@ -8,7 +8,7 @@ export type Pose = {
 /**
  * The origin, millimetres.
  */
-origin: [number, number], 
+origin_mm: [number, number], 
 /**
  * The rotation's cosine.
  */

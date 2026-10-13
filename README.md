@@ -42,7 +42,25 @@ Every touchweight is read at one measuring point, a setting of the bench, 13 mm
 back from the covering's lip by default. A frame edited out of fit with its key
 is drawn as it is, its faults named in millimetres. The key's contacts with its
 frame are read off the drawn parts, as signed gaps with their gradients over
-every coordinate, and marked on the section and the solid.
+every coordinate, and marked on the section and the solid. Each crosses to
+the page with its normal and the force it carries, which the view does not
+draw yet.
+
+The bench is an instrument an application drives by two calls. Every setting
+has a path with its trade unit in its name (`frame.front_rail.pin_height_mm`)
+and is set by it; every operation (laying or lifting a paper, regulating,
+weighing the key, typing its key friction weight, placing the frame) is an
+action. A registry describes every path, what it admits and the page that
+presents it, and the browser page is drawn from it: every control takes its
+range, step and unit from the engine, and its label from the page's
+catalogue. An edit that describes a key no part could be built as is refused
+before any solve, with the limiting dimension and the shortfall, and the bench
+is left as it was: a key front brought back until its covering runs into the
+key button, a capstan in a glued block, a front mortise cut through the key
+top, a measuring point off the covering, a mass of nothing, a value that is
+not a number. Everything an assembled keyboard can be, however badly
+regulated, is computed and reported. Every edit taken is logged, and the log
+replayed gives the same state, which a hash names.
 
 Every reading on the weighing sheet is a procedure run on the model; their
 closed forms are the tests' oracles. What the stage simplifies is listed in
@@ -53,7 +71,7 @@ default bench an indication rather than a measurement.
 | Part | What it is |
 |---|---|
 | `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
-| `crates/pa-app` | the single-key bench, as a use case, and the golden sheet that records its every reading |
+| `crates/pa-app` | the single-key bench as an instrument, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
 | `crates/pa-cli` | `weigh`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section and in solid (React, react-three-fiber), from the same Rust compiled to WebAssembly |
 
@@ -64,10 +82,11 @@ In this order, each stage with its engine and its view
 
 - a general quasi-static core with the key as its first client, on
   Hirschkorn's published Boston GP-178 key, a parameter registry that loads
-  `data/params/`, a validation layer, and an interface in English and French
-  (its first parts, the mechanism, the contacts over all coordinates, the
-  static solve, every reading of the sheet by procedure, and a boundary that
-  sends codes and numbers which the page words in English, are built);
+  `data/params/`, and an interface in English and French (its first parts,
+  the mechanism, the contacts over all coordinates, the static solve, every
+  reading of the sheet by procedure, a boundary that sends codes and numbers
+  which the page words in English, the registry and the validation layer,
+  are built);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;

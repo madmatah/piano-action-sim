@@ -46,6 +46,7 @@ pub use key_mass::{FrontWeightReading, KeyMass, NotAWeighing};
 
 use crate::contact::{Part, PartId};
 use crate::geometry::{Point, Seg};
+use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 
 /// A closed outline through `points`, in order.
 fn polygon(points: &[Point]) -> Vec<Seg> {
@@ -507,6 +508,59 @@ pub struct KeyDesign {
 }
 
 impl KeyDesign {
+    /// The key's settings: what an instrument may set on it, each with what
+    /// it admits ([`ParamSpec`]).
+    ///
+    /// The key front and the capstan are signed from the balance pin like
+    /// every other length here: the front in front of it, the capstan behind
+    /// it. Whether they leave the key buildable, the covering clear of the
+    /// key button and the capstan clear of the glued blocks, is
+    /// [`crate::validate`]'s to say, since it reads several at once. The
+    /// capstan turns continuously, a screw having no quantum, within the
+    /// 2 to 30 mm above the keystick the bench has always held it to.
+    pub const PARAMS: [ParamSpec<Self>; 4] = [
+        ParamSpec {
+            name: "front_edge",
+            quantity: Quantity::Length,
+            hard: (0.0, f64::INFINITY),
+            step: Step::Continuous,
+            layer: Layer::Design,
+            kind: Kind::Actuated,
+            get: |k| k.front_edge,
+            set: |k, v| k.front_edge = v,
+        },
+        ParamSpec {
+            name: "capstan.x",
+            quantity: Quantity::Length,
+            hard: (f64::NEG_INFINITY, 0.0),
+            step: Step::Continuous,
+            layer: Layer::Design,
+            kind: Kind::Actuated,
+            get: |k| k.capstan,
+            set: |k, v| k.capstan = v,
+        },
+        ParamSpec {
+            name: "capstan.height",
+            quantity: Quantity::Length,
+            hard: (0.002, 0.030),
+            step: Step::Continuous,
+            layer: Layer::Regulation,
+            kind: Kind::Actuated,
+            get: |k| k.capstan_screw.height,
+            set: |k, v| k.capstan_screw.height = v,
+        },
+        ParamSpec {
+            name: "front_mortise.depth",
+            quantity: Quantity::Length,
+            hard: (0.0, f64::INFINITY),
+            step: Step::Continuous,
+            layer: Layer::Design,
+            kind: Kind::Actuated,
+            get: |k| k.front_mortise_depth,
+            set: |k, v| k.front_mortise_depth = v,
+        },
+    ];
+
     /// The covering's lip, metres in front of the balance pin: the front edge
     /// of the keytop, standing [`Self::keytop_overhang`] proud of the key
     /// front.

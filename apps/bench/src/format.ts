@@ -11,6 +11,7 @@
  * What is not a reading, a setting or a quantity the bench reports, is shown
  * to the resolution its kind is read to, declared once below.
  */
+import type { Quantity } from '@pas/wasm/types'
 
 /** A length, millimetres: the hundredth the drawer's papers are told apart by. */
 export const LENGTH_MM = 0.01
@@ -61,4 +62,18 @@ export function fixed(x: number, digits: number): string {
  */
 export function typed(x: number, resolution: number): string {
   return String(Number(x.toFixed(decimals(resolution))))
+}
+
+/** A torque, gram-force millimetres. */
+export const TORQUE_GMM = 0.1
+
+/**
+ * What a setting is shown to, by what it measures: a length to the hundredth
+ * of a millimetre, a mass or a weight to the hundredth of a gram, a torque to
+ * the tenth of a gram-millimetre.
+ */
+export const RESOLUTION: { readonly [Q in Quantity]: number } = {
+  length: LENGTH_MM,
+  mass: MASS_G,
+  torque: TORQUE_GMM,
 }

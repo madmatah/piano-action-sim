@@ -2,6 +2,7 @@
 import type { EdgeOverlap } from "./EdgeOverlap";
 import type { Fault } from "./Fault";
 import type { Refusal } from "./Refusal";
+import type { RefusedEdit } from "./RefusedEdit";
 import type { Riding } from "./Riding";
 import type { Seats } from "./Seats";
 import type { Touch } from "./Touch";
@@ -38,4 +39,9 @@ touch: Touch | null,
 /**
  * The punchings the key bears on whose drawn edge overlaps it.
  */
-edge_overlaps: Array<EdgeOverlap>, };
+edge_overlaps: Array<EdgeOverlap>, 
+/**
+ * The last edit refused since one was taken, and why; `null` where
+ * none was.
+ */
+refused_edit: RefusedEdit | null, };

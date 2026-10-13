@@ -11,17 +11,22 @@
  * nothing else, so that a translation moves it with the words it belongs to.
  */
 import type {
+  Acted,
+  ActionCode,
   BackBearing,
   Contact,
+  EditRefusal,
   Fault,
   FrictionRefusal,
   Input,
+  Label,
+  Panel,
+  Problem,
   Procedure,
   Refusal,
-  Regulation,
   RegulationRefusal,
   Riding,
-  Target,
+  SettingUnit,
   TemporaryWeight,
   Unit,
   Verdict,
@@ -52,11 +57,29 @@ export function word<M, K extends keyof M>(
 /** A name for every member of a union of codes. */
 export type Named<T extends string> = { readonly [K in T]: string }
 
-/** A slider's label, and the unit its value is shown in. */
-export interface Control {
+/** A quantity the bench reports beside its sheet: its label, and the unit
+ * its value is shown in. */
+export interface Reported {
   readonly label: string
   readonly unit: string
 }
+
+/**
+ * What a control is worded by: its label, and, where the unit beside its
+ * value reads as more than the unit, how, given the unit's own word.
+ */
+export interface Labelled {
+  readonly label: string
+  unit?(unit: string): string
+}
+
+/** The unit beside a control's value: its wording's, or the unit alone. */
+export function unitBeside(labelled: Labelled, unit: string): string {
+  return labelled.unit === undefined ? unit : labelled.unit(unit)
+}
+
+/** A regulation laid: the papers, and what they give. */
+export type Laid = Extract<Acted, { outcome: 'laid' }>
 
 export interface Catalogue {
   /** `x` to `decimals` places as this language writes a number, never -0. */
@@ -88,10 +111,29 @@ export interface Catalogue {
   stopsFight(riding: string): string
   /** How the key rides on its stops, as a sentence. */
   riding(riding: Riding): string
+  /** What no part could be built as, or what the bench has not. */
+  readonly problem: Worded<Problem>
+  /** Why any edit was refused: a problem, or the refusal of the
+   * regulation, the weighing or the bushings. */
+  readonly editRefusal: Worded<EditRefusal>
+  /** An edit refused, nothing changed, by what was edited: a setting set,
+   * or an action by its code, each saying what it left as it was; given
+   * why. */
+  readonly refused: { readonly [E in ActionCode | 'set']: (why: EditRefusal) => string }
+  /** Which fields of a form hold no number, by the action the form sends,
+   * each field by its label's code: nothing is sent until each has one.
+   * `null` for an action no form sends. */
+  readonly needsNumber: {
+    readonly [A in ActionCode]: ((fields: readonly Label[]) => string) | null
+  }
+
+  /** A panel's heading, by its code. */
+  readonly panel: Named<Panel>
+  /** What each control is worded by, by the code the engine labels it
+   * with. */
+  readonly control: { readonly [K in Label]: Labelled }
 
   readonly sheet: {
-    readonly heading: string
-    readonly measuringPoint: Control
     readonly measuringPointNote: string
     readonly gramWeights: string
     /** The two key friction weights, each with its temporary weight. */
@@ -104,10 +146,10 @@ export interface Catalogue {
     /** The regulation target beside a reading. */
     target(value: string): string
     readonly seatingNote: string
-    readonly keyMass: Control
-    readonly outOfLevel: Control
-    readonly bedding: Control
-    readonly bearsAt: Control
+    readonly keyMass: Reported
+    readonly outOfLevel: Reported
+    readonly bedding: Reported
+    readonly bearsAt: Reported
     /** How the key bears on its cloth, named. */
     bearsHow(how: string): string
     readonly bearingNote: string
@@ -115,27 +157,20 @@ export interface Catalogue {
   }
   readonly procedure: Named<Procedure>
   readonly because: Named<Input>
-  readonly unit: Named<Unit>
+  /** A unit, a reading's or a setting's. */
+  readonly unit: Named<Unit | SettingUnit>
   readonly backBearing: Named<BackBearing>
   readonly refusal: Worded<Refusal>
 
   readonly regulation: {
-    readonly heading: string
-    readonly keyHeight: Control
-    readonly keyDip: Control
-    readonly regulate: string
-    /** Which target fields hold no number, each by its target. */
-    needsNumber(fields: readonly Target[]): string
-    /** How a regulation came out. */
-    outcome(r: Regulation): string
+    /** The papers a regulation laid, and what they give. */
+    laid(r: Laid): string
     readonly why: Worded<RegulationRefusal>
     readonly layingNote: string
     readonly pileNote: string
   }
 
   readonly papers: {
-    readonly balance: string
-    readonly front: string
     /** A stack's title: its total and how many papers. */
     stack(title: string, totalMm: string, count: number): string
     readonly add: string
@@ -146,44 +181,22 @@ export interface Catalogue {
   }
 
   readonly friction: {
-    readonly control: Control
-    /** A key friction weight typed and refused. */
-    refused(why: FrictionRefusal): string
     readonly why: Worded<FrictionRefusal>
     readonly note: string
   }
 
   readonly punchings: {
-    readonly heading: string
     readonly note: string
-    readonly balanceFelt: Control
-    readonly frontFelt: Control
-    readonly frontPin: Control
-    readonly frontMortise: Control
     /** What stops the key at the bottom: the pin, the punching, or unread. */
     stopsAtTheBottom(byTheMortise: boolean | null): string
-    readonly backCloth: Control
   }
 
   readonly key: {
-    readonly heading: string
     readonly ratioNote: string
-    readonly capstan: Control
-    readonly frontEdge: Control
-    readonly capstanHeight: Control
   }
 
   readonly weighing: {
-    readonly heading: string
     readonly intro: string
-    readonly mass: Control
-    readonly frontWeight: Control
-    readonly readAt: Control
-    readonly weigh: string
-    /** Which weighing fields hold no number. */
-    needsNumber(fields: readonly ('mass' | 'front_weight' | 'from_lip')[]): string
-    /** A weighing refused. */
-    refused(why: WeighingRefusal): string
     readonly why: Worded<WeighingRefusal>
     /** The key's mass as the bench holds it: derived from its volume. */
     notWeighed(massG: number | null): string
@@ -193,21 +206,12 @@ export interface Catalogue {
   }
 
   readonly frame: {
-    readonly heading: string
-    readonly balanceRail: Control
-    readonly frontRail: Control
-    readonly backRail: Control
     readonly railsNote: string
-    readonly frontRailAt: Control
-    readonly backRailAt: Control
-    readonly place: string
     readonly placeNote: string
   }
 
   readonly touch: {
-    readonly heading: string
     readonly intro: string
-    readonly weight: Control
     /** What holds the key, after "the key is". */
     readonly verdict: Worded<Verdict>
     /** The sentence a verdict stands in. */
@@ -219,7 +223,7 @@ export interface Catalogue {
     /** The bushings' friction, named by Stanwood's reading of it. */
     bushings(keyFrictionWeight: string | null): string
     /** The note on centre bearings, with the edges overlapping the key. */
-    centreNote(overlaps: readonly { pair: Contact; mm: number }[]): string
+    centreNote(overlaps: readonly { pair: Contact; overlap_mm: number }[]): string
     readonly noPressNote: string
   }
 }

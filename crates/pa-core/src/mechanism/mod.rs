@@ -59,6 +59,7 @@ pub use pose::{MaterialPoint, Placement, Pose};
 
 use crate::contact::{ContactPair, PairFeatures, Part, PartId, SurfaceRef};
 use crate::geometry::{Dir, Point};
+use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 
 /// A body's place in its mechanism. The ground is body 0, and every body's
 /// parent has a lower index than the body.
@@ -155,6 +156,23 @@ pub struct AxisFriction {
 }
 
 impl AxisFriction {
+    /// The bushings' setting: the torque they hold, no less than nothing.
+    /// A torque set as such is read at no radius, as a published one is;
+    /// one typed as a key friction weight keeps the radius it was typed at.
+    pub const PARAMS: [ParamSpec<Self>; 1] = [ParamSpec {
+        name: "friction.bound",
+        quantity: Quantity::Torque,
+        hard: (0.0, f64::INFINITY),
+        step: Step::Continuous,
+        layer: Layer::Design,
+        kind: Kind::Actuated,
+        get: |f| f.bound_n_m,
+        set: |f, v| {
+            f.bound_n_m = v;
+            f.radius_m = None;
+        },
+    }];
+
     /// The friction a weight of `grams` overcomes at `radius_m` from the pin,
     /// with the lever level: bushings set straight in grams on the level arm,
     /// as the bench's default is. A key friction weight measured by

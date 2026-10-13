@@ -37,17 +37,17 @@ sweep: Sweep,
 /**
  * Extrusion across the sagittal plane, millimetres; zero when turned.
  */
-width: number, 
+width_mm: number, 
 /**
  * Where a turned part's axis stands along its body's `x`, millimetres;
  * zero when extruded.
  */
-axis_x: number, 
+axis_x_mm: number, 
 /**
  * Flat `[x0, y0, x1, y1, …]`, millimetres, in the body's frame; for a
  * turned part, its profile in radius and height.
  */
-points: Array<number>, 
+points_mm: Array<number>, 
 /**
  * The segment of the part's outline each point starts or lies on.
  */

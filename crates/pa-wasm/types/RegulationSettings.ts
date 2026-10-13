@@ -3,7 +3,7 @@
 /**
  * The targets of the regulation last laid.
  */
-export type TargetSettings = { 
+export type RegulationSettings = { 
 /**
  * Key height, millimetres.
  */

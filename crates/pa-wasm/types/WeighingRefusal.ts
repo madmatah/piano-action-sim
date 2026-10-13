@@ -4,7 +4,7 @@
  * Why a weighing of the key was refused: the numbers typed are no key's.
  * The key's weighing stays as it was.
  */
-export type WeighingRefusal = { "code": "not_finite" } | { "code": "mass_not_positive" } | { "code": "roller_off_the_covering", 
+export type WeighingRefusal = { "code": "roller_off_the_covering", 
 /**
  * Where it was said to stand, millimetres back from the lip.
  */

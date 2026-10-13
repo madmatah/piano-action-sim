@@ -5,7 +5,7 @@ import type { Refusal } from "./Refusal";
  * Why no bushings read a key friction weight typed. The bushings stay as
  * they were.
  */
-export type FrictionRefusal = { "code": "not_finite" } | { "code": "protocol_refused", 
+export type FrictionRefusal = { "code": "protocol_refused", 
 /**
  * Why.
  */

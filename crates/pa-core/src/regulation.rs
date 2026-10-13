@@ -78,6 +78,7 @@ use crate::mechanism::MassProps;
 use crate::parts::frame::{papers_for, FrameDesign, KeyKind};
 use crate::parts::mounts::{on_its_frame, KeyMount, OnItsFrame};
 use crate::parts::KeyDesign;
+use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 use crate::solve::{SolveReport, Statics};
 
 /// The most paper the search lays on one stack, metres: 20 mm.
@@ -103,6 +104,34 @@ pub struct Targets {
     /// Key dip: how far the top of the key at its front falls from the top
     /// of its stroke to the bottom.
     pub key_dip: f64,
+}
+
+impl Targets {
+    /// The two targets as settings: aimed at, not set, the regulation solve
+    /// turning them into papers. Any number is a target; one no stack
+    /// reaches is refused by the solve, with what keeps it out of reach.
+    pub const PARAMS: [ParamSpec<Self>; 2] = [
+        ParamSpec {
+            name: "key_height",
+            quantity: Quantity::Length,
+            hard: (f64::NEG_INFINITY, f64::INFINITY),
+            step: Step::Continuous,
+            layer: Layer::Regulation,
+            kind: Kind::Target,
+            get: |t| t.key_height,
+            set: |t, v| t.key_height = v,
+        },
+        ParamSpec {
+            name: "key_dip",
+            quantity: Quantity::Length,
+            hard: (f64::NEG_INFINITY, f64::INFINITY),
+            step: Step::Continuous,
+            layer: Layer::Regulation,
+            kind: Kind::Target,
+            get: |t| t.key_dip,
+            set: |t, v| t.key_dip = v,
+        },
+    ];
 }
 
 /// One of the two targets.
@@ -355,33 +384,41 @@ impl Regulating<'_> {
         })
     }
 
-    /// The frame with `balance` and `front` metres of paper on its
-    /// punchings, its felts as fitted.
-    fn frame_with(&self, balance: f64, front: f64) -> FrameDesign {
+    /// The frame of a trial, `balance` and `front` metres of paper asked of
+    /// its punchings: no drawer holds a continuous thickness, so a trial
+    /// lays no paper, and each felt stands on its bare rail up to the
+    /// bearing height its stack gives, the felt as fitted and the paper
+    /// asked together. No contact reads a paper, only the felt's top, so
+    /// the trial is read on the stack the bisection asks for.
+    fn trial_frame(&self, balance: f64, front: f64) -> FrameDesign {
         let mut frame = self.frame.clone();
-        frame.balance_punching.paper = balance;
-        frame.front_punching.paper = front;
+        for (stack, paper) in [
+            (&mut frame.balance_punching, balance),
+            (&mut frame.front_punching, front),
+        ] {
+            stack.papers.clear();
+            stack.felt += paper;
+        }
         frame
     }
 
-    /// The key on `frame`, these papers drawn on its punchings. A trial
-    /// draws none, its felt then standing on the bare rail up to the
-    /// bearing height its stack gives: no contact reads a paper, only the
-    /// felt's top.
-    fn mount(
-        &self,
-        frame: &FrameDesign,
-        balance_papers: &[f64],
-        front_papers: &[f64],
-    ) -> Result<OnItsFrame, Unsolvable> {
+    /// The frame with these papers laid on its punchings, bottom first, its
+    /// felts as fitted.
+    fn laid_frame(&self, balance: &[f64], front: &[f64]) -> FrameDesign {
+        let mut frame = self.frame.clone();
+        frame.balance_punching.papers = balance.to_vec();
+        frame.front_punching.papers = front.to_vec();
+        frame
+    }
+
+    /// The key on `frame`, the papers its punchings hold drawn on them.
+    fn mount(&self, frame: &FrameDesign) -> Result<OnItsFrame, Unsolvable> {
         // Seats are solved friction off, so the bushings' bound is not read.
         on_its_frame(
             KeyMount::OnPunching,
             self.key,
             frame,
             self.kind,
-            balance_papers,
-            front_papers,
             self.mass,
             0.0,
         )
@@ -407,8 +444,8 @@ impl Regulating<'_> {
         report: &mut SolveReport,
         paper: f64,
     ) -> Result<Trial, Unsolvable> {
-        let frame = self.frame_with(paper, 0.0);
-        let k = self.mount(&frame, &[], &[])?;
+        let frame = self.trial_frame(paper, 0.0);
+        let k = self.mount(&frame)?;
         match self.seating(&k).top(statics) {
             Ok(seat) if seat.rides() => {
                 *report = report.and(seat.report);
@@ -441,8 +478,8 @@ impl Regulating<'_> {
         balance: f64,
         paper: f64,
     ) -> Result<Trial, Unsolvable> {
-        let frame = self.frame_with(balance, paper);
-        let k = self.mount(&frame, &[], &[])?;
+        let frame = self.trial_frame(balance, paper);
+        let k = self.mount(&frame)?;
         match self.seating(&k).seats(statics) {
             Ok(seats) if seats.top.rides() => {
                 *report = report.and(seats.top.report).and(seats.bottom.report);
@@ -478,8 +515,8 @@ impl Regulating<'_> {
         balance_papers: &[f64],
         front_papers: &[f64],
     ) -> Result<Achieved, Unsolvable> {
-        let frame = self.frame_with(balance_papers.iter().sum(), front_papers.iter().sum());
-        let k = self.mount(&frame, balance_papers, front_papers)?;
+        let frame = self.laid_frame(balance_papers, front_papers);
+        let k = self.mount(&frame)?;
         let seats = self
             .seating(&k)
             .seats(statics)
@@ -754,11 +791,12 @@ mod tests {
             self.regulating().solve(targets)
         }
 
-        /// The key seated with these totals of paper on its two punchings.
+        /// The key seated with these totals of paper on its two punchings,
+        /// as a trial of the solve seats it.
         fn seated(&self, balance: f64, front: f64) -> (OnItsFrame, Seats) {
             let r = self.regulating();
             let k = r
-                .mount(&r.frame_with(balance, front), &[], &[])
+                .mount(&r.trial_frame(balance, front))
                 .expect("the key mounts");
             let seats = r
                 .seating(&k)

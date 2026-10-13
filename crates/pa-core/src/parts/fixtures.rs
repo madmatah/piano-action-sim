@@ -1,7 +1,7 @@
 //! What the tests of the key on its frame share: the regulated bench, and
 //! the key mounted on its frame as the bench mounts it.
 
-use super::frame::{papers_for, FrameRanges, KeyKind};
+use super::frame::{FrameRanges, KeyKind};
 use super::mounts::{on_its_frame, KeyMount, Mounted};
 use super::{FrameDesign, KeyDesign};
 use crate::geometry::Point;
@@ -22,7 +22,7 @@ pub const TARGETS: Targets = Targets {
 pub struct Setup {
     /// The key.
     pub key: KeyDesign,
-    /// Its frame, the papers laid on its punchings as totals.
+    /// Its frame, the papers laid on its punchings.
     pub frame: FrameDesign,
     /// Where every weight is centred.
     pub protocol: TouchweightProtocol,
@@ -66,8 +66,8 @@ fn regulate_the_default() -> Setup {
     let Ok(TargetOutcome::Met { stacks, .. }) = outcome else {
         panic!("the default targets are reachable on the default frame: {outcome:?}");
     };
-    frame.balance_punching.paper = stacks.balance.papers.iter().sum();
-    frame.front_punching.paper = stacks.front.papers.iter().sum();
+    frame.balance_punching.papers = stacks.balance.papers;
+    frame.front_punching.papers = stacks.front.papers;
     Setup {
         key,
         frame,
@@ -107,8 +107,7 @@ impl OnFrame {
 /// `a`'s key on its frame, free to lift off its balance punching as the
 /// bench mounts it, of `kind`, its bushings' friction bounded by `friction`
 /// newton-metres, its mass the volume model's, or none for `weighed: false`;
-/// the papers on its punchings laid from the drawer for the totals its frame
-/// holds.
+/// the papers its punchings hold drawn on them.
 pub fn on_frame(a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFrame {
     mounted_as(KeyMount::OnPunching, a, kind, friction, weighed)
 }
@@ -122,13 +121,9 @@ pub fn on_pivot(a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFra
 }
 
 fn mounted_as(mount: KeyMount, a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFrame {
-    let balance = papers_for(a.frame.balance_punching.paper);
-    let front = papers_for(a.frame.front_punching.paper);
     let mass = if weighed { mass_of(&a.key) } else { None };
-    let k = on_its_frame(
-        mount, &a.key, &a.frame, kind, &balance, &front, mass, friction,
-    )
-    .expect("the key's contacts are drawn");
+    let k = on_its_frame(mount, &a.key, &a.frame, kind, mass, friction)
+        .expect("the key's contacts are drawn");
     OnFrame {
         mounted: k.mounted,
         frame: k.frame,

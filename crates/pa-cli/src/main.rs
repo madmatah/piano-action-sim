@@ -1,6 +1,7 @@
 //! Command-line adapter of `pa-app`.
 //!
-//! The same code that runs in the browser runs here natively. Two commands:
+//! The same instrument that runs in the browser runs here natively, changed
+//! by the same calls. Two commands:
 //! `weigh` prints the key weighing sheet, so that the numbers can be read and
 //! checked without a browser in the way; `golden` writes the golden sheet,
 //! every reading of the default bench and of the fixture benches in full bits,
@@ -12,9 +13,9 @@
 
 use std::path::{Path, PathBuf};
 
-use pa_app::boundary::{json, Refusal, Riding, WeighingRefusal};
+use pa_app::boundary::{self, json, Acted, Refusal, Riding};
 use pa_app::golden;
-use pa_app::key_bench::{KeyBench, KeyMass, ProcedureId, Sheet, Trust, Unit};
+use pa_app::instrument::{Action, Instrument, KeyMass, ProcedureId, Sheet, Trust, Unit};
 
 /// Where `golden` writes when it is not told, relative to the repository root.
 const GOLDEN_DIR: &str = "crates/pa-app/tests/golden";
@@ -63,7 +64,7 @@ fn write_golden(dir: &Path) -> Result<(), String> {
 /// Weighs the standard bench key, its mass its volume model's, then
 /// re-weighed with its front weight a gram heavier, and prints both.
 fn weigh() {
-    let mut bench = KeyBench::standard();
+    let mut bench = Instrument::standard();
     let before = bench.sheet();
 
     println!("  KEY WEIGHING SHEET");
@@ -96,13 +97,14 @@ fn weigh() {
         println!("  the key cannot be re-weighed: its mass or its front weight is not read.");
         return;
     };
-    let from_lip = bench.measuring_point_from_lip();
-    if let Err(why) = bench.weigh_key(mass_g, front_g + 1.0, from_lip) {
+    let reweighed = Action::WeighKey {
+        mass_g,
+        front_weight_g: front_g + 1.0,
+        from_lip_mm: bench.measuring_point_from_lip() * 1000.0,
+    };
+    if let Acted::Refused { why } = boundary::act(&mut bench, reweighed) {
         println!();
-        println!(
-            "  the key's weighing is refused: {}",
-            json(&WeighingRefusal::of(&bench, why))
-        );
+        println!("  the key's weighing is refused: {}", json(&why));
         return;
     }
     let after = bench.sheet();
@@ -145,7 +147,7 @@ fn label(p: ProcedureId) -> &'static str {
     }
 }
 
-fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
+fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
     let riding = bench.riding();
     println!("  {title}");
     println!("  {}", "-".repeat(title.len().max(40)));

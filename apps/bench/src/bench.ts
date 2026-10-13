@@ -7,25 +7,28 @@
  * the moment it disagreed with the first we would not know which one the user is
  * reading.
  *
- * The engine answers in documents, each apart: the settings, always valid; the
- * weighing sheet, every reading read or refused with its reason; the
- * diagnostics; where each body stands; what is drawn. They are codes and
- * numbers, never sentences, and their types are generated from the Rust ones
+ * The engine answers in documents, each apart: the registry, every path with
+ * what it admits and the page that presents it; the settings, always valid,
+ * nested as the paths are; the weighing sheet, every reading read or refused
+ * with its reason; the diagnostics; where each body stands; what is drawn.
+ * It is changed by two calls, a path set to a value and an action taken, each
+ * answering what was done or why not. They are codes and numbers, never
+ * sentences, and their types are generated from the Rust ones
  * (`@pas/wasm/types`), which a test holds to them: the page words them from
  * its catalogue (`i18n/`).
  */
 import init, { Bench } from '@pas/wasm'
 import type {
+  Acted,
+  ActionCode,
   Diagnostics,
-  FrictionRefusal,
   Procedure,
   Reading,
-  Regulation,
+  Registry,
   Scene,
   Settings,
   Sheet,
   State,
-  WeighingRefusal,
 } from '@pas/wasm/types'
 
 /**
@@ -82,6 +85,11 @@ export function start(apply?: (b: Bench) => void): Promise<Bench> {
   return booting
 }
 
+/** Every path, what it admits and how it is reached, and the page. */
+export function describe(b: Bench): Registry {
+  return parse(b.describe())
+}
+
 /** Every setting, always valid: what every control reads its value from. */
 export function settings(b: Bench): Settings {
   return parse(b.settings())
@@ -92,7 +100,7 @@ export function sheet(b: Bench): Sheet {
   return parse(b.sheet())
 }
 
-/** How the key stands on its frame and why. */
+/** How the key stands on its frame and why, and the last edit refused. */
 export function diagnostics(b: Bench): Diagnostics {
   return parse(b.diagnostics())
 }
@@ -118,35 +126,22 @@ export function reading(s: Sheet, procedure: Procedure): Reading | undefined {
 }
 
 /**
- * Regulates the key to a key height and a key dip, millimetres: the papers
- * the engine laid and what they give, or its refusal, nothing changed.
+ * Sets the setting at `path` to `value`, in the path's unit: done, or why
+ * the engine refused it, nothing changed.
  */
-export function regulate(b: Bench, keyHeightMm: number, keyDipMm: number): Regulation {
-  return parse(b.regulate(keyHeightMm, keyDipMm))
+export function set(b: Bench, path: string, value: number): Acted {
+  return parse(b.set(path, value))
 }
 
-/**
- * Sets the bushings from a key friction weight, grams, as Stanwood's protocol
- * reads it: the engine finds the torque at which the protocol reads it back.
- * Returns why it refused, the bushings left as they were, or `null` when it
- * was set.
- */
-export function setKeyFrictionWeight(b: Bench, grams: number): FrictionRefusal | null {
-  return parse(b.set_key_friction_weight(grams))
-}
+/** An action's arguments, by the names the registry gives them. */
+export type Arguments = Readonly<Record<string, number | string>>
 
 /**
- * Weighs the key whole, as it arrives, its leads in it: its mass in grams, and
- * its front weight in grams read on the levelled jig `fromLipMm` back from the
- * covering's lip. The engine keeps the static moment the front weight gives.
- * Returns why it refused, the key's weighing left as it was, or `null` when
- * it was taken.
+ * Runs the action `action` with its arguments, as a control the registry
+ * describes names them: done, the papers a regulation laid and what they
+ * give, or why the engine refused it, nothing changed. The engine reads the
+ * action (`Action`) and refuses what is not one of its own.
  */
-export function weighKey(
-  b: Bench,
-  massG: number,
-  frontWeightG: number,
-  fromLipMm: number,
-): WeighingRefusal | null {
-  return parse(b.weigh_key(massG, frontWeightG, fromLipMm))
+export function act(b: Bench, action: ActionCode, args: Arguments = {}): Acted {
+  return parse(b.act(JSON.stringify({ ...args, action })))
 }

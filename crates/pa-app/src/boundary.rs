@@ -1,6 +1,7 @@
-//! What crosses to an interface: the bench's settings, its weighing sheet,
-//! its diagnostics, where its bodies stand and what it draws, each a document
-//! of its own, in codes and numbers.
+//! What crosses to an interface: the instrument's settings, its registry,
+//! its weighing sheet, its diagnostics, where its bodies stand and what it
+//! draws, each a document of its own, in codes and numbers; and what an
+//! edit answers.
 //!
 //! # Codes and numbers, never sentences
 //!
@@ -10,23 +11,30 @@
 //! `{"code":"pin_outside_mortise","by_mm":16.5}`, the parameters in the
 //! trade's units with the unit in their names, and the interface words it
 //! from one catalogue per language (`apps/bench/src/i18n/`). A code carries
-//! every number its wording needs, the bench's own limits included, so no
-//! wording of a code holds a number of the engine's.
+//! every number its wording needs, the instrument's own limits included, so
+//! no wording of a code holds a number of the engine's.
 //!
 //! The codes mirror the domain's enums in `pa-core` through `match`es with
 //! no catch-all arm: a refusal added there and not mapped here is a compile
 //! error, and one mapped here and not worded there fails the interface's
 //! type-check.
 //!
-//! # Five documents, apart
+//! # Six documents, apart, and two calls
 //!
-//! [`Settings`] are always valid, whatever the frame does: every control
-//! reads its value from them, so a frame that cannot be weighed still shows
-//! every control and the way back out of it. [`Sheet`] carries every reading,
-//! each read or refused with its reason, also always: a frame that cannot
-//! seat its key reads its jig and refuses the rest line by line.
-//! [`Diagnostics`] say how the key stands and why, [`State`] where each body
-//! stands, and [`Scene`] what is drawn, each part in its own body's frame.
+//! [`Settings`] are always valid, whatever the frame does, nested as the
+//! paths are: every control reads its value at its path, so a frame that
+//! cannot be weighed still shows every control and the way back out of it.
+//! [`Registry`] lists every path with what it admits and how it is
+//! reached, and the page that presents them, each control with its panel,
+//! its label's code and the range it offers. [`Sheet`] carries every
+//! reading, each read or refused with its reason, also always: a frame that
+//! cannot seat its key reads its jig and refuses the rest line by line.
+//! [`Diagnostics`] say how the key stands and why, and the last edit
+//! refused; [`State`] where each body stands and the contacts the view
+//! marks, each with its normal and the force it carries; and [`Scene`] what
+//! is drawn, each part in its own body's frame. An interface changes the
+//! instrument by two calls, [`set`] a path to a value and [`act`] an
+//! [`Action`], each answering [`Acted`].
 //!
 //! # Generated types
 //!
@@ -52,17 +60,22 @@ use pa_core::measure::seat::SeatRefusal;
 use pa_core::measure::walk::{WalkRefusal, CAP, STEP_G};
 use pa_core::measure::weighing::{BushingsRefusal, Refused, FRICTION_SEARCH_G};
 use pa_core::parts::faults::Fault as CoreFault;
+use pa_core::parts::frame::PAPER;
 use pa_core::parts::mounts::KeyMount;
 use pa_core::parts::{KeyMass, NotAWeighing};
-use pa_core::regulation::{
-    Limit as CoreLimit, Target as CoreTarget, Targets as CoreTargets, Unsolvable, STACK_SEARCH,
+use pa_core::registry::{
+    Kind as CoreKind, Layer as CoreLayer, Quantity as CoreQuantity, Step as CoreStep,
 };
+use pa_core::regulation::{Limit as CoreLimit, Target as CoreTarget, Unsolvable, STACK_SEARCH};
+use pa_core::validate::Problem as CoreProblem;
 use pa_core::G;
 
-use crate::key_bench::{
-    ContactState as CoreContactState, KeyBench, NotRegulated, Riding as CoreRiding, SeatReport,
-    TouchVerdict, Which, KEY, PAPER_THICKNESSES,
+use crate::instrument::{
+    Action, ActionCode, ContactState as CoreContactState, Edit as CoreEdit,
+    EditRefusal as CoreEditRefusal, Instrument, NotRegulated, Outcome, Riding as CoreRiding,
+    SeatReport, Stack, TouchVerdict, KEY, PAPER_THICKNESSES,
 };
+use crate::registry::{self, path, Control, Entry, Field, Label, Panel, Weighing as WeighingField};
 
 /// A document as the interface reads it: JSON, the shape of its generated
 /// TypeScript type.
@@ -398,30 +411,46 @@ impl Refusal {
 
 // ---- settings --------------------------------------------------------------
 
-/// Every setting of the bench, in the trade's units: always valid, whatever
-/// the frame does, so every control reads its value here.
+/// Every setting of the instrument, in the trade's units, nested as its
+/// paths are: the value at `frame.front_rail.pin_height_mm` is
+/// `frame.front_rail.pin_height_mm` here ([`crate::registry`]). Always
+/// valid, whatever the frame does, so every control reads its value here.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct Settings {
-    /// How far back from the covering's lip every weight is centred,
-    /// millimetres: the measuring point of every touchweight.
-    pub measuring_point_from_lip_mm: f64,
-    /// The weight on the measuring point, grams: negative pulls up.
-    pub weight_on_the_measuring_point_g: f64,
+    /// The protocol the key is weighed by.
+    pub protocol: ProtocolSettings,
+    /// What an experiment puts on the key.
+    pub experiment: ExperimentSettings,
     /// The regulation's targets.
-    pub targets: TargetSettings,
+    pub regulation: RegulationSettings,
     /// The key.
     pub key: KeySettings,
     /// The frame it sits on.
     pub frame: FrameSettings,
-    /// The papers on the two punchings, and the drawer's.
-    pub papers: PaperSettings,
+}
+
+/// The protocol's setting.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct ProtocolSettings {
+    /// How far back from the covering's lip every weight is centred,
+    /// millimetres: the measuring point of every touchweight.
+    pub measuring_point_from_lip_mm: f64,
+}
+
+/// What an experiment puts on the key.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct ExperimentSettings {
+    /// The weight on the measuring point, grams: negative pulls up.
+    pub weight_g: f64,
 }
 
 /// The targets of the regulation last laid.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
-pub struct TargetSettings {
+pub struct RegulationSettings {
     /// Key height, millimetres.
     pub key_height_mm: f64,
     /// Key dip, millimetres.
@@ -434,22 +463,47 @@ pub struct TargetSettings {
 pub struct KeySettings {
     /// Its front edge, millimetres in front of the balance pin.
     pub front_edge_mm: f64,
-    /// Its capstan, millimetres behind the balance pin.
-    pub capstan_behind_mm: f64,
-    /// How far the capstan stands above the keystick, millimetres.
-    pub capstan_height_mm: f64,
-    /// The front mortise's depth above the underside, millimetres.
-    pub front_mortise_depth_mm: f64,
-    /// Its mass, grams: as weighed, or derived from its volume until it is;
-    /// `null` where the volume model encloses nothing.
-    pub mass_g: Option<f64>,
+    /// Its capstan.
+    pub capstan: CapstanSettings,
+    /// Its front mortise.
+    pub front_mortise: MortiseSettings,
+    /// Its bushings.
+    pub friction: FrictionSettings,
     /// Its weighing as it was typed; `null` while its mass is derived from
     /// its volume.
-    pub weighed: Option<Weighed>,
-    /// Its bushings' friction as stored: the torque they hold, gram-force
+    pub weighing: Option<Weighed>,
+    /// Its mass as the statics take it, grams: as weighed, or derived from
+    /// its volume until it is; `null` where the volume model encloses
+    /// nothing. Not a setting: what the weighing, or the estimate, gives.
+    pub mass_g: Option<f64>,
+}
+
+/// The capstan.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct CapstanSettings {
+    /// Where it stands, millimetres behind the balance pin.
+    pub behind_mm: f64,
+    /// How far it stands above the keystick, millimetres.
+    pub height_mm: f64,
+}
+
+/// The front mortise.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct MortiseSettings {
+    /// Its depth above the underside, millimetres.
+    pub depth_mm: f64,
+}
+
+/// The bushings.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct FrictionSettings {
+    /// Their friction as stored: the torque they hold, gram-force
     /// millimetres. What Stanwood's protocol reads them as is a reading, on
     /// the sheet.
-    pub friction_torque_gmm: f64,
+    pub torque_gmm: f64,
 }
 
 /// A key weighed whole, as it was typed.
@@ -464,105 +518,550 @@ pub struct Weighed {
     pub from_lip_mm: f64,
 }
 
-/// The frame's own dimensions, which the key does not move.
+/// The frame's own dimensions, which the key does not move, and the papers
+/// laid on its punchings.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct FrameSettings {
-    /// The bare balance rail's height above the keybed, millimetres.
-    pub balance_rail_mm: f64,
-    /// The bare front rail's height, millimetres.
-    pub front_rail_mm: f64,
-    /// The bare back rail's height, millimetres.
-    pub back_rail_mm: f64,
-    /// Where the front rail stands, millimetres in front of the balance pin.
-    pub front_rail_at_mm: f64,
-    /// Where the back rail stands, millimetres behind the balance pin.
-    pub back_rail_behind_mm: f64,
-    /// How far the front rail pin stands above the bare rail, millimetres.
-    pub front_pin_mm: f64,
-    /// The back rail cloth's thickness, millimetres.
-    pub back_rail_cloth_mm: f64,
-    /// The felt washer under the balance punching's papers, millimetres.
-    pub balance_felt_mm: f64,
-    /// The felt washer on the front punching, millimetres.
-    pub front_felt_mm: f64,
+    /// The balance rail.
+    pub balance_rail: BalanceRailSettings,
+    /// The front rail.
+    pub front_rail: FrontRailSettings,
+    /// The back rail.
+    pub back_rail: BackRailSettings,
+    /// The balance punching.
+    pub balance_punching: PunchingSettings,
+    /// The front punching.
+    pub front_punching: PunchingSettings,
 }
 
-/// The papers on the two punchings: the coordinate regulation sets.
+/// The balance rail.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
-pub struct PaperSettings {
-    /// Under the balance punching, millimetres, in the order they were laid.
-    pub balance_mm: Vec<f64>,
-    /// On the front punching, millimetres, in the order they were laid.
-    pub front_mm: Vec<f64>,
-    /// The balance stack's total, millimetres, as the engine sums it.
-    pub balance_total_mm: f64,
-    /// The front stack's total, millimetres, as the engine sums it.
-    pub front_total_mm: f64,
-    /// The thicknesses the drawer holds, millimetres.
-    pub drawer_mm: Vec<f64>,
+pub struct BalanceRailSettings {
+    /// The bare rail's height above the keybed, millimetres.
+    pub height_mm: f64,
+}
+
+/// The front rail.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct FrontRailSettings {
+    /// The bare rail's height above the keybed, millimetres.
+    pub height_mm: f64,
+    /// Where it stands, millimetres in front of the balance pin.
+    pub at_mm: f64,
+    /// How far its pin stands above the bare rail, millimetres.
+    pub pin_height_mm: f64,
+}
+
+/// The back rail.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct BackRailSettings {
+    /// The bare rail's height above the keybed, millimetres.
+    pub height_mm: f64,
+    /// Where it stands, millimetres behind the balance pin.
+    pub behind_mm: f64,
+    /// Its cloth's thickness, millimetres.
+    pub cloth_mm: f64,
+}
+
+/// A punching: its felt, and the papers under it, the coordinate regulation
+/// sets.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct PunchingSettings {
+    /// The felt washer, millimetres.
+    pub felt_mm: f64,
+    /// The papers, millimetres each, in the order they were laid, bottom
+    /// first.
+    pub papers_mm: Vec<f64>,
+    /// Their total, millimetres, as the engine sums it.
+    pub paper_total_mm: f64,
 }
 
 impl Settings {
-    /// The settings of `bench`.
-    pub fn of(bench: &KeyBench) -> Self {
-        let key = bench.key();
-        let frame = bench.frame();
-        let targets = bench.targets();
-        let (balance_total, front_total) = bench.papers();
-        let friction = bench.friction();
+    /// The settings of `instrument`.
+    pub fn of(instrument: &Instrument) -> Self {
+        let at = |path: &str| {
+            instrument
+                .value(path)
+                .unwrap_or_else(|| panic!("{path} holds a value"))
+        };
+        let punching = |stack: Stack, felt: &str| {
+            let papers = instrument.papers(stack);
+            PunchingSettings {
+                felt_mm: at(felt),
+                papers_mm: papers.iter().map(|&p| mm(p)).collect(),
+                paper_total_mm: mm(papers.iter().sum()),
+            }
+        };
         Self {
-            measuring_point_from_lip_mm: mm(bench.measuring_point_from_lip()),
-            weight_on_the_measuring_point_g: bench.finger_weight(),
-            targets: TargetSettings {
-                key_height_mm: mm(targets.key_height),
-                key_dip_mm: mm(targets.key_dip),
+            protocol: ProtocolSettings {
+                measuring_point_from_lip_mm: at(path::MEASURING_POINT),
+            },
+            experiment: ExperimentSettings {
+                weight_g: at(path::WEIGHT),
+            },
+            regulation: RegulationSettings {
+                key_height_mm: at(path::KEY_HEIGHT),
+                key_dip_mm: at(path::KEY_DIP),
             },
             key: KeySettings {
-                front_edge_mm: mm(key.front_edge),
-                capstan_behind_mm: mm(-key.capstan),
-                capstan_height_mm: mm(key.capstan_screw.height),
-                front_mortise_depth_mm: mm(key.front_mortise_depth),
-                mass_g: bench.key_mass_g(),
-                weighed: match bench.key_mass() {
+                front_edge_mm: at(path::FRONT_EDGE),
+                capstan: CapstanSettings {
+                    behind_mm: at(path::CAPSTAN_BEHIND),
+                    height_mm: at(path::CAPSTAN_HEIGHT),
+                },
+                front_mortise: MortiseSettings {
+                    depth_mm: at(path::FRONT_MORTISE_DEPTH),
+                },
+                friction: FrictionSettings {
+                    torque_gmm: at(path::FRICTION_TORQUE),
+                },
+                weighing: match instrument.key_mass() {
                     KeyMass::Estimated => None,
-                    KeyMass::Weighed { mass, datum, .. } => Some(Weighed {
-                        mass_g: mass * 1000.0,
-                        front_weight_g: datum.grams,
-                        from_lip_mm: mm(datum.from_lip_m),
+                    KeyMass::Weighed { .. } => Some(Weighed {
+                        mass_g: at(path::WEIGHED_MASS),
+                        front_weight_g: at(path::WEIGHED_FRONT_WEIGHT),
+                        from_lip_mm: at(path::WEIGHED_FROM_LIP),
                     }),
                 },
-                // Newton-metres to gram-force millimetres: over standard
-                // gravity to kilogram-force metres, then a thousand twice.
-                friction_torque_gmm: friction.bound_n_m / G * 1.0e6,
+                mass_g: instrument.key_mass_g(),
             },
             frame: FrameSettings {
-                balance_rail_mm: mm(frame.balance_rail_height),
-                front_rail_mm: mm(frame.front_rail_height),
-                back_rail_mm: mm(frame.back_rail_height),
-                front_rail_at_mm: mm(frame.front_rail),
-                back_rail_behind_mm: mm(-frame.back_rail),
-                front_pin_mm: mm(frame.sections.front.pin_height),
-                back_rail_cloth_mm: mm(frame.back_rail_cloth),
-                balance_felt_mm: mm(frame.balance_punching.felt),
-                front_felt_mm: mm(frame.front_punching.felt),
+                balance_rail: BalanceRailSettings {
+                    height_mm: at(path::BALANCE_RAIL_HEIGHT),
+                },
+                front_rail: FrontRailSettings {
+                    height_mm: at(path::FRONT_RAIL_HEIGHT),
+                    at_mm: at(path::FRONT_RAIL_AT),
+                    pin_height_mm: at(path::FRONT_PIN_HEIGHT),
+                },
+                back_rail: BackRailSettings {
+                    height_mm: at(path::BACK_RAIL_HEIGHT),
+                    behind_mm: at(path::BACK_RAIL_BEHIND),
+                    cloth_mm: at(path::BACK_RAIL_CLOTH),
+                },
+                balance_punching: punching(Stack::Balance, path::BALANCE_FELT),
+                front_punching: punching(Stack::Front, path::FRONT_FELT),
             },
-            papers: PaperSettings {
-                balance_mm: bench
-                    .papers_on(Which::Balance)
-                    .iter()
-                    .map(|&p| mm(p))
-                    .collect(),
-                front_mm: bench
-                    .papers_on(Which::Front)
-                    .iter()
-                    .map(|&p| mm(p))
-                    .collect(),
-                balance_total_mm: mm(balance_total),
-                front_total_mm: mm(front_total),
-                drawer_mm: PAPER_THICKNESSES.iter().map(|&p| mm(p)).collect(),
+        }
+    }
+}
+
+// ---- the registry ----------------------------------------------------------
+
+/// The unit a setting's value is in, as its path's name says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum SettingUnit {
+    /// Millimetres.
+    Mm,
+    /// Grams.
+    G,
+    /// Gram-force millimetres.
+    Gmm,
+}
+
+/// What a setting measures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum Quantity {
+    /// A length or a position.
+    Length,
+    /// A mass or a weight.
+    Mass,
+    /// A torque.
+    Torque,
+}
+
+/// Which layer of the instrument a setting belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum Layer {
+    /// What the choice of parts fixes.
+    Design,
+    /// What a technician turns or lays to regulate.
+    Regulation,
+    /// The conventions a protocol is run under.
+    Protocol,
+    /// What an experiment puts on the key.
+    Experiment,
+}
+
+/// How a setting is reached.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum Kind {
+    /// Set directly.
+    Actuated,
+    /// Aimed at, the regulation solve reaching it.
+    Target,
+    /// Typed as it was read on a real part.
+    Measured,
+}
+
+/// How a setting moves.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "step", rename_all = "snake_case")]
+pub enum Step {
+    /// Continuously: a dimension edited, a screw turned.
+    Continuous,
+    /// By the papers a drawer holds.
+    Drawer {
+        /// Their thicknesses, millimetres, thinnest first.
+        sizes_mm: Vec<f64>,
+    },
+}
+
+/// How a setting is reached from an interface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "by", rename_all = "snake_case")]
+pub enum SetBy {
+    /// `set(path, value)`.
+    Set,
+    /// `act`, by this action.
+    Act {
+        /// The action.
+        action: ActionCode,
+    },
+}
+
+/// One setting of the instrument: its path, what it admits, how it is
+/// reached.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct Param {
+    /// The path, its unit in its name.
+    pub path: String,
+    /// The unit.
+    pub unit: SettingUnit,
+    /// What it measures.
+    pub quantity: Quantity,
+    /// Its layer.
+    pub layer: Layer,
+    /// How it is reached.
+    pub kind: Kind,
+    /// Whether its value is a list: a punching's papers.
+    pub list: bool,
+    /// The least it admits, in its unit; `null` where nothing bounds it
+    /// below, or where what bounds it is another setting.
+    pub min: Option<f64>,
+    /// The most it admits; `null` likewise.
+    pub max: Option<f64>,
+    /// How it moves.
+    pub step: Step,
+    /// How an interface reaches it.
+    pub set_by: SetBy,
+}
+
+/// A panel of the page.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct PanelLayout {
+    /// Which.
+    pub panel: Panel,
+    /// Its controls, in order.
+    pub controls: Vec<ControlLayout>,
+}
+
+/// A field of a form, in its unit.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct FieldLayout {
+    /// The action's argument it fills.
+    pub argument: String,
+    /// The path the argument stands for: its unit, what it admits, how it
+    /// is reached.
+    pub path: String,
+    /// Where its first value is read, when the page opens.
+    pub seed: Seed,
+    /// What it is worded by.
+    pub label: Label,
+    /// The least it offers, if bounded.
+    pub min: Option<f64>,
+    /// The most it offers, if bounded.
+    pub max: Option<f64>,
+    /// The step it moves in.
+    pub step: f64,
+}
+
+/// Where a form's field reads its first value: what the bench holds for
+/// that quantity when the page opens.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "from", rename_all = "snake_case")]
+pub enum Seed {
+    /// The value at this address of the settings document, nested as the
+    /// paths are: a path, or what the settings report beside them.
+    Setting {
+        /// The address.
+        at: String,
+    },
+    /// A reading of the sheet, as the trade reads it.
+    Reading {
+        /// The reading.
+        procedure: Procedure,
+    },
+}
+
+/// One control of the page.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "control", rename_all = "snake_case")]
+pub enum ControlLayout {
+    /// A slider over a path `set` reaches, its range the page's offer
+    /// inside the hard one.
+    Slider {
+        /// The path.
+        path: String,
+        /// What it is worded by.
+        label: Label,
+        /// The least it offers, in the path's unit.
+        min: f64,
+        /// The most it offers.
+        max: f64,
+        /// The step it sweeps in.
+        step: f64,
+    },
+    /// A punching's pile of papers: laid from the drawer by `add_paper`,
+    /// lifted by `remove_paper`.
+    Stack {
+        /// The papers' path.
+        path: String,
+        /// The address, in the settings document, of the engine's own
+        /// total of them: the page sums nothing.
+        total: String,
+        /// Which punching.
+        stack: Stack,
+        /// What it is worded by.
+        label: Label,
+    },
+    /// Fields typed and sent together by one action.
+    Form {
+        /// The action.
+        action: ActionCode,
+        /// What its button is worded by.
+        button: Label,
+        /// Its fields.
+        fields: Vec<FieldLayout>,
+    },
+    /// The bushings' control: it shows the sheet's reading `reads`, and
+    /// sets the bushings through `action`, in grams.
+    KeyFrictionWeight {
+        /// What it is worded by.
+        label: Label,
+        /// The reading it shows.
+        reads: Procedure,
+        /// The action it sets through.
+        action: ActionCode,
+        /// The action's argument the grams fill.
+        argument: String,
+        /// The least it offers, grams.
+        min: f64,
+        /// The most it offers, grams.
+        max: f64,
+        /// The step it sweeps in, grams.
+        step: f64,
+    },
+    /// A button running an action with no argument.
+    Button {
+        /// The action.
+        action: ActionCode,
+        /// What it is worded by.
+        label: Label,
+    },
+}
+
+/// The registry: every path of the instrument, what it admits and how it is
+/// reached, and the page that presents them, panel by panel.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct Registry {
+    /// Every path, in a fixed order.
+    pub params: Vec<Param>,
+    /// The page: its panels, in order.
+    pub page: Vec<PanelLayout>,
+}
+
+impl Registry {
+    /// The registry of `instrument`'s paths.
+    pub fn of(_instrument: &Instrument) -> Self {
+        Self {
+            params: registry::ENTRIES.iter().map(Param::of).collect(),
+            page: registry::PAGE
+                .iter()
+                .map(|(panel, controls)| PanelLayout {
+                    panel: *panel,
+                    controls: controls.iter().map(ControlLayout::of).collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+/// A bound as it crosses: `null` for an infinity.
+fn bound(x: f64) -> Option<f64> {
+    x.is_finite().then_some(x)
+}
+
+impl Param {
+    fn of(e: &Entry) -> Self {
+        let declared = |hard: (f64, f64), quantity, layer, kind, step: CoreStep| {
+            let (a, b) = (e.from_si(hard.0), e.from_si(hard.1));
+            let (min, max) = if a <= b { (a, b) } else { (b, a) };
+            (
+                quantity,
+                layer,
+                kind,
+                bound(min),
+                bound(max),
+                Step::of(step),
+            )
+        };
+        let (quantity, layer, kind, min, max, step) = match e.field {
+            Field::Key(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Frame(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Protocol(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Friction(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Weight(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Target(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Papers(_) => declared(
+                PAPER.hard,
+                PAPER.quantity,
+                PAPER.layer,
+                PAPER.kind,
+                PAPER.step,
+            ),
+            // A key's weighing: a mass more than nothing, any front weight,
+            // a roller on the covering, from its lip back to its end, which
+            // is the key's and not a bound of its own.
+            Field::Weighing(which) => (
+                CoreQuantity::Length,
+                CoreLayer::Design,
+                CoreKind::Measured,
+                match which {
+                    WeighingField::FrontWeight => None,
+                    WeighingField::Mass | WeighingField::FromLip => Some(0.0),
+                },
+                None,
+                Step::Continuous,
+            ),
+        };
+        let quantity = match e.field {
+            Field::Weighing(WeighingField::Mass | WeighingField::FrontWeight) => CoreQuantity::Mass,
+            _ => quantity,
+        };
+        Self {
+            path: e.path.to_owned(),
+            unit: match e.unit {
+                registry::Unit::Millimetre => SettingUnit::Mm,
+                registry::Unit::Gram => SettingUnit::G,
+                registry::Unit::GramMillimetre => SettingUnit::Gmm,
             },
+            quantity: match quantity {
+                CoreQuantity::Length => Quantity::Length,
+                CoreQuantity::Mass => Quantity::Mass,
+                CoreQuantity::Torque => Quantity::Torque,
+            },
+            layer: match layer {
+                CoreLayer::Design => Layer::Design,
+                CoreLayer::Regulation => Layer::Regulation,
+                CoreLayer::Protocol => Layer::Protocol,
+                CoreLayer::Experiment => Layer::Experiment,
+            },
+            kind: match kind {
+                CoreKind::Actuated => Kind::Actuated,
+                CoreKind::Target => Kind::Target,
+                CoreKind::Measured => Kind::Measured,
+            },
+            list: matches!(e.field, Field::Papers(_)),
+            min,
+            max,
+            step,
+            set_by: match e.set_by() {
+                None => SetBy::Set,
+                Some(action) => SetBy::Act { action },
+            },
+        }
+    }
+}
+
+impl Step {
+    fn of(step: CoreStep) -> Self {
+        match step {
+            CoreStep::Continuous => Self::Continuous,
+            CoreStep::Drawer(sizes) => Self::Drawer {
+                sizes_mm: sizes.iter().map(|&s| mm(s)).collect(),
+            },
+        }
+    }
+}
+
+impl ControlLayout {
+    fn of(control: &Control) -> Self {
+        match *control {
+            Control::Slider { path, label, soft } => Self::Slider {
+                path: path.to_owned(),
+                label,
+                min: soft.min.unwrap_or(f64::NEG_INFINITY),
+                max: soft.max.unwrap_or(f64::INFINITY),
+                step: soft.step,
+            },
+            Control::Stack {
+                path,
+                total,
+                stack,
+                label,
+            } => Self::Stack {
+                path: path.to_owned(),
+                total: total.to_owned(),
+                stack,
+                label,
+            },
+            Control::Form {
+                action,
+                button,
+                fields,
+            } => Self::Form {
+                action,
+                button,
+                fields: fields
+                    .iter()
+                    .map(|f| FieldLayout {
+                        argument: f.argument.to_owned(),
+                        path: f.path.to_owned(),
+                        seed: match f.seed {
+                            registry::Seed::Setting(at) => Seed::Setting { at: at.to_owned() },
+                            registry::Seed::Reading(procedure) => Seed::Reading {
+                                procedure: procedure.into(),
+                            },
+                        },
+                        label: f.label,
+                        min: f.soft.min,
+                        max: f.soft.max,
+                        step: f.soft.step,
+                    })
+                    .collect(),
+            },
+            Control::KeyFrictionWeight { label, soft } => Self::KeyFrictionWeight {
+                label,
+                reads: Procedure::KeyFrictionWeightZeroedOnTheJig,
+                action: ActionCode::SetFrictionFromKeyFrictionWeight,
+                argument: "kf_g".to_owned(),
+                min: soft.min.unwrap_or(0.0),
+                max: soft.max.unwrap_or(f64::INFINITY),
+                step: soft.step,
+            },
+            Control::Button { action, label } => Self::Button { action, label },
         }
     }
 }
@@ -847,9 +1346,9 @@ pub struct Sheet {
 }
 
 impl Sheet {
-    /// The sheet of `bench`.
-    pub fn of(bench: &KeyBench) -> Self {
-        let sheet = bench.sheet();
+    /// The sheet of `instrument`.
+    pub fn of(instrument: &Instrument) -> Self {
+        let sheet = instrument.sheet();
         // A key with no stroke is told why: read once, for every reading
         // that needs a stroke.
         let no_travel = sheet
@@ -857,7 +1356,7 @@ impl Sheet {
             .iter()
             .any(|r| r.result == Err(Refused::Walk(WalkRefusal::NoTravel)));
         let riding = if no_travel {
-            bench.riding().map(Riding::from)
+            instrument.riding().map(Riding::from)
         } else {
             None
         };
@@ -1076,7 +1575,7 @@ pub struct EdgeOverlap {
     pub pair: Contact,
     /// How far its drawn edge stands into the key, millimetres: what its
     /// felt would compress under a key out of level on it.
-    pub mm: f64,
+    pub overlap_mm: f64,
 }
 
 /// How the key stands on its frame and why, each part wherever it can be
@@ -1100,12 +1599,15 @@ pub struct Diagnostics {
     pub touch: Option<Touch>,
     /// The punchings the key bears on whose drawn edge overlaps it.
     pub edge_overlaps: Vec<EdgeOverlap>,
+    /// The last edit refused since one was taken, and why; `null` where
+    /// none was.
+    pub refused_edit: Option<RefusedEdit>,
 }
 
 impl Diagnostics {
-    /// The diagnostics of `bench`.
-    pub fn of(bench: &KeyBench) -> Self {
-        let report = bench.seat_report();
+    /// The diagnostics of `instrument`.
+    pub fn of(instrument: &Instrument) -> Self {
+        let report = instrument.seat_report();
         Self {
             seat_refused: report.as_ref().err().map(Refusal::seat),
             riding: report
@@ -1113,21 +1615,25 @@ impl Diagnostics {
                 .ok()
                 .and_then(|r| r.riding)
                 .map(Riding::from),
-            faults: bench.faults().iter().map(Fault::from).collect(),
+            faults: instrument.faults().iter().map(Fault::from).collect(),
             seats: report.as_ref().ok().and_then(Seats::of),
-            touch: bench.touch().map(|t| Touch {
+            touch: instrument.touch().map(|t| Touch {
                 verdict: (&t.verdict).into(),
                 gap_front_mm: t.gap_front_mm,
                 gap_back_mm: t.gap_back_mm,
             }),
-            edge_overlaps: bench
+            edge_overlaps: instrument
                 .edge_overlaps()
                 .into_iter()
                 .map(|(pair, overlap)| EdgeOverlap {
                     pair: pair.into(),
-                    mm: mm(overlap),
+                    overlap_mm: mm(overlap),
                 })
                 .collect(),
+            refused_edit: instrument.refused_edit().map(|r| RefusedEdit {
+                edit: (&r.edit).into(),
+                why: EditRefusal::of(instrument, &r.edit, &r.why),
+            }),
         }
     }
 }
@@ -1140,7 +1646,7 @@ impl Diagnostics {
 #[cfg_attr(test, derive(TS))]
 pub struct Pose {
     /// The origin, millimetres.
-    pub origin: [f32; 2],
+    pub origin_mm: [f32; 2],
     /// The rotation's cosine.
     pub cos: f32,
     /// The rotation's sine.
@@ -1154,7 +1660,7 @@ pub struct Marker {
     /// The body, an index into the state's poses.
     pub body: u32,
     /// Where, millimetres, in the body's frame.
-    pub at: [f32; 2],
+    pub at_mm: [f32; 2],
 }
 
 /// Whether a contact the view marks is closed, open or overlapping.
@@ -1170,22 +1676,30 @@ pub enum ContactState {
     Overlapping,
 }
 
-/// A contact the view marks, in the keybed's frame: where the contact rows
-/// put its two points, not where a body's pose carries them.
+/// A contact the view marks, in the keybed's frame: one active row, where
+/// the contact rows put its two points, not where a body's pose carries
+/// them, with its normal and what it carries.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct MarkedContact {
     /// Which contact.
     pub pair: Contact,
     /// Where the key's surface is, millimetres.
-    pub on_key: [f32; 2],
+    pub on_key_mm: [f32; 2],
     /// Where the frame's surface is, millimetres.
-    pub on_frame: [f32; 2],
+    pub on_frame_mm: [f32; 2],
     /// The signed gap between them, millimetres: negative where the drawn
     /// parts overlap.
     pub gap_mm: f32,
     /// Closed, open or overlapping.
     pub state: ContactState,
+    /// The row's unit normal, from the frame's surface towards the key's.
+    pub normal: [f32; 2],
+    /// The force the row pushed the key with in the last equilibrium,
+    /// grams-force: its multiplier, one admissible split of the loads where
+    /// friction or redundant rows share them, never a verdict; zero on a
+    /// row that carried nothing.
+    pub force_g: f32,
 }
 
 /// Where each body stands, and what the view marks on them.
@@ -1202,36 +1716,38 @@ pub struct State {
 }
 
 impl State {
-    /// The state of `bench`.
-    pub fn of(bench: &KeyBench) -> Self {
-        let m = bench.measuring_point_on_key();
+    /// The state of `instrument`.
+    pub fn of(instrument: &Instrument) -> Self {
+        let m = instrument.measuring_point_on_key();
         Self {
-            poses: bench
+            poses: instrument
                 .poses()
                 .into_iter()
                 .map(|p| Pose {
-                    origin: [mm32(p.origin.x), mm32(p.origin.y)],
+                    origin_mm: [mm32(p.origin.x), mm32(p.origin.y)],
                     cos: p.cos as f32,
                     sin: p.sin as f32,
                 })
                 .collect(),
             measuring_point: Marker {
                 body: body_index(KEY.0),
-                at: [mm32(m.x), mm32(m.y)],
+                at_mm: [mm32(m.x), mm32(m.y)],
             },
-            contacts: bench
+            contacts: instrument
                 .contacts()
                 .into_iter()
                 .map(|c| MarkedContact {
                     pair: c.code.into(),
-                    on_key: [mm32(c.on_key.x), mm32(c.on_key.y)],
-                    on_frame: [mm32(c.on_frame.x), mm32(c.on_frame.y)],
+                    on_key_mm: [mm32(c.on_key.x), mm32(c.on_key.y)],
+                    on_frame_mm: [mm32(c.on_frame.x), mm32(c.on_frame.y)],
                     gap_mm: mm32(c.gap),
                     state: match c.state() {
                         CoreContactState::Closed => ContactState::Closed,
                         CoreContactState::Open => ContactState::Open,
                         CoreContactState::Overlapping => ContactState::Overlapping,
                     },
+                    normal: [c.normal.x as f32, c.normal.y as f32],
+                    force_g: (c.force / G * 1000.0) as f32,
                 })
                 .collect(),
         }
@@ -1334,13 +1850,13 @@ pub struct Outline {
     /// How the outline becomes a solid.
     pub sweep: Sweep,
     /// Extrusion across the sagittal plane, millimetres; zero when turned.
-    pub width: f32,
+    pub width_mm: f32,
     /// Where a turned part's axis stands along its body's `x`, millimetres;
     /// zero when extruded.
-    pub axis_x: f32,
+    pub axis_x_mm: f32,
     /// Flat `[x0, y0, x1, y1, …]`, millimetres, in the body's frame; for a
     /// turned part, its profile in radius and height.
-    pub points: Vec<f32>,
+    pub points_mm: Vec<f32>,
     /// The segment of the part's outline each point starts or lies on.
     pub segs: Vec<u16>,
     /// Which segments come from where.
@@ -1356,10 +1872,10 @@ pub struct Scene {
 }
 
 impl Scene {
-    /// The scene of `bench`.
-    pub fn of(bench: &KeyBench) -> Self {
+    /// The scene of `instrument`.
+    pub fn of(instrument: &Instrument) -> Self {
         Self {
-            outlines: bench
+            outlines: instrument
                 .outlines()
                 .into_iter()
                 .map(|o| {
@@ -1392,9 +1908,9 @@ impl Scene {
                             _ => None,
                         },
                         sweep,
-                        width,
-                        axis_x,
-                        points: o
+                        width_mm: width,
+                        axis_x_mm: axis_x,
+                        points_mm: o
                             .points
                             .iter()
                             .flat_map(|p| [mm32(p.x), mm32(p.y)])
@@ -1425,7 +1941,7 @@ impl Scene {
     }
 }
 
-// ---- what an action answers ------------------------------------------------
+// ---- what an edit answers --------------------------------------------------
 
 /// One of the two regulation targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -1493,7 +2009,7 @@ pub enum RegulationRefusal {
     RegulationInfeasible {
         /// Which target.
         target: Target,
-        /// What was asked of it, millimetres.
+        /// What was asked of it, millimetres, as it was asked.
         wanted_mm: f64,
         /// What keeps it out of reach.
         limited_by: Limit,
@@ -1501,11 +2017,6 @@ pub enum RegulationRefusal {
         shortfall_mm: f64,
         /// The most paper the search lays on a stack, millimetres.
         search_mm: f64,
-    },
-    /// A target is not a number.
-    TargetNotFinite {
-        /// Which.
-        target: Target,
     },
     /// The key could not be seated at one of the stacks the search tried.
     NoSeat {
@@ -1515,8 +2026,10 @@ pub enum RegulationRefusal {
 }
 
 impl RegulationRefusal {
-    /// Why `targets` were not laid.
-    pub fn of(why: &NotRegulated, targets: CoreTargets) -> Self {
+    /// Why a regulation to a key height and a key dip, millimetres as they
+    /// were asked, was not laid; a target that is not a number never
+    /// reaches the solve ([`Problem::NotFinite`]).
+    pub fn of(why: &NotRegulated, key_height_mm: f64, key_dip_mm: f64) -> Self {
         match why {
             NotRegulated::Infeasible {
                 target,
@@ -1524,73 +2037,21 @@ impl RegulationRefusal {
                 shortfall_m,
             } => Self::RegulationInfeasible {
                 target: (*target).into(),
-                wanted_mm: mm(match target {
-                    CoreTarget::KeyHeight => targets.key_height,
-                    CoreTarget::KeyDip => targets.key_dip,
-                }),
+                wanted_mm: match target {
+                    CoreTarget::KeyHeight => key_height_mm,
+                    CoreTarget::KeyDip => key_dip_mm,
+                },
                 limited_by: (*limited_by).into(),
                 shortfall_mm: mm(*shortfall_m),
                 search_mm: mm(STACK_SEARCH),
             },
-            NotRegulated::Unsolvable(Unsolvable::NotFinite(target)) => Self::TargetNotFinite {
-                target: (*target).into(),
-            },
             NotRegulated::Unsolvable(Unsolvable::NoSeat(seat)) => Self::NoSeat {
                 why: Refusal::seat(seat),
             },
-        }
-    }
-}
-
-/// How a regulation the interface asked for came out.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[cfg_attr(test, derive(TS))]
-#[serde(tag = "outcome", rename_all = "snake_case")]
-pub enum Regulation {
-    /// The papers were laid.
-    Laid {
-        /// The paper laid under the balance punching, millimetres.
-        balance_mm: f64,
-        /// The paper laid on the front punching, millimetres.
-        front_mm: f64,
-        /// The key height the papers give, millimetres.
-        key_height_mm: f64,
-        /// The key dip the papers give, millimetres.
-        key_dip_mm: f64,
-        /// The key height asked for, millimetres, as it was asked.
-        asked_key_height_mm: f64,
-        /// The key dip asked for, millimetres, as it was asked.
-        asked_key_dip_mm: f64,
-    },
-    /// Refused, and nothing changed.
-    Refused {
-        /// Why.
-        why: RegulationRefusal,
-    },
-}
-
-/// Regulates `bench` to a key height and a key dip, millimetres: the papers
-/// laid and what they give, or why not.
-pub fn regulate(bench: &mut KeyBench, key_height_mm: f64, key_dip_mm: f64) -> Regulation {
-    let targets = CoreTargets {
-        key_height: key_height_mm * 1e-3,
-        key_dip: key_dip_mm * 1e-3,
-    };
-    match bench.regulate(targets) {
-        Ok(achieved) => {
-            let (balance, front) = bench.papers();
-            Regulation::Laid {
-                balance_mm: mm(balance),
-                front_mm: mm(front),
-                key_height_mm: mm(achieved.key_height),
-                key_dip_mm: mm(achieved.key_dip),
-                asked_key_height_mm: key_height_mm,
-                asked_key_dip_mm: key_dip_mm,
+            NotRegulated::Unsolvable(Unsolvable::NotFinite(target)) => {
+                unreachable!("a {target:?} that is not a number reached the solve")
             }
         }
-        Err(why) => Regulation::Refused {
-            why: RegulationRefusal::of(&why, targets),
-        },
     }
 }
 
@@ -1600,11 +2061,6 @@ pub fn regulate(bench: &mut KeyBench, key_height_mm: f64, key_dip_mm: f64) -> Re
 #[cfg_attr(test, derive(TS))]
 #[serde(tag = "code", rename_all = "snake_case")]
 pub enum WeighingRefusal {
-    /// A mass, a front weight or a distance from the lip that is not a
-    /// number.
-    NotFinite,
-    /// A mass of nothing or less.
-    MassNotPositive,
     /// The jig's roller would stand off the covering's top.
     RollerOffTheCovering {
         /// Where it was said to stand, millimetres back from the lip.
@@ -1620,35 +2076,23 @@ pub enum WeighingRefusal {
 }
 
 impl WeighingRefusal {
-    /// Why a weighing of `bench`'s key was refused.
-    pub fn of(bench: &KeyBench, why: NotAWeighing) -> Self {
+    /// Why a weighing of `instrument`'s key was refused; a number that is
+    /// not one, or a mass of nothing, never reaches the weighing
+    /// ([`Problem`]).
+    pub fn of(instrument: &Instrument, why: NotAWeighing) -> Self {
         match why {
-            NotAWeighing::NotANumber => Self::NotFinite,
-            NotAWeighing::MassNotPositive => Self::MassNotPositive,
             NotAWeighing::RollerOffTheCovering { from_lip_m } => Self::RollerOffTheCovering {
                 from_lip_mm: mm(from_lip_m),
-                covering_mm: mm(bench.key().keytop_length),
+                covering_mm: mm(instrument.key().keytop_length),
             },
             NotAWeighing::CentreOfMassOffTheKey { at_m } => {
                 Self::CentreOfMassOffTheKey { at_mm: mm(at_m) }
             }
+            NotAWeighing::NotANumber | NotAWeighing::MassNotPositive => {
+                unreachable!("{why:?} reached the weighing")
+            }
         }
     }
-}
-
-/// Weighs `bench`'s key whole, its front weight read `from_lip_mm`
-/// millimetres back from the covering's lip: `None` where it was taken, or
-/// why not.
-pub fn weigh_key(
-    bench: &mut KeyBench,
-    mass_g: f64,
-    front_weight_g: f64,
-    from_lip_mm: f64,
-) -> Option<WeighingRefusal> {
-    let why = bench
-        .weigh_key(mass_g, front_weight_g, from_lip_mm * 1e-3)
-        .err()?;
-    Some(WeighingRefusal::of(bench, why))
 }
 
 /// Why no bushings read a key friction weight typed. The bushings stay as
@@ -1657,8 +2101,6 @@ pub fn weigh_key(
 #[cfg_attr(test, derive(TS))]
 #[serde(tag = "code", rename_all = "snake_case")]
 pub enum FrictionRefusal {
-    /// The weight is not a number.
-    NotFinite,
     /// Stanwood's protocol cannot be read on this key and frame.
     ProtocolRefused {
         /// Why.
@@ -1686,37 +2128,391 @@ pub enum FrictionRefusal {
 
 impl FrictionRefusal {
     /// Why `typed_g` grams of key friction weight set no bushings on
-    /// `bench`: a protocol refused for want of a stroke says how the key
-    /// rides.
-    pub fn of(bench: &KeyBench, typed_g: f64, why: BushingsRefusal) -> Self {
+    /// `instrument`: a protocol refused for want of a stroke says how the
+    /// key rides. A number that is not one never reaches the protocol
+    /// ([`Problem`]).
+    pub fn of(instrument: &Instrument, typed_g: f64, why: &BushingsRefusal) -> Self {
         match why {
-            BushingsRefusal::NotANumber => Self::NotFinite,
             BushingsRefusal::Procedure(refused) => {
                 let riding = match refused {
-                    Refused::Walk(WalkRefusal::NoTravel) => bench.riding().map(Riding::from),
+                    Refused::Walk(WalkRefusal::NoTravel) => instrument.riding().map(Riding::from),
                     _ => None,
                 };
                 Self::ProtocolRefused {
-                    why: Refusal::reading(&refused, riding),
+                    why: Refusal::reading(refused, riding),
                 }
             }
-            BushingsRefusal::UnderNoFriction { least_g } => {
-                Self::UnderNoFriction { typed_g, least_g }
-            }
+            BushingsRefusal::UnderNoFriction { least_g } => Self::UnderNoFriction {
+                typed_g,
+                least_g: *least_g,
+            },
             BushingsRefusal::BeyondTheSearch { most_g } => Self::BeyondTheSearch {
                 typed_g,
-                most_g,
+                most_g: *most_g,
                 holds_g: FRICTION_SEARCH_G,
+            },
+            BushingsRefusal::NotANumber => unreachable!("a weight that is not a number"),
+        }
+    }
+}
+
+/// Why an edit would make what no part could be built as, or names what
+/// the instrument has not: the validation layer's problems, in the trade's
+/// units with the unit in each name, and the edit's own.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "code", rename_all = "snake_case")]
+pub enum Problem {
+    /// A value that is not a number, or an infinity.
+    NotFinite {
+        /// The path it was set at, or the action's argument it was typed
+        /// as; the domain's name of a dimension no path sets.
+        param: String,
+    },
+    /// A value outside its setting's hard range.
+    OutOfRange {
+        /// The path.
+        param: String,
+        /// The value asked for, in the path's unit.
+        value: f64,
+        /// The least it admits; `null` where nothing bounds it below.
+        min: Option<f64>,
+        /// The most it admits; `null` where nothing bounds it above.
+        max: Option<f64>,
+    },
+    /// A paper no drawer holds.
+    NotInTheDrawer {
+        /// The thickness asked for, millimetres.
+        thickness_mm: f64,
+        /// What the drawer holds, millimetres.
+        drawer_mm: Vec<f64>,
+    },
+    /// A key weighed at no mass, or less.
+    MassNotPositive {
+        /// The mass typed, grams.
+        mass_g: f64,
+    },
+    /// Two parts on the key's top overlap, or its chamfer runs past its
+    /// front: the outline crosses itself.
+    OutlineCrossesItself {
+        /// The part behind.
+        back: Part,
+        /// The part in front.
+        front: Part,
+        /// How far they overlap along the key, millimetres.
+        by_mm: f64,
+    },
+    /// A feature off the keystick's wood where it must stand.
+    FeatureOutsideKeystick {
+        /// The feature.
+        part: Part,
+        /// How far off, millimetres along the key.
+        by_mm: f64,
+    },
+    /// The capstan stands in a glued block.
+    CapstanInBlock {
+        /// The block.
+        block: Part,
+        /// How far its head stands into it, millimetres along the key.
+        by_mm: f64,
+    },
+    /// The front mortise is cut through the top of the keystick.
+    MortiseThroughKeyTop {
+        /// Its depth, millimetres.
+        depth_mm: f64,
+        /// The keystick's wood it is cut into, millimetres.
+        wood_mm: f64,
+        /// How far it reaches past the wood's top, millimetres.
+        by_mm: f64,
+    },
+    /// The measuring point stands off the covering.
+    MeasuringPointOffCovering {
+        /// Where it was asked for, millimetres back from the lip.
+        from_lip_mm: f64,
+        /// How far the covering runs back from its lip, millimetres.
+        covering_mm: f64,
+    },
+    /// The instrument has no such path.
+    UnknownPath {
+        /// The path asked for.
+        path: String,
+    },
+    /// The path is reached through an action, not set.
+    SetByAction {
+        /// The path.
+        path: String,
+        /// The action that sets it.
+        action: ActionCode,
+    },
+    /// A stack holds no paper of that index.
+    NoSuchPaper {
+        /// The stack.
+        stack: Stack,
+        /// The index asked for, from the bottom.
+        index: u32,
+        /// How many papers it holds.
+        papers: u32,
+    },
+    /// What was sent is no action the instrument knows.
+    NotAnAction,
+}
+
+impl Problem {
+    /// `p`, a domain problem, in the trade's units, each setting by its
+    /// path.
+    pub fn of(p: &CoreProblem) -> Self {
+        let named = |param: &'static str| registry::by_param(param).map_or(param, |e| e.path);
+        match *p {
+            CoreProblem::NotFinite { param } => Self::NotFinite {
+                param: named(param).to_owned(),
+            },
+            CoreProblem::OutOfRange {
+                param,
+                value,
+                min,
+                max,
+            } => {
+                let unit = |x: f64| registry::by_param(param).map_or(x, |e| e.from_si(x));
+                let (a, b) = (unit(min), unit(max));
+                let (min, max) = if a <= b { (a, b) } else { (b, a) };
+                Self::OutOfRange {
+                    param: named(param).to_owned(),
+                    value: unit(value),
+                    min: bound(min),
+                    max: bound(max),
+                }
+            }
+            CoreProblem::NotInTheDrawer { thickness, .. } => Self::NotInTheDrawer {
+                thickness_mm: mm(thickness),
+                drawer_mm: PAPER_THICKNESSES.iter().map(|&p| mm(p)).collect(),
+            },
+            CoreProblem::MassNotPositive { mass } => Self::MassNotPositive {
+                mass_g: mass * 1000.0,
+            },
+            CoreProblem::OutlineCrossesItself { back, front, by } => Self::OutlineCrossesItself {
+                back: back.into(),
+                front: front.into(),
+                by_mm: mm(by),
+            },
+            CoreProblem::FeatureOutsideKeystick { part, by } => Self::FeatureOutsideKeystick {
+                part: part.into(),
+                by_mm: mm(by),
+            },
+            CoreProblem::CapstanInBlock { block, by } => Self::CapstanInBlock {
+                block: block.into(),
+                by_mm: mm(by),
+            },
+            CoreProblem::MortiseThroughKeyTop { depth, wood } => Self::MortiseThroughKeyTop {
+                depth_mm: mm(depth),
+                wood_mm: mm(wood),
+                by_mm: mm(depth - wood),
+            },
+            CoreProblem::MeasuringPointOffCovering { from_lip, covering } => {
+                Self::MeasuringPointOffCovering {
+                    from_lip_mm: mm(from_lip),
+                    covering_mm: mm(covering),
+                }
+            }
+        }
+    }
+}
+
+/// Why an edit was refused, the instrument left as it was: one code among
+/// the problems, the regulation's refusals, the weighing's and the
+/// bushings', which share none.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(untagged)]
+pub enum EditRefusal {
+    /// What no part could be built as, or what the instrument has not.
+    Problem(Problem),
+    /// A regulation not laid.
+    Regulation(RegulationRefusal),
+    /// A weighing no key has.
+    Weighing(WeighingRefusal),
+    /// A key friction weight no bushings read.
+    Friction(FrictionRefusal),
+}
+
+impl EditRefusal {
+    /// Why `edit` was refused on `instrument`, `why` being the instrument's
+    /// own answer.
+    pub fn of(instrument: &Instrument, edit: &CoreEdit, why: &CoreEditRefusal) -> Self {
+        match why {
+            CoreEditRefusal::Problem(p) => Self::Problem(Problem::of(p)),
+            CoreEditRefusal::UnknownPath { path } => {
+                Self::Problem(Problem::UnknownPath { path: path.clone() })
+            }
+            CoreEditRefusal::SetByAction { path, action } => Self::Problem(Problem::SetByAction {
+                path: (*path).to_owned(),
+                action: *action,
+            }),
+            CoreEditRefusal::NoSuchPaper {
+                stack,
+                index,
+                papers,
+            } => Self::Problem(Problem::NoSuchPaper {
+                stack: *stack,
+                index: *index,
+                papers: u32::try_from(*papers).unwrap_or(u32::MAX),
+            }),
+            CoreEditRefusal::Regulation(not) => {
+                let (height, dip) = match edit {
+                    CoreEdit::Act(Action::Regulate {
+                        key_height_mm,
+                        key_dip_mm,
+                    }) => (*key_height_mm, *key_dip_mm),
+                    _ => (f64::NAN, f64::NAN),
+                };
+                Self::Regulation(RegulationRefusal::of(not, height, dip))
+            }
+            CoreEditRefusal::Weighing(not) => Self::Weighing(WeighingRefusal::of(instrument, *not)),
+            CoreEditRefusal::Friction(not) => {
+                let typed_g = match edit {
+                    CoreEdit::Act(Action::SetFrictionFromKeyFrictionWeight { kf_g }) => *kf_g,
+                    _ => f64::NAN,
+                };
+                Self::Friction(FrictionRefusal::of(instrument, typed_g, not))
+            }
+        }
+    }
+}
+
+/// An edit, as a refusal names it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "edit", rename_all = "snake_case")]
+pub enum Edit {
+    /// A setting set by its path.
+    Set {
+        /// The path, as it was sent.
+        path: String,
+        /// The value, in the path's unit; `null` where it is not a number.
+        value: Option<f64>,
+    },
+    /// An action.
+    Act {
+        /// The action.
+        action: Action,
+    },
+}
+
+impl From<&CoreEdit> for Edit {
+    fn from(edit: &CoreEdit) -> Self {
+        match edit {
+            CoreEdit::Set { path, value } => Self::Set {
+                path: path.clone(),
+                value: bound(*value),
+            },
+            CoreEdit::Act(action) => Self::Act {
+                action: action.clone(),
             },
         }
     }
 }
 
-/// Sets `bench`'s bushings from a key friction weight, grams, as Stanwood's
-/// protocol reads it: `None` where they were set, or why not.
-pub fn set_key_friction_weight(bench: &mut KeyBench, typed_g: f64) -> Option<FrictionRefusal> {
-    let why = bench.set_key_friction_weight(typed_g).err()?;
-    Some(FrictionRefusal::of(bench, typed_g, why))
+/// The last edit refused, and why: what the diagnostics keep until an edit
+/// is taken.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct RefusedEdit {
+    /// The edit.
+    pub edit: Edit,
+    /// Why it was refused.
+    pub why: EditRefusal,
+}
+
+/// What an edit answers.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+pub enum Acted {
+    /// It was taken.
+    Done,
+    /// The regulation laid its papers.
+    Laid {
+        /// The paper laid under the balance punching, millimetres.
+        balance_mm: f64,
+        /// The paper laid on the front punching, millimetres.
+        front_mm: f64,
+        /// The key height the papers give, millimetres.
+        key_height_mm: f64,
+        /// The key dip the papers give, millimetres.
+        key_dip_mm: f64,
+        /// The key height asked for, millimetres, as it was asked.
+        asked_key_height_mm: f64,
+        /// The key dip asked for, millimetres, as it was asked.
+        asked_key_dip_mm: f64,
+    },
+    /// Refused, and nothing changed.
+    Refused {
+        /// Why.
+        why: EditRefusal,
+    },
+}
+
+impl Acted {
+    /// What `instrument` answered `edit` with.
+    fn of(
+        instrument: &Instrument,
+        edit: &CoreEdit,
+        answer: Result<Outcome, CoreEditRefusal>,
+    ) -> Self {
+        match answer {
+            Ok(Outcome::Done) => Self::Done,
+            Ok(Outcome::Laid(achieved)) => {
+                let (asked_key_height_mm, asked_key_dip_mm) = match edit {
+                    CoreEdit::Act(Action::Regulate {
+                        key_height_mm,
+                        key_dip_mm,
+                    }) => (*key_height_mm, *key_dip_mm),
+                    _ => (f64::NAN, f64::NAN),
+                };
+                let total = |stack| mm(instrument.papers(stack).iter().sum());
+                Self::Laid {
+                    balance_mm: total(Stack::Balance),
+                    front_mm: total(Stack::Front),
+                    key_height_mm: mm(achieved.key_height),
+                    key_dip_mm: mm(achieved.key_dip),
+                    asked_key_height_mm,
+                    asked_key_dip_mm,
+                }
+            }
+            Err(why) => Self::Refused {
+                why: EditRefusal::of(instrument, edit, &why),
+            },
+        }
+    }
+}
+
+/// Sets `path` to `value`, in the path's unit, on `instrument`: done, or
+/// why not, nothing changed.
+pub fn set(instrument: &mut Instrument, path: &str, value: f64) -> Acted {
+    let answer = instrument.set(path, value).map(|()| Outcome::Done);
+    let edit = CoreEdit::Set {
+        path: path.to_owned(),
+        value,
+    };
+    Acted::of(instrument, &edit, answer)
+}
+
+/// Runs `action` on `instrument`: done, the papers a regulation laid and
+/// what they give, or why not, nothing changed.
+pub fn act(instrument: &mut Instrument, action: Action) -> Acted {
+    let edit = CoreEdit::Act(action.clone());
+    let answer = instrument.act(action);
+    Acted::of(instrument, &edit, answer)
+}
+
+/// Runs the action `json` describes ([`Action`]) on `instrument`; JSON that
+/// is no action is refused as [`Problem::NotAnAction`], nothing changed.
+pub fn act_json(instrument: &mut Instrument, json: &str) -> Acted {
+    match serde_json::from_str::<Action>(json) {
+        Ok(action) => act(instrument, action),
+        Err(_) => Acted::Refused {
+            why: EditRefusal::Problem(Problem::NotAnAction),
+        },
+    }
 }
 
 /// The TypeScript types of the documents, generated and held to the
@@ -1772,15 +2568,16 @@ mod types {
             ids: Vec::new(),
             files: BTreeMap::new(),
         };
-        // The documents, and what the actions that can be refused answer.
+        // The documents, the actions an interface sends, and what an edit
+        // answers.
         generate.visit::<Settings>();
+        generate.visit::<Registry>();
         generate.visit::<Sheet>();
         generate.visit::<Diagnostics>();
         generate.visit::<State>();
         generate.visit::<Scene>();
-        generate.visit::<Regulation>();
-        generate.visit::<WeighingRefusal>();
-        generate.visit::<FrictionRefusal>();
+        generate.visit::<Action>();
+        generate.visit::<Acted>();
         let mut index = String::from(
             "// Generated by `cargo test -p pa-app` from `crates/pa-app/src/boundary.rs`.\n\
              // Do not edit this file manually.\n",
@@ -1839,21 +2636,38 @@ mod types {
 mod tests {
     use super::*;
     use pa_core::measure::measurement::Input as CoreInput;
+    use pa_core::regulation::Targets as CoreTargets;
 
-    /// The bench with its back rail raised until its cloth holds the tail
-    /// 5 mm above the balance bearing: its stops fight, and the key rides on
-    /// them.
-    fn wedged() -> KeyBench {
-        let mut bench = KeyBench::standard();
+    /// The instrument with its back rail raised until its cloth holds the
+    /// tail 5 mm above the balance bearing: its stops fight, and the key
+    /// rides on them.
+    fn wedged() -> Instrument {
+        let mut bench = Instrument::standard();
         let frame = bench.frame();
         let height = frame.balance_bearing_height() + 0.005 - frame.back_rail_cloth;
-        bench.set_back_rail_height(height);
+        bench
+            .set(path::BACK_RAIL_HEIGHT, height * 1000.0)
+            .expect("a back rail raised");
         bench
     }
 
     /// `value` as JSON, a string's quotes included.
     fn written<T: Serialize>(value: &T) -> String {
         json(value)
+    }
+
+    /// The value at `path` in the settings as they cross, by walking the
+    /// JSON as an interface walks it.
+    fn at(settings: &Settings, path: &str) -> serde_json::Value {
+        let mut v: serde_json::Value =
+            serde_json::from_str(&json(settings)).expect("settings are JSON");
+        for key in path.split('.') {
+            v = v
+                .get(key)
+                .cloned()
+                .unwrap_or_else(|| panic!("no {key} on the way to {path}"));
+        }
+        v
     }
 
     /// Consistency: **a code crosses as the engine names it**: every
@@ -1919,8 +2733,9 @@ mod tests {
 
     /// Consistency: **a code crosses with its parameters, in the trade's
     /// units with the unit in their names**: a fault in millimetres, a
-    /// regulation refused with its target, what keeps it out, its shortfall
-    /// and the search's reach.
+    /// regulation refused with its target as it was asked, what keeps it
+    /// out, its shortfall and the search's reach, a problem with the part
+    /// that limits it and the shortfall.
     #[test]
     fn a_code_crosses_with_its_parameters_in_trade_units() {
         assert_eq!(
@@ -1942,14 +2757,30 @@ mod tests {
                 limited_by: CoreLimit::FrontPinInMortise,
                 shortfall_m: 0.000_75,
             },
-            CoreTargets {
-                key_height: 0.065,
-                key_dip: 0.0125,
-            },
+            65.0,
+            12.5,
         );
         assert_eq!(
             written(&refused),
             r#"{"code":"regulation_infeasible","target":"key_dip","wanted_mm":12.5,"limited_by":"front_pin_in_mortise","shortfall_mm":0.75,"search_mm":20.0}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::CapstanInBlock {
+                    block: PartCode::BackCheckBlock,
+                    by: 0.0095,
+                }
+            ))),
+            r#"{"code":"capstan_in_block","block":"back_check_block","by_mm":9.5}"#
+        );
+        assert_eq!(
+            written(&Problem::of(&CoreProblem::OutOfRange {
+                param: "capstan.x",
+                value: 0.005,
+                min: f64::NEG_INFINITY,
+                max: 0.0,
+            })),
+            r#"{"code":"out_of_range","param":"key.capstan.behind_mm","value":-5.0,"min":-0.0,"max":null}"#
         );
     }
 
@@ -1962,15 +2793,20 @@ mod tests {
     /// the key under the weight on it is said as it stands now.
     #[test]
     fn a_frame_that_cannot_be_seated_sends_every_setting_and_every_reading() {
-        let mut bench = KeyBench::standard();
-        bench.set_front_rail_height(0.050);
+        let mut bench = Instrument::standard();
+        bench
+            .set(path::FRONT_RAIL_HEIGHT, 50.0)
+            .expect("a front rail raised");
         let why = bench.frame_fault().expect("no seat on this frame");
 
         let settings = Settings::of(&bench);
-        assert!((settings.frame.front_rail_mm - 50.0).abs() < 1e-9);
         assert_eq!(
-            settings.papers.balance_mm.len(),
-            bench.papers_on(Which::Balance).len()
+            settings.frame.front_rail.height_mm.to_bits(),
+            50.0_f64.to_bits()
+        );
+        assert_eq!(
+            settings.frame.balance_punching.papers_mm.len(),
+            bench.papers(Stack::Balance).len()
         );
 
         let diagnostics = Diagnostics::of(&bench);
@@ -2032,7 +2868,7 @@ mod tests {
         assert_eq!(diagnostics.riding, Some(crossed));
         assert_eq!(diagnostics.seat_refused, None);
 
-        let standard = KeyBench::standard();
+        let standard = Instrument::standard();
         assert_eq!(Diagnostics::of(&standard).riding, None);
         assert!(Sheet::of(&standard)
             .readings
@@ -2040,36 +2876,40 @@ mod tests {
             .all(|r| matches!(r, Reading::Read { .. })));
     }
 
-    /// Consistency, and what the owner sees: **a refused action answers in
-    /// codes and numbers, and changes nothing.** A 12 mm dip the front pin
-    /// forbids, a mass of nothing, a front weight read off the covering, a
-    /// key friction weight under what no friction reads and one typed on a
-    /// frame whose stops fight: each answers its code with the numbers its
-    /// wording needs, and the documents read as before. A dip the pin
+    /// Consistency, and what the owner sees: **a refused edit answers in
+    /// codes and numbers, changes nothing, and the diagnostics keep it until
+    /// an edit is taken.** A 12 mm dip the front pin forbids, a mass of
+    /// nothing, a front weight read off the covering, a front weight that is
+    /// not a number, a key friction weight under what no friction reads, a
+    /// key front pushed into its key button, a path the instrument has not,
+    /// and JSON that is no action: each answers its code with the numbers
+    /// its wording needs, and the documents read as before. A dip the pin
     /// allows is laid, and says what it was asked as it was asked.
     #[test]
-    fn a_refused_action_answers_in_codes_and_changes_nothing() {
-        let mut bench = KeyBench::standard();
-        let documents = |b: &KeyBench| {
-            json(&(
-                Settings::of(b),
-                Sheet::of(b),
-                Diagnostics::of(b),
-                State::of(b),
-            ))
-        };
+    fn a_refused_edit_answers_in_codes_and_changes_nothing() {
+        let mut bench = Instrument::standard();
+        let documents =
+            |b: &Instrument| json(&(Settings::of(b), Sheet::of(b), State::of(b), b.state_hash()));
         let before = documents(&bench);
-
-        let Regulation::Refused { why } = regulate(&mut bench, 65.0, 12.0) else {
-            panic!("the pin forbids 12 mm")
+        let refused = |acted: Acted| match acted {
+            Acted::Refused { why } => why,
+            other => panic!("{other:?}"),
         };
-        let RegulationRefusal::RegulationInfeasible {
+
+        let why = refused(act(
+            &mut bench,
+            Action::Regulate {
+                key_height_mm: 65.0,
+                key_dip_mm: 12.0,
+            },
+        ));
+        let EditRefusal::Regulation(RegulationRefusal::RegulationInfeasible {
             target,
             wanted_mm,
             limited_by,
             shortfall_mm,
             search_mm,
-        } = why
+        }) = why
         else {
             panic!("{why:?}")
         };
@@ -2077,96 +2917,334 @@ mod tests {
             (target, limited_by),
             (Target::KeyDip, Limit::FrontPinInMortise)
         );
-        assert_eq!(wanted_mm.to_bits(), (12.0 * 1e-3 * 1000.0_f64).to_bits());
+        assert_eq!(wanted_mm.to_bits(), 12.0_f64.to_bits());
         assert!((shortfall_mm - 0.79).abs() < 0.005, "{shortfall_mm}");
         assert!((search_mm - 20.0).abs() < 1e-12);
-
+        let kept = Diagnostics::of(&bench).refused_edit.expect("kept");
         assert_eq!(
-            weigh_key(&mut bench, 0.0, 6.5, 13.0),
-            Some(WeighingRefusal::MassNotPositive)
+            kept.edit,
+            Edit::Act {
+                action: Action::Regulate {
+                    key_height_mm: 65.0,
+                    key_dip_mm: 12.0
+                }
+            }
+        );
+
+        let weigh = |mass_g, front_weight_g, from_lip_mm| Action::WeighKey {
+            mass_g,
+            front_weight_g,
+            from_lip_mm,
+        };
+        assert_eq!(
+            refused(act(&mut bench, weigh(0.0, 6.5, 13.0))),
+            EditRefusal::Problem(Problem::MassNotPositive { mass_g: 0.0 })
         );
         assert_eq!(
-            weigh_key(&mut bench, 121.1, 6.5, 200.0),
-            Some(WeighingRefusal::RollerOffTheCovering {
+            refused(act(&mut bench, weigh(121.1, 6.5, 200.0))),
+            EditRefusal::Weighing(WeighingRefusal::RollerOffTheCovering {
                 from_lip_mm: 0.2 * 1000.0,
                 covering_mm: bench.key().keytop_length * 1000.0,
             })
         );
         assert_eq!(
-            weigh_key(&mut bench, 121.1, f64::NAN, 13.0),
-            Some(WeighingRefusal::NotFinite)
+            refused(act(&mut bench, weigh(121.1, f64::NAN, 13.0))),
+            EditRefusal::Problem(Problem::NotFinite {
+                param: path::WEIGHED_FRONT_WEIGHT.to_owned()
+            })
         );
-        let Some(FrictionRefusal::UnderNoFriction { typed_g, least_g }) =
-            set_key_friction_weight(&mut bench, 0.0)
+        let EditRefusal::Friction(FrictionRefusal::UnderNoFriction { typed_g, least_g }) =
+            refused(act(
+                &mut bench,
+                Action::SetFrictionFromKeyFrictionWeight { kf_g: 0.0 },
+            ))
         else {
             panic!("no bushings read 0 g on this key")
         };
         assert_eq!(typed_g.to_bits(), 0.0_f64.to_bits());
         assert!(least_g > 0.2 && least_g < 0.5, "{least_g}");
-        assert_eq!(documents(&bench), before, "a refusal changed the bench");
+        let EditRefusal::Problem(Problem::OutlineCrossesItself { back, front, by_mm }) =
+            refused(set(&mut bench, path::FRONT_EDGE, 170.0))
+        else {
+            panic!("a key front at 170 mm runs its covering into its key button")
+        };
+        assert_eq!((back, front), (Part::KeyButton, Part::Keytop));
+        assert!((by_mm - 14.0).abs() < 1e-9, "{by_mm}");
+        assert_eq!(
+            refused(set(&mut bench, "key.length_mm", 300.0)),
+            EditRefusal::Problem(Problem::UnknownPath {
+                path: "key.length_mm".to_owned()
+            })
+        );
+        assert_eq!(
+            refused(act_json(&mut bench, r#"{"action":"press_the_key"}"#)),
+            EditRefusal::Problem(Problem::NotAnAction)
+        );
+        assert_eq!(
+            documents(&bench),
+            before,
+            "a refusal changed the instrument"
+        );
+        assert!(bench.log().is_empty(), "a refusal is not logged");
 
         let mut wedged = wedged();
         let riding = wedged.riding().map(Riding::from);
         assert_eq!(
-            set_key_friction_weight(&mut wedged, 6.0),
-            Some(FrictionRefusal::ProtocolRefused {
+            refused(act(
+                &mut wedged,
+                Action::SetFrictionFromKeyFrictionWeight { kf_g: 6.0 }
+            )),
+            EditRefusal::Friction(FrictionRefusal::ProtocolRefused {
                 why: Refusal::NoTravel { riding },
             })
         );
 
-        let Regulation::Laid {
+        let Acted::Laid {
             balance_mm,
             front_mm,
             asked_key_height_mm,
             asked_key_dip_mm,
             ..
-        } = regulate(&mut bench, 65.0, 10.6)
+        } = act(
+            &mut bench,
+            Action::Regulate {
+                key_height_mm: 65.0,
+                key_dip_mm: 10.6,
+            },
+        )
         else {
             panic!("10.6 mm of dip is reachable")
         };
-        let papers = Settings::of(&bench).papers;
-        assert_eq!(balance_mm.to_bits(), papers.balance_total_mm.to_bits());
-        assert_eq!(front_mm.to_bits(), papers.front_total_mm.to_bits());
+        let frame = Settings::of(&bench).frame;
+        assert_eq!(
+            balance_mm.to_bits(),
+            frame.balance_punching.paper_total_mm.to_bits()
+        );
+        assert_eq!(
+            front_mm.to_bits(),
+            frame.front_punching.paper_total_mm.to_bits()
+        );
         assert_eq!(
             (asked_key_height_mm.to_bits(), asked_key_dip_mm.to_bits()),
             (65.0_f64.to_bits(), 10.6_f64.to_bits())
         );
+        assert_eq!(
+            Diagnostics::of(&bench).refused_edit,
+            None,
+            "an edit taken forgets the refusal"
+        );
     }
 
-    /// Consistency: **the settings are the bench's own**, in the trade's
-    /// units: what each setter set reads back in millimetres, the back rail
-    /// and the capstan as distances behind the balance pin, and the bushings
-    /// as the torque they hold, 6 g on the level arm of the default bench
-    /// read back as 6 g over that arm.
+    /// Consistency: **every path round-trips**: set in its unit, the
+    /// settings read it back at that very path, in that unit, within the
+    /// rounding of turning it into SI and back, half an ulp each way. The
+    /// back rail and the capstan read as distances behind the balance pin,
+    /// the bushings as the torque they hold. A path an action sets is
+    /// refused by `set`, naming the action.
     #[test]
-    fn the_settings_are_the_benchs_own() {
-        let mut bench = KeyBench::standard();
-        bench.set_front_rail_height(0.0307);
-        bench.set_back_rail(-0.2);
-        bench.set_capstan(-0.1295);
-        bench.set_finger_weight(-12.5);
-        bench.set_measuring_point_from_lip(0.0127);
-        let s = Settings::of(&bench);
-        let close = |a: f64, b: f64| (a - b).abs() < 1e-9;
-        assert!(
-            close(s.frame.front_rail_mm, 30.7),
-            "{}",
-            s.frame.front_rail_mm
-        );
-        assert!(close(s.frame.back_rail_behind_mm, 200.0));
-        assert!(close(s.key.capstan_behind_mm, 129.5));
+    fn every_path_round_trips() {
+        let slider = |path: &str| {
+            registry::PAGE
+                .iter()
+                .flat_map(|(_, controls)| controls.iter())
+                .find_map(|c| match *c {
+                    Control::Slider { path: p, soft, .. } if p == path => Some(soft),
+                    _ => None,
+                })
+        };
+        for entry in &registry::ENTRIES {
+            let mut bench = Instrument::standard();
+            if let Some(action) = entry.set_by() {
+                assert_eq!(
+                    bench.set(entry.path, 1.0),
+                    Err(CoreEditRefusal::SetByAction {
+                        path: entry.path,
+                        action
+                    })
+                );
+                continue;
+            }
+            // Within what the page offers, a little off its middle so that
+            // no default sits there; a torque the page shows as a reading.
+            let value = slider(entry.path).map_or(1500.25, |soft| {
+                let (min, max) = (soft.min.expect("bounded"), soft.max.expect("bounded"));
+                min + 0.4 * (max - min)
+            });
+            bench
+                .set(entry.path, value)
+                .unwrap_or_else(|why| panic!("{} = {value}: {why:?}", entry.path));
+            let read = at(&Settings::of(&bench), entry.path)
+                .as_f64()
+                .unwrap_or_else(|| panic!("{} reads no number", entry.path));
+            assert!(
+                (read - value).abs() <= f64::EPSILON * value.abs(),
+                "{} set to {value} reads {read}",
+                entry.path
+            );
+            let described = Registry::of(&bench);
+            assert!(
+                described.params.iter().any(|p| p.path == entry.path),
+                "{} is not described",
+                entry.path
+            );
+        }
+        // The lists and the weighing, set by their actions, read back too.
+        let mut bench = Instrument::standard();
+        bench
+            .act(Action::WeighKey {
+                mass_g: 125.5,
+                front_weight_g: 7.25,
+                from_lip_mm: 12.7,
+            })
+            .expect("a key's weighing");
+        let settings = Settings::of(&bench);
+        for (path, typed) in [
+            (path::WEIGHED_MASS, 125.5),
+            (path::WEIGHED_FRONT_WEIGHT, 7.25),
+            (path::WEIGHED_FROM_LIP, 12.7),
+        ] {
+            let read = at(&settings, path).as_f64().expect("a number");
+            assert!(
+                (read - typed).abs() <= f64::EPSILON * typed,
+                "{path}: {read}"
+            );
+        }
+        let papers = at(&settings, path::BALANCE_PAPERS);
         assert_eq!(
-            s.weight_on_the_measuring_point_g.to_bits(),
-            (-12.5_f64).to_bits()
+            papers.as_array().map(Vec::len),
+            Some(bench.papers(Stack::Balance).len())
         );
-        assert!(close(s.measuring_point_from_lip_mm, 12.7));
-        assert_eq!(s.key.weighed, None);
-        assert_eq!(s.key.mass_g, bench.key_mass_g());
+    }
 
-        let standard = KeyBench::standard();
-        let torque = Settings::of(&standard).key.friction_torque_gmm;
-        let arm_mm = standard.measuring_point() * 1000.0;
-        assert!((torque / arm_mm - 6.0).abs() < 1e-12, "{torque} g·mm");
+    /// Consistency: **the registry describes every path and the page.**
+    /// Each setting crosses with its unit, the range it admits, its step and
+    /// how it is reached: the capstan's height a screw turned continuously,
+    /// the papers by the drawer, the targets aimed at through the
+    /// regulation, the weighing through the key's weighing; and the page
+    /// lists its panels in order, each control reading a path described.
+    #[test]
+    fn the_registry_describes_every_path_and_the_page() {
+        let r = Registry::of(&Instrument::standard());
+        assert_eq!(r.params.len(), registry::ENTRIES.len());
+        let param = |path: &str| {
+            r.params
+                .iter()
+                .find(|p| p.path == path)
+                .unwrap_or_else(|| panic!("{path}"))
+                .clone()
+        };
+        let capstan = param(path::CAPSTAN_HEIGHT);
+        assert_eq!(capstan.step, Step::Continuous);
+        assert_eq!(capstan.layer, Layer::Regulation);
+        assert_eq!((capstan.min, capstan.max), (Some(2.0), Some(30.0)));
+        let behind = param(path::CAPSTAN_BEHIND);
+        assert_eq!((behind.min, behind.max), (Some(-0.0), None));
+        let papers = param(path::FRONT_PAPERS);
+        assert!(papers.list);
+        assert_eq!(
+            papers.step,
+            Step::Drawer {
+                sizes_mm: PAPER_THICKNESSES.iter().map(|&p| p * 1000.0).collect()
+            }
+        );
+        assert_eq!(
+            papers.set_by,
+            SetBy::Act {
+                action: ActionCode::AddPaper
+            }
+        );
+        assert_eq!(param(path::KEY_DIP).kind, Kind::Target);
+        assert_eq!(param(path::WEIGHED_MASS).kind, Kind::Measured);
+        assert_eq!(param(path::FRICTION_TORQUE).unit, SettingUnit::Gmm);
+        assert_eq!(
+            r.page.iter().map(|p| p.panel).collect::<Vec<_>>(),
+            [
+                Panel::Sheet,
+                Panel::Regulation,
+                Panel::Punchings,
+                Panel::Key,
+                Panel::Weighing,
+                Panel::Frame,
+                Panel::Touch
+            ]
+        );
+        // Every address a control reads in the settings is there, a number
+        // or a list as the control reads it; every seed of a form is a
+        // number on the standard bench, and the friction control's argument
+        // is its action's.
+        let settings = Settings::of(&Instrument::standard());
+        let sheet = Sheet::of(&Instrument::standard());
+        for panel in &r.page {
+            for control in &panel.controls {
+                match control {
+                    ControlLayout::Slider { path, .. } => {
+                        assert!(r.params.iter().any(|p| &p.path == path), "{path}");
+                        assert!(at(&settings, path).is_f64(), "{path}");
+                    }
+                    ControlLayout::Stack { path, total, .. } => {
+                        assert!(r.params.iter().any(|p| &p.path == path), "{path}");
+                        assert!(at(&settings, path).is_array(), "{path}");
+                        assert!(at(&settings, total).is_f64(), "{total}");
+                    }
+                    ControlLayout::Form { fields, .. } => {
+                        for f in fields {
+                            assert!(r.params.iter().any(|p| p.path == f.path), "{}", f.path);
+                            match &f.seed {
+                                Seed::Setting { at: address } => {
+                                    assert!(at(&settings, address).is_f64(), "{address}");
+                                }
+                                Seed::Reading { procedure } => assert!(
+                                    sheet.readings.iter().any(|m| matches!(
+                                        m,
+                                        Reading::Read { procedure: p, .. } if p == procedure
+                                    )),
+                                    "{procedure:?}"
+                                ),
+                            }
+                        }
+                    }
+                    ControlLayout::KeyFrictionWeight {
+                        action, argument, ..
+                    } => {
+                        let typed = format!(r#"{{"action":{},"{argument}":7}}"#, written(action));
+                        assert!(serde_json::from_str::<Action>(&typed).is_ok(), "{typed}");
+                    }
+                    ControlLayout::Button { .. } => {}
+                }
+            }
+        }
+    }
+
+    /// Consistency, the boundary's half of the contacts the view shows: **a
+    /// contact crosses with its row's normal and the force it carries.** On
+    /// the standard bench at rest, the key's weight down on its front
+    /// punching and its balance punching, the rows closed there push it up,
+    /// along unit normals; the forces of the closed rows carry the key's
+    /// weight, read on its balance, within the rounding of the crossing.
+    #[test]
+    fn a_contact_crosses_with_its_normal_and_its_force() {
+        let bench = Instrument::standard();
+        let state = State::of(&bench);
+        let closed: Vec<_> = state
+            .contacts
+            .iter()
+            .filter(|c| c.state == ContactState::Closed)
+            .collect();
+        assert!(!closed.is_empty());
+        for c in &state.contacts {
+            let [x, y] = c.normal;
+            assert!(((x * x + y * y) - 1.0).abs() < 1e-6, "{c:?}");
+            assert!(c.force_g >= 0.0, "a contact pushes: {c:?}");
+        }
+        let pushed: f32 = closed.iter().map(|c| c.force_g * c.normal[1]).sum();
+        let mass_g = bench.key_mass_g().expect("a mass") as f32;
+        assert!(
+            (pushed - mass_g).abs() < 1e-3 * mass_g,
+            "the closed rows carry {pushed} g of a {mass_g} g key"
+        );
+        assert!(closed
+            .iter()
+            .any(|c| c.pair == Contact::FrontRailPunching && c.force_g > 0.0));
     }
 
     /// Consistency: **what holds the key crosses as its code.** The front
@@ -2177,8 +3255,10 @@ mod tests {
     /// holds it, with its friction.
     #[test]
     fn what_holds_the_key_crosses_as_its_code() {
-        let mut bench = KeyBench::standard();
-        bench.set_front_rail_height(0.0417);
+        let mut bench = Instrument::standard();
+        bench
+            .set(path::FRONT_RAIL_HEIGHT, 41.7)
+            .expect("a front rail raised");
         let touch = Diagnostics::of(&bench).touch.expect("a verdict");
         let Verdict::LiftsOffBalancePunching {
             touching,
@@ -2195,8 +3275,8 @@ mod tests {
         assert!(!needs_friction);
         assert!(lift_mm > 0.0);
 
-        let mut bench = KeyBench::standard();
-        bench.set_finger_weight(-62.7);
+        let mut bench = Instrument::standard();
+        bench.set(path::WEIGHT, -62.7).expect("a pull");
         let touch = Diagnostics::of(&bench).touch.expect("a verdict");
         let Verdict::LiftsOffBalancePunching {
             touching,
@@ -2208,5 +3288,18 @@ mod tests {
         };
         assert_eq!(touching, vec![Contact::BackRailCloth]);
         assert!(needs_friction);
+    }
+
+    /// Consistency: the targets crossing are the targets regulated to.
+    #[test]
+    fn the_settings_hold_the_targets_regulated_to() {
+        let bench = Instrument::standard();
+        let CoreTargets {
+            key_height,
+            key_dip,
+        } = bench.targets();
+        let r = Settings::of(&bench).regulation;
+        assert_eq!(r.key_height_mm.to_bits(), (key_height * 1000.0).to_bits());
+        assert_eq!(r.key_dip_mm.to_bits(), (key_dip * 1000.0).to_bits());
     }
 }

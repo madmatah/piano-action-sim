@@ -13,4 +13,4 @@ pair: Contact,
  * How far its drawn edge stands into the key, millimetres: what its
  * felt would compress under a key out of level on it.
  */
-mm: number, };
+overlap_mm: number, };

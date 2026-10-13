@@ -32,6 +32,7 @@ pub mod weighing;
 
 use crate::geometry::Point;
 use crate::parts::KeyDesign;
+use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 
 /// Touchweight quantities, after Stanwood's *New Touchweight Metrology*.
 ///
@@ -192,6 +193,20 @@ pub struct TouchweightProtocol {
 }
 
 impl TouchweightProtocol {
+    /// The protocol's setting: where every weight is centred. Any number is
+    /// a distance back from the lip; whether it stands on the covering is
+    /// [`crate::validate`]'s to say, since the covering is the key's.
+    pub const PARAMS: [ParamSpec<Self>; 1] = [ParamSpec {
+        name: "measuring_point_from_lip",
+        quantity: Quantity::Length,
+        hard: (f64::NEG_INFINITY, f64::INFINITY),
+        step: Step::Continuous,
+        layer: Layer::Protocol,
+        kind: Kind::Actuated,
+        get: |p| p.measuring_point_from_lip,
+        set: |p, v| p.measuring_point_from_lip = v,
+    }];
+
     /// The measuring point on `key`, metres in front of the balance pin.
     ///
     /// The one place the datum and the distance meet. It takes the key and not
@@ -223,6 +238,21 @@ impl Default for TouchweightProtocol {
         }
     }
 }
+
+/// The weight an experiment puts on the measuring point, grams, negative
+/// pulling up: any weight at all, since a pull past what the key's punching
+/// answers lifts it off its frame, which is a state to report and not a
+/// weight to refuse.
+pub const WEIGHT_ON_THE_MEASURING_POINT: ParamSpec<f64> = ParamSpec {
+    name: "weight_g",
+    quantity: Quantity::Mass,
+    hard: (f64::NEG_INFINITY, f64::INFINITY),
+    step: Step::Continuous,
+    layer: Layer::Experiment,
+    kind: Kind::Actuated,
+    get: |w| *w,
+    set: |w, v| *w = v,
+};
 
 /// The weight the current protocol places at the capstan to read the key ratio,
 /// grams. Ten, since February 2000; a hundred before that. [V, Stanwood 2000,

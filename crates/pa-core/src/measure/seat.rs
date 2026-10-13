@@ -927,7 +927,7 @@ mod tests {
         }
 
         let mut over = a.clone();
-        over.frame.balance_punching.paper += room(&a) + 0.0003;
+        over.frame.balance_punching.papers.push(room(&a) + 0.0003);
         let k = on_frame(&over, KeyKind::Natural, 0.0, true);
         match k.seating().seats(&mut Statics::new()) {
             Err(SeatRefusal::LiftsOffItsFrame { leaves_its_pin }) => {
@@ -1028,7 +1028,7 @@ mod tests {
         use crate::mechanism::AxisFriction;
         let mut a = regulated();
         a.frame.back_rail_height -= 0.0012;
-        a.frame.front_punching.paper += 0.0092;
+        a.frame.front_punching.papers.push(0.0092);
         let bound = AxisFriction::of_weight_at(6.0, a.measuring_point()).bound_n_m;
         let k = on_frame(&a, KeyKind::Natural, bound, true);
         let nominal = crate::parts::mounts::nominal_pose(&k.mounted);

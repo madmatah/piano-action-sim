@@ -6,12 +6,14 @@
 //!
 //! **The bench's documents change when the technician changes something** —
 //! a punching, a weighing, a target — which is at human speed, a few times a
-//! second at most. They cross as JSON, each on its own: the settings, the
-//! weighing sheet, the diagnostics, where each body stands and what is drawn
-//! ([`pa_app::boundary`]). Each is in codes and numbers, never sentences: the
-//! page words them from its catalogue, in the reader's language. Their
-//! TypeScript types are generated from the Rust ones, and this crate's
-//! package re-exports them (`types/`).
+//! second at most. They cross as JSON, each on its own: the registry, the
+//! settings, the weighing sheet, the diagnostics, where each body stands and
+//! what is drawn ([`pa_app::boundary`]). Each is in codes and numbers, never
+//! sentences: the page words them from its catalogue, in the reader's
+//! language. The page changes the bench by two generic calls, `set` a path
+//! to a value and `act` an action, so a second application reuses this
+//! adapter unchanged. Their TypeScript types are generated from the Rust
+//! ones, and this crate's package re-exports them (`types/`).
 //!
 //! **Per-step state**, once a time stepper exists, will change many times per
 //! frame and will not cross as JSON. It will cross through the linear memory as
@@ -25,31 +27,39 @@
 //! number is wrong, it is wrong in the domain, and fixing it here would put
 //! the engine and the browser permanently out of step.
 
-use pa_app::boundary::{self, json, Diagnostics, Scene, Settings, Sheet, State};
+use pa_app::boundary::{self, json, Sheet};
 use pa_app::golden;
-use pa_app::key_bench::{KeyBench, Which};
+use pa_app::instrument::Instrument;
 use wasm_bindgen::prelude::*;
 
-/// The single-key weighing bench.
+/// The single-key bench: the instrument, by its generic calls.
 #[wasm_bindgen]
 pub struct Bench {
-    inner: KeyBench,
+    inner: Instrument,
 }
 
 #[wasm_bindgen]
 impl Bench {
-    /// A bench regulated to the standard targets.
+    /// The standard instrument: a middle natural, regulated to the standard
+    /// targets.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            inner: KeyBench::standard(),
+            inner: Instrument::standard(),
         }
     }
 
-    /// Every setting, as JSON (`Settings`): always valid, whatever the frame
-    /// does, so every control reads its value here.
+    /// Every path, what it admits and how it is reached, and the page that
+    /// presents them, as JSON (`Registry`).
+    pub fn describe(&self) -> String {
+        json(&self.inner.describe())
+    }
+
+    /// Every setting, nested as the paths are, as JSON (`Settings`): always
+    /// valid, whatever the frame does, so every control reads its value
+    /// here.
     pub fn settings(&self) -> String {
-        json(&Settings::of(&self.inner))
+        json(&self.inner.settings())
     }
 
     /// The weighing sheet, as JSON (`Sheet`): every reading, read or refused
@@ -58,178 +68,44 @@ impl Bench {
         json(&Sheet::of(&self.inner))
     }
 
-    /// How the key stands on its frame and why, as JSON (`Diagnostics`): why
-    /// it cannot be seated, how it rides, the faults, its seats, what holds
-    /// it under the weight on it, the punchings' edges.
+    /// How the key stands on its frame and why, and the last edit refused,
+    /// as JSON (`Diagnostics`).
     pub fn diagnostics(&self) -> String {
-        json(&Diagnostics::of(&self.inner))
+        json(&self.inner.diagnostics())
     }
 
     /// Where each body stands, as JSON (`State`): one pose per body, the
-    /// measuring point, the contacts the view marks.
+    /// measuring point, the contacts the view marks with their normals and
+    /// forces.
     pub fn state(&self) -> String {
-        json(&State::of(&self.inner))
+        json(&self.inner.state())
     }
 
     /// What is drawn, as JSON (`Scene`): every part in its own body's frame.
     pub fn scene(&self) -> String {
-        json(&Scene::of(&self.inner))
+        json(&self.inner.scene())
     }
 
-    /// Regulates the key to a key height and a key dip, millimetres: the
-    /// papers on both punchings laid from the drawer, key height first, then
-    /// the dip on the key as it then stands. Returns, as JSON
-    /// (`Regulation`), the papers laid and what they give, within one paper
-    /// of the targets; or, refused, the code saying which target is out of
-    /// reach, by how much and what keeps it out, the bench unchanged.
-    pub fn regulate(&mut self, key_height_mm: f64, key_dip_mm: f64) -> String {
-        json(&boundary::regulate(
-            &mut self.inner,
-            key_height_mm,
-            key_dip_mm,
-        ))
+    /// Sets the setting at `path` to `value`, in the path's unit, and
+    /// solves the key one increment from where it stands. Returns, as JSON
+    /// (`Acted`), that it was done, or why it was refused, nothing changed.
+    pub fn set(&mut self, path: &str, value: f64) -> String {
+        json(&boundary::set(&mut self.inner, path, value))
     }
 
-    /// Puts a weight on the measuring point, as a static increment from
-    /// where the key stands: between the up weight and the down weight the
-    /// key stays where it is, held by its friction.
-    pub fn set_finger_weight(&mut self, grams: f64) {
-        self.inner.set_finger_weight(grams);
+    /// Runs the action `action`, JSON (`Action`), and solves the key one
+    /// increment from where it stands. Returns, as JSON (`Acted`), that it
+    /// was done, the papers a regulation laid and what they give, or why it
+    /// was refused, nothing changed.
+    pub fn act(&mut self, action: &str) -> String {
+        json(&boundary::act_json(&mut self.inner, action))
     }
 
-    /// Sets how far back from the front lip of the key every weight is
-    /// centred, millimetres: the measuring point of every touchweight.
-    pub fn set_measuring_point_from_lip(&mut self, mm: f64) {
-        self.inner.set_measuring_point_from_lip(mm * 1e-3);
-    }
-
-    /// Weighs the key whole, as it arrives, its leads in it: its mass in
-    /// grams, and its front weight in grams read on the levelled jig
-    /// `from_lip_mm` millimetres back from the covering's lip. Returns, as
-    /// JSON (`WeighingRefusal` or `null`), why it was refused, the key's
-    /// weighing left as it was, or `null` when it was taken.
-    pub fn weigh_key(&mut self, mass_g: f64, front_weight_g: f64, from_lip_mm: f64) -> String {
-        json(&boundary::weigh_key(
-            &mut self.inner,
-            mass_g,
-            front_weight_g,
-            from_lip_mm,
-        ))
-    }
-
-    /// Paper under the balance punching, millimetres. Key levelling.
-    pub fn set_balance_paper(&mut self, mm: f64) {
-        self.inner.set_balance_paper(mm * 1e-3);
-    }
-
-    /// Paper on the front punching, millimetres. Key dip.
-    pub fn set_front_paper(&mut self, mm: f64) {
-        self.inner.set_front_paper(mm * 1e-3);
-    }
-
-    /// Key friction weight, grams at the measuring point, as Stanwood's
-    /// protocol reads it: the bushings set to the torque at which the
-    /// protocol reads it back. Returns, as JSON (`FrictionRefusal` or
-    /// `null`), why it was refused, the bushings left as they were, or
-    /// `null` when it was set.
-    pub fn set_key_friction_weight(&mut self, g: f64) -> String {
-        json(&boundary::set_key_friction_weight(&mut self.inner, g))
-    }
-
-    /// Moves the capstan, millimetres behind the balance pin (pass a positive
-    /// number; the capstan is always behind).
-    pub fn set_capstan_behind(&mut self, mm: f64) {
-        self.inner.set_capstan(-mm * 1e-3);
-    }
-
-    /// Moves the key's front edge, millimetres in front of the balance pin.
-    pub fn set_front_edge(&mut self, mm: f64) {
-        self.inner.set_front_edge(mm * 1e-3);
-    }
-
-    /// Moves the front rail, millimetres in front of the balance pin.
-    pub fn set_front_rail_at(&mut self, mm: f64) {
-        self.inner.set_front_rail(mm * 1e-3);
-    }
-
-    /// Moves the back rail, millimetres behind the balance pin (pass a
-    /// positive number; the back rail is always behind).
-    pub fn set_back_rail_at(&mut self, mm: f64) {
-        self.inner.set_back_rail(-mm * 1e-3);
-    }
-
-    /// Unbolts the rails and stands them where this key needs them.
-    ///
-    /// Does not re-regulate: moving a rail changes the arm the punchings were
-    /// placed on, so the sheet will show a key height and a dip off target
-    /// until they are shimmed again. That is the operation, in that order.
-    pub fn place_the_frame_under_the_key(&mut self) {
-        self.inner.place_the_frame_under_the_key();
-    }
-
-    /// Screws the capstan up or down, millimetres above the keystick.
-    pub fn set_capstan_height(&mut self, mm: f64) {
-        self.inner.set_capstan_height(mm * 1e-3);
-    }
-
-    /// Height of the bare balance rail above the keybed, millimetres.
-    pub fn set_balance_rail_height(&mut self, mm: f64) {
-        self.inner.set_balance_rail_height(mm * 1e-3);
-    }
-
-    /// Height of the bare front rail above the keybed, millimetres.
-    pub fn set_front_rail_height(&mut self, mm: f64) {
-        self.inner.set_front_rail_height(mm * 1e-3);
-    }
-
-    /// Height of the bare back rail above the keybed, millimetres.
-    pub fn set_back_rail_height(&mut self, mm: f64) {
-        self.inner.set_back_rail_height(mm * 1e-3);
-    }
-
-    /// How far the front rail pin stands above the bare rail, millimetres.
-    pub fn set_front_pin_height(&mut self, mm: f64) {
-        self.inner.set_front_pin_height(mm * 1e-3);
-    }
-
-    /// Depth of the key's front mortise, millimetres.
-    pub fn set_front_mortise_depth(&mut self, mm: f64) {
-        self.inner.set_front_mortise_depth(mm * 1e-3);
-    }
-
-    /// Thickness of the back rail cloth, millimetres.
-    pub fn set_back_rail_cloth(&mut self, mm: f64) {
-        self.inner.set_back_rail_cloth(mm * 1e-3);
-    }
-
-    /// Lays one more paper on the balance stack, millimetres. Key levelling.
-    pub fn add_balance_paper(&mut self, mm: f64) {
-        self.inner.add_paper(Which::Balance, mm * 1e-3);
-    }
-
-    /// Takes paper `i` back out of the balance stack.
-    pub fn remove_balance_paper(&mut self, i: usize) {
-        self.inner.remove_paper(Which::Balance, i);
-    }
-
-    /// Lays one more paper on the front stack, millimetres. Key dip.
-    pub fn add_front_paper(&mut self, mm: f64) {
-        self.inner.add_paper(Which::Front, mm * 1e-3);
-    }
-
-    /// Takes paper `i` back out of the front stack.
-    pub fn remove_front_paper(&mut self, i: usize) {
-        self.inner.remove_paper(Which::Front, i);
-    }
-
-    /// Thickness of the felt washer under the balance punching, millimetres.
-    pub fn set_balance_felt(&mut self, mm: f64) {
-        self.inner.set_balance_felt(mm * 1e-3);
-    }
-
-    /// Thickness of the felt washer on the front punching, millimetres.
-    pub fn set_front_felt(&mut self, mm: f64) {
-        self.inner.set_front_felt(mm * 1e-3);
+    /// The state's hash, sixteen hexadecimal digits: FNV-1a over every
+    /// normative coordinate and the hidden state. Two benches that hash
+    /// alike read the same.
+    pub fn state_hash(&self) -> String {
+        format!("{:016x}", self.inner.state_hash())
     }
 }
 

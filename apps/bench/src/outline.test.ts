@@ -51,13 +51,13 @@ describe('poseMatrix', () => {
   it('turns and shifts a point exactly as the pose says', () => {
     // A quarter turn counter-clockwise about an origin at (10, 20): the point
     // one along the body's x lands one up from the origin.
-    const m = poseMatrix({ origin: [10, 20], cos: 0, sin: 1 })
+    const m = poseMatrix({ origin_mm: [10, 20], cos: 0, sin: 1 })
     const p = new THREE.Vector3(1, 0, 0).applyMatrix4(m)
     expect([p.x, p.y, p.z]).toEqual([10, 21, 0])
   })
 
   it('places nothing anywhere with the identity pose', () => {
-    const m = poseMatrix({ origin: [0, 0], cos: 1, sin: 0 })
+    const m = poseMatrix({ origin_mm: [0, 0], cos: 1, sin: 0 })
     expect(m.equals(new THREE.Matrix4())).toBe(true)
   })
 })
@@ -80,8 +80,8 @@ describe('mirrored', () => {
 describe('strokes and shared segments', () => {
   // A keystick's underside split at a slot's edges, and the slot cut up from
   // it: the slot's bottom (its segment 0) is the keystick's segment 1.
-  const stick = { points: [0, 0, 4, 0, 6, 0, 10, 0, 10, 3, 0, 3], segs: [0, 1, 2, 3, 4, 5] }
-  const slot = { points: [4, 0, 6, 0, 6, 2, 4, 2], segs: [0, 1, 2, 3] }
+  const stick = { points_mm: [0, 0, 4, 0, 6, 0, 10, 0, 10, 3, 0, 3], segs: [0, 1, 2, 3, 4, 5] }
+  const slot = { points_mm: [4, 0, 6, 0, 6, 2, 4, 2], segs: [0, 1, 2, 3] }
 
   it('finds the mouth from either side', () => {
     expect([...sharedSegments(slot, stick)]).toEqual([0])
@@ -89,8 +89,8 @@ describe('strokes and shared segments', () => {
   })
 
   it('leaves the skipped segments out of the line work', () => {
-    const all = strokes(slot.points, slot.segs)
-    const open = strokes(slot.points, slot.segs, new Set([0]))
+    const all = strokes(slot.points_mm, slot.segs)
+    const open = strokes(slot.points_mm, slot.segs, new Set([0]))
     expect(all.length).toBe(16)
     expect(open).toEqual([6, 0, 6, 2, 6, 2, 4, 2, 4, 2, 4, 0])
   })
@@ -111,10 +111,12 @@ describe('strokes and shared segments', () => {
 describe('contactStrokes', () => {
   const contact = (state: ContactState, at: number): MarkedContact => ({
     pair: 'back_rail_cloth',
-    on_key: [at, 2],
-    on_frame: [at, 1],
+    on_key_mm: [at, 2],
+    on_frame_mm: [at, 1],
     gap_mm: state === 'overlapping' ? -1 : 1,
     state,
+    normal: [0, 1],
+    force_g: 0,
   })
 
   it('runs from the frame to the key, for the contacts in one state only', () => {

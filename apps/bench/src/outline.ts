@@ -36,7 +36,7 @@ export function toShape(points: readonly number[]): THREE.Shape {
  * out of them, so the view adds no trigonometry of its own.
  */
 export function poseMatrix(pose: Pose): THREE.Matrix4 {
-  const [x, y] = pose.origin
+  const [x, y] = pose.origin_mm
   const { cos, sin } = pose
   return new THREE.Matrix4().set(cos, -sin, 0, x, sin, cos, 0, y, 0, 0, 1, 0, 0, 0, 0, 1)
 }
@@ -89,12 +89,12 @@ export function segmentEnds(
  * from the same numbers, so the comparison is exact.
  */
 export function sharedSegments(
-  a: { points: readonly number[]; segs: readonly number[] },
-  b: { points: readonly number[]; segs: readonly number[] },
+  a: { points_mm: readonly number[]; segs: readonly number[] },
+  b: { points_mm: readonly number[]; segs: readonly number[] },
 ): Set<number> {
-  const theirs = [...segmentEnds(b.points, b.segs).values()]
+  const theirs = [...segmentEnds(b.points_mm, b.segs).values()]
   const shared = new Set<number>()
-  for (const [seg, [x0, y0, x1, y1]] of segmentEnds(a.points, a.segs)) {
+  for (const [seg, [x0, y0, x1, y1]] of segmentEnds(a.points_mm, a.segs)) {
     const along = theirs.some(
       ([u0, v0, u1, v1]) =>
         (u0 === x0 && v0 === y0 && u1 === x1 && v1 === y1) ||
@@ -149,7 +149,7 @@ export function contactStrokes(contacts: readonly MarkedContact[], state: Contac
   const out: number[] = []
   for (const c of contacts) {
     if (c.state !== state) continue
-    out.push(c.on_frame[0], c.on_frame[1], c.on_key[0], c.on_key[1])
+    out.push(c.on_frame_mm[0], c.on_frame_mm[1], c.on_key_mm[0], c.on_key_mm[1])
   }
   return out
 }

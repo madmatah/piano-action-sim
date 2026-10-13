@@ -20,31 +20,41 @@
 use crate::contact::{Material, Part, PartCode, PartId, Provenance, Role, SurfaceRef, Sweep};
 use crate::geometry::{Dir, Point, Seg};
 use crate::mechanism::BodyId;
+use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 
-/// A stack of punchings on a rail: paper shims plus the felt or leather washer.
+/// A stack of punchings on a rail: the papers laid, bottom first, and the
+/// felt or leather washer on them.
 ///
-/// Kept as two numbers rather than one total because they are two different
-/// operations on the bench — paper is how you adjust, felt is what you fit — and
-/// because the felt is compliant while the paper is not. The geometry treats
-/// the whole stack as rigid and reads only the total; the split is what a
-/// model of the felt's compliance will need.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// The papers are a list and not a total because a stack is a pile a
+/// technician counts, laid and lifted one paper at a time: the list **is**
+/// the coordinate regulation sets, held here once, and every total is summed
+/// from it. Kept apart from the felt because they are two different
+/// operations on the bench — paper is how you adjust, felt is what you fit —
+/// and because the felt is compliant while the paper is not. The geometry
+/// treats the whole stack as rigid and reads only the total; the split is
+/// what a model of the felt's compliance will need.
+#[derive(Debug, Clone, PartialEq)]
 pub struct PunchingStack {
-    /// Total thickness of the paper shims, metres.
-    pub paper: f64,
+    /// The papers laid on the rail, bottom first, metres each.
+    pub papers: Vec<f64>,
     /// Thickness of the felt or leather washer, metres.
     pub felt: f64,
 }
 
 impl PunchingStack {
-    /// A stack of paper and felt.
-    pub const fn new(paper: f64, felt: f64) -> Self {
-        Self { paper, felt }
+    /// A stack of these papers, bottom first, and a felt.
+    pub fn new(papers: Vec<f64>, felt: f64) -> Self {
+        Self { papers, felt }
+    }
+
+    /// The papers' total thickness, metres, summed bottom first.
+    pub fn paper(&self) -> f64 {
+        self.papers.iter().sum()
     }
 
     /// Total uncompressed height, metres.
     pub fn height(&self) -> f64 {
-        self.paper + self.felt
+        self.paper() + self.felt
     }
 }
 
@@ -96,7 +106,79 @@ pub struct FrameDesign {
     pub sections: FrameSections,
 }
 
+/// One length of the frame, set directly in the design layer, from nothing
+/// up: a rail's height, a cloth, a felt, a pin's height above its rail.
+const fn frame_length(
+    name: &'static str,
+    get: fn(&FrameDesign) -> f64,
+    set: fn(&mut FrameDesign, f64),
+) -> ParamSpec<FrameDesign> {
+    ParamSpec {
+        name,
+        quantity: Quantity::Length,
+        hard: (0.0, f64::INFINITY),
+        step: Step::Continuous,
+        layer: Layer::Design,
+        kind: Kind::Actuated,
+        get,
+        set,
+    }
+}
+
 impl FrameDesign {
+    /// The frame's settings: what an instrument may set on it, each with
+    /// what it admits ([`ParamSpec`]).
+    ///
+    /// Heights, thicknesses and the front pin's height are no less than
+    /// nothing; the front rail stands in front of the balance pin and the
+    /// back rail behind it. Anything else a frame can be, a rail placed for
+    /// another key or one raised until the stops fight, is computed and
+    /// reported, not refused: a frame drifts from its key, it does not
+    /// cascade. The papers are not here: they are a list, laid and lifted a
+    /// paper at a time ([`PAPER`]).
+    pub const PARAMS: [ParamSpec<Self>; 9] = [
+        frame_length(
+            "balance_rail.height",
+            |f| f.balance_rail_height,
+            |f, v| f.balance_rail_height = v,
+        ),
+        frame_length(
+            "front_rail.height",
+            |f| f.front_rail_height,
+            |f, v| f.front_rail_height = v,
+        ),
+        frame_length(
+            "back_rail.height",
+            |f| f.back_rail_height,
+            |f, v| f.back_rail_height = v,
+        ),
+        frame_length("front_rail.x", |f| f.front_rail, |f, v| f.front_rail = v),
+        ParamSpec {
+            hard: (f64::NEG_INFINITY, 0.0),
+            ..frame_length("back_rail.x", |f| f.back_rail, |f, v| f.back_rail = v)
+        },
+        frame_length(
+            "front_rail.pin_height",
+            |f| f.sections.front.pin_height,
+            |f, v| f.sections.front.pin_height = v,
+        ),
+        frame_length(
+            "back_rail.cloth",
+            |f| f.back_rail_cloth,
+            |f, v| f.back_rail_cloth = v,
+        ),
+        frame_length(
+            "balance_punching.felt",
+            |f| f.balance_punching.felt,
+            |f, v| f.balance_punching.felt = v,
+        ),
+        frame_length(
+            "front_punching.felt",
+            |f| f.front_punching.felt,
+            |f, v| f.front_punching.felt = v,
+        ),
+    ];
+
     /// Height of the key's underside at the balance pin, at rest, metres.
     ///
     /// This is what key levelling moves, and it is the only one of the three
@@ -206,9 +288,9 @@ impl Default for FrameDesign {
     fn default() -> Self {
         Self {
             balance_rail_height: 0.0266,
-            balance_punching: PunchingStack::new(0.0005, 0.0015),
+            balance_punching: PunchingStack::new(vec![0.0005], 0.0015),
             front_rail_height: 0.0259,
-            front_punching: PunchingStack::new(0.0005, 0.0020),
+            front_punching: PunchingStack::new(vec![0.0005], 0.0020),
             back_rail_height: 0.0190,
             back_rail_cloth: 0.0030,
             front_rail: 0.225,
@@ -226,8 +308,8 @@ mod tests {
     /// the geometry at rest.
     #[test]
     fn a_punching_stack_is_the_sum_of_what_is_on_it() {
-        let a = PunchingStack::new(0.0005, 0.0030);
-        let b = PunchingStack::new(0.0020, 0.0015);
+        let a = PunchingStack::new(vec![0.0005], 0.0030);
+        let b = PunchingStack::new(vec![0.0020], 0.0015);
         assert!((a.height() - 0.0035).abs() < 1e-15);
         assert!(
             (a.height() - b.height()).abs() < 1e-15,
@@ -245,7 +327,7 @@ mod tests {
     fn levelling_the_key_does_not_change_the_front_or_back_bearings() {
         let base = FrameDesign::default();
         let mut raised = base.clone();
-        raised.balance_punching.paper += 0.0004;
+        raised.balance_punching.papers.push(0.0004);
 
         assert!(
             (raised.balance_bearing_height() - base.balance_bearing_height() - 0.0004).abs()
@@ -539,6 +621,20 @@ pub const PAPER_THICKNESSES: [f64; PAPER_KINDS] = [
     0.00008, 0.00012, 0.0002, 0.0004, 0.0005, 0.00075, 0.001, 0.00125,
 ];
 
+/// A paper laid on a punching: one the drawer holds, which is what a paper
+/// is ([`PAPER_THICKNESSES`]); laid and lifted one at a time, a stack being
+/// a pile and not a thickness.
+pub const PAPER: ParamSpec<f64> = ParamSpec {
+    name: "punching.paper",
+    quantity: Quantity::Length,
+    hard: (0.0, f64::INFINITY),
+    step: Step::Drawer(&PAPER_THICKNESSES),
+    layer: Layer::Regulation,
+    kind: Kind::Actuated,
+    get: |p| *p,
+    set: |p, v| *p = v,
+};
+
 /// The step the drawer is graded in: 0.01 mm.
 ///
 /// Every thickness in [`PAPER_THICKNESSES`] is a whole number of these, which
@@ -708,22 +804,16 @@ impl FrameDesign {
     ///
     /// Ordered back to front, the order a technician names them. `key`
     /// supplies the width the rails are drawn across; `kind`, which row of
-    /// pins and punchings the key stands on. The papers arrive as the stack
-    /// actually laid, bottom first, because two stacks of one height are not
-    /// one object on a bench: a technician counts papers.
+    /// pins and punchings the key stands on. Each punching's papers are drawn
+    /// one part each, as the stack holds them, bottom first, because two
+    /// stacks of one height are not one object on a bench: a technician
+    /// counts papers.
     ///
-    /// A punching's felt is drawn up to its bearing height
-    /// ([`Self::balance_bearing_height`], [`Self::front_bearing_height`]),
-    /// whatever its papers sum to, and the cloth's face to the back
+    /// A punching's felt is drawn from the top of its papers up to its
+    /// bearing height ([`Self::balance_bearing_height`],
+    /// [`Self::front_bearing_height`]), and the cloth's face to the back
     /// bearing's, its edges rounded to [`CLOTH_EDGE_RADIUS`].
-    pub fn parts(
-        &self,
-        key: &super::KeyDesign,
-        kind: KeyKind,
-        balance_papers: &[f64],
-        front_papers: &[f64],
-        out: &mut Vec<Part>,
-    ) -> FrameRanges {
+    pub fn parts(&self, key: &super::KeyDesign, kind: KeyKind, out: &mut Vec<Part>) -> FrameRanges {
         let s = &self.sections;
         let mut push = |part: Part| {
             let id = super::next_id(out);
@@ -899,7 +989,7 @@ impl FrameDesign {
             self.balance_rail_height,
             balance_x,
             &s.balance,
-            balance_papers,
+            &self.balance_punching.papers,
             self.balance_bearing_height(),
             PartCode::BalanceRailPunching,
         );
@@ -907,7 +997,7 @@ impl FrameDesign {
             self.front_rail_height,
             front_x,
             &s.front,
-            front_papers,
+            &self.front_punching.papers,
             self.front_bearing_height(),
             PartCode::FrontRailPunching,
         );
@@ -1144,12 +1234,10 @@ mod part_tests {
     use super::*;
     use crate::parts::KeyDesign;
 
-    /// The frame as the bench lays it: real papers under both felts.
+    /// The frame's parts, its papers drawn under both felts.
     fn laid(frame: &FrameDesign, kind: KeyKind) -> (Vec<Part>, FrameRanges) {
-        let balance = papers_for(frame.balance_punching.paper);
-        let front = papers_for(frame.front_punching.paper);
         let mut parts = Vec::new();
-        let ranges = frame.parts(&KeyDesign::default(), kind, &balance, &front, &mut parts);
+        let ranges = frame.parts(&KeyDesign::default(), kind, &mut parts);
         (parts, ranges)
     }
 
@@ -1265,7 +1353,7 @@ mod part_tests {
     fn adding_paper_lifts_the_felt_without_thickening_it() {
         let base = FrameDesign::default();
         let mut raised = base.clone();
-        raised.balance_punching.paper += 0.0004;
+        raised.balance_punching.papers.push(0.0004);
 
         let felt_span = |f: &FrameDesign| {
             let (parts, ranges) = laid(f, KeyKind::Natural);
@@ -1296,8 +1384,8 @@ mod part_tests {
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         assert_eq!(
             ranges.balance_papers.len(),
-            papers_for(frame.balance_punching.paper).len(),
-            "one part per paper in the drawer's stack"
+            frame.balance_punching.papers.len(),
+            "one part per paper in the stack"
         );
         let mut y = frame.balance_rail_height;
         for id in &ranges.balance_papers {
@@ -1314,7 +1402,7 @@ mod part_tests {
             y += thickness;
         }
         assert!(
-            (y - frame.balance_rail_height - frame.balance_punching.paper).abs() < 1e-12,
+            (y - frame.balance_rail_height - frame.balance_punching.paper()).abs() < 1e-12,
             "the stack sums to the shim the regulation asked for"
         );
     }

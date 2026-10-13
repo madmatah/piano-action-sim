@@ -355,18 +355,18 @@ function SectionPart({
   if (outline.sweep === 'extruded') {
     return (
       <>
-        <Fill points={outline.points} colour={colour} layer={layer} masked={masked} />
-        <Edges pieces={strokes(outline.points, outline.segs, open)} layer={edgeLayer} />
+        <Fill points={outline.points_mm} colour={colour} layer={layer} masked={masked} />
+        <Edges pieces={strokes(outline.points_mm, outline.segs, open)} layer={edgeLayer} />
       </>
     )
   }
-  const onAxis = axisSegments(outline.points, outline.segs)
-  const half = strokes(outline.points, outline.segs, onAxis)
+  const onAxis = axisSegments(outline.points_mm, outline.segs)
+  const half = strokes(outline.points_mm, outline.segs, onAxis)
   const mirror = mirrored(half)
   return (
-    <group position={[outline.axis_x, 0, 0]}>
-      <Fill points={outline.points} colour={colour} layer={layer} masked={masked} />
-      <Fill points={mirrored(outline.points)} colour={colour} layer={layer} masked={masked} />
+    <group position={[outline.axis_x_mm, 0, 0]}>
+      <Fill points={outline.points_mm} colour={colour} layer={layer} masked={masked} />
+      <Fill points={mirrored(outline.points_mm)} colour={colour} layer={layer} masked={masked} />
       <Edges pieces={half} layer={edgeLayer} />
       <Edges pieces={mirror} layer={edgeLayer} />
     </group>
@@ -411,7 +411,11 @@ function Contacts({ contacts }: { contacts: MarkedContact[] }) {
         />
       ))}
       {contacts.map((c, i) => (
-        <mesh key={i} position={[c.on_frame[0], c.on_frame[1], 0]} renderOrder={LAYER.contacts}>
+        <mesh
+          key={i}
+          position={[c.on_frame_mm[0], c.on_frame_mm[1], 0]}
+          renderOrder={LAYER.contacts}
+        >
           <sphereGeometry args={[0.9, 16, 12]} />
           <meshBasicMaterial
             color={CONTACT_COLOUR[c.state]}
@@ -464,15 +468,15 @@ function Body({
           o.sweep === 'revolved' ? (
             <Lathed
               key={`${o.code}-${i}`}
-              profile={o.points}
-              axisX={o.axis_x}
+              profile={o.points_mm}
+              axisX={o.axis_x_mm}
               colour={colourOf(o)}
             />
           ) : (
             <Extruded
               key={`${o.code}-${i}`}
-              points={o.points}
-              width={o.width}
+              points={o.points_mm}
+              width={o.width_mm}
               colour={colourOf(o)}
             />
           ),
@@ -480,7 +484,7 @@ function Body({
       ) : (
         <>
           {cuts.map((o, i) => (
-            <Void key={`${o.code}-${i}`} points={o.points} />
+            <Void key={`${o.code}-${i}`} points={o.points_mm} />
           ))}
           {cuts.map((o, i) => {
             // A cut's mouth runs along its body's outline: no edge there.
@@ -489,7 +493,7 @@ function Body({
             return (
               <Edges
                 key={`${o.code}-edges-${i}`}
-                pieces={strokes(o.points, o.segs, mouth)}
+                pieces={strokes(o.points_mm, o.segs, mouth)}
                 layer={LAYER.keyEdges}
               />
             )
@@ -516,7 +520,7 @@ function Body({
           })}
         </>
       )}
-      {marker && <MeasuringPoint at={marker.at} />}
+      {marker && <MeasuringPoint at={marker.at_mm} />}
     </group>
   )
 }
