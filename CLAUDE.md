@@ -44,8 +44,9 @@ trade's own protocols, and come back with the expected values.**
    model, never a parameter read back; where a displayed value is still a
    formula or an input echoed back, FOUNDATIONS §2.2 says so. Check:
    `the_bench_measures_its_own_friction_by_the_protocol`.
-4. **Axis friction is set-valued**, never `sign()` or `tanh()`, and stored as a
-   torque with its measurement radius. Check: `grep -rn tanh crates/*/src` finds
+4. **Dry friction is set-valued**, at the axes and at the sliding contacts
+   alike, never `sign()` or `tanh()`; axis friction is stored as a torque with
+   its measurement radius. Check: `grep -rn tanh crates/*/src` finds
    only comments; `KeyPinFriction` carries its arm.
 5. **No number without provenance**: a record in `data/params/` for every value
    the engine starts from, a script in `tools/derivations/` for every derived
