@@ -168,10 +168,22 @@ impl Mechanism {
         &self,
         pose: &Pose,
         point: MaterialPoint,
+        each: impl FnMut(CoordId, Point),
+    ) {
+        self.for_each_column_at(pose, point.body, pose.world(point), each);
+    }
+
+    /// The same, for the material point of `body` that stands at `p` in the
+    /// world: what a contact row reads at its contact point, which it holds
+    /// in the world and not in either body's frame.
+    pub(crate) fn for_each_column_at(
+        &self,
+        pose: &Pose,
+        body: BodyId,
+        p: Point,
         mut each: impl FnMut(CoordId, Point),
     ) {
-        let p = pose.world(point);
-        let mut body = point.body;
+        let mut body = body;
         while body != BodyId::GROUND {
             let b = &self.bodies[body.0];
             let placed = pose.placements[body.0];

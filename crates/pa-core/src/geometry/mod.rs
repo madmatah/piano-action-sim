@@ -1,15 +1,19 @@
-//! Planar primitives: points, directions, and the two kinds of segment every
-//! outline is made of.
+//! Planar primitives: points, directions, the two kinds of segment every
+//! outline is made of, and the signed distances contacts are measured by.
 //!
 //! An outline is a closed chain of [`Seg`]s, lines and arcs. The parts built
 //! from outlines, and the ranges into them that a contact may read, are in
-//! [`crate::contact`]. The contact kinematics the key's stops read are in
-//! [`kinematics`]; they still read a construction of their own, built from
-//! the same fields as the drawn parts (see [`crate::contact`]).
+//! [`crate::contact`]. The three signed primitives every contact row is made
+//! of, disc on face, disc on disc and centre on face, are in [`signed`]. The
+//! one-coordinate statics of the key on its frame still read the older
+//! kinematics of [`kinematics`], over a construction of their own built from
+//! the same fields as the drawn parts.
 
 pub mod kinematics;
+pub mod signed;
 
 pub use kinematics::{circle_vs_circle, circle_vs_line, Frame, Rot};
+pub use signed::{centre_on_face, disc_on_disc, disc_on_face, Disc, Face, Proximity};
 
 /// A point in a part's local frame, in metres.
 #[derive(Debug, Clone, Copy, PartialEq)]

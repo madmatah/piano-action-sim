@@ -247,6 +247,29 @@ expectChanged('measuring point', unlevelled, remeasured, 'friction weight F')
 expectUnchanged('measuring point', unlevelled, remeasured, 'key height')
 expectUnchanged('measuring point', unlevelled, remeasured, 'key dip')
 
+// The contacts the engine reads off the drawn parts reach the view: a weight
+// lifting the key puts it on its back rail cloth, a weight pressing it puts it
+// on its front punching, and the view names what it bears on. The engine's
+// identifiers, read off the view's element, not off a label.
+const touching = async () => {
+  const names = await evaluate(`document.querySelector('.view')?.dataset.touching ?? null`)
+  return names === null ? null : names.split(' ').filter(Boolean)
+}
+for (const [weight, contact] of [
+  [-60, 'back_rail_cloth'],
+  [60, 'front_rail_punching'],
+]) {
+  if ((await moveSlider('weight on the measuring point', weight)) !== 'ok') {
+    fail('weight slider missing')
+  }
+  await settle()
+  const bears = await touching()
+  if (bears === null || !bears.includes(contact)) {
+    fail(`with ${weight} g on the key the view marks it bearing on ${bears}, not ${contact}`)
+  }
+  console.log(`  ok  contacts: with ${weight} g the key bears on ${bears.join(', ')}`)
+}
+
 // The section draws every part flat, each in its own body's frame, a cut as a
 // void in the key's wood. It is a different drawing from the solid's, and a
 // renderer that throws there blanks that view alone, so both are shown.

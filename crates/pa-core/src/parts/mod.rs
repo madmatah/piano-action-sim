@@ -5,7 +5,8 @@
 //!
 //! [`KeyDesign`] holds the key's dimensions, and two things are built from
 //! them. Its **parts** ([`key`]), one closed outline per piece of material,
-//! are what is drawn and what the faults read; [`FrameDesign`] builds the
+//! are what is drawn, what the faults read and what the key's contacts with
+//! its frame read ([`mounts::key_on_frame`]); [`FrameDesign`] builds the
 //! frame's the same way ([`frame`]). Its **volume model**, the polygon
 //! [`KeyDesign::outline_vertices`] integrated as a uniform prism and the
 //! capstan turned from its profile, is the composite key's mass: an

@@ -34,9 +34,11 @@ trade's own protocols, and come back with the expected values.**
 1. **One part definition feeds contacts and drawing**: both are built in Rust
    from the same fields and exported, and the browser only renders them,
    applying each body's pose as given. The drawn parts declare the ranges a
-   contact may read; the stops still read a construction of their own, and the
-   two are held together by a test until contacts read those ranges (planned,
-   FOUNDATIONS §7.1). Check:
+   contact may read, and a contact pair holds those ranges and nothing else;
+   the one-coordinate statics that still place the key read stops of their
+   own, held to the drawn ranges by a test until the static solve reads the
+   contacts (planned, FOUNDATIONS §7.1). Check:
+   `every_contact_surface_is_a_range_of_a_drawn_part`,
    `every_stop_face_is_a_declared_range_of_a_drawn_part`.
 2. **Regulation is trade targets solved to geometry; the coordinate is
    normative**, the target kept beside it with its achieved value. Check:
@@ -131,7 +133,8 @@ capstan ⇒ −1.4 g", ΔJ/J as a ranking, gradient descent on settings (§5.3);
 Thorin's demonstrator touchweights read as wear (§5.2); "only the support spring
 moves BW" (§6.1); the spurious gap-gradient term (§6.2); Pw2 as the wippen
 pivot, 5.84 (§6.4); "~40 % of friction unexplained", F ≈ 9 g, Hirschkorn's
-friction law without its bracket (§6.5). Check: a
+friction law without its bracket (§6.5); the face beside an edge arc as the
+row that always carries a corner sunk past the arc's centre (§6.6). Check: a
 grep for a listed value finds only its warning; *not enforced*.
 
 ## Layout

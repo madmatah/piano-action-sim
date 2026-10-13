@@ -13,8 +13,8 @@ readout.balance_weight_g 8.09391905849606 0x4020301628a96c62
 readout.friction_weight_g 6.0 0x4018000000000000
 readout.key_mass_g 151.1166896392422 0x4062e3bbebe90a79
 readout.lead_count 1
-readout.gap_front_mm 8.902938955768482 0x4021ce4e03ca9ebb
-readout.gap_back_mm -8.673617379884035e-16 0xbccf400000000000
+readout.gap_front_mm 8.90333056243342 0x4021ce8157ee41f5
+readout.gap_back_mm -2.3852447794681098e-15 0xbce57c0000000000
 readout.measured_dip_mm 10.188788831680354 0x402460a8ee03d597
 readout.measured_kf_g none
 readout.friction_band_g 6.0 0x4018000000000000

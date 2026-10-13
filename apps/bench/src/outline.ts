@@ -7,7 +7,7 @@
  * and an outline is drawn through the points it arrives with.
  */
 import * as THREE from 'three'
-import type { Pose } from './bench'
+import type { Contact, Pose } from './bench'
 
 /**
  * The engine's flat `[x0, y0, x1, y1, …]` as a closed, filled shape.
@@ -134,6 +134,21 @@ export function strokes(
       points[2 * j] as number,
       points[2 * j + 1] as number,
     )
+  }
+  return out
+}
+
+/**
+ * The contacts in one state as line pieces, flat `[x0, y0, x1, y1, …]`, each
+ * from the frame's surface point to the key's: the gap a reader sees across
+ * an open contact, the depth across an overlapping one. A closed contact's
+ * two points coincide, and it is marked by its point alone.
+ */
+export function contactStrokes(contacts: readonly Contact[], state: Contact['state']): number[] {
+  const out: number[] = []
+  for (const c of contacts) {
+    if (c.state !== state) continue
+    out.push(c.on_frame[0], c.on_frame[1], c.on_key[0], c.on_key[1])
   }
   return out
 }

@@ -22,8 +22,8 @@
 //! the browser permanently out of step.
 
 use pa_app::key_bench::{
-    Bearing, Fault, FingerVerdict, KeyBench, Material, Provenance, Role, Sweep, Which, KEY,
-    PAPER_THICKNESSES,
+    ContactState, Fault, FingerVerdict, HowItBears, KeyBench, Material, Provenance, Role, Sweep,
+    Which, KEY, PAPER_THICKNESSES,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -112,6 +112,27 @@ struct MarkerDto {
     at: [f32; 2],
 }
 
+/// A contact the view marks: one row of one of the key's contacts with its
+/// frame, where the key is drawn.
+///
+/// In the keybed's frame, the ground's, which the view draws untransformed:
+/// the two points are where the rows put them, not where any body's pose
+/// would carry them.
+#[derive(Serialize)]
+struct ContactDto {
+    /// Which contact, `snake_case`.
+    pair: &'static str,
+    /// Where the key's surface is, millimetres.
+    on_key: [f32; 2],
+    /// Where the frame's surface is, millimetres.
+    on_frame: [f32; 2],
+    /// The signed gap between them, millimetres: negative where the drawn
+    /// parts overlap.
+    gap_mm: f32,
+    /// `"closed"`, `"open"` or `"overlapping"`.
+    state: &'static str,
+}
+
 /// Everything the view needs to draw one frame.
 #[derive(Serialize)]
 struct SceneDto {
@@ -123,6 +144,9 @@ struct SceneDto {
     /// The measuring point. Drawn because a reader must see where the engine
     /// thinks it is weighing.
     measuring_point: MarkerDto,
+    /// The contacts within a millimetre of closing, where the key is drawn:
+    /// marked so a reader sees where the key bears, and on what.
+    contacts: Vec<ContactDto>,
     /// Why this frame cannot be weighed, when it cannot. Travels with the
     /// scene rather than with the readout, because the readout is exactly
     /// what is missing in that case.
@@ -200,9 +224,10 @@ struct ReadoutDto {
     front_paper_mm: f32,
     key_height_target_mm: f32,
     key_dip_target_mm: f32,
-    /// What is carrying the key: "on the front punching", "on the back rail
-    /// cloth" or "held by friction alone". Three and not two, because the third
-    /// is the friction.
+    /// What is carrying the key: "on the front punching", or "on the front
+    /// rail pin, at the top of its mortise" where the pin bottoms before the
+    /// key reaches its punching; "on the back rail cloth"; or "held by friction
+    /// alone". Three states and not two, because the third is the friction.
     finger: &'static str,
     out_of_level_deg: f32,
     bedding_at_the_back_deg: f32,
@@ -212,8 +237,12 @@ struct ReadoutDto {
     front_pin_mm: f32,
     front_mortise_mm: f32,
     finger_weight_g: f32,
-    gap_front_mm: f32,
-    gap_back_mm: f32,
+    /// The gap at the front punching, millimetres, or `null` where no
+    /// underside passes over its centre.
+    gap_front_mm: Option<f32>,
+    /// The gap at the back rail cloth, millimetres, or `null` where no
+    /// feature of the two can meet.
+    gap_back_mm: Option<f32>,
     friction_band_g: f32,
     /// What the protocol measures on the model, or `null` if it cannot be run
     /// on this geometry.
@@ -345,6 +374,23 @@ impl Bench {
             })
             .collect();
 
+        let contacts = self
+            .inner
+            .contacts()
+            .into_iter()
+            .map(|c| ContactDto {
+                pair: c.code.code(),
+                on_key: [mm(c.on_key.x), mm(c.on_key.y)],
+                on_frame: [mm(c.on_frame.x), mm(c.on_frame.y)],
+                gap_mm: mm(c.gap),
+                state: match c.state() {
+                    ContactState::Closed => "closed",
+                    ContactState::Open => "open",
+                    ContactState::Overlapping => "overlapping",
+                },
+            })
+            .collect();
+
         let m = self.inner.measuring_point_on_key();
         serde_json::to_string(&SceneDto {
             outlines,
@@ -354,6 +400,7 @@ impl Bench {
                 body: KEY.0,
                 at: [mm(m.x), mm(m.y)],
             },
+            contacts,
             frame_fault: self.inner.frame_fault(),
             faults: self.inner.faults().iter().map(say).collect(),
         })
@@ -391,21 +438,27 @@ impl Bench {
             bedding_at_the_back_deg: r.bedding_at_the_back_deg as f32,
             bears_at_the_back_mm: r.bears_at_the_back_mm as f32,
             back_bearing: match r.back_bearing {
-                Bearing::Flat => "flat on the cloth",
-                Bearing::StopEdge => "on the edge of the cloth",
-                Bearing::KeyCorner => "on the key's own corner",
+                HowItBears::Flat => "flat on the cloth",
+                HowItBears::StopEdge => "on the edge of the cloth",
+                HowItBears::KeyCorner => "on the key's own corner",
             },
             stopped_by_the_mortise: r.stopped_by_the_mortise,
             front_pin_mm: (self.inner.front_pin_and_mortise().0 * 1000.0) as f32,
             front_mortise_mm: (self.inner.front_pin_and_mortise().1 * 1000.0) as f32,
             finger: match r.finger {
+                // The front stop is the higher of the punching and the pin's
+                // tip; the gap beside this sentence is the punching's own, so
+                // a key held by its pin is said to be on its pin.
+                FingerVerdict::FrontPunching if r.stopped_by_the_mortise => {
+                    "on the front rail pin, at the top of its mortise"
+                }
                 FingerVerdict::FrontPunching => "on the front punching",
                 FingerVerdict::BackRailCloth => "on the back rail cloth",
                 FingerVerdict::FrictionAlone => "held by friction alone",
             },
             finger_weight_g: self.inner.finger_weight() as f32,
-            gap_front_mm: r.gap_front_mm as f32,
-            gap_back_mm: r.gap_back_mm as f32,
+            gap_front_mm: r.gap_front_mm.map(|v| v as f32),
+            gap_back_mm: r.gap_back_mm.map(|v| v as f32),
             friction_band_g: r.friction_band_g as f32,
             measured_kf_g: r.measured_kf_g.map(|v| v as f32),
             measured_dip_mm: r.measured_dip_mm.map(|v| v as f32),

@@ -54,7 +54,7 @@ The applications in view, others to follow:
    what the jack does at let-off. Key statics built; dynamics planned.
 3. **Discover the action**: parts in section and in solid, contacts visible,
    motion slowed until escapement can be watched. Section and solid of the key
-   and frame built; contacts shown and motion planned.
+   and frame, with the key's contacts marked on them, built; motion planned.
 4. **Design an action.** Parts and frame are edited freely. What cannot work is
    avoided or limited, refused or clamped with its reason; what can be handled
    is handled, so a frame that does not fit its key is drawn as it is, its
@@ -154,10 +154,33 @@ world, with their potential and generalized forces; and coordinates prescribed
 for one procedure, with the reaction that holds each. The mechanism never
 computes a body's mass; it is handed one. The composite key's is derived from
 its volume model by one adapter in `pa-app`, the composite key's derivation
-(§2.3). Its first client is the jig (§2.2). Planned: contacts over all
-coordinates, coordinate limits, axis friction and the static solve that finds
-the coordinates a procedure leaves free (§8); until then the key on its frame
-keeps the one-degree-of-freedom statics above.
+(§2.3). Its first client is the jig (§2.2). Planned: coordinate limits, axis
+friction and the static solve that finds the coordinates a procedure leaves
+free (§8); until then the key on its frame keeps the one-degree-of-freedom
+statics above.
+
+**Contacts, read off the drawn parts.** Each of the key's contacts with its
+frame is a pair of ranges of drawn parts and nothing else: the front punching's
+top against the underside's flat; the back rail cloth's face, its rounded edges
+and the sides they lead into, against the whole underside, chamfer included; the
+front pin's top against the top of its mortise, and against the wood beside the
+slot, which only a pin standing outside its mortise but under the key reaches.
+Where a surface runs across parts, as the underside runs from the keystick onto
+the key front, the joint is no corner. A mechanism carrying the parts reads
+every pair at any pose into rows: one for each pair of features that meet (a
+disc, which is an arc or a convex corner, against a straight face; two discs; a
+face's centre against a face), each a signed gap with its normal and its contact
+point, and over every coordinate the gap's gradient by the lever-arm identity of
+§6.2 and the sliding of the two surfaces past each other. A row's gap keeps its
+sign however deep it is read, though a corner driven past the centre of an edge
+it overlaps can have no row at all (§6.6). The front punching is read at the
+centre of its drawn top, a rigid reading of a felt washer that spreads the load
+of a key landing level over its whole face. How the key bears on its cloth (on
+the cloth's edge; flat on it, its two edges within 2.5 µm of closing, about a
+thirtieth of the thinnest paper; or on the key's own corner), where, and the
+slope of the key's face over the cloth's are read off those rows, and so are the
+two gaps on the sheet and the contacts the view marks. The statics above still
+place the key, and the rows are read at the attitude they give.
 
 ### 2.2 The protocols, as they are
 
@@ -248,13 +271,30 @@ rise from the bottom), their closed forms joining the jig's as test oracles.
   contact.
 - **The linings are rigid**: drawn at their thickness, acting as rigid stops.
   Planned with the felt laws of the quasi-static core.
+- **The front punching bears at its centre.** Its contact reads the centre of
+  the felt's drawn top, a rigid stand-in for a washer that spreads the load of
+  a key landing level over its whole face. A key landing out of level would
+  overlap the drawn felt's edge by what a real felt compresses, unreported
+  (planned).
 - **The bilateral pivot is assumed, not checked.** The key cannot lift off its
   balance punching; the guard meant to check it is called by nothing in the
   bench and ignores the stops' reactions, and at the −60 g end of the weight
   slider the key's own statics say it lifts off. A frame whose stops fight is
   reported, not weighed, the key drawn riding on its two stops as if its
   underside were straight: under the chamfer it is drawn about 0.8 mm clear of
-  its cloth. Planned: the key's vertical degree of freedom.
+  its cloth, and the contacts the view marks show it open by that much.
+  Planned: the key's vertical degree of freedom.
+- **The statics read stops of their own.** The key's attitude comes from the
+  one-coordinate statics, whose front stop is the higher of the punching and
+  the front pin's tip, read at the pin's middle, and which do not see a pin
+  standing outside its mortise; the contacts, read at that attitude, see the
+  drawn parts. A pin bottoming in its mortise therefore stops the key with one
+  of its corners into the mortise's top by half the pin's length times the
+  key's tilt, about a micron with the pin a millimetre prouder than the
+  default frame's, and a key shortened under its frame is drawn with its front
+  pin up in its wood; both show as overlaps among the contacts the view marks.
+  Planned: the static solve on the contacts, which stops the key where its
+  drawn parts meet.
 - **The inverse solve ignores the mortise stop**, reporting as solved a dip the
   pin prevents; elsewhere its small-angle term misses by about 0.02 mm.
 - **No validation layer**: a front edge close to the capsule makes the outline
@@ -272,14 +312,18 @@ rise from the bottom), their closed forms joining the jig's as test oracles.
 frame in section and in solid from parts computed in Rust, each in its own
 body's frame and placed by the pose the statics give that body. The section is
 the sagittal plane itself: a washer shows the hole its pin stands in, and the
-front pin stands in its mortise, a void open at the key's underside. Colours
+front pin stands in its mortise, a void open at the key's underside. Both views
+mark the key's contacts with its frame where the contact rows find them: where
+the key bears, a gap of under a millimetre still open, and drawn parts that
+overlap. Colours
 follow each part's material: the covering and the key front white, the capsule
 and the back check block in a wood other than the keystick's. Its panels: the
 weighing sheet, with the measuring point's distance back from the front lip of
 the key; regulation (punching papers, key friction weight); punchings and
 cloth (felts, front rail pin and mortise, back rail cloth); the key; the frame
-(rails, placing the frame); touch (a weight on the measuring point, and which
-stop holds the key); the leading workshop, which goes with the leads
+(rails, placing the frame); touch (a weight on the measuring point, which
+stop holds the key, and the gaps at the front punching and the back rail
+cloth); the leading workshop, which goes with the leads
 (§2.3). Faults are listed in millimetres,
 every number on the sheet is computed in Rust, and the page is in English.
 `pa-cli weigh` prints the sheet's weights, ratio, key height, dip and mass.
@@ -765,7 +809,7 @@ traps (§6.3).
 
 | Level | What it checks | Kind | Status |
 |---|---|---|---|
-| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; the unilateral virtual-work inequality at every settled state; every stop's face against a declared range of a drawn part; the key ratio guard | consistency | built |
+| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; every contact row's gradient and sliding against central differences, at depths past any radius, its sign against the side of its drawn piece; the contact rows against a brute-force sampling of the drawn outlines; every contact surface a range of a drawn part; the unilateral virtual-work inequality at every settled state; every stop's face against a declared range of a drawn part; the key ratio guard | consistency | built |
 | 0 | the mass matrix against finite differences of the kinetic energy; normals continuous across the hybrid profiles; every coordinate acted on by a contact or a spring | consistency | planned |
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
@@ -852,9 +896,11 @@ pointing from B to A, and O the pivot about which a coordinate turns its body:
 That is the instantaneous lever arm, what every ratio of the trade is made of.
 For a coordinate relative to a parent (jack, lever), O is its own pin, and the
 parent's coordinate turns the child's points about the parent's pivot. Built for
-circle against line and circle against circle, and as the mechanism's Jacobian
-column for any material point over every ancestor joint (§2.1), each tested
-against central finite differences.
+circle against line and circle against circle at one coordinate, as the
+mechanism's Jacobian column for any material point over every ancestor joint,
+and for every contact row over every coordinate, `n · (J_A − J_B)` at the
+contact point, a coordinate that moves both bodies cancelling exactly (§2.1);
+each tested against central finite differences.
 **Do not use** ∂g/∂θ_B = −(ẑ × (x_c − o_B))·n_B −
 (c_A − p_B)·(ẑ × n_B) for a circle on A against a line on B: the second term is
 spurious (a circle at (0, 2) of radius 1 against a line through (5, 0) on a body
@@ -962,10 +1008,23 @@ Hirschkorn's thirteen, and four for the damper (planned):
 Three primitives cover Hirschkorn's thirteen: a circle against a line (ten), a
 circle against a circle (the capstan on the heel), and a hybrid, an arc joined
 to two tangent lines, for the jack and the lever under the knuckle, whose normal
-never jumps. The first two are built, the hybrid planned; the built
-circle-against-line gap loses its sign once penetration exceeds the circle's
-radius, so a compliant law needs a signed gap. The shank rests on a cushion on
-the wippen or on a felted rail, depending on the action, which changes the
+never jumps. The first two are built as signed distances, which a compliant law
+needs. A disc against a straight face, the disc an arc or a convex corner taken
+as a disc of radius zero, measures to the face's line and keeps its sign at any
+depth, as does a face's centre against a face. Two discs keep it until their
+centres meet, a penetration of both radii added, and have no row past that.
+**Do not use** "a corner deeper than an edge arc's centre stands over a face
+beside the arc, whose own row carries the penetration" as a guarantee: that row
+exists only while the face's normal, turned round, lies in the corner's own
+angle, and a key's tail corner sunk 0.9 mm into the end of its cloth with the
+key nose-up reads no row at all, though the cloth's sides are in its range. The
+rigid statics stop every corner at contact and never go that deep; a felt law
+that lets a corner sink past an edge's radius needs a reading that sees it. The
+hybrid is planned. The older circle-against-line gap, which still serves the
+one-coordinate statics, is an unsigned distance from the circle's centre less
+the radius, so past one radius of penetration it grows again: right at contact,
+where those statics read it, and wrong for depth. The shank rests on a cushion
+on the wippen or on a felted rail, depending on the action, which changes the
 contact's gradient, the shock at the finger, the rest state and the regulation
 offered. Contacts 14 and 15 both lift the damper lever from below and the higher
 wins, so pedal force falls as notes are played.
@@ -1018,15 +1077,19 @@ carries it, several per body, a mortise a cut among them and a turned part read
 through its sagittal silhouette. Each part declares the ranges of its outline a
 contact may read and the named points on it, the lip and the key front's top
 among them. The bench draws them and the faults read them; whatever a stop
-rounds is drawn rounded, the back rail cloth's edges included. The stops still
-read a second construction built from the same fields, the underside's corners
+rounds is drawn rounded, the back rail cloth's edges included. The contacts read
+the declared ranges and nothing else: a contact pair holds nothing but ranges of
+parts, and the mechanism its rows are read on carries the very parts the view
+draws, which `every_contact_surface_is_a_range_of_a_drawn_part` holds on every
+bench of the golden sheet. The one-coordinate statics that still place the key
+read stops of their own, built from the same fields, the underside's corners
 and the frame's bearing heights, and one test holds every face they read to a
 declared range of a drawn part,
-`every_stop_face_is_a_declared_range_of_a_drawn_part`: the invariant holds by
-shared fields and that test, not by structure. The composite key's mass is
-integrated over a third polygon, its volume model's, which the drawn parts tile
-exactly. Planned: contacts reading the declared ranges and nothing else, so
-drawing and contact cannot drift apart, and each part's inertia derived from
+`every_stop_face_is_a_declared_range_of_a_drawn_part`: for the statics, the
+invariant holds by shared fields and that test, not by structure. The composite
+key's mass is integrated over a third polygon, its volume model's, which the
+drawn parts tile exactly. Planned: the static solve on the contacts, after which
+nothing reads anything but a drawn range, and each part's inertia derived from
 its outline or measured, by an explicit choice, a key's always measured (§2.3).
 
 ### 7.2 The WebAssembly boundary
@@ -1037,7 +1100,9 @@ value. It reads two JSON documents: the scene and the readout. The scene holds
 every part's outline in its own body's frame, in millimetres, with its material
 and the provenance of each stretch; one pose per body, an origin, a cosine and
 a sine, which the view applies and computes none of; the leads and the
-measuring point on the key; and the faults. The readout holds the settings, the
+measuring point on the key; the contacts within a millimetre of closing, each
+its two surface points in the keybed's frame, its gap and whether it is closed,
+open or overlapping; and the faults. The readout holds the settings, the
 weighing sheet and what holds the key, all absent when the frame cannot be
 weighed. Faults and verdicts are English sentences built in Rust, in `pa-app`
 and in the adapter, and the TypeScript types mirror both documents by hand.
@@ -1135,7 +1200,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree and the jig built (§2.1, §2.2); the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig and the contacts over all coordinates built (§2.1, §2.2); the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

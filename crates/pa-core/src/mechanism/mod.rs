@@ -35,10 +35,14 @@
 //! - **Prescribed coordinates and their reactions** ([`Mechanism::hold`]): a
 //!   coordinate held at a value for one procedure, and the generalized force
 //!   holding it takes. The jig's scale reading is one.
+//! - **Parts and contacts** ([`Mechanism::with_contacts`]): the drawn parts
+//!   its bodies carry and the pairs of their ranges declared as contacts,
+//!   read at any pose into rows over every coordinate
+//!   ([`Mechanism::rows`], in [`crate::contact`]).
 //!
-//! Planned: contacts, coordinate limits and axis friction, and a static solve
-//! that finds the coordinates a procedure leaves free. Until it exists a
-//! mechanism is only ever held with every coordinate prescribed, and
+//! Planned: coordinate limits and axis friction, and a static solve that
+//! finds the coordinates a procedure leaves free. Until it exists a mechanism
+//! is only ever held with every coordinate prescribed, and
 //! [`Mechanism::hold`] refuses to leave one free.
 
 mod hold;
@@ -46,12 +50,13 @@ mod load;
 mod pose;
 
 #[cfg(test)]
-mod fixtures;
+pub(crate) mod fixtures;
 
 pub use hold::{Held, Prescribed};
 pub use load::PointLoad;
 pub use pose::{MaterialPoint, Placement, Pose};
 
+use crate::contact::{ContactPair, PairFeatures, Part, PartId, SurfaceRef};
 use crate::geometry::{Dir, Point};
 
 /// A body's place in its mechanism. The ground is body 0, and every body's
@@ -167,11 +172,17 @@ impl Body {
     };
 }
 
-/// Bodies in a tree, checked when built.
+/// Bodies in a tree, checked when built, with the parts they carry and the
+/// contacts declared between them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mechanism {
     bodies: Vec<Body>,
     coords: Vec<Coord>,
+    parts: Vec<Part>,
+    pairs: Vec<ContactPair>,
+    /// Each pair's features, read once from the parts when the pairs are
+    /// declared.
+    pub(crate) features: Vec<PairFeatures>,
 }
 
 /// What the mechanism refuses: a list of bodies that is not a tree it can
@@ -253,6 +264,35 @@ pub enum Problem {
         /// The load's place in the list it was given in.
         load: usize,
     },
+    /// A part carried by a body the mechanism does not have.
+    PartOnNoSuchBody {
+        /// The part.
+        part: PartId,
+    },
+    /// A part whose outline is not closed bit for bit, or whose points are
+    /// not finite numbers: its segments' ends would not say where its
+    /// corners are.
+    OutlineNotClosed {
+        /// The part.
+        part: PartId,
+    },
+    /// A pair with a side that holds no range, or a range that holds no
+    /// segment, or one that names a part or segments that are not drawn.
+    RangeNotDrawn {
+        /// The pair's place in the list.
+        pair: usize,
+    },
+    /// A pair with a side whose ranges are carried by two bodies.
+    SideOnTwoBodies {
+        /// The pair's place in the list.
+        pair: usize,
+    },
+    /// A pair whose two sides are carried by one body: nothing could move
+    /// one against the other.
+    PairOnOneBody {
+        /// The pair's place in the list.
+        pair: usize,
+    },
 }
 
 fn point_is_finite(p: Point) -> bool {
@@ -317,7 +357,55 @@ impl Mechanism {
                 coord: CoordId(next_coord),
             });
         }
-        Ok(Self { bodies, coords })
+        Ok(Self {
+            bodies,
+            coords,
+            parts: Vec::new(),
+            pairs: Vec::new(),
+            features: Vec::new(),
+        })
+    }
+
+    /// This mechanism with `parts` on its bodies and `pairs` declared between
+    /// them, in the order the rows will read them; or the first thing that
+    /// keeps them from being read.
+    ///
+    /// Every part stands on a body the mechanism has, its outline closed bit
+    /// for bit; every pair's two sides hold ranges of those parts' drawn
+    /// silhouettes, each side on one body and the two on different bodies.
+    /// The pairs' features are read from the parts here, once.
+    pub fn with_contacts(
+        mut self,
+        parts: Vec<Part>,
+        pairs: Vec<ContactPair>,
+    ) -> Result<Self, Problem> {
+        for (i, part) in parts.iter().enumerate() {
+            let id = PartId(u16::try_from(i).expect("a mechanism carries fewer than 65 536 parts"));
+            if part.body.0 >= self.bodies.len() {
+                return Err(Problem::PartOnNoSuchBody { part: id });
+            }
+            let finite = part
+                .outline
+                .iter()
+                .all(|s| point_is_finite(s.start()) && point_is_finite(s.end()));
+            if !finite || !part.is_closed() {
+                return Err(Problem::OutlineNotClosed { part: id });
+            }
+        }
+        for (i, pair) in pairs.iter().enumerate() {
+            let body_a = side_body(&pair.a.ranges, &parts, i)?;
+            let body_b = side_body(&pair.b.ranges, &parts, i)?;
+            if body_a == body_b {
+                return Err(Problem::PairOnOneBody { pair: i });
+            }
+        }
+        self.features = pairs
+            .iter()
+            .map(|pair| PairFeatures::of(pair, &parts))
+            .collect();
+        self.parts = parts;
+        self.pairs = pairs;
+        Ok(self)
     }
 
     /// The bodies, the ground first.
@@ -339,12 +427,45 @@ impl Mechanism {
     pub fn body(&self, id: BodyId) -> &Body {
         &self.bodies[id.0]
     }
+
+    /// The parts its bodies carry: what is drawn, and all a contact reads.
+    pub fn parts(&self) -> &[Part] {
+        &self.parts
+    }
+
+    /// The contacts declared between its bodies, in the order rows read them.
+    pub fn pairs(&self) -> &[ContactPair] {
+        &self.pairs
+    }
+}
+
+/// The body one side of pair `pair` is carried by, every range of it being
+/// drawn: a part the list holds, and at least one segment its silhouette has.
+fn side_body(ranges: &[SurfaceRef], parts: &[Part], pair: usize) -> Result<BodyId, Problem> {
+    let mut body = None;
+    for range in ranges {
+        let drawn = parts.get(range.part.index()).filter(|part| {
+            range.segs.start < range.segs.end
+                && usize::from(range.segs.end) <= part.silhouette().len()
+        });
+        let Some(part) = drawn else {
+            return Err(Problem::RangeNotDrawn { pair });
+        };
+        match body {
+            None => body = Some(part.body),
+            Some(b) if b == part.body => {}
+            Some(_) => return Err(Problem::SideOnTwoBodies { pair }),
+        }
+    }
+    body.ok_or(Problem::RangeNotDrawn { pair })
 }
 
 #[cfg(test)]
 mod tests {
     use super::fixtures::chain;
     use super::*;
+    use crate::contact::fixtures::{pairs, parts};
+    use crate::contact::Surface;
 
     fn pin(parent: usize, coord: usize) -> Body {
         Body {
@@ -451,6 +572,57 @@ mod tests {
             Err(Problem::NotFinite {
                 body: BodyId::GROUND
             })
+        );
+    }
+
+    /// The contacts a mechanism is given are checked as the bodies are: each
+    /// part on a body it has, closed; each pair's sides drawn ranges of those
+    /// parts, each side on one body, the two on two.
+    #[test]
+    fn contacts_that_are_not_drawn_are_named() {
+        let with = |edit: &dyn Fn(&mut Vec<Part>, &mut Vec<ContactPair>)| {
+            let p = parts();
+            let (mut list, mut declared) = (p.parts.clone(), pairs(&p));
+            edit(&mut list, &mut declared);
+            chain().with_contacts(list, declared)
+        };
+        assert!(with(&|_, _| {}).is_ok());
+        assert_eq!(
+            with(&|parts, _| parts[0].body = BodyId(9)).err(),
+            Some(Problem::PartOnNoSuchBody { part: PartId(0) })
+        );
+        assert_eq!(
+            with(&|parts, _| {
+                if let crate::geometry::Seg::Line { b, .. } = &mut parts[1].outline[0] {
+                    b.x = f64::from_bits(b.x.to_bits() + 1);
+                }
+            })
+            .err(),
+            Some(Problem::OutlineNotClosed { part: PartId(1) })
+        );
+        assert_eq!(
+            with(&|_, pairs| pairs[2].a.ranges[0].segs = 2..9).err(),
+            Some(Problem::RangeNotDrawn { pair: 2 })
+        );
+        assert_eq!(
+            with(&|_, pairs| pairs[2].a = Surface { ranges: Vec::new() }).err(),
+            Some(Problem::RangeNotDrawn { pair: 2 })
+        );
+        assert_eq!(
+            with(&|_, pairs| pairs[0].a.ranges[0].segs = 3..3).err(),
+            Some(Problem::RangeNotDrawn { pair: 0 })
+        );
+        assert_eq!(
+            with(&|_, pairs| {
+                let strip = pairs[0].b.ranges[0].clone();
+                pairs[0].a.ranges.push(strip);
+            })
+            .err(),
+            Some(Problem::SideOnTwoBodies { pair: 0 })
+        );
+        assert_eq!(
+            with(&|_, pairs| pairs[1].b = pairs[1].a.clone()).err(),
+            Some(Problem::PairOnOneBody { pair: 1 })
         );
     }
 }

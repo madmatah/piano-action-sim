@@ -61,8 +61,17 @@ pub struct KeyRanges {
     pub front_mortise: PartId,
     /// The underside, from the tail forward: the keystick's chamfer and flat,
     /// the flat split at the front mortise's edges, then the key front's
-    /// bottom. The first segment of the first range is the chamfer.
+    /// bottom. The first segment of the first range is the chamfer. What the
+    /// back rail cloth reads.
     pub underside: [SurfaceRef; 2],
+    /// The underside's flat, from where the chamfer runs out to the front of
+    /// the key, the slot's mouth included: the key bears on a punching beside
+    /// the slot, out of the sagittal plane. What the punchings read.
+    pub underside_flat: [SurfaceRef; 2],
+    /// The wood of the flat beside the front mortise: the flat less the
+    /// slot's mouth, behind the slot and in front of it. What a front rail
+    /// pin standing outside its mortise but under the key reads.
+    pub beside_the_mortise: Vec<SurfaceRef>,
     /// The front mortise's top, facing down onto its pin.
     pub front_mortise_top: SurfaceRef,
     /// The top of the key at its key front.
@@ -122,6 +131,24 @@ impl KeyDesign {
         }
         underside.push(Point::new(wood_front, 0.0));
         let underside_segments = u16::try_from(underside.len() - 1).expect("a short chain");
+        // The flat's segments that are wood and not the slot's mouth, as runs
+        // of consecutive segments: whatever of the flat lies over the slot is
+        // not under the key's wood.
+        let wood = |x0: f64, x1: f64| {
+            let middle = 0.5 * (x0 + x1);
+            middle < mortise_back || middle > mortise_front
+        };
+        let mut beside_runs: Vec<core::ops::Range<u16>> = Vec::new();
+        for k in 1..underside_segments {
+            let i = usize::from(k);
+            if !wood(underside[i].x, underside[i + 1].x) {
+                continue;
+            }
+            match beside_runs.last_mut() {
+                Some(run) if run.end == k => run.end = k + 1,
+                _ => beside_runs.push(k..k + 1),
+            }
+        }
         let mut stick = underside;
         stick.extend([
             Point::new(wood_front, top),
@@ -257,6 +284,20 @@ impl KeyDesign {
             material: Material::KeyWood,
         });
 
+        let front_bottom = SurfaceRef {
+            part: key_front,
+            segs: 0..1,
+        };
+        let mut beside_the_mortise: Vec<SurfaceRef> = beside_runs
+            .into_iter()
+            .map(|segs| SurfaceRef {
+                part: keystick,
+                segs,
+            })
+            .collect();
+        if wood(wood_front, self.front_edge) {
+            beside_the_mortise.push(front_bottom.clone());
+        }
         KeyRanges {
             keystick,
             keytop,
@@ -271,11 +312,16 @@ impl KeyDesign {
                     part: keystick,
                     segs: 0..underside_segments,
                 },
-                SurfaceRef {
-                    part: key_front,
-                    segs: 0..1,
-                },
+                front_bottom.clone(),
             ],
+            underside_flat: [
+                SurfaceRef {
+                    part: keystick,
+                    segs: 1..underside_segments,
+                },
+                front_bottom,
+            ],
+            beside_the_mortise,
             front_mortise_top: SurfaceRef {
                 part: front_mortise,
                 segs: 2..3,
@@ -443,6 +489,64 @@ mod tests {
                 "the bearing at {bearing} m is off the flat"
             );
         }
+    }
+
+    /// The flat the punchings read runs from where the chamfer ends to the
+    /// front of the key, across the slot's mouth; the wood beside the mortise
+    /// is that flat less the mouth, behind the slot and in front of it, the
+    /// key front's bottom included. Moved off the flat, the mortise leaves
+    /// the whole flat beside it.
+    #[test]
+    fn the_flat_and_the_wood_beside_the_mortise_are_declared() {
+        let length = |segs: &[Seg]| -> f64 { segs.iter().map(|s| s.end().x - s.start().x).sum() };
+        let key = KeyDesign::default();
+        let (parts, ranges) = built(&key);
+        let [_, kink, nose] = key.underside_corners();
+        let flat: Vec<Seg> = ranges
+            .underside_flat
+            .iter()
+            .flat_map(|r| r.segs(&parts))
+            .collect();
+        assert!(same(flat[0].start(), kink));
+        assert!(same(flat[flat.len() - 1].end(), nose));
+        let (back, front) = key.front_mortise_span();
+        let beside: Vec<Seg> = ranges
+            .beside_the_mortise
+            .iter()
+            .flat_map(|r| r.segs(&parts))
+            .collect();
+        for seg in &beside {
+            assert!(
+                seg.end().x <= back || seg.start().x >= front,
+                "{seg:?} runs over the slot"
+            );
+        }
+        assert_eq!(
+            ranges.beside_the_mortise.len(),
+            3,
+            "behind, in front, the key front"
+        );
+        let mouth = front - back;
+        assert!((length(&flat) - length(&beside) - mouth).abs() < 1e-15);
+
+        // A mortise cut forward of the key's flat, out of reach: nothing of
+        // the flat is over it.
+        let odd = KeyDesign {
+            front_mortise_from_front_edge: -0.010,
+            ..KeyDesign::default()
+        };
+        let (parts, ranges) = built(&odd);
+        let flat: Vec<Seg> = ranges
+            .underside_flat
+            .iter()
+            .flat_map(|r| r.segs(&parts))
+            .collect();
+        let beside: Vec<Seg> = ranges
+            .beside_the_mortise
+            .iter()
+            .flat_map(|r| r.segs(&parts))
+            .collect();
+        assert_eq!(flat, beside);
     }
 
     /// The named points stand where the protocols read them, to the bit: the

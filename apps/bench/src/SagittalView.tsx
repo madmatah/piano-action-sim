@@ -29,6 +29,11 @@
  * part across the keyboard, and leaves the cuts out: a mortise is inside the
  * key.
  *
+ * Over both views, the contacts the engine's rows find within a millimetre
+ * of closing are marked where the rows put them, in the keybed's frame: a
+ * dot where the key bears, a line across a gap still open, and another where
+ * drawn parts overlap.
+ *
  * Colours come from what a part is made of, never from what it is: the
  * keytop and the key front are white, the key button and the back check block
  * one wood and the keystick another, a paper the colour its thickness is sold
@@ -52,8 +57,16 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import type { Lead, Marker, Outline, Pose, Scene } from './bench'
-import { axisSegments, mirrored, poseMatrix, sharedSegments, strokes, toShape } from './outline'
+import type { Contact, Lead, Marker, Outline, Pose, Scene } from './bench'
+import {
+  axisSegments,
+  contactStrokes,
+  mirrored,
+  poseMatrix,
+  sharedSegments,
+  strokes,
+  toShape,
+} from './outline'
 
 /**
  * Each material's colour: what a part is made of is the engine's, how it
@@ -107,6 +120,17 @@ const PAGE = '#e7e4dd'
  * hidden. */
 const EDGE = '#5b544a'
 
+/**
+ * The contacts' colours, by state: where the key bears, a gap of under a
+ * millimetre still open, and drawn parts overlapping, which a rigid contact
+ * should never show and a frame out of fit with its key does.
+ */
+export const CONTACT_COLOUR: Record<Contact['state'], string> = {
+  closed: '#1d63a8',
+  open: '#8a8a8a',
+  overlapping: '#e8590c',
+}
+
 /** The colour of a paper of this thickness. */
 function paperColour(mm: number): string {
   for (const [thickness, fill] of PAPER_FILL) {
@@ -139,6 +163,7 @@ const LAYER = {
   turned: 6,
   turnedEdges: 7,
   marks: 8,
+  contacts: 9,
 } as const
 
 /** The engine's ground, which carries the frame: body 0. */
@@ -293,7 +318,15 @@ function Void({ points }: { points: number[] }) {
 }
 
 /** Edges, as flat `[x0, y0, x1, y1, …]` pieces. */
-function Edges({ pieces, layer }: { pieces: number[]; layer: number }) {
+function Edges({
+  pieces,
+  layer,
+  colour = EDGE,
+}: {
+  pieces: number[]
+  layer: number
+  colour?: string
+}) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry()
     const xyz: number[] = []
@@ -306,7 +339,7 @@ function Edges({ pieces, layer }: { pieces: number[]; layer: number }) {
   useDisposal(geometry)
   return (
     <lineSegments geometry={geometry} renderOrder={layer}>
-      <lineBasicMaterial color={EDGE} depthTest={false} depthWrite={false} toneMapped={false} />
+      <lineBasicMaterial color={colour} depthTest={false} depthWrite={false} toneMapped={false} />
     </lineSegments>
   )
 }
@@ -388,6 +421,38 @@ function MeasuringPoint({ at }: { at: [number, number] }) {
       <coneGeometry args={[2.2, 6, 4]} />
       <meshBasicMaterial color="#c8302a" depthTest={false} toneMapped={false} />
     </mesh>
+  )
+}
+
+/**
+ * The contacts within a millimetre of closing: a dot where the frame's
+ * surface is, and across an open or overlapping contact a line to where the
+ * key's is. Drawn in the keybed's frame, over everything, in both views: the
+ * points are where the engine's contact rows put them.
+ */
+function Contacts({ contacts }: { contacts: Contact[] }) {
+  return (
+    <>
+      {(['open', 'overlapping'] as const).map((state) => (
+        <Edges
+          key={state}
+          pieces={contactStrokes(contacts, state)}
+          layer={LAYER.contacts}
+          colour={CONTACT_COLOUR[state]}
+        />
+      ))}
+      {contacts.map((c, i) => (
+        <mesh key={i} position={[c.on_frame[0], c.on_frame[1], 0]} renderOrder={LAYER.contacts}>
+          <sphereGeometry args={[0.9, 16, 12]} />
+          <meshBasicMaterial
+            color={CONTACT_COLOUR[c.state]}
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+    </>
   )
 }
 
@@ -549,6 +614,7 @@ export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) 
             keyWidth={keyWidth}
           />
         ))}
+        <Contacts contacts={scene.contacts} />
       </group>
 
       {/* Re-keyed on the mode so the two buttons are two viewpoints, not two

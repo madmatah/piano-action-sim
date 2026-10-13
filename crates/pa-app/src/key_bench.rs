@@ -14,18 +14,19 @@
 //! replayed. A lead dragged in a panel that only updated a React store would be
 //! an animation of leading, not leading.
 
-use pa_core::contact::Part;
-pub use pa_core::contact::{Material, PartCode, Provenance, Role, Sweep};
+use pa_core::contact::{Bearing as ContactBearing, Part, Rows, ROW_MARGIN};
+pub use pa_core::contact::{ContactCode, HowItBears, Material, PartCode, Provenance, Role, Sweep};
 use pa_core::geometry::{KeyBearing, Point};
 use pa_core::measure::jig::KeyJig;
 use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, TouchweightProtocol};
-use pa_core::mechanism::{BodyId, Placement};
-use pa_core::parts::assembly::Settled;
+use pa_core::mechanism::{BodyId, Placement, Pose};
+use pa_core::parts::assembly::{nose_up_angle, Settled};
 pub use pa_core::parts::faults::Fault;
 /// The punching thicknesses a drawer holds, re-exported so an adapter can
 /// offer the drawer without reaching past the application layer.
 pub use pa_core::parts::frame::PAPER_THICKNESSES;
 use pa_core::parts::frame::{papers_for, KeyKind};
+use pa_core::parts::mounts::{self, Mounted};
 use pa_core::parts::{
     FrameDesign, FrameRanges, KeyAssembly, KeyDesign, KeyRanges, Lead, PunchingStack, Regulation,
 };
@@ -57,11 +58,15 @@ pub struct BenchReadout {
     pub key_mass_g: f64,
     /// Number of leads fitted.
     pub lead_count: usize,
-    /// Gap at the front rail punching right now, millimetres. Zero when the
-    /// key is down on it.
-    pub gap_front_mm: f64,
-    /// Gap at the back rail cloth right now, millimetres.
-    pub gap_back_mm: f64,
+    /// Gap at the front rail punching right now, millimetres: the felt's
+    /// drawn top, at its centre, to the key's underside. Zero when the key
+    /// is down on it; `None` when the punching stands where no underside
+    /// passes over its centre.
+    pub gap_front_mm: Option<f64>,
+    /// Gap at the back rail cloth right now, millimetres: the least of the
+    /// cloth's drawn top to the key's drawn underside, chamfer included.
+    /// `None` when no feature of the two can meet.
+    pub gap_back_mm: Option<f64>,
     /// Key dip as **pressing the key measures it**, millimetres: the distance
     /// the front of the key moves between the two states the contact solve
     /// puts it in.
@@ -123,7 +128,7 @@ pub struct BenchReadout {
     /// computed on, and it is not where a reader would assume it is.
     pub bears_at_the_back_mm: f64,
     /// Which of the three ways the key is bearing on its cloth.
-    pub back_bearing: Bearing,
+    pub back_bearing: HowItBears,
     /// Whether it is the pin bottoming in its mortise, rather than the
     /// punching, that is stopping the key.
     pub stopped_by_the_mortise: bool,
@@ -133,9 +138,52 @@ pub struct BenchReadout {
 /// domain for it.
 pub use pa_core::parts::assembly::HeldBy as FingerVerdict;
 
-/// How a face is bearing on a stop — flat, on the stop's edge, or on the key's
-/// own corner. Re-exported for the same reason.
-pub use pa_core::parts::assembly::Touching as Bearing;
+/// A contact as the view marks it: one row of one of the key's contacts with
+/// its frame, at the attitude the key is drawn in.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ShownContact {
+    /// Which contact.
+    pub code: ContactCode,
+    /// Where the key's surface is, in the keybed's frame.
+    pub on_key: Point,
+    /// Where the frame's surface is, in the keybed's frame.
+    pub on_frame: Point,
+    /// The signed gap between the two, metres: negative where the drawn parts
+    /// overlap.
+    pub gap: f64,
+}
+
+/// Whether a contact the view marks is closed, open or overlapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContactState {
+    /// Within [`CLOSED_WITHIN`] of zero either way: the two parts touch.
+    Closed,
+    /// Apart.
+    Open,
+    /// The drawn parts overlap by more than [`CLOSED_WITHIN`].
+    Overlapping,
+}
+
+/// How near zero a gap must be for the contact to count as closed, metres:
+/// a tenth of a micron.
+///
+/// A thousandth of the thinnest paper in the drawer, far below anything the
+/// section can show, and a hundred million times the rounding of a contact
+/// the statics have closed, which leaves a few femtometres.
+pub const CLOSED_WITHIN: f64 = 1e-7;
+
+impl ShownContact {
+    /// Closed, open or overlapping.
+    pub fn state(&self) -> ContactState {
+        if self.gap.abs() <= CLOSED_WITHIN {
+            ContactState::Closed
+        } else if self.gap > 0.0 {
+            ContactState::Open
+        } else {
+            ContactState::Overlapping
+        }
+    }
+}
 
 /// Which punching stack an operation applies to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -183,6 +231,16 @@ pub struct Outline {
 /// How many times an arc's sweep is halved for drawing: a quarter circle in
 /// eight pieces, whose chords stand within 2.5 µm of the cloth's 0.5 mm edges.
 const ARC_HALVINGS: u32 = 3;
+
+/// Where a contact is in a mounted key's list of pairs, as the rows name it.
+fn pair_of(mounted: &Mounted, code: ContactCode) -> Option<u16> {
+    let i = mounted
+        .mechanism
+        .pairs()
+        .iter()
+        .position(|p| p.code == code)?;
+    u16::try_from(i).ok()
+}
 
 /// The bench.
 #[derive(Debug, Clone)]
@@ -468,6 +526,72 @@ impl KeyBench {
         }
     }
 
+    /// The key on its frame as a mechanism: its parts and its frame's, the
+    /// contacts between them ([`mounts::key_on_frame`]), and the key turning
+    /// about its balance bearing, raised by `lift` off it, metres, as a frame
+    /// whose stops fight raises it.
+    ///
+    /// The parts are [`Self::parts`]' own, the ones the view draws, so every
+    /// contact reads a range of a drawn part. `None` only if the parts cannot
+    /// be read, which the builders never produce.
+    pub fn key_on_frame(&self, lift: f64) -> Option<Mounted> {
+        let (parts, key, frame) = self.parts();
+        let pairs = mounts::key_on_frame(&key, &frame);
+        let bearing = Point::new(
+            -self.assembly.bearing.offset_from_pin,
+            self.assembly.frame.balance_bearing_height() + lift,
+        );
+        mounts::pivot(
+            composite_key::mass(&self.assembly.key),
+            bearing,
+            parts,
+            pairs,
+        )
+        .ok()
+    }
+
+    /// Every contact row of the key on its frame at an attitude of the
+    /// statics, `sin_theta` positive front-down, raised by `lift`, within
+    /// `margin`.
+    fn rows_at(&self, sin_theta: f64, lift: f64, margin: f64) -> Option<(Mounted, Pose, Rows)> {
+        let mounted = self.key_on_frame(lift)?;
+        let pose = mounted.mechanism.pose(&[nose_up_angle(sin_theta)]);
+        let mut rows = Rows::new();
+        mounted.mechanism.rows(&pose, margin, &mut rows);
+        Some((mounted, pose, rows))
+    }
+
+    /// The contacts the view marks: every row within the margin the static
+    /// solve reads, at the attitude the key is drawn in, its frame's lift
+    /// included.
+    pub fn contacts(&self) -> Vec<ShownContact> {
+        let (s, lift) = self.attitude();
+        let Some((mounted, _, rows)) = self.rows_at(s, lift, ROW_MARGIN) else {
+            return Vec::new();
+        };
+        let pairs = mounted.mechanism.pairs();
+        rows.rows()
+            .iter()
+            .map(|r| ShownContact {
+                code: pairs[usize::from(r.pair)].code,
+                on_key: r.on_a(),
+                on_frame: r.on_b(),
+                gap: r.gap,
+            })
+            .collect()
+    }
+
+    /// How the key bears on its back rail cloth at rest, the attitude the
+    /// statics put it in tail-down on the cloth: on the cloth's edge, flat on
+    /// it, or on its own corner, where, and its face's slope over the
+    /// cloth's.
+    pub fn bearing_at_the_back(&self) -> Option<ContactBearing> {
+        let travel = self.assembly.travel()?;
+        let (mounted, pose, rows) = self.rows_at(travel.sin_rest, 0.0, f64::INFINITY)?;
+        let pair = pair_of(&mounted, ContactCode::BackRailCloth)?;
+        mounted.mechanism.bearing(&pose, &rows, pair)
+    }
+
     /// The measuring point, in the key's frame: on the keytop's top, the
     /// protocol's distance back from the drawn lip.
     ///
@@ -524,26 +648,26 @@ impl KeyBench {
         };
         let Branches { down, up } = on_frame.branches()?;
 
-        let s = self.sin_angle();
-        let gap_front = self
-            .assembly
-            .stop_contact(self.assembly.front_stop(), s)
-            .gap;
-        let gap_back = self.assembly.stop_contact(self.assembly.back_stop(), s).gap;
+        // The gaps where the key stands now, read off the contact rows at
+        // the attitude it is drawn in.
+        let (s, lift) = self.attitude();
+        let (mounted, _, rows) = self.rows_at(s, lift, f64::INFINITY)?;
+        let gap_mm = |code| Some(rows.gap(pair_of(&mounted, code)?)? * 1000.0);
 
-        // Where the tail bears, and how. The angle is read at the attitude the
-        // contact itself produces, so the three numbers are one answer rather
-        // than three questions asked separately.
-        let back = self.assembly.first_touch(self.assembly.back_stop())?;
+        // Where the tail bears at rest, and how: one reading of the cloth's
+        // rows at the attitude the statics rest the key at, so the three
+        // numbers are one answer rather than three questions asked
+        // separately.
+        let back = self.bearing_at_the_back()?;
 
         Some(BenchReadout {
-            bedding_at_the_back_deg: back.slope.atan().to_degrees(),
-            bears_at_the_back_mm: -back.at * 1000.0,
+            bedding_at_the_back_deg: back.slope?.atan().to_degrees(),
+            bears_at_the_back_mm: -back.point.x * 1000.0,
             back_bearing: back.how,
             stopped_by_the_mortise: self.assembly.stopped_by_the_mortise(),
             out_of_level_deg: self.assembly.sin_angle_on_front_rail()?.asin().to_degrees(),
-            gap_front_mm: gap_front * 1000.0,
-            gap_back_mm: gap_back * 1000.0,
+            gap_front_mm: gap_mm(ContactCode::FrontRailPunching),
+            gap_back_mm: gap_mm(ContactCode::BackRailCloth),
             friction_band_g: 1000.0 * self.friction_bound() / self.assembly.measuring_arm(),
             measured_kf_g: self.measure_key_friction_weight(),
             measured_dip_mm: self.measure_key_dip().map(|d| d * 1000.0),
@@ -1613,32 +1737,134 @@ mod contact_readout_tests {
         }
     }
 
-    /// The gaps the bench reports are the gaps the solve used.
+    /// The gaps the bench reports agree with what holds the key.
     ///
-    /// When the key is resting on a stop, that stop's gap must read zero — not
-    /// "small". If it did not, the drawn position and the physics would be two
-    /// different states.
+    /// They are read off the contact rows where the key is drawn, and the
+    /// statics put it there: when it rests on a stop, that stop's gap reads
+    /// zero, not "small", and the other stands open. If it did not, the drawn
+    /// position and the physics would be two different states.
     #[test]
     fn the_reported_gaps_agree_with_where_the_key_is_held() {
         let mut b = KeyBench::standard();
-        b.set_finger_weight(0.0);
-        let r = b.readout().unwrap();
+        let mut held = Vec::new();
+        for weight in [-60.0, 0.0, 60.0] {
+            b.set_finger_weight(weight);
+            let r = b.readout().unwrap();
+            let front = r.gap_front_mm.expect("the punching stands under the flat");
+            let back = r.gap_back_mm.expect("the cloth meets the underside");
+            match r.finger {
+                FingerVerdict::FrontPunching => {
+                    assert!(
+                        front.abs() < 1e-9,
+                        "held by the front punching, yet its gap reads {front} mm"
+                    );
+                    assert!(back > 0.0, "and the back must be open");
+                }
+                FingerVerdict::BackRailCloth => {
+                    assert!(back.abs() < 1e-9, "held by the cloth, its gap {back} mm");
+                    assert!(front > 0.0);
+                }
+                FingerVerdict::FrictionAlone => {
+                    assert!(front > 0.0 && back > 0.0);
+                }
+            }
+            held.push(r.finger);
+        }
+        assert!(held.contains(&FingerVerdict::FrontPunching));
+        assert!(held.contains(&FingerVerdict::BackRailCloth));
+    }
 
-        match r.finger {
-            FingerVerdict::FrontPunching => {
+    /// Consistency, and the check of `CLAUDE.md` rule 1: **every contact
+    /// surface is a range of a drawn part.**
+    ///
+    /// By type, a contact pair holds nothing but ranges of parts. Here, on
+    /// the bench and on every bench of the golden sheet: the mechanism the
+    /// contacts are read on carries exactly the parts the view draws, and
+    /// every range of every pair names one of them and segments its drawn
+    /// silhouette has.
+    #[test]
+    fn every_contact_surface_is_a_range_of_a_drawn_part() {
+        for fixture in &crate::golden::FIXTURES {
+            let b = (fixture.build)();
+            let (drawn, _, _) = b.parts();
+            let mounted = b.key_on_frame(0.0).expect("the key mounts on its frame");
+            assert_eq!(
+                mounted.mechanism.parts(),
+                &drawn[..],
+                "{}: the contacts read the parts the view draws",
+                fixture.name
+            );
+            assert_eq!(mounted.mechanism.pairs().len(), 4, "{}", fixture.name);
+            for pair in mounted.mechanism.pairs() {
+                for range in pair.a.ranges.iter().chain(&pair.b.ranges) {
+                    let part = &drawn[range.part.index()];
+                    assert!(
+                        range.segs.start < range.segs.end
+                            && usize::from(range.segs.end) <= part.silhouette().len(),
+                        "{}: {:?} reads segments {:?} of {:?}",
+                        fixture.name,
+                        pair.code,
+                        range.segs,
+                        part.code
+                    );
+                }
+            }
+        }
+    }
+
+    /// The contacts the view marks are where the key touches: resting on its
+    /// cloth, the cloth's back edge closed on the chamfer, nothing else within
+    /// a millimetre (the cloth's front edge is no contact of its own, its
+    /// nearest point to the chamfer being where it meets the face, and the
+    /// face falling away from it towards the back edge); down on its
+    /// punching, the punching closed at its centre. A closed contact's two
+    /// points coincide.
+    #[test]
+    fn the_contacts_the_view_marks_are_where_the_key_touches() {
+        let mut b = KeyBench::standard();
+        let closed = |b: &KeyBench| -> Vec<ContactCode> {
+            b.contacts()
+                .iter()
+                .filter(|c| c.state() == ContactState::Closed)
+                .map(|c| c.code)
+                .collect()
+        };
+        b.set_finger_weight(-60.0);
+        assert_eq!(closed(&b), vec![ContactCode::BackRailCloth]);
+        let at_rest = b.contacts();
+        let back_edge = b.assembly().back_stop().edges()[0].x;
+        for c in &at_rest {
+            assert_eq!(
+                c.code,
+                ContactCode::BackRailCloth,
+                "nothing else within a millimetre"
+            );
+            match c.state() {
+                ContactState::Closed => {
+                    let (dx, dy) = (c.on_key.x - c.on_frame.x, c.on_key.y - c.on_frame.y);
+                    assert!((dx * dx + dy * dy).sqrt() <= CLOSED_WITHIN);
+                    assert!(
+                        (c.on_frame.x - back_edge).abs() < 0.001,
+                        "the key rests on the cloth's back edge, not at {} m",
+                        c.on_frame.x
+                    );
+                }
+                ContactState::Open => assert!(c.gap > 0.0 && c.gap <= ROW_MARGIN),
+                ContactState::Overlapping => panic!("the key is drawn into its cloth: {c:?}"),
+            }
+        }
+        assert_eq!(at_rest.len(), 1, "{at_rest:?}");
+
+        b.set_finger_weight(60.0);
+        assert_eq!(closed(&b), vec![ContactCode::FrontRailPunching]);
+        let punching = b.assembly().punching_stop();
+        for c in b.contacts() {
+            if c.state() == ContactState::Closed {
                 assert!(
-                    r.gap_front_mm.abs() < 1e-9,
-                    "held by the front punching, yet its gap reads {} mm",
-                    r.gap_front_mm
+                    (c.on_frame.x - punching.at).abs() < 1e-12,
+                    "at the punching's centre"
                 );
-                assert!(r.gap_back_mm > 0.0, "and the back must be open");
-            }
-            FingerVerdict::BackRailCloth => {
-                assert!(r.gap_back_mm.abs() < 1e-9);
-                assert!(r.gap_front_mm > 0.0);
-            }
-            FingerVerdict::FrictionAlone => {
-                assert!(r.gap_front_mm > 0.0 && r.gap_back_mm > 0.0);
+                assert!((c.on_frame.y - punching.top).abs() < 1e-12);
             }
         }
     }

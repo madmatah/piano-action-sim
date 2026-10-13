@@ -81,12 +81,34 @@ export interface Marker {
   at: [number, number]
 }
 
+/**
+ * A contact the view marks: one row of one of the key's contacts with its
+ * frame, where the key is drawn. In the keybed's frame, the ground's, which
+ * the view draws untransformed: the points are where the engine's contact rows
+ * put them, not where a body's pose carries them.
+ */
+export interface Contact {
+  /** Which contact, the engine's identifier. */
+  pair: string
+  /** Where the key's surface is, millimetres. */
+  on_key: [number, number]
+  /** Where the frame's surface is, millimetres. */
+  on_frame: [number, number]
+  /** The signed gap between them, millimetres: negative where the drawn parts
+   * overlap. */
+  gap_mm: number
+  /** Within a tenth of a micron of touching, apart, or overlapping. */
+  state: 'closed' | 'open' | 'overlapping'
+}
+
 export interface Scene {
   outlines: Outline[]
   /** One per body, in body order. */
   poses: Pose[]
   leads: Lead[]
   measuring_point: Marker
+  /** The contacts within a millimetre of closing, where the key is drawn. */
+  contacts: Contact[]
   /** Why this frame cannot be weighed, when it cannot. It travels with the
    * scene because the readout is precisely what is missing in that case. */
   frame_fault: string | null
@@ -133,8 +155,12 @@ export interface Readout {
   front_pin_mm: number
   front_mortise_mm: number
   finger_weight_g: number
-  gap_front_mm: number
-  gap_back_mm: number
+  /** The gap at the front punching, read at its centre, millimetres; `null`
+   * where no underside passes over its centre. */
+  gap_front_mm: number | null
+  /** The gap at the back rail cloth, millimetres; `null` where no feature of
+   * the two can meet. */
+  gap_back_mm: number | null
   friction_band_g: number
   measured_kf_g: number | null
   measured_dip_mm: number | null

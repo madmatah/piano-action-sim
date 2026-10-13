@@ -1,6 +1,15 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import { axisSegments, mirrored, poseMatrix, sharedSegments, strokes, toShape } from './outline'
+import type { Contact } from './bench'
+import {
+  axisSegments,
+  contactStrokes,
+  mirrored,
+  poseMatrix,
+  sharedSegments,
+  strokes,
+  toShape,
+} from './outline'
 
 describe('toShape', () => {
   // An L-shaped outline as the engine sends it: flat x, y pairs, millimetres.
@@ -96,5 +105,21 @@ describe('strokes and shared segments', () => {
   it('finds where a turned profile runs down its axis', () => {
     const pin = [0, 0, 1.7, 0, 1.7, 11, 0, 11]
     expect([...axisSegments(pin, [0, 1, 2, 3])]).toEqual([3])
+  })
+})
+
+describe('contactStrokes', () => {
+  const contact = (state: Contact['state'], at: number): Contact => ({
+    pair: 'back_rail_cloth',
+    on_key: [at, 2],
+    on_frame: [at, 1],
+    gap_mm: state === 'overlapping' ? -1 : 1,
+    state,
+  })
+
+  it('runs from the frame to the key, for the contacts in one state only', () => {
+    const contacts = [contact('open', 10), contact('closed', 20), contact('open', 30)]
+    expect(contactStrokes(contacts, 'open')).toEqual([10, 1, 10, 2, 30, 1, 30, 2])
+    expect(contactStrokes(contacts, 'overlapping')).toEqual([])
   })
 })

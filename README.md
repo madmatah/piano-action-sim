@@ -24,7 +24,9 @@ the model, the key a body on a pin held level and the scale reading the force
 that holds it; key friction weight is measured by Stanwood's procedure run on
 the model. Every touchweight is read at one measuring point, a setting of the
 bench, 13 mm back from the covering's lip by default. A frame edited out of fit
-with its key is drawn as it is, its faults named in millimetres.
+with its key is drawn as it is, its faults named in millimetres. The key's
+contacts with its frame are read off the drawn parts, as signed gaps with their
+gradients over every coordinate, and marked on the section and the solid.
 
 Down weight, up weight and balance weight on the weighing sheet come from a
 closed form taken with the key level, and friction weight is its input, a
@@ -48,7 +50,8 @@ In this order, each stage with its engine and its view
 - a general quasi-static core with the key as its first client, on
   Hirschkorn's published Boston GP-178 key, a parameter registry that loads
   `data/params/`, a validation layer, and an interface in English and French
-  (its first part, the mechanism and the jig, is built);
+  (its first parts, the mechanism, the jig and the contacts over all
+  coordinates, are built);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;

@@ -200,8 +200,8 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     number(out, "readout.friction_weight_g", friction_weight_g);
     number(out, "readout.key_mass_g", key_mass_g);
     line(out, "readout.lead_count", &lead_count.to_string());
-    number(out, "readout.gap_front_mm", gap_front_mm);
-    number(out, "readout.gap_back_mm", gap_back_mm);
+    optional(out, "readout.gap_front_mm", gap_front_mm);
+    optional(out, "readout.gap_back_mm", gap_back_mm);
     optional(out, "readout.measured_dip_mm", measured_dip_mm);
     optional(out, "readout.measured_kf_g", measured_kf_g);
     number(out, "readout.friction_band_g", friction_band_g);
@@ -210,18 +210,17 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     line(out, "readout.finger", &format!("{finger:?}"));
     // The two angles, one step before the platform's `asin` and `atan` turn
     // them into the degrees the sheet shows (module documentation).
-    let assembly = bench.assembly();
     optional(
         out,
         "readout.out_of_level.sine",
-        assembly.sin_angle_on_front_rail(),
+        bench.assembly().sin_angle_on_front_rail(),
     );
     optional(
         out,
         "readout.bedding_at_the_back.slope",
-        assembly
-            .first_touch(assembly.back_stop())
-            .map(|touch| touch.slope),
+        bench
+            .bearing_at_the_back()
+            .and_then(|bearing| bearing.slope),
     );
     number(out, "readout.bears_at_the_back_mm", bears_at_the_back_mm);
     line(out, "readout.back_bearing", &format!("{back_bearing:?}"));

@@ -16,19 +16,47 @@
 //! a mortise, is a part too, of [`Role::Cut`]: its material lies outside its
 //! outline, and it is drawn in the section as the void it is.
 //!
+//! # Contacts read the drawn ranges and nothing else
+//!
+//! A [`ContactPair`] holds two [`Surface`]s, each nothing but ranges of drawn
+//! parts, and how the two are read against each other ([`PairGeometry`]). A
+//! mechanism holds its parts and its pairs, and reads every pair at a pose
+//! into [`Rows`] ([`crate::mechanism::Mechanism::rows`]): one row per pair
+//! of features that meet, a signed gap with its normal, its point, and its
+//! gradient and slip over every coordinate. How the key bears on a stop is
+//! read off those rows ([`crate::mechanism::Mechanism::bearing`]). The three
+//! signed primitives the rows are made of are in [`crate::geometry::signed`].
+//!
 //! # Built and planned
 //!
 //! Built: the parts of the key and of its frame
 //! ([`crate::parts::KeyDesign::parts`], [`crate::parts::FrameDesign::parts`]),
-//! drawn by the bench in each body's own frame, and read by the faults
-//! ([`crate::parts::faults`]). The key's stops still read a second
-//! construction, built from the same fields: the underside of
-//! [`crate::parts::KeyDesign::underside_corners`] and the bearing heights of
-//! [`crate::parts::FrameDesign`]. A test holds every face they read to a
-//! declared range of a drawn part (`every_stop_face_is_a_declared_range_of_a_drawn_part`),
-//! so the invariant holds by shared fields and that test, not yet by
-//! structure. Planned: contact pairs and rows that read these ranges and
-//! nothing else.
+//! drawn by the bench in each body's own frame and read by the faults
+//! ([`crate::parts::faults`]); the key's contacts with its frame as pairs of
+//! their declared ranges ([`crate::parts::mounts::key_on_frame`]), read into
+//! rows for the bench's gaps, for how the key bears on its cloth, and for the
+//! contacts the view marks. The one-coordinate statics that place the key
+//! still read their own construction of the stops, built from the same
+//! fields: the underside of [`crate::parts::KeyDesign::underside_corners`] and
+//! the bearing heights of [`crate::parts::FrameDesign`]. A test holds every
+//! face they read to a declared range of a drawn part
+//! (`every_stop_face_is_a_declared_range_of_a_drawn_part`). Planned: the static
+//! solve on the rows, after which nothing reads anything but a drawn range.
+
+mod bearing;
+mod features;
+#[cfg(test)]
+pub(crate) mod fixtures;
+#[cfg(test)]
+pub(crate) mod oracle;
+mod pair;
+mod rows;
+
+pub use bearing::{Bearing, HowItBears, FLAT_WITHIN};
+pub(crate) use features::PairFeatures;
+pub use features::{Feature, Piece};
+pub use pair::{ContactCode, ContactLaw, ContactPair, PairGeometry, Surface};
+pub use rows::{Row, Rows, ROW_MARGIN};
 
 use core::ops::Range;
 

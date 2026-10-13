@@ -196,6 +196,17 @@ fn sines_satisfying(p: f64, q: f64, k: f64) -> [Option<f64>; 2] {
     ]
 }
 
+/// The angle a mechanism holds the key at, radians, positive nose-up, for an
+/// attitude of these statics, whose sine is positive front-down.
+///
+/// The bridge between the two while both run: the one-coordinate statics
+/// find the key's attitude, and the contact rows are read on a mechanism at
+/// that attitude. One `asin`, from `libm`, so the angle is the same bits on
+/// every machine.
+pub fn nose_up_angle(sin_theta: f64) -> f64 {
+    -libm::asin(sin_theta)
+}
+
 /// The edge radius taken for a punching or a cloth, metres.
 ///
 /// Half a millimetre: small enough that the contact point sits essentially over

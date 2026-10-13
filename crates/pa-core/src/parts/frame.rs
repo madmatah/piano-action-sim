@@ -635,6 +635,11 @@ pub struct FrameRanges {
     /// The cloth's top, from the front: its front edge, the face, its back
     /// edge.
     pub cloth_top: SurfaceRef,
+    /// The cloth's top and the two sides its rounded edges lead into, from
+    /// the front side round to the back: what the key's underside meets. The
+    /// sides are there so that a corner driven deeper than an edge's centre
+    /// still stands over a face the contact reads.
+    pub cloth_and_sides: SurfaceRef,
     /// The front rail pin's top, where the rail has one.
     pub front_pin_top: Option<SurfaceRef>,
 }
@@ -815,6 +820,10 @@ impl FrameDesign {
             part: back_rail_cloth,
             segs: 2..5,
         };
+        let cloth_and_sides = SurfaceRef {
+            part: back_rail_cloth,
+            segs: 1..6,
+        };
 
         // The punching stacks: papers first, each its own washer turned about
         // the pin, then the felt, drawn up to the bearing height the stops
@@ -917,6 +926,7 @@ impl FrameDesign {
             balance_bearing,
             front_bearing,
             cloth_top,
+            cloth_and_sides,
             front_pin_top: front_rail_pin.map(|(part, segs)| SurfaceRef { part, segs }),
         }
     }

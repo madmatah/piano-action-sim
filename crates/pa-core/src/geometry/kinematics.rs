@@ -1,4 +1,9 @@
-//! Exact planar contact kinematics.
+//! Exact planar contact kinematics at one coordinate.
+//!
+//! What the one-coordinate statics of the key on its frame read
+//! ([`crate::parts::assembly`]). The contact rows over every coordinate are
+//! built from the signed primitives of [`super::signed`] instead, which keep
+//! their sign at any depth where [`circle_vs_line`] does not.
 //!
 //! # What this module computes, and why it is the heart of the project
 //!

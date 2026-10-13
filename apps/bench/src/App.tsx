@@ -9,7 +9,7 @@
 import type { Bench } from '@pas/wasm'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type Readout, readout, type Scene, scene, start } from './bench'
-import { SagittalView, type ViewMode } from './SagittalView'
+import { CONTACT_COLOUR, SagittalView, type ViewMode } from './SagittalView'
 
 interface State {
   scene: Scene
@@ -265,9 +265,14 @@ export function App() {
   const r = state.readout
   const fault = state.stale ? (state.scene.frame_fault ?? 'the geometry is degenerate.') : null
 
+  // The contacts the key bears on where it is drawn, by the engine's
+  // identifiers: on the view's element too, where the smoke test reads them.
+  const touching = state.scene.contacts.filter((c) => c.state === 'closed').map((c) => c.pair)
+  const gap = (mm: number | null) => (mm === null ? 'none' : `${mm.toFixed(3)} mm`)
+
   return (
     <div className="bench">
-      <div className="view">
+      <div className="view" data-touching={touching.join(' ')}>
         <SagittalView scene={state.scene} mode={view} />
         <div className="viewtabs">
           <button
@@ -285,6 +290,11 @@ export function App() {
             solid
           </button>
           <span className="hint">drag to turn · scroll to zoom</span>
+          <span className="legend">
+            <i style={{ background: CONTACT_COLOUR.closed }} /> bears
+            <i style={{ background: CONTACT_COLOUR.open }} /> open, under 1 mm
+            <i style={{ background: CONTACT_COLOUR.overlapping }} /> drawn parts overlap
+          </span>
         </div>
       </div>
 
@@ -674,14 +684,20 @@ export function App() {
             >
               the key is {r.finger}
               <div className="gaps">
-                gap at the front punching {r.gap_front_mm.toFixed(3)} mm · at the back rail cloth{' '}
-                {r.gap_back_mm.toFixed(3)} mm
+                gap at the front punching {gap(r.gap_front_mm)} · at the back rail cloth{' '}
+                {gap(r.gap_back_mm)}
               </div>
               <div className="gaps">
                 admissible friction torque ±{r.friction_band_g.toFixed(2)} g at the measuring point
                 — an interval, not a value
               </div>
             </div>
+            <p className="note">
+              The front punching is read at its centre: a felt washer under a key landing level
+              carries the load over its whole face, and the bench takes it at the middle. The
+              contacts marked on the view are where the key bears, and what stands within a
+              millimetre of it.
+            </p>
             <p className="note">
               There is no “press the key” control. The key is only ever where the physics puts it —
               a slider over a computed travel could park it in a position no weight produces, which
