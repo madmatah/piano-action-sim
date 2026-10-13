@@ -83,6 +83,7 @@ impl OnFrame {
             capstan: self.capstan,
             measuring_point: self.measuring_point,
             margin: SEAT_MARGIN,
+            standing: &[],
         }
     }
 }

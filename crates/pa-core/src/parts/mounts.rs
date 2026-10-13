@@ -93,7 +93,7 @@ pub const KEY_ANGLE_LIMIT: f64 = core::f64::consts::PI / 12.0;
 
 /// The steps of the scan [`nominal_pose`] makes over the key's range: a
 /// degree.
-const NOMINAL_STEP: f64 = core::f64::consts::PI / 180.0;
+pub(crate) const NOMINAL_STEP: f64 = core::f64::consts::PI / 180.0;
 
 /// The key's nominal pose on its frame, where a static solve that seats it
 /// by rule starts: level, wherever its drawn parts overlap its frame there
@@ -316,12 +316,10 @@ mod tests {
     use super::*;
     use crate::contact::oracle::{self, SPACING};
     use crate::contact::{Feature, HowItBears, Piece, Rows, Surface};
-
-    use crate::measure::oracle::Travelling;
-
     use crate::mechanism::Pose;
-    use crate::parts::assembly::{nose_up_angle, KeyAssembly, Touching};
+    use crate::parts::assembly::{nose_up_angle, KeyAssembly};
     use crate::parts::frame::{papers_for, KeyKind};
+    use crate::solve::Statics;
 
     /// The default key regulated on the default frame, as the bench builds
     /// it.
@@ -368,10 +366,9 @@ mod tests {
         (m, key, frame)
     }
 
-    /// Every row of the mounted key at an attitude of the statics, front-down
-    /// sine `s`.
-    fn rows_at(m: &Mounted, s: f64) -> (Pose, Rows) {
-        let pose = m.mechanism.pose(&[nose_up_angle(s)]);
+    /// Every row of the mounted key at the angle `theta`, radians nose-up.
+    fn rows_at(m: &Mounted, theta: f64) -> (Pose, Rows) {
+        let pose = m.mechanism.pose(&[theta]);
         let mut rows = Rows::new();
         m.mechanism.rows(&pose, f64::INFINITY, &mut rows);
         (pose, rows)
@@ -387,12 +384,21 @@ mod tests {
         u16::try_from(i).unwrap()
     }
 
-    /// Attitudes from rest to the bottom of the dip, both included.
-    fn stroke(a: &KeyAssembly) -> Vec<f64> {
-        let t = a.travel().expect("a key with a travel");
-        (0..=10)
-            .map(|k| t.sin_rest + f64::from(k) / 10.0 * (t.sin_bottom - t.sin_rest))
-            .collect()
+    /// The key's angle at the top seat and at the bottom one, radians
+    /// nose-up, by the seated pose; `None` where the key cannot be seated.
+    fn seated(a: &KeyAssembly) -> Option<(f64, f64)> {
+        let k = crate::parts::fixtures::on_frame(a, KeyKind::Natural, 0.0, true);
+        let seats = k.seating().seats(&mut Statics::new()).ok()?;
+        Some((seats.top.q[0], seats.bottom.q[0]))
+    }
+
+    /// The key's angle at its top seat, radians nose-up.
+    fn rest(a: &KeyAssembly) -> f64 {
+        let k = crate::parts::fixtures::on_frame(a, KeyKind::Natural, 0.0, true);
+        k.seating()
+            .top(&mut Statics::new())
+            .expect("the key rests on its cloth")
+            .q[0]
     }
 
     /// Consistency: **every contact surface of the key on its frame is a
@@ -447,83 +453,13 @@ mod tests {
         }
     }
 
-    /// Consistency: **the rows against the built `circle_vs_line` at the
-    /// built stops**, over the stroke.
-    ///
-    /// - The back rail cloth: the stop is the drawn cloth, edge arcs and
-    ///   face, so the two agree to the rounding of positions a quarter of a
-    ///   metre from the pin, wherever the key stands on or above the cloth,
-    ///   where the built gap keeps its sign.
-    /// - The front punching: the built stop is a disc of the edge radius `r`
-    ///   centred `r` under the felt's top, the new one the top's centre
-    ///   itself. At a tilt `φ` the disc reaches `r (1 − cos φ)` further
-    ///   towards the key than its top does, so the row reads exactly that
-    ///   much more: four tenths of a micron at rest, nothing level.
-    /// - The pin in its mortise: the built stop is a point at the pin's
-    ///   middle, the mortise's depth taken straight up; the new one the
-    ///   pin's drawn corners against the drawn mortise top, its depth taken
-    ///   square to the key. Level they agree; tilted, the nearer corner is
-    ///   closer by up to half the pin's length times the tilt's sine, and the
-    ///   depth and the disc differ by `(depth + r)(1 − cos φ)`.
-    #[test]
-    fn the_rows_agree_with_the_built_stops() {
-        let r = crate::parts::assembly::PUNCHING_EDGE_RADIUS;
-        let rounding = 256.0 * f64::EPSILON * 0.5;
-        for (name, a) in assemblies() {
-            let (m, ..) = mounted(&a, 0.0);
-            let (back, front, mortise) = (
-                pair_of(&m, ContactCode::BackRailCloth),
-                pair_of(&m, ContactCode::FrontRailPunching),
-                pair_of(&m, ContactCode::FrontPinInTheMortise),
-            );
-            let mut attitudes = stroke(&a);
-            attitudes.push(0.0);
-            for s in attitudes {
-                let (_, rows) = rows_at(&m, s);
-                let tilt = 1.0 - (1.0 - s * s).sqrt();
-
-                let built = a.stop_contact(a.back_stop(), s).gap;
-                if built >= 0.0 {
-                    let new = rows.gap(back).expect("the cloth has a row");
-                    assert!(
-                        (new - built).abs() <= rounding,
-                        "{name}, sin {s}: the cloth's row reads {new}, the built stop {built}"
-                    );
-                }
-
-                let built = a.stop_contact(a.punching_stop(), s).gap;
-                let new = rows.gap(front).expect("the punching stands under the flat");
-                assert!(
-                    (new - built - r * tilt).abs() <= rounding,
-                    "{name}, sin {s}: the punching's row reads {new}, the built stop {built}, \
-                     apart by {} where the disc accounts for {}",
-                    new - built,
-                    r * tilt
-                );
-
-                let stop = a.mortise_stop().expect("the front rail has a pin");
-                let built = a.stop_contact(stop, s).gap;
-                if let Some(new) = rows.gap(mortise) {
-                    let pin = a.frame.sections.front.pin.unwrap().length();
-                    let bound =
-                        0.5 * pin * s.abs() + (a.key.front_mortise_depth + r) * tilt + rounding;
-                    assert!(
-                        (new - built).abs() <= bound,
-                        "{name}, sin {s}: the mortise's row reads {new}, the built stop {built}"
-                    );
-                    if s == 0.0 {
-                        assert!((new - built).abs() <= rounding, "{name}: level, they agree");
-                    }
-                }
-            }
-        }
-    }
-
     /// Consistency: **the rows against the brute-force gap oracle**, the
     /// drawn outlines sampled every 0.05 mm, sharing no code with the rows.
     ///
     /// At rest, in the middle of the stroke and at the bottom of every case,
-    /// and where the bench draws a key whose stops fight, riding on both:
+    /// where the seated pose puts the key, or where it puts the regulated key
+    /// on a frame that leaves this one no seat; and where the bench draws a
+    /// key whose stops fight, riding on both:
     ///
     /// - every row's two surface points stand on their drawn outlines, within
     ///   half a spacing of a sample, the farthest a point of the curve can be
@@ -547,21 +483,27 @@ mod tests {
     #[test]
     fn the_rows_agree_with_the_brute_force_oracle() {
         let mut cases: Vec<(String, KeyAssembly, f64, f64)> = Vec::new();
+        let regulated_seats = seated(&regulated()).expect("the regulated key seats");
         for (name, a) in assemblies() {
-            let t = a.travel().expect("a travel");
-            for (at, s) in [
-                ("at rest", t.sin_rest),
-                ("mid-stroke", 0.5 * (t.sin_rest + t.sin_bottom)),
-                ("at the bottom", t.sin_bottom),
+            let (top, bottom) = seated(&a).unwrap_or(regulated_seats);
+            for (at, theta) in [
+                ("at rest", top),
+                ("mid-stroke", 0.5 * (top + bottom)),
+                ("at the bottom", bottom),
             ] {
-                cases.push((format!("{name}, {at}"), a.clone(), s, 0.0));
+                cases.push((format!("{name}, {at}"), a.clone(), theta, 0.0));
             }
         }
         let mut wedged = regulated();
         wedged.frame.back_rail_height =
             wedged.frame.balance_bearing_height() + 0.005 - wedged.frame.back_rail_cloth;
         let (s, lift) = wedged.riding_on_both_stops().expect("the key rides");
-        cases.push(("a frame whose stops fight".to_owned(), wedged, s, lift));
+        cases.push((
+            "a frame whose stops fight".to_owned(),
+            wedged,
+            nose_up_angle(s),
+            lift,
+        ));
 
         let on = 0.5 * SPACING + 1e-12;
         let (mut apart, mut deep) = (0, 0);
@@ -649,52 +591,6 @@ mod tests {
         assert!(deep > 0, "no case overlapped");
     }
 
-    /// How the key bears on its cloth, by the rows and by the built
-    /// `first_touch`, at the attitude the built statics rest it at: on the
-    /// regulated bench, and with the back rail moved and raised and lowered
-    /// through all three ways. The same way, the same slope to the rounding
-    /// of the key's attitude, the same place to a picometre.
-    #[test]
-    fn the_rows_bear_as_the_built_stop_bears() {
-        let mut cases = assemblies();
-        for raise in [-0.0006, -0.0002, 0.0002, 0.0006] {
-            let mut a = regulated();
-            a.frame.back_rail_height += raise;
-            cases.push(("a back rail raised or lowered", a));
-        }
-        for (name, a) in cases {
-            let touch = a
-                .first_touch(a.back_stop())
-                .expect("the cloth is reachable");
-            let (m, ..) = mounted(&a, 0.0);
-            let (pose, rows) = rows_at(&m, touch.sin_theta);
-            let back = pair_of(&m, ContactCode::BackRailCloth);
-            let bearing = m.mechanism.bearing(&pose, &rows, back).expect("a bearing");
-            let how = match touch.how {
-                Touching::Flat => HowItBears::Flat,
-                Touching::StopEdge => HowItBears::StopEdge,
-                Touching::KeyCorner => HowItBears::KeyCorner,
-            };
-            assert_eq!(bearing.how, how, "{name}");
-            let slope = bearing.slope.expect("the cloth has a face");
-            assert!(
-                (slope - touch.slope).abs() <= 64.0 * f64::EPSILON * (1.0 + touch.slope.abs()),
-                "{name}: the rows read a slope of {slope}, the built stop {}",
-                touch.slope
-            );
-            assert!(
-                (bearing.point.x - touch.at).abs() <= 1e-12,
-                "{name}: the rows bear at {} m, the built stop at {} m",
-                bearing.point.x,
-                touch.at
-            );
-            assert!(
-                bearing.gap.abs() <= 1e-12,
-                "{name}: the key stands on its cloth"
-            );
-        }
-    }
-
     /// The chamfer under the tail is there so the key beds flat on its
     /// cloth: at the one rail height that stands the key at the chamfer's own
     /// angle, both edges of the cloth close on the chamfer and the rows call
@@ -717,9 +613,8 @@ mod tests {
         a.frame.back_rail_height = bedded_height - a.frame.back_rail_cloth;
 
         let read = |a: &KeyAssembly| {
-            let s = a.sin_angle_on_back_rail().expect("the cloth is reachable");
             let (m, ..) = mounted(a, 0.0);
-            let (pose, rows) = rows_at(&m, s);
+            let (pose, rows) = rows_at(&m, rest(a));
             let back = pair_of(&m, ContactCode::BackRailCloth);
             (
                 m.mechanism.bearing(&pose, &rows, back).expect("a bearing"),
@@ -753,9 +648,9 @@ mod tests {
     fn a_cloth_past_the_end_of_the_key_bears_on_the_key_corner() {
         let mut a = regulated();
         a.frame.back_rail = -0.232;
-        let s = a.sin_angle_on_back_rail().expect("the cloth is reachable");
+        let theta = rest(&a);
         let (m, key, _) = mounted(&a, 0.0);
-        let (pose, rows) = rows_at(&m, s);
+        let (pose, rows) = rows_at(&m, theta);
         let back = pair_of(&m, ContactCode::BackRailCloth);
         let bearing = m.mechanism.bearing(&pose, &rows, back).expect("a bearing");
         assert_eq!(bearing.how, HowItBears::KeyCorner);
@@ -769,7 +664,7 @@ mod tests {
             "the tail's corner, where the chamfer starts"
         );
         let chamfer = a.key.tail_rise / a.key.tail_rise_run;
-        let expected = (chamfer - s.abs() * (1.0 + chamfer * chamfer).sqrt()).abs();
+        let expected = (chamfer - libm::sin(theta).abs() * (1.0 + chamfer * chamfer).sqrt()).abs();
         assert!(bearing.slope.is_some_and(|x| x.abs() > 0.0), "{bearing:?}");
         assert!(
             (bearing.slope.unwrap().abs() - expected).abs() < 1e-3,
@@ -790,13 +685,14 @@ mod tests {
             a.key.front_edge = a.punching_stop().at - behind;
             let (m, ..) = mounted(&a, 0.0);
             let front = pair_of(&m, ContactCode::FrontRailPunching);
-            let rest = a.sin_angle_on_back_rail().expect("the cloth is reachable");
-            for s in [rest, 0.0] {
-                let (_, rows) = rows_at(&m, s);
+            // Nose-up as the regulated key rests: this one, its front pin
+            // now under its wood, has no seat of its own.
+            for theta in [rest(&regulated()), 0.0] {
+                let (_, rows) = rows_at(&m, theta);
                 assert_eq!(
                     rows.gap(front).is_some(),
                     reads,
-                    "the key's front {behind} m behind the punching's centre, sin {s}"
+                    "the key's front {behind} m behind the punching's centre, at {theta} rad"
                 );
             }
         }
@@ -881,9 +777,7 @@ mod tests {
     /// mortise, nothing of the pair reads the pin at this attitude at all.
     #[test]
     fn a_pin_straddling_its_slots_edge_reads_the_wood_at_rest() {
-        let rest = regulated()
-            .sin_angle_on_back_rail()
-            .expect("the key rests on its cloth");
+        let rest = rest(&regulated());
         for forward in [0.002, 0.003, 0.004, 0.005] {
             let mut a = regulated();
             a.frame.front_rail += forward;

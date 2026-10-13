@@ -3,6 +3,24 @@
 # Every reading in full bits: the shortest decimal that reads back to the
 # same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
 # a change that moves a reading rewrites this file and says why.
+sheet.front_weight.value 2.2813045962946448 0x4002401c9fca665d
+sheet.front_weight.shown 2.3 0x4002666666666666
+sheet.front_weight.unit g
+sheet.front_weight.trust indicative key_mass,geometry
+sheet.front_weight.fingerprint statics/1
+sheet.key_weight_ratio.value 0.5655021834061136 0x3fe2189808f1779e
+sheet.key_weight_ratio.shown 0.57 0x3fe23d70a3d70a3d
+sheet.key_weight_ratio.unit 
+sheet.key_weight_ratio.trust indicative geometry
+sheet.key_weight_ratio.fingerprint statics/1
+sheet.key_height refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
+sheet.key_dip refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
+sheet.down_weight refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
+sheet.up_weight refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
+sheet.balance_weight refused From { reading: DownWeight }
+sheet.friction_weight refused From { reading: DownWeight }
+sheet.key_friction_weight_zeroed_on_the_jig refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
+sheet.key_friction_weight_zeroed_on_the_frame refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
 readout none
 frame_fault the front rail pin meets the key's wood outside its mortise, so the key cannot come down onto its cloth and its punching. On a real keyboard it would sit on the pin and lift off its balance punching; this bench cannot weigh it, because the bearing is modelled as a pivot.
 faults 1

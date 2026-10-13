@@ -361,6 +361,7 @@ impl Regulating<'_> {
             capstan: k.capstan,
             measuring_point: self.protocol.measuring_point_on_key(self.key),
             margin: SEAT_MARGIN,
+            standing: &[],
         }
     }
 

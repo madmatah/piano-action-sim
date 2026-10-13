@@ -66,7 +66,10 @@
 //! - **A step is accepted** when it lowers the merit
 //!   `φ = Π + μ Σ max(0, −g_r)`, every row's gap a length (a limit's taken at
 //!   its coordinate's reach), `μ` twice the largest contact force of the last
-//!   subproblem.
+//!   subproblem; or raises it by no more than its rounding,
+//!   [`MERIT_ROUNDING`] units of `ε` in the size of its terms. A key just
+//!   past its breakaway starts with steps whose energy is below that
+//!   rounding, and compared bit for bit, rounding alone would decide them.
 //!
 //! At a fixed point `d = 0` the proximal term vanishes from the optimality
 //! conditions, which are then the increment's own: whatever `ρ` and `P`, the
@@ -130,15 +133,29 @@ pub const RAISE: f64 = 4.0;
 pub const LOWER: f64 = 3.0;
 
 /// The most times one step may raise `ρ` to keep within the row margin.
-const RAISES_PER_STEP: u32 = 64;
+pub(crate) const RAISES_PER_STEP: u32 = 64;
 
 /// How far past the proportion a step too long raises `ρ`, so that rounding
 /// cannot leave the next one a hair past the margin.
-const FIT: f64 = 1.000_001;
+pub(crate) const FIT: f64 = 1.000_001;
 
 /// The box problem's sweeps stop once one moves no point by more than this,
 /// metres: a thousandth of [`STEP_TOLERANCE`].
-const SWEEP_TOLERANCE: f64 = 1e-15;
+pub(crate) const SWEEP_TOLERANCE: f64 = 1e-15;
+
+/// How far a step's merit may stand above the merit it starts from and the
+/// step still count as not raising it, in units of `ε` times the size of the
+/// two merits' terms: eight.
+///
+/// The merit is a sum of a few energies, heights times weights measured from
+/// the keybed, each rounded at its last bit; two merits closer than a few
+/// units in the last place of their terms are one merit as far as they can be
+/// computed. A key loaded a hundred-thousandth of a gram past its breakaway
+/// starts moving with a step whose energy, the excess force times a
+/// picometre, is a hundredth of that rounding: compared bit for bit, rounding
+/// alone decides it, each step it turns back is a step a quarter as long, and
+/// the key never leaves its seat.
+pub(crate) const MERIT_ROUNDING: f64 = 8.0;
 
 /// Whether the axes' dry friction acts in an increment.
 ///
@@ -619,15 +636,9 @@ impl Statics {
             }
 
             // The stationarity residual at q, with this subproblem's
-            // multipliers: ∇V − Jᵀν, over each coordinate's reach.
-            let mut residual = 0.0_f64;
-            for k in 0..nf {
-                let mut v = gf[free_ids[k]];
-                for r in 0..nr {
-                    v += self.jac[r * nf + k] * self.nu[r];
-                }
-                residual = residual.max(v.abs() / speeds[k]);
-            }
+            // multipliers on the contacts and limits, and on each axis the
+            // friction its set allows.
+            let residual = self.residual(&gf, &free_ids, &speeds, &q, &anchor, &bounds, &self.nu);
             let least_gap = self
                 .kinds
                 .iter()
@@ -639,20 +650,27 @@ impl Statics {
             let still = solved && step <= STEP_TOLERANCE && least_gap >= -GAP_TOLERANCE;
             if still && residual <= RESIDUAL_TOLERANCE * load {
                 report.most_iterations = report.iterations;
-                return self.settled(m, q, &free_ids, &gf, report);
+                return self.settled(m, q, &anchor, &free_ids, &bounds, &gf, report);
             }
             // Still, but the residual above its tolerance: it may be only the
             // force of closing gaps already closed to within the tolerance.
             if still {
-                if let Some((closed, exact)) =
-                    self.with_gaps_closed(&gf, &free_ids, &speeds, rho, &mut report)
-                {
+                if let Some((closed, exact)) = self.with_gaps_closed(
+                    &gf,
+                    &free_ids,
+                    &speeds,
+                    &q,
+                    &anchor,
+                    &bounds,
+                    rho,
+                    &mut report,
+                ) {
                     if closed <= RESIDUAL_TOLERANCE * load {
                         core::mem::swap(&mut self.nu, &mut self.nu_closed);
                         report.exact &= exact;
                         report.residual = closed;
                         report.most_iterations = report.iterations;
-                        return self.settled(m, q, &free_ids, &gf, report);
+                        return self.settled(m, q, &anchor, &free_ids, &bounds, &gf, report);
                     }
                 }
             }
@@ -672,10 +690,10 @@ impl Statics {
                     .fold(0.0_f64, f64::max);
             let trial_pose = m.pose(&trial);
             m.rows(&trial_pose, f64::INFINITY, &mut self.trial_rows);
-            let here = merit(
+            let (here, here_size) = merit(
                 m, &pose, &self.rows, &q, &anchor, &free_ids, &speeds, &bounds, loads, mu,
             );
-            let there = merit(
+            let (there, there_size) = merit(
                 m,
                 &trial_pose,
                 &self.trial_rows,
@@ -688,13 +706,16 @@ impl Statics {
                 mu,
             );
             report.iterations += 1;
+
             // A step that moves nothing from a state some gap still overlaps
             // is no progress, however it scores: the box problem accepts its
             // multipliers to a fraction of their scale, which a soft metric
             // turns into nanometres of gap, left unresolved step after step
             // while the metric only softens. Only a stiffer one tightens it.
             let stalled = step <= STEP_TOLERANCE && least_gap < -GAP_TOLERANCE;
-            if there <= here && !stalled {
+            let rounding = MERIT_ROUNDING * f64::EPSILON * (here_size + there_size);
+
+            if there <= here + rounding && !stalled {
                 q = trial;
                 pose = trial_pose;
                 core::mem::swap(&mut self.rows, &mut self.trial_rows);
@@ -827,6 +848,67 @@ impl Statics {
         }
     }
 
+    /// The generalized force on free coordinate `k` of the loads and of the
+    /// contacts and limits, their multipliers `nu`: all but its friction.
+    fn loaded(&self, gf: &[f64], free_ids: &[usize], k: usize, nu: &[f64]) -> f64 {
+        let nf = free_ids.len();
+        let mut v = gf[free_ids[k]];
+        for (r, kind) in self.kinds.iter().enumerate() {
+            if !matches!(kind, Kind::Friction { .. }) {
+                v += self.jac[r * nf + k] * nu[r];
+            }
+        }
+        v
+    }
+
+    /// The friction an axis applies at a state of the increment, its bound
+    /// `b`, the rest of the generalized force on it `loaded`, and `moved` how
+    /// far it stands from the anchor: set-valued, as the increment defines
+    /// it. An axis that has moved has its friction on the bound against the
+    /// way it moved; one that has not takes whatever within its bound
+    /// balances the rest, and the nearer bound past that. Never a sign of a
+    /// velocity: a displacement's side, and a box.
+    fn axis_friction(loaded: f64, moved: f64, b: f64) -> f64 {
+        if moved > 0.0 {
+            -b
+        } else if moved < 0.0 {
+            b
+        } else {
+            (-loaded).clamp(-b, b)
+        }
+    }
+
+    /// The stationarity residual at `q`, over each coordinate's reach: what
+    /// is left of the generalized force once the contacts and limits push
+    /// with `nu` and each axis's friction takes what its set allows
+    /// ([`Self::axis_friction`]).
+    ///
+    /// Not the friction rows' own multipliers: the box problem places a
+    /// multiplier within a part in 10⁹ of its bound on the bound
+    /// ([`super::boxed::ON_A_BOUND`]), and an axis held still by a friction
+    /// that much short of its bound would carry the difference as a force
+    /// out of balance, far past the residual's tolerance, at a state that
+    /// is an equilibrium.
+    #[allow(clippy::too_many_arguments)]
+    fn residual(
+        &self,
+        gf: &[f64],
+        free_ids: &[usize],
+        speeds: &[f64],
+        q: &[f64],
+        anchor: &[f64],
+        bounds: &[f64],
+        nu: &[f64],
+    ) -> f64 {
+        let mut residual = 0.0_f64;
+        for (k, &c) in free_ids.iter().enumerate() {
+            let loaded = self.loaded(gf, free_ids, k, nu);
+            let left = loaded + Self::axis_friction(loaded, q[c] - anchor[c], bounds[k]);
+            residual = residual.max(left.abs() / speeds[k]);
+        }
+        residual
+    }
+
     /// The stationarity residual at the current iterate, over each
     /// coordinate's reach, with every contact and limit whose gap is closed
     /// to within [`GAP_TOLERANCE`] taken as closed; `None` where its box
@@ -853,11 +935,15 @@ impl Statics {
     /// first test still does, and one that went on to take steps of a few
     /// femtometres, until its metric had fallen far enough, now ends where it
     /// stands.
+    #[allow(clippy::too_many_arguments)]
     fn with_gaps_closed(
         &mut self,
         gf: &[f64],
         free_ids: &[usize],
         speeds: &[f64],
+        q: &[f64],
+        anchor: &[f64],
+        bounds: &[f64],
         rho: f64,
         report: &mut SolveReport,
     ) -> Option<(f64, bool)> {
@@ -897,19 +983,18 @@ impl Statics {
         if !solved.converged {
             return None;
         }
-        let (mut step, mut residual) = (0.0, 0.0_f64);
+        let mut step = 0.0;
         for k in 0..nf {
-            let (mut d, mut v) = (d_free[k], gf[free_ids[k]]);
+            let mut d = d_free[k];
             for r in 0..nr {
                 d += self.y[k * nr + r] * self.nu_closed[r];
-                v += self.jac[r * nf + k] * self.nu_closed[r];
             }
             step += speeds[k] * d.abs();
-            residual = residual.max(v.abs() / speeds[k]);
         }
         if step > STEP_TOLERANCE {
             return None;
         }
+        let residual = self.residual(gf, free_ids, speeds, q, anchor, bounds, &self.nu_closed);
         Some((residual, solved.exact))
     }
 
@@ -976,11 +1061,14 @@ impl Statics {
 
     /// The converged state, read: its supports, its friction and its
     /// reactions; or the refusal of a state leaning on a limit.
+    #[allow(clippy::too_many_arguments)]
     fn settled(
         &self,
         m: &Mechanism,
         q: Vec<f64>,
+        anchor: &[f64],
         free_ids: &[usize],
+        bounds: &[f64],
         gf: &[f64],
         report: SolveReport,
     ) -> Result<Equilibrium, Refusal> {
@@ -999,7 +1087,11 @@ impl Statics {
         let mut friction = vec![0.0; n];
         for (r, kind) in self.kinds.iter().enumerate() {
             match *kind {
-                Kind::Friction { k } => friction[free_ids[k]] = self.nu[r],
+                Kind::Friction { k } => {
+                    let c = free_ids[k];
+                    let loaded = self.loaded(gf, free_ids, k, &self.nu);
+                    friction[c] = Self::axis_friction(loaded, q[c] - anchor[c], bounds[k]);
+                }
                 _ => {
                     if let Some(by) = self.holder(r, free_ids) {
                         let normal = match *kind {
@@ -1042,7 +1134,8 @@ impl Statics {
 }
 
 /// The merit of a state: the increment's own `Π`, and `μ` times every gap's
-/// closing past zero.
+/// closing past zero; and the size of the terms it adds up, which its
+/// rounding scales with.
 #[allow(clippy::too_many_arguments)]
 fn merit(
     m: &Mechanism,
@@ -1055,18 +1148,24 @@ fn merit(
     bounds: &[f64],
     loads: &[PointLoad],
     mu: f64,
-) -> f64 {
+) -> (f64, f64) {
     let mut phi = m.potential(pose, loads);
+    let mut size = m.potential_magnitude(pose, loads);
     for (k, &c) in free_ids.iter().enumerate() {
-        phi += bounds[k] * (q[c] - anchor[c]).abs();
+        let dissipated = bounds[k] * (q[c] - anchor[c]).abs();
         let (lo, hi) = m.coords()[c].limits;
         let s = speeds[k];
-        phi += mu * ((s * (lo - q[c])).max(0.0) + (s * (q[c] - hi)).max(0.0));
+        let past = mu * ((s * (lo - q[c])).max(0.0) + (s * (q[c] - hi)).max(0.0));
+        phi += dissipated;
+        phi += past;
+        size += dissipated + past;
     }
     for row in rows.rows() {
-        phi += mu * (-row.gap).max(0.0);
+        let overlap = mu * (-row.gap).max(0.0);
+        phi += overlap;
+        size += overlap;
     }
-    phi
+    (phi, size)
 }
 
 #[cfg(test)]

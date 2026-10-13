@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use pa_app::golden;
-use pa_app::key_bench::{BenchReadout, KeyBench};
+use pa_app::key_bench::{KeyBench, ProcedureId, Sheet, Trust, Unit};
 
 /// Where `golden` writes when it is not told, relative to the repository root.
 const GOLDEN_DIR: &str = "crates/pa-app/tests/golden";
@@ -58,7 +58,7 @@ fn write_golden(dir: &Path) -> Result<(), String> {
 /// Weighs the standard bench key, bare and then leaded, and prints both.
 fn weigh() {
     let mut bench = KeyBench::standard();
-    let bare = bench.readout().expect("the standard bench weighs");
+    let bare = bench.sheet();
 
     println!("  KEY WEIGHING SHEET");
     println!("  single key on its frame, stack removed");
@@ -70,48 +70,130 @@ fn weigh() {
         bench.measuring_point_from_lip() * 1000.0
     );
     println!("            from the front lip of the key, the edge of the covering.");
+    println!("  Read as gram weights give them: down weight and key friction weight");
+    println!("  rounded up to the gram, up weight down, balance and friction weight");
+    println!("  from those two; each value in full beside it, with its procedure,");
+    println!("  its trust and the static solves it took.");
     println!();
-    print_sheet("bare key, no leads", &bare);
+    print_sheet("bare key, no leads", &bench, &bare);
 
     // The leading workshop, as a technician would use it: put weight in and
     // watch the touch come down.
     bench.add_lead(0.150, 10.0);
     bench.add_lead(0.190, 10.0);
-    let leaded = bench.readout().expect("a leaded key weighs");
+    let leaded = bench.sheet();
     println!();
-    print_sheet("with 2 x 10 g at 150 and 190 mm", &leaded);
+    print_sheet("with 2 x 10 g at 150 and 190 mm", &bench, &leaded);
 
+    let moved = |p: ProcedureId| match (bare.get(p), leaded.get(p)) {
+        (Some(Ok(a)), Some(Ok(b))) => format!("{:+7.2} g", shown(b.value - a.value)),
+        _ => "refused".to_owned(),
+    };
     println!();
     println!(
-        "  lead effect        BW {:+7.2} g      FW {:+7.2} g      F {:+7.2} g",
-        shown(leaded.balance_weight_g - bare.balance_weight_g),
-        shown(leaded.front_weight_g - bare.front_weight_g),
-        shown(leaded.friction_weight_g - bare.friction_weight_g)
+        "  lead effect        BW {}      FW {}      F {}",
+        moved(ProcedureId::BalanceWeight),
+        moved(ProcedureId::FrontWeight),
+        moved(ProcedureId::FrictionWeight)
     );
-    println!("                     friction must not move: leads change balance,");
-    println!("                     not friction.");
+    println!("                     leads change balance, not friction: F moves only");
+    println!("                     by what the key's tilt between its two seats does");
+    println!("                     to the leads' arms, under the gram it is read to.");
 }
 
-fn print_sheet(title: &str, r: &BenchReadout) {
+/// What the trade calls each reading, as the sheet prints it.
+fn label(p: ProcedureId) -> &'static str {
+    match p {
+        ProcedureId::FrontWeight => "front weight     FW",
+        ProcedureId::KeyWeightRatio => "key weight ratio KR",
+        ProcedureId::KeyHeight => "key height",
+        ProcedureId::KeyDip => "key dip",
+        ProcedureId::DownWeight => "down weight       D",
+        ProcedureId::UpWeight => "up weight         U",
+        ProcedureId::BalanceWeight => "balance weight   BW",
+        ProcedureId::FrictionWeight => "friction weight   F",
+        ProcedureId::KeyFrictionWeightZeroedOnTheJig => "key friction KF, jig",
+        ProcedureId::KeyFrictionWeightZeroedOnTheFrame => "key friction KF, frame",
+    }
+}
+
+fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
     println!("  {title}");
     println!("  {}", "-".repeat(title.len().max(40)));
-    row("down weight       D", r.down_weight_g, "g");
-    row("up weight         U", r.up_weight_g, "g");
-    row("balance weight   BW", r.balance_weight_g, "g");
-    row("friction weight   F", r.friction_weight_g, "g");
-    row("front weight     FW", r.front_weight_g, "g");
-    row("key weight ratio KR", r.key_ratio, "");
-    row("key height", r.key_height_mm, "mm");
-    row("key dip", r.key_dip_mm, "mm");
-    row("key mass", r.key_mass_g, "g");
-    println!("  {:<22}{:>8}", "leads fitted", r.lead_count);
+    for reading in &sheet.readings {
+        let name = label(reading.procedure);
+        match &reading.result {
+            Ok(m) => {
+                let (scale, unit, decimals) = match m.unit {
+                    Unit::Metre => (1000.0, "mm", 2),
+                    Unit::Gram => (1.0, "g", decimals_of(m.resolution)),
+                    Unit::One => (1.0, "", decimals_of(m.resolution)),
+                };
+                let trust = match &m.trust {
+                    Trust::Metrological => "metrological".to_owned(),
+                    Trust::Indicative { because } => format!(
+                        "indicative: {}",
+                        because
+                            .iter()
+                            .map(|i| i.code())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                };
+                println!(
+                    "  {name:<22}{:>8.decimals$} {unit:<2} {:>10.4}   {}; {trust}; {} increments, \
+                     {} steps",
+                    shown(m.shown * scale),
+                    m.value * scale,
+                    m.procedure.code(),
+                    m.report.increments,
+                    m.report.iterations
+                );
+                if let Some(t) = m.conditions.temporary_weight {
+                    println!(
+                        "  {:<22}temporary weight {:.2} g at {:.0} mm {} the pin",
+                        "",
+                        t.mass_g,
+                        t.station.x.abs() * 1000.0,
+                        if t.station.x < 0.0 {
+                            "behind"
+                        } else {
+                            "in front of"
+                        }
+                    );
+                }
+            }
+            Err(why) => println!("  {name:<22}refused: {}", bench.why_refused(why)),
+        }
+    }
+    match bench.readout() {
+        Some(r) => {
+            println!("  {:<22}{:>8.2} g", "key mass", r.key_mass_g);
+            println!("  {:<22}{:>8}", "leads fitted", r.lead_count);
+        }
+        None => println!(
+            "  the key cannot be seated: {}",
+            bench.frame_fault().unwrap_or("")
+        ),
+    }
+}
+
+/// How many decimals a resolution is read to: none for the gram, one for a
+/// tenth or a half, two for a hundredth.
+fn decimals_of(resolution: f64) -> usize {
+    if resolution >= 1.0 {
+        0
+    } else if resolution >= 0.1 {
+        1
+    } else {
+        2
+    }
 }
 
 /// A difference as the sheet prints it, to the hundredth of a gram.
 ///
 /// Rounded before it is printed, so that a residue of the arithmetic far below
-/// the last digit does not print as `-0.00` beside the check that friction
-/// has not moved.
+/// the last digit does not print as `-0.00`.
 fn shown(x: f64) -> f64 {
     let r = (x * 100.0).round() / 100.0;
     if r == 0.0 {
@@ -119,8 +201,4 @@ fn shown(x: f64) -> f64 {
     } else {
         r
     }
-}
-
-fn row(label: &str, value: f64, unit: &str) {
-    println!("  {label:<22}{value:>8.2} {unit}");
 }

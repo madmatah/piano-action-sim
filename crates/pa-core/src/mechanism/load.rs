@@ -60,6 +60,29 @@ impl Mechanism {
         v
     }
 
+    /// The size of the terms [`Self::potential`] adds up at `pose`, joules:
+    /// each weight's `m·G·|y|` and each force's `|F_x·P_x| + |F_y·P_y|`.
+    /// What the potential's rounding scales with: a sum of terms each
+    /// rounded at its own last bit is known to a few units in the last place
+    /// of this, whatever the sum itself comes to.
+    pub(crate) fn potential_magnitude(&self, pose: &Pose, loads: &[PointLoad]) -> f64 {
+        let mut size = 0.0;
+        for (i, body) in self.bodies.iter().enumerate() {
+            if let Some(m) = body.mass {
+                let c = pose.world(MaterialPoint {
+                    body: BodyId(i),
+                    at: m.com,
+                });
+                size += (m.mass * G * c.y).abs();
+            }
+        }
+        for load in loads {
+            let p = pose.world(load.at);
+            size += (load.force.x * p.x).abs() + (load.force.y * p.y).abs();
+        }
+        size
+    }
+
     /// The generalized forces of gravity and of `loads` at `pose`, written
     /// into `out`, one per coordinate: newton-metres on an angle, newtons on
     /// a length.

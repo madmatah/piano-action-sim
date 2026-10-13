@@ -3,12 +3,10 @@
 //! # Signed at every depth
 //!
 //! A gap here is a signed distance: positive apart, negative overlapping, and
-//! it keeps its sign however deep the overlap. The built [`super::circle_vs_line`]
-//! measures an unsigned distance from a circle's centre to a segment and takes
-//! the radius off, so past one radius of penetration its gap grows again and
-//! its normal turns round: harmless where the one-coordinate statics read it,
-//! at contact, and wrong for anything that has to see how deep two parts
-//! overlap. So:
+//! it keeps its sign however deep the overlap. An unsigned distance from a
+//! circle's centre to a segment, less the radius, grows again past one radius
+//! of penetration and turns its normal round: right at contact, and wrong for
+//! anything that has to see how deep two parts overlap. So:
 //!
 //! | Primitive | What it pairs | Gap |
 //! |---|---|---|

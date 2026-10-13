@@ -119,15 +119,39 @@ export interface Scene {
   faults: string[]
 }
 
+/**
+ * One reading of the weighing sheet, by its procedure run on the model: what
+ * the trade reads it as, the value in full, or why it is refused.
+ */
+export interface Reading {
+  /** Which reading, the engine's identifier: `down_weight`, `key_dip`, … */
+  procedure: string
+  /** What the trade reads it as, in `unit`: D and the key friction weights
+   * rounded up to the gram, U down, BW and F from those two, the front weight
+   * to the tenth, the ratio to the hundredth. `null` when refused. */
+  shown: number | null
+  /** The value in full, in `unit`; `null` when refused. */
+  exact: number | null
+  /** `"g"`, `"mm"`, or `""` for a ratio. */
+  unit: string
+  /** The protocol's resolution, in `unit`: what `shown` is read to. */
+  resolution: number
+  /** Whether every input it reads is measured or published. */
+  trust: 'metrological' | 'indicative'
+  /** The inputs that make it indicative: `key_mass`, `key_friction`,
+   * `geometry`. */
+  because: string[]
+  /** The temporary weight a key friction weight stood on the key, grams. */
+  temporary_weight_g: number | null
+  /** Where it stood, millimetres from the balance pin, positive in front. */
+  temporary_weight_at_mm: number | null
+  /** Why it is refused, the engine's sentence; `null` when it is read. */
+  refused: string | null
+}
+
 export interface Readout {
-  front_weight_g: number
-  key_ratio: number
-  key_height_mm: number
-  key_dip_mm: number
-  down_weight_g: number
-  up_weight_g: number
-  balance_weight_g: number
-  friction_weight_g: number
+  /** Every reading of the weighing sheet, in its order. */
+  sheet: Reading[]
   key_mass_g: number
   lead_count: number
   balance_paper_mm: number
@@ -139,8 +163,9 @@ export interface Readout {
   finger: string
   /** Whether friction alone holds the key where it is. */
   held_by_friction: boolean
-  /** How far the weight stands inside the friction band, from its nearer
-   * edge, grams; `null` when a stop carries the key. */
+  /** How far the weight stands from moving the key, grams: on the cloth from
+   * the sheet's D, on the front stop from its U, touching neither from the
+   * nearer edge of the band; `null` when a stop carries the key. */
   friction_margin_g: number | null
   /** How far from level the key stands at the bottom of its travel, degrees,
    * nose-down positive. A design goal is zero; many keyboards miss. */
@@ -167,8 +192,12 @@ export interface Readout {
   /** The gap at the back rail cloth, millimetres; `null` where no feature of
    * the two can meet. */
   gap_back_mm: number | null
-  friction_band_g: number
-  measured_kf_g: number | null
+  /** The bushings' friction as set, its torque read as grams at the measuring
+   * point as it stands now with the key level: kept as a torque, so moving the
+   * measuring point changes this and not the bushings. Not the key friction
+   * weight it was typed as, which the sheet reads by Stanwood's protocol on
+   * the key resting nose-up. */
+  key_friction_weight_g: number
   balance_papers_mm: number[]
   front_papers_mm: number[]
   paper_sizes_mm: number[]
@@ -187,6 +216,11 @@ export interface Readout {
    * millimetres: the measuring point every touchweight on the sheet is read
    * at. The lip is the covering's, which overhangs the key front. */
   measuring_point_from_lip_mm: number
+}
+
+/** The reading `procedure` of a sheet, if the sheet holds it. */
+export function reading(r: Readout, procedure: string): Reading | undefined {
+  return r.sheet.find((x) => x.procedure === procedure)
 }
 
 /** How a regulation the page asked for came out. */
@@ -262,4 +296,14 @@ export function readout(b: Bench): Readout | null {
  */
 export function regulate(b: Bench, keyHeightMm: number, keyDipMm: number): Regulation | null {
   return JSON.parse(b.regulate(keyHeightMm, keyDipMm)) as Regulation | null
+}
+
+/**
+ * Sets the bushings from a key friction weight, grams, as Stanwood's protocol
+ * reads it: the engine finds the torque at which the protocol reads it back.
+ * Returns the engine's sentence saying why it refused, the bushings left as
+ * they were, or `null` when it was set.
+ */
+export function setKeyFrictionWeight(b: Bench, grams: number): string | null {
+  return b.set_key_friction_weight(grams) ?? null
 }

@@ -380,6 +380,56 @@ impl KeyDesign {
     }
 }
 
+impl KeyRanges {
+    /// The top of the key as drawn at `x` along it, in the key's frame: the
+    /// highest point of its material on the vertical through `x`, where a
+    /// weight laid on the key there rests. `None` where none of the key
+    /// stands at `x`. `parts` is the list the key's parts were built into.
+    pub fn top_at(&self, parts: &[Part], x: f64) -> Option<Point> {
+        let material = [
+            self.keystick,
+            self.keytop,
+            self.key_front,
+            self.key_button,
+            self.back_check_block,
+            self.key_tail_felt,
+            self.capstan,
+        ];
+        let mut top: Option<f64> = None;
+        let mut offer = |y: f64| {
+            if y.is_finite() && top.is_none_or(|t| y > t) {
+                top = Some(y);
+            }
+        };
+        for part in material {
+            for seg in parts[part.index()].silhouette() {
+                match seg {
+                    Seg::Line { a, b } => {
+                        let (lo, hi, run) = (a.x.min(b.x), a.x.max(b.x), b.x - a.x);
+                        if run != 0.0 && lo <= x && x <= hi {
+                            offer(a.y + (x - a.x) * (b.y - a.y) / run);
+                        }
+                    }
+                    Seg::Arc { c, r, from, to } => {
+                        let dx = x - c.x;
+                        if dx.abs() > r {
+                            continue;
+                        }
+                        let dy = (r * r - dx * dx).sqrt();
+                        for y in [c.y + dy, c.y - dy] {
+                            let u = Point::new(dx / r, (y - c.y) / r);
+                            if crate::geometry::signed::in_sector(u, from, to) {
+                                offer(y);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        top.map(|y| Point::new(x, y))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

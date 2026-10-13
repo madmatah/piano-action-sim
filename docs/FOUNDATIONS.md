@@ -123,18 +123,12 @@ its cloth. A punching is a felt washer plus papers from a drawer of eight
 thicknesses, 0.08 to 1.25 mm, each known by its colour [V,
 `data/params/key-frame-sections.json`, `punching-papers.json`].
 
-**Statics at one degree of freedom**, which the key friction weight protocol
-and the friction bound's load still read, and which draw a frame whose stops
-fight (§2.3); the key itself is placed by the static solve below. The key
-turns about a fixed point at its balance pin. The front punching and the back
-rail cloth are unilateral stops,
-solved with the circle-against-line contact that ten of Hirschkorn's thirteen
-contacts use (§6.6); the front pin meeting the top of its mortise is a third
-stop. Friction at the balance is set-valued: any torque within ±b holds the key.
-With T the net torque of gravity and of the weight on the measuring point, the
-key stays on the front punching if and only if T ≥ −b, on the cloth if and only
-if T ≤ b, and between them if and only if |T| ≤ b; a floating key is located by
-a fixed 24-step bisection.
+**A frame whose stops fight is drawn on stops of its own** (§2.3): the front
+punching, the front pin meeting the top of its mortise and the back rail
+cloth, each a face with rounded edges built from the same fields as the drawn
+parts, and the key's underside taken as one straight line on the common
+tangent of its front stop and its cloth. Everything else, where the key rests
+and every reading, is the static solve below.
 
 **The frame is placed under the key once, then left alone.** Building a frame
 puts the front rail under the key's front mortise and the back rail a set
@@ -204,10 +198,21 @@ Each step's multipliers solve a box problem, a contact's in [0, ∞), a friction
 in [−b, b], by projected Gauss–Seidel sweeps finished by an exact active-set
 pass; the split of a load that rigid stops leave indeterminate is the one of
 least utilisation, one admissible split among many, and where no motion
-satisfies the rows the stops that fight are named. It stops when a step moves
+satisfies the rows the stops that fight are named. A step is accepted when it
+lowers the merit, or raises it by no more than its rounding, eight units of
+`ε` in the size of its terms: a key loaded a hair past its breakaway starts
+with steps whose energy is a hundredth of the rounding of a merit of heights
+times weights, and compared bit for bit, rounding alone would turn each back
+and the key never leave its seat. It stops when a step moves
 no point by more than a picometre, no gap overlaps by more than a picometre and
 the stationarity residual is negligible against the loads, under a cap of 100
-steps and of 200 sweeps of each box problem, its counts reported (§4.4).
+steps and of 200 sweeps of each box problem, its counts reported (§4.4). The
+residual is read with each axis's friction taking what its set allows:
+anything within its bound on an axis that has not moved since the increment
+started, the bound against the motion on one that has. The box problem places
+a multiplier within a part in 10⁹ of its bound on the bound, and an axis held
+by a friction that much short of its bound would otherwise carry the
+difference as a force out of balance, at a state that is an equilibrium.
 Where the step and the gaps pass and the step's own residual does not, the
 residual is read again with every gap already closed to within that picometre
 taken as closed: closing what rounding leaves of a gap, a few hundredths of a
@@ -268,49 +273,125 @@ and the page does not show it. What holds the key is read from determinate quant
 from how the solve split a load: with every stop removed, the bearing kept, the
 loads' generalized force either pushes the key into a closed stop past its
 friction, which it is then *resting on*, or lies inside the friction's band,
-*held by friction*, touching a stop or not, with the margin to the band's nearer
-edge in grams at the measuring point.
+*held by friction*, touching a stop or not, with the margin in grams at the
+measuring point to the edge past which the key moves: on its cloth, the down
+weight the sheet reads, which is walked from there; on its front stop, the up
+weight; touching neither, the nearer edge. Friction is set-valued: any torque
+within ±b holds the key.
 
 ### 2.2 The protocols, as they are
+
+Every reading on the weighing sheet is a protocol run on the model, and comes
+back as a measurement: its value in full; what the trade reads it as, by the
+protocol's own rounding; its unit and resolution; its conditions (where the
+key was read, the stops holding the seat it was read at or walked from, the
+loads that seated it, the walk, the temporary weight); its trust; the counts
+of the static solves it took; and the fingerprint of the solver that took it
+(§4.4). Or it is refused with its reason, and the others are read all the
+same. `pa-cli weigh` prints each with its procedure, its trust and its counts.
+Their closed forms are test oracles, compiled for the domain's tests only.
 
 - **Front weight and key weight ratio** are Stanwood's jig run on the model
   [V, Stanwood 2000; `data/params/touchweight-protocol.json`]. The key hangs
   from the jig by a pin at its balance pin's axis, a mechanism of §2.1 whose
-  pin turns without friction, an assumption; its angle is held level, the
-  covering's top horizontal where his bubble level sits. Holding it there takes
-  a reaction on that angle, and the scale, standing under the measuring point,
+  pin turns without friction: Stanwood's own tooling fastens the pin to a
+  wedge that turns on a roller bearing with the key, so the key's bushings do
+  not rub [V, Stanwood 2000, p. 21]. Its angle is held level, the covering's
+  top horizontal where his bubble level sits. Holding it there takes a
+  reaction on that angle, and the scale, standing under the measuring point,
   reads that reaction over g times the measuring point's arm: signed, so a
   back-heavy key reads negative, as his protocol for a negative front weight
   reads it. The ratio is the reading tared with the key on the jig, then with
   10 g centred on the capstan's contact point, over the load with its sign
-  turned. The closed forms, static moment over arm and capstan arm over arm,
-  are test oracles the jig matches to round-off. A jig pivots the key at the
-  pin, so it cannot see where the key bears on its balance punching; only a
-  reading on the frame can (§5.2 a).
-- **Key friction weight** is a procedure run on the model, Stanwood's: zero the
-  front weight with a temporary weight, put the key back on its frame, find the
-  least weight on the measuring point that makes it leave its back rail cloth (a
-  fixed 32-step bisection over the settle solve). With a constant friction bound
-  it returns the bound over the arm almost by construction, checking datum,
-  attitude and signs, not friction physics. It cannot measure a back-heavy key,
-  the temporary weight going behind the pin; and it zeroes the front weight with
-  the key nose-up on its frame, where Stanwood zeroes it on the levelled jig,
-  about 0.3 g apart on the default key, under the gram.
+  turned. Front weight is read to the nearest 0.1 g, the ratio to 0.01. The
+  closed forms, static moment over arm and capstan arm over arm, are test
+  oracles the jig matches to round-off. A jig pivots the key at the pin, so it
+  cannot see where the key bears on its balance punching; only a reading on
+  the frame can (§5.2 a).
 - **Key height and dip** are the seated pose run on the model (§2.1): the back
   of the key held down at the capstan, then the front pressed down until a stop
-  takes it, the two read at the key front's top. On the default bench they
-  agree to rounding with the one-coordinate statics, which read the same drawn
-  cloth and punching; they see what those statics' stops do not: a front pin
-  bottoming in its mortise meets the mortise's top with a corner before its
-  middle, which shortens the dip by 1.3 µm on a pin a millimetre prouder than
-  the default frame's, and a front pin standing in the key's wood leaves the
-  key no seat.
-- **D, U, BW and F**, on the sheet and in `pa-cli weigh`, come from a closed
-  form taken with the key level, not from the weighing run on the model; F is
-  the input friction torque over the measuring arm: the key friction weight as
-  set, echoed back, until the measuring point moves. On the default bare key
-  the sheet's D, −0.48 g, is about a quarter of a gram below the −0.22 g the
-  bench's own settle solve gives from the key's real, nose-up rest attitude.
+  takes it, the two read at the key front's top. They see whichever stop binds
+  first: a front pin bottoming in its mortise meets the mortise's top with a
+  corner before its middle, and a front pin standing in the key's wood leaves
+  the key no seat. Read as found, the thinnest paper their resolution.
+- **D and U** are the breakaway walk. The key is seated, at the top for D and
+  at the bottom for U; on its measuring point goes the weight at which its
+  balance there needs no friction, then a gram more at a time for D, a gram
+  less for U, each a static increment from where the last one left the key,
+  friction on, until one carries the key to the other seat; the last gram is
+  then halved sixteen times, each trial from where that gram started. An
+  increment that moves the key and leaves it short of the other seat is kept,
+  and the walk goes on from there. So D is the least weight that starts the
+  key down from rest and keeps it going to the bottom of its stroke, the
+  greatest the down stroke needs anywhere, and U the greatest that lets it
+  rise to the top: the window is the stroke between the two seats while the
+  action has no let-off button (planned: the trade stops the stroke where the
+  jack's tender meets the button). A walk is refused after 500 steps. On rigid
+  stops the key breaks away at its seat and runs on, so D and U are the edges
+  of the band at the two seats' attitudes, `(±b − M(θ)) / (g a(θ))`, the
+  key's balance `M` and the measuring point's arm `a` taken at the attitude,
+  matched by hand to the walk's resolution, a part in 65 536 of a gram. On the
+  default key D is −0.22 g, which the closed form taken with the key level
+  gives as −0.48 g: at the top seat the key stands 2.3° nose-up, its centre of
+  mass 13 mm above the pin, and the measuring point's arm is half a percent
+  shorter there.
+- **BW and F** are `(D + U) / 2` and `(D − U) / 2`, shown from D and U as the
+  trade reads them, so to the half gram, their values from D and U in full.
+  With no action on the capstan, BW is minus the front weight but for what the
+  two seats' attitudes add, 0.13 g on the default key; F is the bushings'
+  friction read through the two seats' arms, with what the key's balance does
+  between them: 6.13 g on the default bushings, which hold 6 g at the
+  measuring point with the key level.
+- **Read as gram weights give them**, the owner's reading: D and the key
+  friction weights rounded up to the gram, U down, BW and F from those two
+  readings, the value in full shown small beside each. A technician stacking
+  gram weights reads a down weight whose threshold is 46.3 g as 47 g, since
+  46 g does not move the key; rounded to the nearest gram, a down weight would
+  read a gram light about half the time, a weight that does not make the key
+  go down. On the default key D reads 0 g: the key goes down on its own. A
+  threshold within the walk's last bracket of a whole gram, a part in 65 536
+  of it, reads as that gram, up or down: the walk reads a threshold to half a
+  bracket, and what it cannot tell from a whole gram is not rounded into the
+  next. Rounding noise is not a gram: on bushings with no friction the key
+  friction weight zeroed on the frame, a threshold of nothing walked half a
+  bracket up, reads 0 g.
+- **Key friction weight** is read two ways, labelled. Stanwood's zeroes the
+  front weight on the levelled jig with a temporary weight on the key's top,
+  puts the key back on its frame, its back pushed down onto its cloth, and
+  walks the least weight that makes it fall [V, Stanwood 2000, p. 22]. The
+  variant zeroes instead the key's balance where it rests on its frame, and so
+  reads the bushings alone, through the arm the measuring point has at rest.
+  The weight stands 100 mm behind the pin on a key heavy in front and 150 mm
+  in front of it, on the covering, on one heavy behind, its mass the one that
+  zeroes, exactly, the reading being linear in it: a technician slides a
+  weight he has, the bench sizes one where it stands. On the default
+  bushings, 6 g at the measuring point with the key level, the two read
+  6.35 g and 6.03 g, both 7 g: the tilt at rest leaves Stanwood's a little of
+  the key's and the weight's balance, 0.32 g with no friction at all, and
+  shortens the arm both read through.
+- **Key friction is typed as the trade measures it**, a key friction weight in
+  grams at the measuring point by Stanwood's protocol, and stored as a torque
+  with the measuring point it was typed at. The torque is the one at which
+  that protocol, run on the model, reads the typed grams in full: the protocol
+  inverted, by 32 halvings of the bushings from none to those holding 100 g at
+  the measuring point with the key level, each trial the protocol itself, the
+  one of the last two whose reading stands nearer kept. So the sheet reads a
+  typed key friction weight back to the walk's resolution, and shows it as
+  typed: 6 g typed reads 6 g. Turned into a torque on the level arm instead,
+  6 g typed would read back 6.35 g, shown 7 g. A weight no bushings read is
+  refused with its reason, the bushings left as they were: under what the
+  protocol reads with no friction at all, past the search, or on a key and
+  frame the protocol cannot read. Afterwards moving the measuring point or
+  editing the key changes the grams every protocol reads, and not the
+  bushings. The default bushings are not typed: an assumed torque, 6 g at
+  the measuring point with the key level.
+- **Trust.** Each procedure declares what it reads, the key's mass, its
+  friction, the dimensions of key and frame, and a reading resting on an
+  estimated or assumed input is indicative and names it. On the composite
+  default every reading is: its mass is derived from its volume at an
+  assumed density, its friction is assumed until it is set, and several of
+  its dimensions have no record (§2.3, §3.8). The key's mass on the sheet is
+  that derivation, an input and not a weighing.
 - **Datums.** Key height and dip are read at the key front, the face of the
   plate over the end grain, 258 mm in front of the balance pin on the default
   key. Every touchweight is read at the measuring point, 13 mm by default
@@ -318,14 +399,10 @@ edge in grams at the measuring point.
   stands 2 mm proud of the key front: 247 mm in front of the balance pin. The
   distance is one setting, `TouchweightProtocol` on the key assembly, set on
   the bench from 5 to 30 mm, and every touchweight reads it there: front weight
-  and the key weight ratio on the jig, D, U, BW and F, key friction weight, and
-  the weight on the measuring point. Moving it changes each by the lever, the
-  same static moment and the same friction torque read on another arm, and
-  leaves key height and dip where they are.
-
-**Planned:** D, U, BW and F become procedures run on the model too (D the
-least weight that starts the key down from rest, U the greatest that lets it
-rise from the bottom), their closed forms joining the jig's as test oracles.
+  and the key weight ratio on the jig, D, U, BW and F, both key friction
+  weights, and the weight on the measuring point. Moving it changes each by
+  the lever, the same static moment and the same friction torque read on
+  another arm, and leaves key height and dip where they are.
 
 ### 2.3 Named simplifications
 
@@ -374,21 +451,19 @@ rise from the bottom), their closed forms joining the jig's as test oracles.
 - **The bilateral pivot is assumed, not checked.** The key cannot lift off its
   balance punching. The seated pose reports the load the bearing carries,
   which stays positive at both seats of the default bench (tested); nothing
-  checks the touch weight's state, and at the −60 g end of the weight slider
-  the key's own statics say it lifts off. A frame whose stops fight is
-  reported, not weighed, the key drawn riding on its two stops as if its
-  underside were straight: under the chamfer it is drawn about 0.8 mm clear of
-  its cloth, and the contacts the view marks show it open by that much.
-  Planned: the key's vertical degree of freedom.
-- **The key friction weight protocol reads stops of its own.** It runs on the
-  one-coordinate statics of §2.1, whose front stop is the higher of the
-  punching and the front pin's tip, read at the pin's middle, and which do not
-  see a pin standing outside its mortise; so does the load the friction bound
-  is taken at, and a frame whose stops fight is drawn riding on the stops those
-  statics read. Key height, dip and where the touch weight leaves the key come
-  from the static solve on the drawn contacts. A key whose front pin stands in
-  its wood has no seat and is drawn level, its pin through the wood. Planned:
-  every protocol run on the static solve (§8).
+  checks the touch weight's state or a walk's, and at the −60 g end of the
+  weight slider the key's own statics say it lifts off. Planned: the key's
+  vertical degree of freedom.
+- **A frame whose stops fight is drawn on stops of its own.** The key on a
+  pivot has no seat on it: every reading but the jig's two is refused, naming
+  the stops that fight, and the bench draws the key riding on its front stop
+  and its cloth as if its underside were straight (§2.1): under the chamfer it
+  is drawn about 0.8 mm clear of its cloth, and the contacts the view marks
+  show it open by that much. That construction takes the higher of the
+  punching and the front pin's tip, read at the pin's middle, and does not see
+  a pin standing outside its mortise: a key whose front pin stands in its wood
+  has no seat and is drawn level, its pin through the wood. Planned: the key's
+  vertical degree of freedom, on which such a key rides on the drawn contacts.
 - **No validation layer**: a front edge close to the capsule makes the outline
   cross itself, and the front pin and mortise at their maximum put the pin
   through the top of the key, both weighed with no fault raised.
@@ -403,24 +478,28 @@ rise from the bottom), their closed forms joining the jig's as test oracles.
 **Built.** A browser page in React and react-three-fiber draws the key on its
 frame in section and in solid from parts computed in Rust, each in its own
 body's frame and placed by the pose the static solve gives that body. The
-section is the sagittal plane itself: a washer shows the hole its pin stands in, and the
-front pin stands in its mortise, a void open at the key's underside. Both views
-mark the key's contacts with its frame where the contact rows find them: where
-the key bears, a gap of under a millimetre still open, and drawn parts that
-overlap. Colours
-follow each part's material: the covering and the key front white, the capsule
-and the back check block in a wood other than the keystick's. Its panels: the
-weighing sheet, with the measuring point's distance back from the front lip of
-the key; regulation (key height and dip targets, laid as papers or refused
-with what keeps them out and by how much; the punching papers; key friction
-weight); punchings and cloth (felts, front rail pin and mortise, back rail
-cloth); the key; the frame
-(rails, placing the frame); touch (a weight on the measuring point, what holds
-the key, a stop or its friction with the margin in grams, and the gaps at the
-front punching and the back rail cloth); the leading workshop, which goes with
-the leads (§2.3). Faults are listed in millimetres,
-every number on the sheet is computed in Rust, and the page is in English.
-`pa-cli weigh` prints the sheet's weights, ratio, key height, dip and mass.
+section is the sagittal plane itself: a washer shows the hole its pin stands in,
+and the front pin stands in its mortise, a void open at the key's underside.
+Both views mark the key's contacts with its frame where the contact rows find
+them: where the key bears, a gap of under a millimetre still open, and drawn
+parts that overlap. Colours follow each part's material: the covering and the
+key front white, the capsule and the back check block in a wood other than the
+keystick's. Its panels: the weighing sheet, with the measuring point's distance
+back from the front lip of the key, each reading as the trade reads it with its
+value in full small beside it, both key friction weights labelled, a note naming
+what makes the readings indicative, and why any is refused; regulation (key
+height and dip targets, laid as papers or refused with what keeps them out and
+by how much, and not sent while a target field holds no number; the punching
+papers; the key friction weight, typed in grams at the measuring point as
+Stanwood's protocol reads it, and refused with why where no bushings read it);
+punchings and cloth (felts, front rail pin and mortise, back rail cloth); the
+key; the frame (rails, placing the frame); touch (a weight on the measuring
+point, what holds the key, a stop or its friction with how far the weight stands
+from moving it, and the gaps at the front punching and the back rail cloth); the
+leading workshop, which goes with the leads (§2.3). Faults are listed in
+millimetres, every number on the sheet is computed in Rust, and the page is in
+English. `pa-cli weigh` prints every reading with its procedure, its trust and
+the static solves it took.
 
 ## 3. Decisions that stand
 
@@ -493,8 +572,9 @@ silently change every number downstream. Training turns an actuator and reads
 the result; the solver aims at a target. Built: key height and dip solved to
 punching stacks by the seated pose itself, laid from the drawer within one
 paper of their targets, a target a stop forbids refused with the stop and the
-shortfall (§2.1). Planned: the other targets, actuators with their quanta (a
-paper, a turn of a screw), persistence (§7.4).
+shortfall (§2.1); the solver's fingerprint, which every reading carries
+(§4.4). Planned: the other targets, actuators with their quanta (a paper, a
+turn of a screw), persistence (§7.4).
 
 ### 3.5 Set-valued dry friction, at the axes and at sliding contacts
 
@@ -522,8 +602,9 @@ at 1 µs), and its readings still move at a quarter of a microsecond
 the curve's peak while the contact sticks, the kinetic coefficient while it
 slides (§6.5). That set is what the engine uses, solved with the axes' in one
 box-constrained problem at velocity level. Built: the key's balance friction,
-set-valued in the settle solve and a box row of the static solve, stored as a
-key friction weight with its arm.
+set-valued, a box row of the static solve, stored as a torque with the radius
+it was typed at, typed as a key friction weight in grams at the measuring
+point, the torque at which Stanwood's protocol reads it back (§2.2).
 Planned: every pivot and the four sliding contacts, in every solver.
 
 ### 3.6 Relative coordinates for the jack and the repetition lever
@@ -813,13 +894,21 @@ included (`crates/pa-core/clippy.toml`), so no transcendental in the domain
 reaches the platform's maths library, and a test that wants one for a reference
 value allows it explicitly. `pa-app` still calls the platform's `atan` for one
 displayed angle, the bedding at the back. No `HashMap` in the domain's
-production code; three bisections, the settle solve's 24 steps, the friction
-protocol's 32 and the regulation solve's 40 halvings of 20 mm of paper, resolve
-far below anything read; the static solve converges under its caps and reports
-its counts, and a test holds the seats of every key
-of its property corpus a keyboard could be built from to a quarter of the step
-cap. The golden sheet (§7.1) holds the engine's
-readings bit for bit wherever the tests run.
+production code; three bisections, the regulation solve's 40 halvings of 20 mm
+of paper, the breakaway walk's 16 halvings of its last gram and the 32 halvings
+of the bushings up to 100 g at the measuring point that turn a typed key
+friction weight into a torque, resolve far below anything read, and a walk's
+threshold within its last bracket of a whole gram reads as that gram; the static
+solve converges under its caps and reports its counts, and a test holds the
+seats of every key of its property corpus a keyboard could be built from to a
+quarter of the step cap, and the walks' increments to half of it: a trial a hair
+past breakaway starts the key with a step of a femtometre, each accepted step
+three times the last. A fingerprint names the solver with its frozen numbers and
+travels with every reading; a test hashes the caps, tolerances, margins and
+counts, the temporary weight's stations, the protocols' loads and the searches'
+reaches, and fails when one changes and the fingerprint does not. The golden
+sheet (§7.1) holds the engine's readings bit for bit wherever the tests run, and
+the WebAssembly build to the same bits as the native one.
 
 ### 4.5 Rigid bodies
 
@@ -911,21 +1000,23 @@ traps (§6.3).
 
 | Level | What it checks | Kind | Status |
 |---|---|---|---|
-| 0 | lever arms against central finite differences; the net torque against the gradient of the potential; the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; every contact row's gradient and sliding against central differences, at depths past any radius, its sign against the side of its drawn piece; the contact rows against a brute-force sampling of the drawn outlines; every contact surface a range of a drawn part; the box problem against an exhaustive enumeration of its active sets; the static solve against closed forms (a pendulum on its stop, a lever breaking away at its friction band, two levers through an arc in the ratio of their arms); the unilateral virtual-work inequality at every settled state; the seated pose against a brute-force reading of the drawn outlines over a property corpus, and against the one-coordinate statics wherever both seat the key; every stop's face against a declared range of a drawn part; the key ratio guard | consistency | built |
+| 0 | the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; every contact row's gradient and sliding against central differences, at depths past any radius, its sign against the side of its drawn piece; the contact rows against a brute-force sampling of the drawn outlines; every contact surface a range of a drawn part; the box problem against an exhaustive enumeration of its active sets; the static solve against closed forms (a pendulum on its stop, a lever breaking away at its friction band, two levers through an arc in the ratio of their arms); the unilateral virtual-work inequality at every settled state; the seated pose against a brute-force reading of the drawn outlines over a property corpus, and the breakaway walk over the same corpus, D above U by the band its friction makes; every stop's face against a declared range of a drawn part; the key ratio guard; the solver's fingerprint against a hash of its frozen numbers | consistency | built |
 | 0 | the mass matrix against finite differences of the kinetic energy; normals continuous across the hybrid profiles; every coordinate acted on by a contact or a spring | consistency | planned |
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
 | 3 | published data, §5.2 (b) and (c) | validation | planned |
-| 4 | the trade's protocols run on the model: the jig, Key Friction Weight, the seated pose that reads key height and dip, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops | consistency | built |
-| 4 | every weighing quantity by procedure; let-off, drop, checking, aftertouch and blow distance as the trade measures them; §5.2 (a) | consistency, and validation where the measurement is independent | planned |
+| 4 | the trade's protocols run on the model: the jig, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
+| 4 | let-off, drop, checking, aftertouch and blow distance as the trade measures them; §5.2 (a) | consistency, and validation where the measurement is independent | planned |
 | 5 | sensitivities by finite differences: what moves when a setting changes | consistency | planned |
 
-**Non-confusion tests** (built, on the closed-form weighing algebra and through
-the whole chain in the smoke test): 1 g of lead (of mass on the key, once
-leads leave the model) moves BW and not F; axis friction
-times 1.2 moves F and not BW. With a constant friction bound both hold by
-construction in the closed form, guarding against coding mix-ups until friction
-depends on load.
+**Non-confusion tests** (built, through the procedures and through the whole
+chain in the smoke test): 1 g of lead (of mass on the key, once leads leave
+the model) moves BW and not F; axis friction times 1.2 moves F and not BW.
+With a constant friction bound both hold but for the tilt between the key's
+two seats, where D and U are read: a few thousandths of a gram of F for the
+gram of lead, a few hundredths of BW for the friction, each tolerance derived
+from the two seats' arms and the walk's resolution, never widened. They guard
+against coding mix-ups until friction depends on load.
 
 **Sensitivities.** Spurlock's rule, +1 g of hammer weight for +5 to +7 g on both
 down weight and up weight [V, Spurlock], checks the lever chain's consistency:
@@ -1123,10 +1214,10 @@ angle, and a key's tail corner sunk 0.9 mm into the end of its cloth with the
 key nose-up reads no row at all, though the cloth's sides are in its range. The
 rigid statics stop every corner at contact and never go that deep; a felt law
 that lets a corner sink past an edge's radius needs a reading that sees it. The
-hybrid is planned. The older circle-against-line gap, which still serves the
-one-coordinate statics, is an unsigned distance from the circle's centre less
-the radius, so past one radius of penetration it grows again: right at contact,
-where those statics read it, and wrong for depth. The shank rests on a cushion
+hybrid is planned. A circle-against-line gap taken as the unsigned distance
+from the circle's centre less the radius grows again past one radius of
+penetration: right at contact, and wrong for depth, which is why every row is
+signed. The shank rests on a cushion
 on the wippen or on a felted rail, depending on the action, which changes the
 contact's gradient, the shock at the finger, the rest state and the regulation
 offered. Contacts 14 and 15 both lift the damper lever from below and the higher
@@ -1160,11 +1251,16 @@ and Biome, the type-check, the build, the tests and the smoke test for the web;
 **The golden sheet** records every reading of the default bench and of four
 fixture benches (a frame whose stops fight, a back-heavy key, a dip stopped by
 the front pin in its mortise, a key shortened under its frame) in full bits, in
-`crates/pa-app/tests/golden/`. `pa-cli golden` writes it and `cargo test`
+`crates/pa-app/tests/golden/`: each reading of the weighing sheet, its value
+in full and as the trade reads it, its trust, the walk's start and the
+temporary weight, or why it is refused; then what holds the key, the faults,
+the papers and the pose. `pa-cli golden` writes it and `cargo test`
 compares the engine with it, so a change shows every number it moves; one that
-means to move a number rewrites the sheet and says why. The bedding at the
-back, which the sheet shows in degrees, is recorded as the slope it comes from,
-because the platform's `atan` may differ in the last bit.
+means to move a number rewrites the sheet and says why. A Node test in
+`pnpm test` loads the WebAssembly module the browser loads and holds it to the
+same sheets, bit for bit. The bedding at the back, which the sheet shows in
+degrees, is recorded as the slope it comes from, because the platform's
+`atan` may differ in the last bit.
 
 **The engine and its applications.** The crates are the engine (§1.1) and
 `apps/bench` its first application. Planned: the engine's interface is what
@@ -1184,33 +1280,39 @@ rounds is drawn rounded, the back rail cloth's edges included. The contacts read
 the declared ranges and nothing else: a contact pair holds nothing but ranges of
 parts, and the mechanism its rows are read on carries the very parts the view
 draws, which `every_contact_surface_is_a_range_of_a_drawn_part` holds on every
-bench of the golden sheet. The static solve places the key on those contacts.
-The one-coordinate statics that remain, under the key friction weight protocol,
-the friction bound's load and the drawing of a frame whose stops fight, read
-stops of their own, built from the same fields, the underside's corners and the
-frame's bearing heights, and one test holds every
-face they read to a declared range of a drawn part, `every_stop_face_is_a_declared_range_of_a_drawn_part`:
-for those statics, the invariant holds by shared fields and that test, not by
-structure. The composite key's mass is integrated over a third polygon, its
-volume model's, which the drawn parts tile exactly. Planned: those statics
-leave, after which nothing reads anything but a drawn range, and each part's
-inertia derived from its outline or measured, by an explicit choice, a key's
-always measured (§2.3).
+bench of the golden sheet. The static solve places the key on those contacts,
+and every procedure of the sheet reads the key placed there. The drawing of a
+frame whose stops fight still reads stops of its own, built from the same
+fields, the frame's bearing heights, and one test holds every face it reads
+to a declared range of a drawn part,
+`every_stop_face_is_a_declared_range_of_a_drawn_part`: for that drawing, the
+invariant holds by shared fields and that test, not by structure. The
+composite key's mass is integrated over a third polygon, its volume model's,
+which the drawn parts tile exactly. Planned: that construction leaves with the
+key's vertical freedom, after which nothing reads anything but a drawn range,
+and each part's inertia derived from its outline or measured, by an explicit
+choice, a key's always measured (§2.3).
 
 ### 7.2 The WebAssembly boundary
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
 double mount cannot construct two engines) and drives it with one setter per
-value. It reads two JSON documents: the scene and the readout. The scene holds
-every part's outline in its own body's frame, in millimetres, with its material
-and the provenance of each stretch; one pose per body, an origin, a cosine and
-a sine, which the view applies and computes none of; the leads and the
-measuring point on the key; the contacts within a millimetre of closing, each
-its two surface points in the keybed's frame, its gap and whether it is closed,
-open or overlapping; and the faults. The readout holds the settings, the
-weighing sheet and what holds the key, all absent when the frame cannot be
-weighed. Faults and verdicts are English sentences built in Rust, in `pa-app`
-and in the adapter, and the TypeScript types mirror both documents by hand.
+value; the two the engine may refuse, a regulation and a key friction weight,
+answer with the sentence saying why, the bench left as it was. It reads two JSON
+documents: the scene and the readout. The scene holds every part's outline in
+its own body's frame, in millimetres, with its material and the provenance of
+each stretch; one pose per body, an origin, a cosine and a sine, which the view
+applies and computes none of; the leads and the measuring point on the key; the
+contacts within a millimetre of closing, each its two surface points in the
+keybed's frame, its gap and whether it is closed, open or overlapping; and the
+faults. The readout holds the settings, the weighing sheet and what holds the
+key, all absent when the key cannot be seated: the sheet a list of readings by
+their procedures' codes, each what the trade reads it as with its value in full,
+its resolution, its trust and the temporary weight where it has one, or the
+sentence saying why it is refused. A function returns any fixture's golden
+sheet, for the test that holds the module to the native bits. Faults, verdicts
+and refusals are English sentences built in Rust, in `pa-app` and in the
+adapter, and the TypeScript types mirror both documents by hand.
 
 **Planned.** Settings and weighing come back separately: the settings always
 valid, each adjustable value with its unit, admissible range and step; the
@@ -1267,7 +1369,11 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
 - **A measurement carries its provenance**: value and unit, the solver, its
   conditions (dampers and repetition spring engaged or not, where the stroke
   stopped), and its trust, metrological or indicative. A weighing without its
-  conditions is not a datum.
+  conditions is not a datum. Built for the key's readings (§2.2), each with
+  what the trade reads it as, its resolution, the mount, the seat, the walk
+  and the temporary weight, its trust from the bases of what it reads, and
+  the solver's fingerprint; the conditions an action adds, dampers and
+  springs, come with it, and the bases from the registry's records (§7.3).
 
 ### 7.6 The 88-note runtime
 
@@ -1305,7 +1411,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the seated pose that reads key height and dip, the regulation solve on it, and the touch weight as an increment built (§2.1, §2.2); the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, and every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

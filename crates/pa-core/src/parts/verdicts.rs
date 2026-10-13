@@ -14,7 +14,10 @@
 //!
 //! That is what lets the bench say that friction holds a key: on its
 //! punching or its cloth, or floating between them, wherever a weight
-//! between up weight and down weight has left it.
+//! between up weight and down weight has left it. How far the weight stands
+//! from moving it is measured to the edge of the band the key would move
+//! past: on its cloth, to the down weight read from there; on its punching,
+//! to the up weight.
 
 use crate::contact::{ContactCode, Rows, ROW_MARGIN};
 use crate::mechanism::PointLoad;
@@ -37,12 +40,14 @@ pub enum Holding {
     /// With the stops removed, the loads' generalized force lies inside the
     /// friction's box: friction alone holds the key where it is, touching a
     /// stop or not. On a key, the weight on it lies between its up weight
-    /// and its down weight at this attitude.
+    /// and its down weight.
     HeldByFriction {
         /// The stop it touches, if it touches one.
         touching: Option<ContactCode>,
-        /// How far the loads' generalized force stands inside the box, from
-        /// its nearer edge: newton-metres on the key's angle.
+        /// How far the loads' generalized force stands from the edge of the
+        /// box past which the key moves, newton-metres on the key's angle:
+        /// away from the stop it touches, the only way it can move; either
+        /// way, the nearer, where it touches none.
         margin: f64,
     },
 }
@@ -61,14 +66,22 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
     m.rows(&pose, ROW_MARGIN, &mut rows);
     let code = |pair: u16| m.pairs()[usize::from(pair)].code;
     if push.abs() <= bound {
-        let touching = rows
+        let touched = rows
             .rows()
             .iter()
-            .find(|r| r.gap <= TOUCHING)
-            .map(|r| code(r.pair));
+            .enumerate()
+            .find(|(_, r)| r.gap <= TOUCHING);
+        // Away from a stop the key touches is the way its gap opens: the
+        // generalized force must pass the box's edge on that side. Into the
+        // stop, past the other edge, it moves nothing; the stop takes it.
+        let margin = match touched.map(|(i, _)| rows.grad(i)[angle]) {
+            Some(opens) if opens > 0.0 => bound - push,
+            Some(opens) if opens < 0.0 => bound + push,
+            _ => bound - push.abs(),
+        };
         return Some(Holding::HeldByFriction {
-            touching,
-            margin: bound - push.abs(),
+            touching: touched.map(|(_, r)| code(r.pair)),
+            margin,
         });
     }
     // The stop the push drives the key into: a closed contact the motion it
@@ -129,8 +142,11 @@ mod tests {
     /// punching, a 13 g pull brings it up onto its cloth, and a 5 g pull,
     /// inside the band, holds it wherever it was. Each weight is an
     /// increment from the state the one before left, friction on, and the
-    /// key that holds has not moved by a single bit. The margin is the
-    /// band's half-width less the loads' generalized force, both
+    /// key that holds has not moved by a single bit. The margin is how far
+    /// the loads' generalized force stands from the edge of the band past
+    /// which the key leaves the stop it touches: on the punching, where the
+    /// weight would lift it, `b − push`; on the cloth, where it would take it
+    /// down, `b + push`, the push positive lifting the front. Both are
     /// determinate.
     #[test]
     fn a_weight_inside_the_band_leaves_the_key_where_it_is_held_by_friction() {
@@ -167,7 +183,11 @@ mod tests {
                     q.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
                     "{grams} g moved the key"
                 );
-                let margin = bound - push(&k, &next, &loads).abs();
+                let pushed = push(&k, &next, &loads);
+                let margin = match stop {
+                    ContactCode::BackRailCloth => bound + pushed,
+                    _ => bound - pushed,
+                };
                 assert_eq!(
                     verdict,
                     Some(Holding::HeldByFriction {

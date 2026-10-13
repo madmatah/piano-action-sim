@@ -35,11 +35,10 @@ trade's own protocols, and come back with the expected values.**
    from the same fields and exported, and the browser only renders them,
    applying each body's pose as given. The drawn parts declare the ranges a
    contact may read, and a contact pair holds those ranges and nothing else.
-   The static solve places the key on those contacts, and the regulation
-   solve reads the key placed there; the one-coordinate statics left under
-   the key friction weight protocol, the friction bound's load and the
-   drawing of a frame whose stops fight read stops of their own, held to the
-   drawn ranges by a test until they leave (planned, FOUNDATIONS §7.1).
+   The static solve places the key on those contacts, and every procedure
+   of the sheet and the regulation solve read the key placed there; the
+   drawing of a frame whose stops fight reads stops of its own, held to the
+   drawn ranges by a test until it leaves (planned, FOUNDATIONS §7.1).
    Check:
    `every_contact_surface_is_a_range_of_a_drawn_part`,
    `every_stop_face_is_a_declared_range_of_a_drawn_part`.
@@ -47,13 +46,18 @@ trade's own protocols, and come back with the expected values.**
    normative**, the target kept beside it with its achieved value. Check:
    `the_regulated_key_meets_its_targets_then_lands_within_one_paper`.
 3. **The simulator measures itself with the trade's protocols** run on the
-   model, never a parameter read back; where a displayed value is still a
-   formula or an input echoed back, FOUNDATIONS §2.2 says so. Check:
-   `the_bench_measures_its_own_friction_by_the_protocol`.
+   model, never a parameter read back; each reading carries its value in
+   full, what the trade reads it as, its conditions, its trust and the
+   solver's fingerprint; where a displayed value is still an input, as the
+   composite key's mass, FOUNDATIONS §2.2 says so. The readings' closed
+   forms are test oracles, compiled for `pa-core`'s tests only. Check:
+   `the_bench_measures_its_own_friction_by_the_protocol`,
+   `down_and_up_are_the_band_at_the_seats_attitudes`; `grep -rn oracle
+   crates/pa-app/src crates/pa-wasm/src crates/pa-cli/src` finds nothing.
 4. **Dry friction is set-valued**, at the axes and at the sliding contacts
    alike, never `sign()` or `tanh()`; axis friction is stored as a torque with
    its measurement radius. Check: `grep -rn tanh crates/*/src` finds
-   only comments; `KeyPinFriction` carries its arm.
+   only comments; `AxisFriction` carries its radius.
 5. **No number without provenance**: a record in `data/params/` for every value
    the engine starts from, a script in `tools/derivations/` for every derived
    one and every `[E]`; a source in `private/` counts, a lost one does not.
@@ -78,15 +82,18 @@ trade's own protocols, and come back with the expected values.**
    refuses in `pa-core` every `f64` method IEEE-754 does not round exactly
    (`crates/pa-core/clippy.toml`), a test allowing one explicitly; the golden
    sheet (`crates/pa-app/tests/golden.rs`) fails when a reading moves by a
-   bit, and a change that means to move one rewrites it with
-   `cargo run -p pa-cli -- golden` and says why.
+   bit, and its WebAssembly twin (`crates/pa-wasm/tests/golden.test.mjs`,
+   in `pnpm test`) when the browser's build reads another; a change that
+   means to move one rewrites it with `cargo run -p pa-cli -- golden` and
+   says why; `the_fingerprint_names_the_frozen_numbers` fails when a cap,
+   tolerance or count changes and the solver's fingerprint does not.
 9. **SI unless the name says otherwise.** Geometry and mechanics are SI; a value
    in a trade unit (grams in the weighing algebra; millimetres and grams at the
-   boundary, in the display and in saved files) carries it in its name (`kf_g`,
-   `key_dip_mm`). An unsuffixed trade-unit field is a bug, as is a `*_torque`
-   returning kg·m: `Touchweight` and `Branches` (grams) and `gravity_torque`,
-   `net_torque` (kg·m) still have them. Check: review; `grep -rnE '_(mm|g)\b'
-   crates/pa-core/src` lists the suffixed names.
+   boundary, in the display and in saved files) carries it in its name
+   (`down_weight_g`, `key_dip_mm`), and a measurement its unit beside its
+   value. An unsuffixed trade-unit field is a bug, as is a `*_torque`
+   returning kg·m. Check: review; `grep -rnE '_(mm|g)\b' crates/pa-core/src`
+   lists the suffixed names.
 10. **Upstream settings drift, they do not cascade; faults are reported, not
     refused.** Only what cannot be computed or drawn truthfully is refused or
     clamped, with its reason; the validation layer that catches all of it is
@@ -104,7 +111,9 @@ trade's own protocols, and come back with the expected values.**
 - **Drive in position, compare forces; keep the Bad-Model guard** (FOUNDATIONS
   §5.1), from the dynamics prototype on. *Not mechanically checked.*
 - **Keep the non-confusion tests**: 1 g of lead moves BW, not F; axis friction
-  ×1.2 moves F, not BW. Check: `one_gram_of_lead_moves_balance_weight_*`,
+  ×1.2 moves F, not BW; through the procedures, within what the tilt between
+  the key's two seats derives, never a tolerance widened to pass. Check:
+  `one_gram_of_lead_moves_balance_weight_*`,
   `scaling_friction_moves_friction_weight_*`, `tools/smoke/`.
 - **A validation test says so in its doc comment**; every other test is a
   consistency check, and a round trip through the model's own code never

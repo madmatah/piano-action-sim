@@ -38,14 +38,14 @@
 //! bench's gaps, for how the key bears on its cloth, and for the contacts the
 //! view marks; and how deep drawn parts stand in one another, read off their
 //! outlines ([`crate::mechanism::Mechanism::overlap`]), where a solve starts
-//! and whether a state it finds is one. The one-coordinate statics left under
-//! the key friction weight protocol still read their own construction of the
-//! stops, built from the same fields: the underside
-//! of [`crate::parts::KeyDesign::underside_corners`] and the bearing heights
-//! of [`crate::parts::FrameDesign`]. A test holds every face they read to a
+//! and whether a state it finds is one. The drawing of a frame whose stops
+//! fight still reads its own construction of the stops, built from the same
+//! fields: the bearing heights of [`crate::parts::FrameDesign`]
+//! ([`crate::parts::assembly`]). A test holds every face it reads to a
 //! declared range of a drawn part
-//! (`every_stop_face_is_a_declared_range_of_a_drawn_part`). Planned: those
-//! statics leave, after which nothing reads anything but a drawn range.
+//! (`every_stop_face_is_a_declared_range_of_a_drawn_part`). Planned: that
+//! construction leaves with the key's vertical freedom, after which nothing
+//! reads anything but a drawn range.
 
 mod bearing;
 mod features;

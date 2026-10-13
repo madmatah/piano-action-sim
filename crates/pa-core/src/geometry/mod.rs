@@ -4,15 +4,10 @@
 //! An outline is a closed chain of [`Seg`]s, lines and arcs. The parts built
 //! from outlines, and the ranges into them that a contact may read, are in
 //! [`crate::contact`]. The three signed primitives every contact row is made
-//! of, disc on face, disc on disc and centre on face, are in [`signed`]. The
-//! one-coordinate statics of the key on its frame still read the older
-//! kinematics of [`kinematics`], over a construction of their own built from
-//! the same fields as the drawn parts.
+//! of, disc on face, disc on disc and centre on face, are in [`signed`].
 
-pub mod kinematics;
 pub mod signed;
 
-pub use kinematics::{circle_vs_circle, circle_vs_line, Frame, Rot};
 pub use signed::{centre_on_face, disc_on_disc, disc_on_face, Disc, Face, Proximity};
 
 /// A point in a part's local frame, in metres.
@@ -199,29 +194,6 @@ pub struct KeyBearing {
     /// Offset of the effective bearing point from the balance rail pin, metres.
     /// Positive towards the back of the key.
     pub offset_from_pin: f64,
-}
-
-/// Result of a planar contact query between two surfaces.
-///
-/// `gap` is positive when separated. `d_gap_d_theta` is the instantaneous lever
-/// arm on each body — and it is the quantity the whole project exists to compute
-/// exactly, because the variation of the lever arm through the stroke *is* the
-/// touch.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ContactQuery {
-    /// Signed gap, metres. Positive = separated, negative = interpenetrating.
-    pub gap: f64,
-    /// Unit normal, pointing from body B towards body A.
-    pub normal: Point,
-    /// Contact point in world coordinates. It migrates along the surface as the
-    /// bodies rotate; that migration is the physical origin of the varying ratio.
-    pub point: Point,
-    /// Partial derivative of `gap` with respect to body A's angle, metres/radian.
-    pub d_gap_d_theta_a: f64,
-    /// Partial derivative of `gap` with respect to body B's angle, metres/radian.
-    pub d_gap_d_theta_b: f64,
-    /// Relative tangential velocity at the contact point, m/s.
-    pub v_tangential: f64,
 }
 
 #[cfg(test)]

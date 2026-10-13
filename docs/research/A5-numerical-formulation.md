@@ -1068,8 +1068,9 @@ predicts outputs measured independently from inputs measured independently, on t
 same instrument (FOUNDATIONS §5.1). Levels 0, 1, 2 and 5 are consistency; level 3
 is validation; level 4 is consistency, and validation where the measurement is
 independent. Built: the level-0 lever-arm, virtual-work and key-ratio tests, the
-level-4 jig and key friction weight protocols, and the non-confusion tests; the
-rest is planned (FOUNDATIONS §5.3).
+level-4 protocols of the weighing sheet (the jig, the seated pose, the breakaway
+walk, both key friction weights), and the non-confusion tests; the rest is
+planned (FOUNDATIONS §5.3).
 
 ### Level 0 — Analytic tests (unit tests, exact)
 - **Lever arms**: replace the profiles with rigid arms of known lengths and check
@@ -1242,7 +1243,8 @@ finite differences (FOUNDATIONS §5.3). Questions the tool must answer:
 The last two are **non-confusion** tests: a change of mass must move BW without
 touching F; a change of friction must move F without touching BW. A technician
 detects at once a model that mixes the two, where a developer would never see it.
-With a constant friction bound both hold by construction in the closed form; they
+With a constant friction bound both hold but for the tilt between the key's two
+seats, where D and U are read, a tolerance derived from the seats' arms; they
 guard against coding mix-ups until friction depends on load (FOUNDATIONS §5.3).
 Settings are not optimised by gradient descent: Thorin's cost function is convex
 along a few parameters and flat along many [V, Thorin 2013 §6.5.6]; a scripted

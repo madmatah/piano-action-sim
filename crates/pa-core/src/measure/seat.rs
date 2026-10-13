@@ -11,12 +11,15 @@
 //! down on its cloth; for the bottom seat a press at the measuring point is
 //! added to it, as a finger presses the key down. Gravity acts when the key
 //! has a mass in the model; an unweighed key is seated by the two loads
-//! alone.
+//! alone. A load a procedure leaves on the key throughout, the temporary
+//! weight of the key friction weight protocol, stands on it in both seats
+//! ([`Seating::standing`]).
 //!
 //! The magnitudes follow one frozen rule. The load at the capstan seats the
-//! key at the top with [`SEAT_MARGIN`] of torque over gravity's generalized
-//! force; the press seats it at the bottom with the same margin over gravity
-//! and the load at the capstan together. Both are taken with the key level:
+//! key at the top with [`SEAT_MARGIN`] of torque over the generalized force
+//! of gravity and the standing loads; the press seats it at the bottom with
+//! the same margin over those and the load at the capstan together. Both are
+//! taken with the key level:
 //! over its stroke, gravity's generalized force on a key changes by its
 //! weight times the height of its centre of mass times the angle, a fraction
 //! of the margin. With rigid stops the pose depends on neither magnitude,
@@ -75,6 +78,12 @@ pub struct Seating<'a> {
     /// The margin each load seats the key by, newton-metres:
     /// [`SEAT_MARGIN`].
     pub margin: f64,
+    /// Loads that stay on the key through the whole procedure, besides its
+    /// own weight: the temporary weight the key friction weight protocol
+    /// zeroes the front weight with. The preparation seats the key against
+    /// them as against gravity, and every solve of the procedure carries
+    /// them.
+    pub standing: &'a [PointLoad],
 }
 
 /// One seat.
@@ -169,12 +178,13 @@ impl Seats {
     }
 }
 
-/// The preparation loads of the two seats, by the frozen rule.
+/// The preparation loads of the two seats, by the frozen rule, with the
+/// standing loads.
 struct Preparation {
     /// At the top: the load at the capstan.
-    top: [PointLoad; 1],
+    top: Vec<PointLoad>,
     /// At the bottom: the load at the capstan and the press.
-    bottom: [PointLoad; 2],
+    bottom: Vec<PointLoad>,
     /// The load at the capstan, newtons.
     capstan_load: f64,
     /// The press at the measuring point, newtons.
@@ -223,9 +233,10 @@ impl Seating<'_> {
         self.seat(statics, &nominal, &prepared.top, true)
     }
 
-    /// The preparation loads, by the frozen rule of the module documentation;
-    /// refused where the capstan or the measuring point stands on the wrong
-    /// side of the bearing for its load to seat the key.
+    /// The preparation loads, by the frozen rule of the module documentation,
+    /// each seat's followed by the standing loads; refused where the capstan
+    /// or the measuring point stands on the wrong side of the bearing for its
+    /// load to seat the key.
     fn preparation(&self) -> Result<Preparation, SeatRefusal> {
         let m = &self.mounted.mechanism;
         let n = m.coords().len();
@@ -234,7 +245,7 @@ impl Seating<'_> {
         let angle = self.mounted.angle;
         let key = self.mounted.key;
         let mut gravity = vec![0.0; n];
-        m.generalized_forces(&pose, &[], &mut gravity);
+        m.generalized_forces(&pose, self.standing, &mut gravity);
         let gravity = gravity[angle.0];
         // A downward newton at a point turns the key by minus the vertical
         // speed that point has per radian.
@@ -255,12 +266,16 @@ impl Seating<'_> {
             at: MaterialPoint { body: key, at },
             force: Point::new(0.0, -newtons),
         };
+        let mut top = vec![down(self.capstan, capstan_load)];
+        let mut bottom = vec![
+            down(self.capstan, capstan_load),
+            down(self.measuring_point, press),
+        ];
+        top.extend_from_slice(self.standing);
+        bottom.extend_from_slice(self.standing);
         Ok(Preparation {
-            top: [down(self.capstan, capstan_load)],
-            bottom: [
-                down(self.capstan, capstan_load),
-                down(self.measuring_point, press),
-            ],
+            top,
+            bottom,
             capstan_load,
             press,
         })
@@ -355,7 +370,6 @@ impl Seating<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parts::assembly::nose_up_angle;
     use crate::parts::fixtures::{on_frame, regulated};
     use crate::parts::frame::KeyKind;
     use crate::solve::statics::{tests::assert_virtual_work, GAP_TOLERANCE};
@@ -371,51 +385,68 @@ mod tests {
         (seats, top, bottom)
     }
 
-    /// Consistency: **on the regulated bench the seats are where the
-    /// one-coordinate statics put the key**: the same rest on the cloth's
-    /// back edge and the same bottom on the front punching, so the same key
-    /// height and dip. The two read the same drawn cloth. At the bottom the
-    /// built stop is a disc of the punching's edge radius `r` under the
-    /// felt's centre, which at a tilt `φ` reaches `r (1 − cos φ)` further
-    /// than the centre does: picometres, on a key regulated level at the
-    /// bottom to within a paper.
-    ///
-    /// The bound is derived. The static solve closes each gap within
-    /// [`GAP_TOLERANCE`], which the arm from the cloth's edge to the key
-    /// front, against the arm to the edge, turns into height; the closed form
-    /// and the pose each round their last bits on numbers of the key front's
-    /// height. The disc's reach, at the front rail 225 mm out, moves the
-    /// bottom attitude by itself over that arm, and the dip by it through the
-    /// lever to the key front.
+    /// Consistency: **key height is read from the keybed**, the datum that
+    /// makes it mean anything. Raise the whole frame and the key height
+    /// rises with it, one for one, and the dip, a travel and not a height,
+    /// does not move. The bound is derived: each seat closes its contact
+    /// within [`GAP_TOLERANCE`] either way, which the lever from the cloth's
+    /// edge, 212 mm behind the pin, to the key front, 258 mm in front,
+    /// carries to the key front, twice over for two benches; the heights
+    /// round their last bits on numbers of about 65 mm.
     #[test]
-    fn the_seats_are_where_the_built_statics_put_the_key() {
+    fn key_height_is_read_from_the_keybed() {
+        let base = regulated();
+        let mut raised = base.clone();
+        let lift = 0.003;
+        raised.frame.balance_rail_height += lift;
+        raised.frame.front_rail_height += lift;
+        raised.frame.back_rail_height += lift;
+        let (b, b_top, b_bottom) = heights(&base);
+        let (r, r_top, r_bottom) = heights(&raised);
+        let bound = 4.0 * GAP_TOLERANCE * 0.258 / 0.212 + 64.0 * f64::EPSILON * 0.07;
+        assert!(
+            (r_top - b_top - lift).abs() <= bound,
+            "lifting the frame by {lift} m raised the key by {} m",
+            r_top - b_top
+        );
+        assert!(
+            ((r_top - r_bottom) - (b_top - b_bottom)).abs() <= 2.0 * bound,
+            "a travel cannot depend on how high the frame stands"
+        );
+        assert_eq!(b.top.held_by, vec![ContactCode::BackRailCloth]);
+        assert_eq!(r.bottom.held_by, vec![ContactCode::FrontRailPunching]);
+    }
+
+    /// Consistency: **the dip's datum matters**, as the front weight's does.
+    /// Key dip is read at the key front; the touchweights at the measuring
+    /// point, 11 mm behind it. The same travel read there is shorter, in the
+    /// ratio of the two arms, once the term both share is taken out: turning
+    /// the key also moves its top by `(cos θ_top − cos θ_bottom)` times its
+    /// height above the pin, the same at both points, which both carry and
+    /// neither scales. Taken out, the ratio is the arms', to the rounding
+    /// of heights of about 65 mm.
+    #[test]
+    fn the_dip_read_at_the_measuring_point_is_shorter_by_the_arms() {
         let a = regulated();
-        let (seats, top, bottom) = heights(&a);
-        let t = crate::measure::oracle::Travelling::travel(&a).expect("a travel");
-        let ratio = 0.258 / 0.200;
-        let bound = 2.0 * GAP_TOLERANCE * ratio + 64.0 * f64::EPSILON * top;
+        let k = on_frame(&a, KeyKind::Natural, 0.0, true);
+        let seats = k.seating().seats(&mut Statics::new()).unwrap();
+        let (top, bottom) = seats.heights(&k.mounted, k.front_top);
+        let (mp_top, mp_bottom) = seats.heights(&k.mounted, k.measuring_point);
+        let (at_front, at_point) = (top - bottom, mp_top - mp_bottom);
+        assert!(at_point < at_front, "the nearer datum travels less");
+        assert_eq!(k.front_top.y.to_bits(), k.measuring_point.y.to_bits());
+        let (t, b) = (seats.top.q[0], seats.bottom.q[0]);
+        let common = (libm::cos(t) - libm::cos(b)) * k.front_top.y;
+        let arms = k.measuring_point.x / k.front_top.x;
+        let rounding = 64.0 * f64::EPSILON * top / (at_front - common);
         assert!(
-            (top - t.key_height).abs() <= bound,
-            "key height {top} against {}",
-            t.key_height
+            ((at_point - common) / (at_front - common) - arms).abs() <= rounding,
+            "{} against the arms' {arms}",
+            (at_point - common) / (at_front - common)
         );
-        let phi = seats.bottom.q[0].abs();
-        let disc = crate::parts::assembly::PUNCHING_EDGE_RADIUS * (1.0 - libm::cos(phi));
-        assert!(
-            ((top - bottom) - t.key_dip).abs() <= 2.0 * bound + disc * 0.258 / 0.225,
-            "key dip {} against {}",
-            top - bottom,
-            t.key_dip
-        );
-        assert_eq!(seats.top.held_by, vec![ContactCode::BackRailCloth]);
-        assert_eq!(seats.bottom.held_by, vec![ContactCode::FrontRailPunching]);
-        let built = nose_up_angle(t.sin_bottom);
-        assert!(
-            (seats.bottom.q[0] - built).abs()
-                <= (disc + 2.0 * GAP_TOLERANCE) / 0.225 + 8.0 * f64::EPSILON,
-            "the bottom at {} rad, the built statics' at {built} rad",
-            seats.bottom.q[0]
-        );
+        // 11 mm in 258 is 4 %, 0.43 mm on a 10.2 mm dip: five of the
+        // thinnest papers as the key front sees them.
+        assert!(at_front - at_point > 0.0004);
     }
 
     /// The balance punching stays loaded in both seats: the load at the

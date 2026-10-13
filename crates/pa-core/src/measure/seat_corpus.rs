@@ -1,12 +1,12 @@
-//! The seated pose over a corpus of keys and frames, against the brute-force
-//! oracle, and against the one-coordinate statics wherever both seat the
-//! key. Tests only.
+//! The seated pose and the breakaway walk over a corpus of keys and frames,
+//! against the brute-force oracle. Tests only.
 //!
-//! C8, consistency, for the seats: every case seats the key or refuses with
-//! a code, never a panic or a number that is not one; every seat the core
-//! finds passes the oracle; and where the core and the built `first_touch`
-//! disagree by more than their declared difference, the oracle arbitrates,
-//! and the core must be the one it confirms. Four classes:
+//! C8, consistency, for the seats and the walks: every case seats the key or
+//! refuses with a code, never a panic or a number that is not one; every seat
+//! the core finds passes the oracle, which samples the drawn outlines and
+//! shares no code with the rows; and every key that seats walks from each
+//! seat to the other, its down weight above its up weight by the band its
+//! friction makes. Four classes:
 //!
 //! - **near**: the regulated bench, every rail, felt, cloth, pin and
 //!   mortise moved within a few millimetres, the chamfer from none to
@@ -14,18 +14,19 @@
 //! - **wide**: the bench's controls anywhere in their ranges, most of which
 //!   no keyboard could be built from (the audit's BWA-12);
 //! - **RUST-9's**: a front punching standing 0.1 to 0.4 mm past the key's
-//!   front edge, its pin pulled, where `first_touch` kept the wrong root of
-//!   a corner against an edge;
-//! - **PHY-8's**: a tail with no chamfer, where `first_touch` lost the
-//!   contact on the sign of a rounding error.
+//!   front edge, its pin pulled, so that nothing stands under the front of
+//!   the key at the bottom of its stroke;
+//! - **PHY-8's**: a tail with no chamfer, the key bearing on its cloth with
+//!   the flat of its underside, the back rail raised and lowered through
+//!   4 mm.
 
 use crate::contact::oracle::{self, polyline, SPACING};
 use crate::contact::{ContactCode, PairGeometry, PartCode, Role, Surface, SurfaceRef};
 use crate::geometry::Point;
-use crate::measure::oracle::Travelling;
 use crate::measure::seat::SeatRefusal;
+use crate::measure::walk::{Stroke, CAP};
 use crate::mechanism::fixtures::XorShift;
-use crate::parts::assembly::{nose_up_angle, KeyAssembly, ReadAt, CONTACT_TOLERANCE};
+use crate::parts::assembly::KeyAssembly;
 use crate::parts::fixtures::{on_frame, regulated, OnFrame};
 use crate::parts::frame::KeyKind;
 use crate::solve::statics::{tests::assert_virtual_work, GAP_TOLERANCE, ITERATION_CAP};
@@ -254,42 +255,20 @@ fn corpus() -> Vec<(Class, KeyAssembly)> {
     out
 }
 
-/// The key front's height at a pose, metres.
-fn height(k: &OnFrame, q: &[f64]) -> f64 {
-    k.mounted
-        .mechanism
-        .pose(q)
-        .world(crate::mechanism::MaterialPoint {
-            body: k.mounted.key,
-            at: k.front_top,
-        })
-        .y
-}
-
-/// C8, consistency, for the seats, with the parity of the core's rest and
-/// bottom against `first_touch`'s, the oracle arbitrating every
-/// disagreement.
+/// C8, consistency, for the seats: every seat the core finds stands where
+/// the oracle confirms it, and every refusal names its reason.
 ///
-/// The parity bound is derived from the two models' declared differences,
-/// carried to the key front through the lever: the built front punching is
-/// a disc of radius `r` under the felt's centre, which reaches `r(1 − cos φ)`
-/// further at a tilt `φ`; the built mortise stop is a point at the pin's
-/// middle, where the pin's corners stand up to half its length times
-/// `sin φ` higher, and the mortise's depth is taken square to the key, off
-/// by `(depth + r)(1 − cos φ)`. Both read the same drawn cloth, and differ
-/// there only by how near closing each takes a contact to be: the built
-/// statics accept a root within a tenth of a micron, the core converges
-/// within a picometre.
+/// A seat of a key a keyboard could be built from takes at most a quarter
+/// of the static solve's cap of steps, which `CLAUDE.md` rule 8 asks of a
+/// cap.
 #[test]
-fn the_seats_stand_where_the_oracle_confirms_them_and_first_touch_agrees_or_is_wrong() {
+fn the_seats_stand_where_the_oracle_confirms_them() {
     let mut statics = Statics::new();
     let mut tally = std::collections::BTreeMap::new();
-    let (mut parity, mut overruled) = (0, 0);
     let mut most_iterations = std::collections::BTreeMap::new();
     for (class, a) in corpus() {
         let k = on_frame(&a, KeyKind::Natural, 0.0, true);
         let core = k.seating().seats(&mut statics);
-        let old = a.travel();
         let outcome = match &core {
             Ok(_) => "seated".to_owned(),
             Err(r) => format!("{r:?}")
@@ -298,16 +277,7 @@ fn the_seats_stand_where_the_oracle_confirms_them_and_first_touch_agrees_or_is_w
                 .unwrap()
                 .to_owned(),
         };
-        *tally
-            .entry((format!("{class:?}"), outcome.clone()))
-            .or_insert(0) += 1;
-        let old_poses = old.map(|t| {
-            (
-                vec![nose_up_angle(t.sin_rest)],
-                vec![nose_up_angle(t.sin_bottom)],
-                t,
-            )
-        });
+        *tally.entry((format!("{class:?}"), outcome)).or_insert(0) += 1;
         match core {
             Ok(seats) => {
                 let most = most_iterations.entry(format!("{class:?}")).or_insert(0);
@@ -347,65 +317,11 @@ fn the_seats_stand_where_the_oracle_confirms_them_and_first_touch_agrees_or_is_w
                         0xc6c8,
                     );
                 }
-                let Some((rest, bottom, t)) = old_poses else {
-                    continue;
-                };
-                let (top_new, bottom_new) = (height(&k, &seats.top.q), height(&k, &seats.bottom.q));
-                let top_old = a.key_height_at(ReadAt::FrontEdge, t.sin_rest);
-                let bottom_old = a.key_height_at(ReadAt::FrontEdge, t.sin_bottom);
-                let phi = seats.bottom.q[0].abs();
-                let r = crate::parts::assembly::PUNCHING_EDGE_RADIUS;
-                let pin = a.frame.sections.front.pin.map_or(0.0, |p| p.length());
-                let model = (r * (1.0 - libm::cos(phi))).max(
-                    0.5 * pin * libm::sin(phi)
-                        + (a.key.front_mortise_depth + r) * (1.0 - libm::cos(phi)),
-                );
-                // Each closes its contact within its own tolerance: the
-                // built statics accept a root within CONTACT_TOLERANCE of
-                // closing, the core converges within GAP_TOLERANCE; a gap at
-                // a stop moves the key front by the lever from the stop.
-                let closing = CONTACT_TOLERANCE + GAP_TOLERANCE;
-                let back_arm =
-                    (a.frame.back_rail.abs() - a.frame.sections.back.half_length).max(mm(50.0));
-                let front_lever = a.key.front_edge / a.frame.front_rail.abs().max(mm(50.0));
-                let rounding = 64.0 * f64::EPSILON * top_new.abs();
-                let top_bound = closing * a.key.front_edge / back_arm + rounding;
-                let agree_top = (top_new - top_old).abs() <= top_bound;
-                let agree_bottom = (bottom_new - bottom_old).abs()
-                    <= top_bound + (model + closing) * front_lever + rounding;
-                if agree_top && agree_bottom {
-                    parity += 1;
-                    continue;
-                }
-                // The oracle arbitrates: the old must be the one it rejects.
-                let old_sound = sound(&k, &rest, &[ContactCode::BackRailCloth]).is_ok()
-                    && sound(&k, &bottom, &[]).is_ok();
-                assert!(
-                    !old_sound,
-                    "{class:?}: the core and first_touch disagree (top {top_new} against \
-                     {top_old}, bottom {bottom_new} against {bottom_old}) and the oracle finds \
-                     both sound\n{a:?}"
-                );
-                overruled += 1;
             }
             Err(SeatRefusal::NotConverged { .. } | SeatRefusal::Mechanism(_)) => {
                 panic!("{class:?}: {core:?}\n{a:?}")
             }
-            Err(_) => {
-                // Refused with a code. Where the old statics gave an answer,
-                // the oracle must reject it: a refusal of a seat the drawn
-                // parts allow is a defect.
-                if let Some((rest, bottom, _)) = old_poses {
-                    let old_sound = sound(&k, &rest, &[ContactCode::BackRailCloth]).is_ok()
-                        && sound(&k, &bottom, &[]).is_ok();
-                    assert!(
-                        !old_sound,
-                        "{class:?}: the core refuses with {core:?} and the oracle finds \
-                         first_touch's seats sound\n{a:?}"
-                    );
-                    overruled += 1;
-                }
-            }
+            Err(_) => {}
         }
     }
     let count = |class: &str, outcome: &str| {
@@ -417,13 +333,6 @@ fn the_seats_stand_where_the_oracle_confirms_them_and_first_touch_agrees_or_is_w
     assert_eq!(count("Near", "seated"), 160, "{tally:?}");
     assert_eq!(count("Rust9", "NoStopBelowTheFront"), 16, "{tally:?}");
     assert_eq!(count("Phy8", "seated"), 40, "{tally:?}");
-    assert!(parity > 150, "only {parity} cases agree");
-    assert!(
-        overruled > 30,
-        "only {overruled} disagreements, which the oracle settles"
-    );
-    // A seat of a key a keyboard could be built from takes at most a quarter
-    // of the cap, which `CLAUDE.md` rule 8 asks of a cap.
     for class in ["Near", "Phy8"] {
         let most = most_iterations.get(class).copied().unwrap_or(0);
         assert!(
@@ -431,4 +340,68 @@ fn the_seats_stand_where_the_oracle_confirms_them_and_first_touch_agrees_or_is_w
             "a {class} seat took {most} steps of the {ITERATION_CAP}"
         );
     }
+}
+
+/// C8, consistency, for the walks: on every key a keyboard could be built
+/// from, a 6 g band of friction at its bushings, each walk reaches the other
+/// seat, within a quarter of its cap of steps, and the down weight stands
+/// above the up weight by at least twice the friction read through the
+/// longest arm the measuring point has at either seat:
+/// `D − U = b (1/a_top + 1/a_bottom) / g`, plus what the key's own balance
+/// moves between the seats, which on these keys, whose centre of mass stands
+/// above the pin, only adds to it.
+///
+/// Every increment stays within half the static solve's cap, not the
+/// quarter a seat keeps to, and the bound is derived. A trial the halvings
+/// put a hair past the threshold starts the key with a step of its excess
+/// force over the metric, as short as the residual's tolerance lets the
+/// excess be, about 3e-13 N·m, a femtometre at the key's front; each step
+/// accepted is three times the last, so reaching the row margin's
+/// millimetre takes about 26 steps; the stroke, 10 mm at the key front at
+/// most a margin a step, about ten more. The corpus reaches 35.
+#[test]
+fn every_walk_reaches_the_other_seat_and_reads_d_above_u() {
+    let mut statics = Statics::new();
+    let mut walked = 0;
+    for (class, a) in corpus() {
+        if !matches!(class, Class::Near | Class::Phy8) {
+            continue;
+        }
+        let arm = a.protocol.measuring_point(&a.key);
+        let bound = crate::mechanism::AxisFriction::of_weight_at(6.0, arm).bound_n_m;
+        let k = on_frame(&a, KeyKind::Natural, bound, true);
+        let seating = k.seating();
+        let seats = seating.seats(&mut statics).expect("a near key seats");
+        let walk = |statics: &mut Statics, stroke| {
+            seating
+                .walk(statics, &seats, stroke)
+                .unwrap_or_else(|r| panic!("{class:?}, {stroke:?}: {r:?}\n{a:?}"))
+        };
+        let (down, up) = (
+            walk(&mut statics, Stroke::Down),
+            walk(&mut statics, Stroke::Up),
+        );
+        for w in [&down, &up] {
+            assert!(w.grams.is_finite());
+            assert!(w.steps <= CAP / 4, "{class:?}: {} steps", w.steps);
+            assert!(
+                w.report.most_iterations <= ITERATION_CAP / 2,
+                "{class:?}: an increment took {} steps",
+                w.report.most_iterations
+            );
+        }
+        // Twice the friction through the longest arm the point can have.
+        let reach = (k.measuring_point.x * k.measuring_point.x
+            + k.measuring_point.y * k.measuring_point.y)
+            .sqrt();
+        let least = 2.0 * 1000.0 * bound / (crate::G * reach);
+        assert!(
+            down.grams - up.grams >= least,
+            "{class:?}: D {} g, U {} g, less than the {least} g its friction makes",
+            down.grams,
+            up.grams
+        );
+        walked += 1;
+    }
+    assert_eq!(walked, 200);
 }

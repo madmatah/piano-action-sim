@@ -18,6 +18,11 @@
       ],
       "outputs": ["pkg/**"]
     },
+    "@pas/wasm#test": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/crates/pa-app/tests/golden/**"],
+      "outputs": []
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": []

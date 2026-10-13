@@ -135,6 +135,54 @@ impl Coord {
     }
 }
 
+/// A pin's dry friction as it is known: a torque bound, and the radius it
+/// was measured at (`CLAUDE.md` rule 4).
+///
+/// The trade measures a key's bushings as a key friction weight, grams at the
+/// measuring point, and publishes pivot frictions as torques taken at radii
+/// that differ from one source to the next. So the bound is kept as what it
+/// is, a torque, with the radius a weight in grams was read at: moving the
+/// measuring point changes the grams it reads as, never the bushings. What a
+/// mechanism's coordinate carries is the bound alone ([`Coord::friction`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AxisFriction {
+    /// The bound, newton-metres: any torque within plus or minus this holds
+    /// the pin still.
+    pub bound_n_m: f64,
+    /// The radius a weight read it at, metres; `None` where the source gives
+    /// a torque and no radius, as Hirschkorn's table does.
+    pub radius_m: Option<f64>,
+}
+
+impl AxisFriction {
+    /// The friction a weight of `grams` overcomes at `radius_m` from the pin,
+    /// with the lever level: bushings set straight in grams on the level arm,
+    /// as the bench's default is. A key friction weight measured by
+    /// Stanwood's protocol is read on the key resting nose-up, and is turned
+    /// into a torque by running that protocol instead
+    /// ([`crate::measure::weighing::Weighing::bushings_reading`]).
+    pub fn of_weight_at(grams: f64, radius_m: f64) -> Self {
+        Self {
+            bound_n_m: grams * 1e-3 * radius_m * crate::G,
+            radius_m: Some(radius_m),
+        }
+    }
+
+    /// The bound as the weight in grams that overcomes it at `radius_m`.
+    pub fn weight_at(&self, radius_m: f64) -> f64 {
+        1000.0 * self.bound_n_m / (crate::G * radius_m)
+    }
+
+    /// This friction multiplied by `k`, read at the same radius: the
+    /// non-confusion test's bushings made 1.2 times as tight.
+    pub fn scaled(&self, k: f64) -> Self {
+        Self {
+            bound_n_m: self.bound_n_m * k,
+            ..*self
+        }
+    }
+}
+
 /// How a body hangs from its parent.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Joint {
@@ -479,6 +527,23 @@ impl Mechanism {
         Ok(self)
     }
 
+    /// This mechanism with the dry friction of `coord`'s joint bounded by
+    /// `bound` newton-metres instead; or why not: a coordinate it does not
+    /// have, or a bound that is negative or not a finite number. Everything
+    /// else is kept as it was, bit for bit: a procedure that tries the same
+    /// key on other bushings reads the same parts, contacts and masses.
+    pub fn with_friction(mut self, coord: CoordId, bound: f64) -> Result<Self, Problem> {
+        let c = self
+            .coords
+            .get_mut(coord.0)
+            .ok_or(Problem::NoSuchCoordinate { coord })?;
+        if !(bound.is_finite() && bound >= 0.0) {
+            return Err(Problem::FrictionNotABound { coord });
+        }
+        c.friction = bound;
+        Ok(self)
+    }
+
     /// The bodies, the ground first.
     pub fn bodies(&self) -> &[Body] {
         &self.bodies
@@ -694,6 +759,47 @@ mod tests {
         assert_eq!(
             with(&|_, pairs| pairs[1].b = pairs[1].a.clone()).err(),
             Some(Problem::PairOnOneBody { pair: 1 })
+        );
+    }
+
+    /// Other bushings on the same mechanism: one coordinate's friction bound
+    /// changes and nothing else does; a bound that is not one, or a
+    /// coordinate the mechanism does not have, is named.
+    #[test]
+    fn other_bushings_change_one_bound_and_nothing_else() {
+        let p = parts();
+        let m = chain()
+            .with_contacts(p.parts.clone(), pairs(&p))
+            .expect("the test chain's contacts are drawn");
+        let tighter = m.clone().with_friction(CoordId(2), 0.25).expect("a bound");
+        for (c, (was, now)) in m.coords().iter().zip(tighter.coords()).enumerate() {
+            let expected = if c == 2 { 0.25 } else { was.friction };
+            assert_eq!(now.friction.to_bits(), expected.to_bits(), "coordinate {c}");
+            assert_eq!(
+                Coord {
+                    friction: 0.0,
+                    ..*now
+                },
+                Coord {
+                    friction: 0.0,
+                    ..*was
+                }
+            );
+        }
+        let back = tighter
+            .with_friction(CoordId(2), m.coords()[2].friction)
+            .expect("a bound");
+        assert_eq!(back, m, "the same bushings again, the same mechanism");
+        for bad in [-1e-9, f64::NAN, f64::INFINITY] {
+            assert_eq!(
+                m.clone().with_friction(CoordId(2), bad),
+                Err(Problem::FrictionNotABound { coord: CoordId(2) }),
+                "{bad}"
+            );
+        }
+        assert_eq!(
+            m.clone().with_friction(CoordId(9), 0.1),
+            Err(Problem::NoSuchCoordinate { coord: CoordId(9) })
         );
     }
 }

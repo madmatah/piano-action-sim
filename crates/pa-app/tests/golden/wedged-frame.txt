@@ -3,6 +3,24 @@
 # Every reading in full bits: the shortest decimal that reads back to the
 # same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
 # a change that moves a reading rewrites this file and says why.
+sheet.front_weight.value 6.480979726929041 0x4019ec85f314cc06
+sheet.front_weight.shown 6.5 0x401a000000000000
+sheet.front_weight.unit g
+sheet.front_weight.trust indicative key_mass,geometry
+sheet.front_weight.fingerprint statics/1
+sheet.key_weight_ratio.value 0.5242914979757085 0x3fe0c6fef6ac0c70
+sheet.key_weight_ratio.shown 0.52 0x3fe0a3d70a3d70a4
+sheet.key_weight_ratio.unit 
+sheet.key_weight_ratio.trust indicative geometry
+sheet.key_weight_ratio.fingerprint statics/1
+sheet.key_height refused Seat(CannotSeat { fighting: [FrontRailPunching, BackRailCloth, FrontPinInTheMortise] })
+sheet.key_dip refused Seat(CannotSeat { fighting: [FrontRailPunching, BackRailCloth, FrontPinInTheMortise] })
+sheet.down_weight refused Seat(CannotSeat { fighting: [FrontRailPunching, BackRailCloth, FrontPinInTheMortise] })
+sheet.up_weight refused Seat(CannotSeat { fighting: [FrontRailPunching, BackRailCloth, FrontPinInTheMortise] })
+sheet.balance_weight refused From { reading: DownWeight }
+sheet.friction_weight refused From { reading: DownWeight }
+sheet.key_friction_weight_zeroed_on_the_jig refused Seat(CannotSeat { fighting: [FrontRailPunching, BackRailCloth, FrontPinInTheMortise] })
+sheet.key_friction_weight_zeroed_on_the_frame refused Seat(CannotSeat { fighting: [FrontRailPunching, BackRailCloth, FrontPinInTheMortise] })
 readout none
 frame_fault the back rail cloth holds the tail higher than the front punching lets the front come down, so the key rides on both and lifts off its balance punching. A real keyboard does exactly that; this bench cannot weigh it, because the bearing is modelled as a pivot.
 faults 0

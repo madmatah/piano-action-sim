@@ -33,7 +33,7 @@ pub mod key;
 pub mod mounts;
 pub mod verdicts;
 
-pub use assembly::{KeyAssembly, RestingOn};
+pub use assembly::KeyAssembly;
 pub use faults::Fault;
 pub use frame::{FrameDesign, FrameRanges, PunchingStack};
 pub use key::KeyRanges;
@@ -560,22 +560,17 @@ impl KeyDesign {
     /// The flat of the underside, as the two x it runs between, metres.
     ///
     /// **This is the bearing surface**, and it is not the whole key: the tail is
-    /// chamfered over its last stretch, behind everything that touches. Every
-    /// stop contacts this and nothing else, so it is stated once here rather
-    /// than rebuilt by whoever needs it. The drawn key declares the same
-    /// underside as ranges of its parts ([`KeyRanges::underside`]), built
-    /// from the same fields.
+    /// chamfered over its last stretch, behind everything that touches. The
+    /// drawn key declares the same underside as ranges of its parts
+    /// ([`KeyRanges::underside`]), built from the same fields, and the
+    /// contacts read those.
     pub fn underside_flat(&self) -> (f64, f64) {
         (self.tail_end + self.tail_rise_run, self.front_edge)
     }
 
-    /// The corners of the underside, from the tail forward.
-    ///
-    /// Three: the end of the tail, the kink where the chamfer runs out into
-    /// the flat, and the front of the key. A corner is where the underside
-    /// stops being a face, so these are the points a stop can be bedded
-    /// against rather than *on* — which is what happens to a key whose
-    /// chamfer does not match the angle it stands at.
+    /// The corners of the underside, from the tail forward: the end of the
+    /// tail, the kink where the chamfer runs out into the flat, and the front
+    /// of the key. What the drawn underside's chain is held to by the tests.
     pub fn underside_corners(&self) -> [Point; 3] {
         let (flat_from, flat_to) = self.underside_flat();
         [
@@ -585,23 +580,12 @@ impl KeyDesign {
         ]
     }
 
-    /// The underside, as the two faces it really is: the chamfer, then the flat.
-    ///
-    /// Both can bear, which is why both are stated. The flat carries the
-    /// balance punching and the front punching; the chamfer is cut to bed on
-    /// the back rail cloth. Taking the underside as one straight line would
-    /// contact the flat's extension, under wood that is not there.
-    pub fn underside_segments(&self) -> [(Point, Point); 2] {
-        let [tail, kink, front] = self.underside_corners();
-        [(tail, kink), (kink, front)]
-    }
-
     /// The volume model's polygon: the key's whole sagittal section, as an
     /// ordered list of vertices, the covering and the key front counted as wood.
     ///
     /// The composite key's mass properties integrate it, and nothing else
     /// reads it: the key is drawn from its parts ([`Self::parts`]), which tile
-    /// this polygon exactly, and the stops read [`Self::underside_corners`].
+    /// this polygon exactly.
     pub fn outline_vertices(&self) -> Vec<Point> {
         let top = self.stick_height;
         let wood_front = self.front_edge - self.front_board;

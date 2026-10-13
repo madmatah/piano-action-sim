@@ -523,7 +523,7 @@ exists.
 | **wasm-bindgen-rayon** | 1.3.0 | **2024-12-21** | Last published on that date; depends on `wasm-bindgen ^0.2.99`, so compatible with 0.2.129 by caret [V, crates.io API]. Not usable: WebAssembly threads need the standard library rebuilt with atomics, which needs nightly Rust (FOUNDATIONS §3.10); the planned runtime is one module per Web Worker, notes sharing nothing (FOUNDATIONS §7.6) |
 | wasm-bindgen | 0.2.129 | 2026-09-25 | Used by `pa-wasm` (built) |
 | argmin | 0.11.0 | 2025-09-28 | For identifying parameters offline, such as fitting felt load curves as Hirschkorn did |
-| roots | 0.0.8 | **2022-12-21** | Stagnant; a bracketed search is a few lines (the settle solve's bisection is built, FOUNDATIONS §2.1) |
+| roots | 0.0.8 | **2022-12-21** | Stagnant; a bracketed search is a few lines (the breakaway walk's bisection is built, FOUNDATIONS §2.2) |
 
 **WebAssembly SIMD**: fixed-width SIMD128 ships in Chrome 91, Firefox 89 and
 Safari 16.4; relaxed SIMD reaches Safari only as a preview and iOS Safari not at

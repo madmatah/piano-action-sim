@@ -17,13 +17,24 @@
 use pa_core::contact::{Bearing as ContactBearing, Part, Rows, ROW_MARGIN};
 pub use pa_core::contact::{ContactCode, HowItBears, Material, PartCode, Provenance, Role, Sweep};
 use pa_core::geometry::{KeyBearing, Point};
-use pa_core::measure::jig::KeyJig;
+use pa_core::measure::jig::{JigRefusal, KeyJig};
+/// A reading of the sheet and what it carries, re-exported so an adapter can
+/// show each without reaching past the application layer.
+pub use pa_core::measure::measurement::{
+    Bases, Basis, Input, Measurement, ProcedureId, Rounding, Trust, Unit, Zeroed,
+};
 /// Why the key cannot be seated, re-exported so an adapter can say why a
 /// frame cannot be weighed without reaching past the application layer.
 pub use pa_core::measure::seat::SeatRefusal;
 use pa_core::measure::seat::{Seating, Seats, SEAT_MARGIN, SEAT_OVERLAP};
-use pa_core::measure::{Branches, KeyOnFrame, KeyPinFriction, TouchweightProtocol};
-use pa_core::mechanism::{BodyId, MaterialPoint, Placement, PointLoad, Problem};
+/// Why a walk cannot be taken to the end of the key's stroke.
+pub use pa_core::measure::walk::WalkRefusal;
+/// The weighing sheet and why a reading on it is refused, and why no
+/// bushings read a key friction weight typed.
+pub use pa_core::measure::weighing::{BushingsRefusal, Refused, Sheet};
+use pa_core::measure::weighing::{Weighing, FRICTION_SEARCH_G};
+use pa_core::measure::TouchweightProtocol;
+use pa_core::mechanism::{AxisFriction, BodyId, MaterialPoint, Placement, PointLoad, Problem};
 use pa_core::parts::assembly::nose_up_angle;
 pub use pa_core::parts::faults::Fault;
 /// The punching thicknesses a drawer holds, re-exported so an adapter can
@@ -44,32 +55,13 @@ use std::borrow::Cow;
 
 use crate::composite_key;
 
-/// Everything the bench can report, in the trade's own units.
+/// What the bench reports beside its weighing sheet ([`KeyBench::sheet`]),
+/// in the trade's own units: how the key stands on its frame, what holds it
+/// under the touch weight, and the settings the sheet was read with.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BenchReadout {
-    /// Front weight, grams, signed: the key run on Stanwood's jig, level, its
-    /// scale under the measuring point. Negative when the key is back-heavy.
-    pub front_weight_g: f64,
-    /// Key weight ratio, dimensionless, force convention: the tared jig read
-    /// with 10 g on the capstan's contact point.
-    pub key_ratio: f64,
-    /// Key height, millimetres above the keybed: the top of the key at its
-    /// front, with the key seated at the top of its stroke
-    /// ([`pa_core::measure::seat`]).
-    pub key_height_mm: f64,
-    /// Key dip, millimetres: how far the top of the key at its front falls
-    /// from the top seat to the bottom seat, whichever stop binds first at
-    /// the bottom.
-    pub key_dip_mm: f64,
-    /// Down weight at the measuring point, grams.
-    pub down_weight_g: f64,
-    /// Up weight at the measuring point, grams.
-    pub up_weight_g: f64,
-    /// Balance weight, grams.
-    pub balance_weight_g: f64,
-    /// Friction weight, grams.
-    pub friction_weight_g: f64,
-    /// Total mass of the key with its leads, grams.
+    /// Total mass of the key with its leads, grams: the composite key's,
+    /// derived from its volume ([`composite_key`]), not a weighing.
     pub key_mass_g: f64,
     /// Number of leads fitted.
     pub lead_count: usize,
@@ -82,25 +74,14 @@ pub struct BenchReadout {
     /// least of the cloth's drawn top to the key's drawn underside, chamfer
     /// included. `None` when no feature of the two can meet.
     pub gap_back_mm: Option<f64>,
-    /// Key friction weight as the **protocol measures it**, grams.
-    ///
-    /// The result of running Stanwood's procedure on the model — front weight
-    /// zeroed with a temporary weight, key on its frame, least weight at the
-    /// measuring point that makes it fall — rather than the field read back.
-    /// With a constant friction bound the procedure returns that bound through
-    /// the measuring arm at the key's resting attitude, so the two agree by
-    /// construction to within that arm's tilt: side by side they check the
-    /// procedure, not the friction model.
-    pub measured_kf_g: Option<f64>,
-    /// Half-width of the friction band as a **torque about the bearing**,
-    /// referred to the measuring point in grams.
-    ///
-    /// Reported beside `friction_weight_g` because they are the same thing seen
-    /// two ways, and because the band is what friction *is*: the admissible
-    /// torque is an interval `[−b, +b]`, not a value. A model with a single
-    /// friction force would have no band and the key would have one threshold
-    /// instead of two.
-    pub friction_band_g: f64,
+    /// The bushings' friction as the bench is set, the torque read as grams
+    /// at the measuring point as it stands now, with the key level: the half
+    /// width of the band of weights there that leave the level key still.
+    /// Not the key friction weight it was typed as, which Stanwood's
+    /// protocol reads on the key resting nose-up ([`KeyBench::sheet`]). A
+    /// torque ([`AxisFriction`]), so moving the measuring point changes this
+    /// and not the bushings.
+    pub key_friction_weight_g: f64,
     /// Key height the regulation was asked for, millimetres.
     pub key_height_target_mm: f64,
     /// Key dip the regulation was asked for, millimetres.
@@ -131,8 +112,8 @@ pub struct BenchReadout {
     ///
     /// Not the middle of the cloth unless the two faces are flat on one
     /// another: a key standing nose-up meets the strip at its back edge. It is
-    /// reported because it is the lever arm every number on this sheet is
-    /// computed on, and it is not where a reader would assume it is.
+    /// reported because it is the lever arm the key turns about at rest, and
+    /// it is not where a reader would assume it is.
     pub bears_at_the_back_mm: f64,
     /// Which of the three ways the key is bearing on its cloth.
     pub back_bearing: HowItBears,
@@ -157,13 +138,15 @@ pub enum TouchVerdict {
         stop: ContactCode,
     },
     /// Friction alone holds the key where it is, touching a stop or not: the
-    /// weight on it lies between its up weight and its down weight at this
-    /// attitude.
+    /// weight on it lies between its up weight and its down weight.
     HeldByFriction {
         /// The stop it touches, if it touches one.
         touching: Option<ContactCode>,
-        /// How far the weight stands inside the band, from the band's nearer
-        /// edge, grams at the measuring point.
+        /// How far the weight stands from moving the key, grams at the
+        /// measuring point: on the cloth, from the down weight read from
+        /// there, the sheet's D; on the front stop, from the up weight, the
+        /// sheet's U; touching neither, from the nearer of the two at this
+        /// attitude.
         margin_g: f64,
     },
 }
@@ -298,10 +281,41 @@ fn pair_of(mounted: &Mounted, code: ContactCode) -> Option<u16> {
     u16::try_from(i).ok()
 }
 
+/// A key riding on its cloth and its front pin, bottomed in its mortise.
+const RIDES_ON_THE_PIN: &str = "the front rail pin bottoms in its mortise before the back rail \
+     cloth lets the tail come up, so the key rides on both and lifts off its balance punching. \
+     A real keyboard does exactly that; this bench cannot weigh it, because the bearing is \
+     modelled as a pivot.";
+
+/// A key riding on its cloth and its front punching.
+const RIDES_ON_THE_PUNCHING: &str = "the back rail cloth holds the tail higher than the front \
+     punching lets the front come down, so the key rides on both and lifts off its balance \
+     punching. A real keyboard does exactly that; this bench cannot weigh it, because the \
+     bearing is modelled as a pivot.";
+
+/// Whether a seat refused for `fighting` stops is a key whose stops fight:
+/// its back rail cloth and a front stop the riding drawing reads, the front
+/// punching or the pin in its mortise. A pin standing in the key's wood
+/// beside its mortise leaves the key no seat either, but the stops the riding
+/// is drawn on do not see it.
+fn fight(refusal: &SeatRefusal) -> bool {
+    match refusal {
+        SeatRefusal::CannotSeat { fighting } => {
+            fighting.contains(&ContactCode::BackRailCloth)
+                && !fighting.contains(&ContactCode::FrontPinOnTheWood)
+                && (fighting.contains(&ContactCode::FrontRailPunching)
+                    || fighting.contains(&ContactCode::FrontPinInTheMortise))
+        }
+        _ => false,
+    }
+}
+
 /// Why a key cannot be seated, as the sentence a technician is told.
 ///
 /// Each names the part at fault and what the key would do on a real
-/// keyboard, which the key on a pivot cannot.
+/// keyboard, which the key on a pivot cannot. Where the stops fight, the
+/// bench names the front stop it draws the key riding on
+/// ([`KeyBench::frame_fault`]); this names the pin wherever it fights.
 fn why_no_seat(refusal: &SeatRefusal) -> &'static str {
     match refusal {
         SeatRefusal::CannotSeat { fighting }
@@ -315,17 +329,9 @@ fn why_no_seat(refusal: &SeatRefusal) -> &'static str {
         SeatRefusal::CannotSeat { fighting }
             if fighting.contains(&ContactCode::FrontPinInTheMortise) =>
         {
-            "the front rail pin bottoms in its mortise before the back rail cloth lets the \
-             tail come up, so the key rides on both and lifts off its balance punching. A \
-             real keyboard does exactly that; this bench cannot weigh it, because the \
-             bearing is modelled as a pivot."
+            RIDES_ON_THE_PIN
         }
-        SeatRefusal::CannotSeat { .. } => {
-            "the back rail cloth holds the tail higher than the front punching lets the \
-             front come down, so the key rides on both and lifts off its balance punching. \
-             A real keyboard does exactly that; this bench cannot weigh it, because the \
-             bearing is modelled as a pivot."
-        }
+        SeatRefusal::CannotSeat { .. } => RIDES_ON_THE_PUNCHING,
         SeatRefusal::NoStopBelowTheFront => {
             "nothing stops the front of the key: the front punching's centre stands off the \
              key's underside, so the key bears on nothing at the bottom of its dip."
@@ -346,6 +352,60 @@ fn why_no_seat(refusal: &SeatRefusal) -> &'static str {
             "the key could not be seated within the static solve's cap of steps."
         }
         SeatRefusal::Mechanism(_) => "the geometry is degenerate.",
+    }
+}
+
+/// Why a reading of the sheet is refused, as the sentence a technician is
+/// told, a seat refused as [`why_no_seat`] says it.
+fn why_refused(why: &Refused) -> String {
+    let degenerate = "the geometry is degenerate.";
+    match why {
+        Refused::Mechanism(_)
+        | Refused::Jig(JigRefusal::Mechanism(_))
+        | Refused::Walk(WalkRefusal::Mechanism(_)) => degenerate.to_owned(),
+        Refused::KeyNotWeighed | Refused::Jig(JigRefusal::KeyNotWeighed) => {
+            "nobody has weighed this key: it has no mass in the model.".to_owned()
+        }
+        Refused::Jig(JigRefusal::ScaleNotInFrontOfThePivot) => {
+            "the measuring point stands at or behind the balance pin, where the jig's scale \
+             cannot hold the key level."
+                .to_owned()
+        }
+        Refused::Seat(refusal) => why_no_seat(refusal).to_owned(),
+        Refused::Walk(WalkRefusal::NoTravel) => {
+            "the key has no stroke: it stands at the bottom of its dip at rest.".to_owned()
+        }
+        Refused::Walk(WalkRefusal::NoLever) => {
+            "a weight on the measuring point does not turn the key.".to_owned()
+        }
+        Refused::Walk(WalkRefusal::DoesNotReachTheEndOfItsStroke) => format!(
+            "{} g on the measuring point did not take the key to the end of its stroke.",
+            pa_core::measure::walk::CAP
+        ),
+        Refused::Walk(WalkRefusal::NoEquilibrium { .. }) => {
+            "the key found no equilibrium on its way down or up: its stops fight.".to_owned()
+        }
+        Refused::Walk(WalkRefusal::NotConverged { .. }) => {
+            "the static solve reached its cap of steps on the key's way down or up.".to_owned()
+        }
+        Refused::NoKeyTopAtTheStation { station_m } => format!(
+            "no top of the key stands {:.0} mm {} the balance pin, where the temporary weight \
+             goes.",
+            station_m.abs() * 1000.0,
+            if *station_m < 0.0 {
+                "behind"
+            } else {
+                "in front of"
+            }
+        ),
+        Refused::From { reading } => format!(
+            "the {} it is computed from is refused.",
+            match reading {
+                ProcedureId::DownWeight => "down weight",
+                ProcedureId::UpWeight => "up weight",
+                _ => "reading",
+            }
+        ),
     }
 }
 
@@ -446,7 +506,10 @@ pub struct KeyBench {
     /// Whether this key is a natural or a sharp — which row of pins it stands
     /// on, and later which graduation band it belongs to.
     kind: KeyKind,
-    friction: KeyPinFriction,
+    /// The bushings' friction, a torque with the radius it was typed at.
+    friction: AxisFriction,
+    /// What that friction rests on: the bench's assumption until it is set.
+    friction_basis: Basis,
     /// The weight sitting on the measuring point, grams.
     finger_weight_g: f64,
     /// The targets of the regulation last laid, kept beside what the key
@@ -487,18 +550,21 @@ impl KeyBench {
         };
         // Six grams is the order of Key Friction Weight on a well-centred key;
         // it is a starting value to be replaced by a measurement, and it is the
-        // single parameter the two non-confusion tests move. [E] The radius is
+        // single parameter the two non-confusion tests move. [S] It is set
+        // straight as the torque 6 g overcome at the measuring point with the
+        // key level, an assumption and not a reading: Stanwood's protocol,
+        // run on the key resting nose-up, reads these bushings a few tenths of
+        // a gram heavier. A key friction weight typed is turned into a torque
+        // by that protocol instead (`set_key_friction_weight`). The radius is
         // this key's measuring point, read where every protocol reads it, not
         // a number retyped from the default key: that would give any other key
         // a friction bound measured on someone else's arm.
-        let friction = KeyPinFriction::FromKeyFrictionWeight {
-            kf_g: 6.0,
-            arm: assembly.measuring_point(),
-        };
+        let friction = AxisFriction::of_weight_at(6.0, assembly.measuring_point());
         let mut bench = Self {
             assembly,
             kind: KeyKind::Natural,
             friction,
+            friction_basis: Basis::Assumed,
             finger_weight_g: 0.0,
             targets,
             balance_papers: Vec::new(),
@@ -710,48 +776,53 @@ impl KeyBench {
         }
     }
 
-    /// Whether the two stops leave the key no angle that satisfies both.
+    /// Whether the key's stops fight: the seated pose refuses the key a
+    /// seat, naming its back rail cloth and a front stop the riding drawing
+    /// reads as fighting ([`fight`]): the core's refusal of a seat, read as
+    /// the trade reads a frame.
     ///
     /// One predicate, because the drawing and the diagnosis have to agree
-    /// about which frames are impossible.
+    /// about which frames are impossible. A pin standing in the key's wood
+    /// beside its mortise leaves the key no seat either, but the stops the
+    /// riding is drawn on do not see it, so such a key is drawn level.
     fn stops_fight(&self) -> bool {
-        matches!(
-            (
-                self.assembly.sin_angle_on_back_rail(),
-                self.assembly.sin_angle_on_front_rail()
-            ),
-            (Some(back), Some(front)) if back > front
-        )
+        self.seated().err().is_some_and(|refusal| fight(&refusal))
     }
 
-    /// Why this frame cannot be weighed, if it cannot.
+    /// Why this frame cannot be weighed, if it cannot: the seated pose's
+    /// refusal ([`SeatRefusal`]), as the sentence a technician is told.
     ///
-    /// Different failures, and a technician needs to be told which. One is a
-    /// frame whose stops fight: assembled, real, and the key rides clear of
-    /// its balance punching — a degree of freedom this model does not have.
-    /// The others are the seated pose's refusals ([`SeatRefusal`]): a pin
-    /// standing in the key's wood, nothing under the front or the tail, or
-    /// geometry edited into nonsense.
+    /// Different failures, and a technician needs to be told which. Stops
+    /// that fight, which a real keyboard rides on clear of its balance
+    /// punching, a degree of freedom this model does not have: named by the
+    /// front stop the key is drawn riding on, the pin in its mortise or the
+    /// punching, since raising the pin until it bottoms early over-constrains
+    /// the key just as a thick cloth does, and blaming the cloth then names
+    /// two parts that are innocent. Then a pin standing in the key's wood,
+    /// nothing under the front or the tail, or geometry edited into nonsense.
     pub fn frame_fault(&self) -> Option<&'static str> {
-        if self.stops_fight() {
-            // Which pair is fighting matters: raising the pin until it bottoms
-            // early over-constrains the key just as a thick cloth does, and
-            // blaming the cloth then names two parts that are innocent.
-            return Some(if self.assembly.stopped_by_the_mortise() {
-                "the front rail pin bottoms in its mortise before the back rail cloth lets the \
-                 tail come up, so the key rides on both and lifts off its balance punching. A \
-                 real keyboard does exactly that; this bench cannot weigh it, because the \
-                 bearing is modelled as a pivot."
+        let refusal = self.seated().err()?;
+        Some(if fight(&refusal) {
+            if self.assembly.stopped_by_the_mortise() {
+                RIDES_ON_THE_PIN
             } else {
-                "the back rail cloth holds the tail higher than the front punching lets the \
-                 front come down, so the key rides on both and lifts off its balance punching. \
-                 A real keyboard does exactly that; this bench cannot weigh it, because the \
-                 bearing is modelled as a pivot."
-            });
-        }
-        match self.seated() {
-            Ok(_) => None,
-            Err(refusal) => Some(why_no_seat(&refusal)),
+                RIDES_ON_THE_PUNCHING
+            }
+        } else {
+            why_no_seat(&refusal)
+        })
+    }
+
+    /// Why a reading of the sheet is refused, as the sentence a technician
+    /// is told: a seat refused as [`Self::frame_fault`] says it, so the sheet
+    /// and the frame's fault name the same part.
+    pub fn why_refused(&self, why: &Refused) -> String {
+        match why {
+            Refused::Seat(_) => match self.frame_fault() {
+                Some(fault) => fault.to_owned(),
+                None => why_refused(why),
+            },
+            other => why_refused(other),
         }
     }
 
@@ -865,7 +936,7 @@ impl KeyBench {
             &self.balance_papers,
             &self.front_papers,
             composite_key::mass(&self.assembly.key),
-            self.friction_bound() * G,
+            self.friction.bound_n_m,
             lift,
         )
     }
@@ -896,6 +967,7 @@ impl KeyBench {
                 .protocol
                 .measuring_point_on_key(&self.assembly.key),
             margin: SEAT_MARGIN,
+            standing: &[],
         }
         .seats(&mut Statics::new())?;
         Ok((k, seats))
@@ -982,14 +1054,56 @@ impl KeyBench {
             .collect()
     }
 
-    /// Weighs the key and reads every observable the bench reports.
+    /// **The weighing sheet**: every reading, by its procedure run on the
+    /// model ([`pa_core::measure::weighing`]), each a measurement or the
+    /// reason it is refused. Front weight and the key weight ratio on the jig,
+    /// key height and dip from the seated pose, D and U by the breakaway walk
+    /// from each seat, balance and friction weight from those two as read,
+    /// and the key friction weight both ways, Stanwood's zeroed on the jig
+    /// and its variant zeroed on the frame. The key's mass is the composite
+    /// key's derivation ([`composite_key`]).
     ///
-    /// Front weight and the key weight ratio are the jig run on the model, the
-    /// key's mass the composite key's derivation ([`composite_key`]). Key
-    /// height and dip are read from the seated pose, and the bearing at the
-    /// back and at the bottom with them; the gaps and the verdict where the
-    /// weight on the measuring point has left the key. The weights on the
-    /// frame are still the closed form taken with the key level.
+    /// The procedures seat the key by rule, so the sheet is the same whatever
+    /// the touch weight has done to it.
+    pub fn sheet(&self) -> Sheet {
+        self.weigh(|w| w.sheet(&mut Statics::new()))
+            .unwrap_or_else(|why| Sheet::refused(&why))
+    }
+
+    /// The bench's key put where the procedures read it, on its frame on
+    /// the bench's bushings and on the jig, at its measuring point, and
+    /// handed to `read`; refused where either mount is degenerate.
+    fn weigh<T>(&self, read: impl FnOnce(&Weighing<'_>) -> T) -> Result<T, Refused> {
+        let key = &self.assembly.key;
+        let protocol = &self.assembly.protocol;
+        let k = self.on_frame(0.0).map_err(Refused::Mechanism)?;
+        let jig =
+            KeyJig::new(key, protocol, composite_key::mass(key)).map_err(Refused::Mechanism)?;
+        Ok(read(&Weighing {
+            on_frame: &k,
+            jig: &jig,
+            measuring_point: protocol.measuring_point_on_key(key),
+            measuring_point_from_lip_m: protocol.measuring_point_from_lip,
+            bases: self.bases(),
+        }))
+    }
+
+    /// What the bench's inputs rest on: the composite key's mass derived
+    /// from its volume at an assumed density, its friction the bench's
+    /// assumption until it is set, its dimensions partly without a record
+    /// (`data/params/README.md`).
+    pub fn bases(&self) -> Bases {
+        Bases {
+            key_mass: Basis::Estimated,
+            key_friction: self.friction_basis,
+            geometry: Basis::Assumed,
+        }
+    }
+
+    /// How the key stands on its frame and what holds it there: the seats'
+    /// bearing at the back and out of level at the bottom, the gaps and the
+    /// verdict where the weight on the measuring point has left the key, and
+    /// the settings the sheet is read with.
     ///
     /// `None` where the key cannot be seated ([`Self::frame_fault`] says
     /// why) or has nowhere to stand.
@@ -998,15 +1112,6 @@ impl KeyBench {
         let props = key.mass_properties()?;
         let (k, seats) = self.seated().ok()?;
         let state = self.state.as_ref()?;
-
-        let jig = KeyJig::new(key, &self.assembly.protocol, composite_key::mass(key)).ok()?;
-        let closed_form = KeyOnFrame {
-            mass: props.mass,
-            static_moment: self.assembly.static_moment_about_bearing()?,
-            measuring_arm: self.assembly.measuring_arm(),
-            friction: self.friction,
-        };
-        let Branches { down, up } = closed_form.branches()?;
 
         // The gaps where the key stands now, read off the contact rows at
         // the attitude it is drawn in.
@@ -1017,7 +1122,6 @@ impl KeyBench {
         // cloth's rows, so the three numbers are one answer rather than
         // three questions asked separately.
         let back = Self::back_bearing(&k.mounted, &seats)?;
-        let (top, bottom) = seats.heights(&k.mounted, k.front_top);
         let bottom_angle = seats.bottom.q[k.mounted.angle.0];
 
         Some(BenchReadout {
@@ -1032,19 +1136,10 @@ impl KeyBench {
             out_of_level_deg: (-bottom_angle).to_degrees(),
             gap_front_mm: gap_mm(ContactCode::FrontRailPunching),
             gap_back_mm: gap_mm(ContactCode::BackRailCloth),
-            friction_band_g: 1000.0 * self.friction_bound() / self.assembly.measuring_arm(),
-            measured_kf_g: self.measure_key_friction_weight(),
+            key_friction_weight_g: self.key_friction_weight_g(),
             key_height_target_mm: self.targets.key_height * 1000.0,
             key_dip_target_mm: self.targets.key_dip * 1000.0,
             finger: self.verdict(&k.mounted, state)?,
-            front_weight_g: jig.front_weight_g().ok()?,
-            key_ratio: jig.key_ratio().ok()?,
-            key_height_mm: top * 1000.0,
-            key_dip_mm: (top - bottom) * 1000.0,
-            down_weight_g: down,
-            up_weight_g: up,
-            balance_weight_g: 0.5 * (down + up),
-            friction_weight_g: 0.5 * (down - up),
             key_mass_g: props.mass * 1000.0,
             lead_count: key.leads.len(),
         })
@@ -1111,102 +1206,6 @@ impl KeyBench {
     }
 
     // ---- regulation ------------------------------------------------------
-
-    /// **Runs Stanwood's Key Friction Weight protocol on the simulated key.**
-    ///
-    /// Not a parameter read back: the procedure, performed.
-    ///
-    /// > *"Key Friction Weight (KF) — a component of Friction Weight which is
-    /// > the minimum amount of weight, to the nearest gram, placed on the
-    /// > measuring point of a key that causes the key to fall, with the Front
-    /// > Weight (FW) set to zero by temporary weight and with the key on its
-    /// > frame and the stack removed."* [V]
-    ///
-    /// So three steps, in order, and each one is a real operation on the model:
-    ///
-    /// 1. **Zero the front weight** with a temporary weight slid along the key
-    ///    until the scale reads nothing. Zeroing it first is what separates
-    ///    friction from balance — without it the reading would be the sum of
-    ///    the two, which is the down weight and not the friction.
-    /// 2. **Put the key back on its frame**, back end down on the cloth.
-    /// 3. **Find the least weight at the measuring point that makes it fall**,
-    ///    by asking the contact solve, not by evaluating a formula. The key
-    ///    falls when it leaves the back rail cloth, and that is a question
-    ///    about unilateral contacts and a friction cone, answered by
-    ///    `settle`.
-    ///
-    /// This is the simulator measuring itself with the technician's protocol.
-    /// Round-tripping it — set the friction, run the procedure, read it back —
-    /// exercises the chain from the contact geometry to the weighing sheet. It
-    /// is not independent of the parameter: with a constant friction bound the
-    /// procedure reads that bound back through the measuring arm at the key's
-    /// resting attitude, so what the round trip checks is the zeroing, the arm
-    /// and the contact state, not the friction model.
-    ///
-    /// The search is a **fixed** 32-step bisection, never a tolerance.
-    pub fn measure_key_friction_weight(&self) -> Option<f64> {
-        let props = self.assembly.key.mass_properties()?;
-
-        // Step 2 first, because step 1 depends on it: the attitude the key is
-        // in on its frame, back end down on its cloth.
-        //
-        // Stanwood zeroes the front weight on the levelled jig and only then
-        // puts the key back on its frame [V, Stanwood 2000, p. 22]. This
-        // zeroes it in the frame attitude instead, which cancels the gravity
-        // moment exactly where the key is weighed. The two differ, because
-        // tilting the key changes each mass's arm by its height above the
-        // pivot: about 0.3 g on the default key, under the gram the protocol
-        // reads to. A known departure from the protocol (FOUNDATIONS §2.2),
-        // to go when the protocols run on the general solver.
-        let on_cloth = self.assembly.sin_angle_on_back_rail()?;
-        let torque = self.assembly.gravity_torque(on_cloth)?;
-
-        // Step 1: the temporary weight that brings front weight to zero. A
-        // technician slides it; here its position is fixed and its mass solved,
-        // which is the same cancellation. The torque is exactly linear in that
-        // mass, so one probe gives the answer rather than a search.
-        let at = -0.100_f64;
-        let probe_mass = 0.010_f64;
-        let mut probe = self.assembly.clone();
-        probe.key.leads.push(Lead::at(at, probe_mass));
-        let per_kg = (probe.gravity_torque(on_cloth)? - torque) / probe_mass;
-        let counterweight = -torque / per_kg;
-        if !counterweight.is_finite() || counterweight <= 0.0 {
-            return None;
-        }
-        let mut zeroed = self.assembly.clone();
-        zeroed.key.leads.push(Lead::at(at, counterweight));
-        debug_assert!(
-            zeroed
-                .gravity_torque(on_cloth)
-                .is_some_and(|m| m.abs() < 1e-12),
-            "the temporary weight must leave the key balanced in the attitude \
-             it is measured in"
-        );
-
-        let bound = self.friction.bound(props.mass + counterweight);
-
-        // Step 3: the least weight that lifts it off that cloth. Bracket wide
-        // enough that any plausible friction is inside, then halve.
-        let falls = |w: f64| {
-            zeroed
-                .settle(on_cloth, w, bound)
-                .is_some_and(|s| s.held_by != pa_core::parts::assembly::HeldBy::BackRailCloth)
-        };
-        let (mut lo, mut hi) = (0.0_f64, 200.0_f64);
-        if !falls(hi) {
-            return None;
-        }
-        for _ in 0..32 {
-            let mid = 0.5 * (lo + hi);
-            if falls(mid) {
-                hi = mid;
-            } else {
-                lo = mid;
-            }
-        }
-        Some(0.5 * (lo + hi))
-    }
 
     /// Lays one more paper on a stack. Key levelling, or key dip.
     pub fn add_paper(&mut self, which: Which, thickness: f64) {
@@ -1314,40 +1313,6 @@ impl KeyBench {
     /// metres.
     pub fn measuring_point_from_lip(&self) -> f64 {
         self.assembly.protocol.measuring_point_from_lip
-    }
-
-    /// The friction bound as a mass-moment about the bearing, kg·m.
-    ///
-    /// The load that sets it is the one the **bearing** actually carries, not
-    /// the whole weight on the key: when the key is down on a stop, that stop
-    /// is holding part of it. For the constant model this makes no difference;
-    /// for the load-proportional one it is the difference between a friction
-    /// that follows the physics and one that charges the centre for weight it
-    /// is not holding.
-    fn friction_bound(&self) -> f64 {
-        let total = self
-            .assembly
-            .key
-            .mass_properties()
-            .map_or(0.0, |p| p.mass + self.finger_weight_g * 1e-3);
-
-        // Chicken and egg: the bound decides where the key settles, and where
-        // it settles decides the load. Resolve it in one pass — the bound from
-        // the total weight is an upper estimate, good enough to find the
-        // contact state, and the state then gives the load the bound is
-        // really taken at. One pass and not a loop, because a second pass
-        // moves the answer by less than the scale can read.
-        let coarse = self.friction.bound(total);
-        match self
-            .assembly
-            .settle(self.sin_angle(), self.finger_weight_g, coarse)
-            .and_then(|s| {
-                self.assembly
-                    .bearing_load_with_stops(s, self.finger_weight_g)
-            }) {
-            Some((at_bearing, _)) => self.friction.bound(at_bearing),
-            None => coarse,
-        }
     }
 
     /// The weight currently on the measuring point, grams.
@@ -1536,18 +1501,119 @@ impl KeyBench {
         )
     }
 
-    /// Sets the key friction weight, grams at the measuring point.
+    /// Sets the bushings' friction from a key friction weight, grams at the
+    /// measuring point, as the trade measures it: by Stanwood's protocol,
+    /// zeroed on the levelled jig, the least weight that makes the key fall
+    /// from its cloth.
     ///
-    /// Stored as a torque with the arm it is read at, the measuring point as
-    /// it stands now. Moving the measuring point afterwards leaves the torque
-    /// alone, so the key friction weight the protocol reads changes by the
-    /// lever: the bushings have not changed, only where they are weighed.
-    pub fn set_key_friction_weight(&mut self, kf_g: f64) {
-        self.friction = KeyPinFriction::FromKeyFrictionWeight {
-            kf_g: kf_g.max(0.0),
-            arm: self.assembly.measuring_point(),
+    /// The bushings are the torque at which that protocol, run on this key,
+    /// reads `kf_g` in full ([`Weighing::bushings_reading`]), so the sheet
+    /// reads it back as typed, to the walk's resolution, and shows it as
+    /// typed. Stored as that torque, with the measuring point it was typed at
+    /// ([`AxisFriction`]): moving the measuring point or editing the key
+    /// afterwards leaves the bushings alone, and changes the grams every
+    /// protocol reads them as, as it would at the bench.
+    ///
+    /// Refused, the bushings left as they were, where no bushings read it:
+    /// the protocol refused on this key or frame, a weight under what it
+    /// reads with no friction at all or past the search, or not a number.
+    /// [`Self::why_friction_not_set`] says why.
+    pub fn set_key_friction_weight(&mut self, kf_g: f64) -> Result<(), BushingsRefusal> {
+        if !kf_g.is_finite() {
+            return Err(BushingsRefusal::NotANumber);
+        }
+        let found = self
+            .weigh(|w| w.bushings_reading(&mut Statics::new(), kf_g))
+            .map_err(BushingsRefusal::Procedure)??;
+        self.friction = AxisFriction {
+            bound_n_m: found.bound_n_m,
+            radius_m: Some(self.assembly.measuring_point()),
         };
+        self.friction_basis = Basis::SetByHand;
         self.relax();
+        Ok(())
+    }
+
+    /// Why a key friction weight of `kf_g` grams was not set, as the
+    /// sentence a technician is told: a protocol that cannot be read on this
+    /// key as [`Self::why_refused`] says it.
+    pub fn why_friction_not_set(&self, kf_g: f64, why: &BushingsRefusal) -> String {
+        match why {
+            BushingsRefusal::NotANumber => "a key friction weight that is not a number.".to_owned(),
+            BushingsRefusal::Procedure(refused) => format!(
+                "Stanwood's protocol cannot read a key friction weight on this key: {}",
+                self.why_refused(refused)
+            ),
+            BushingsRefusal::UnderNoFriction { least_g } => format!(
+                "{kf_g:.2} g is less than Stanwood's protocol reads on this key with no friction \
+                 at all, {least_g:.2} g: what the key's tilt at rest leaves of its own balance and \
+                 of the temporary weight's."
+            ),
+            BushingsRefusal::BeyondTheSearch { most_g } => format!(
+                "{kf_g:.2} g is more than the tightest bushings the bench tries read, \
+                 {most_g:.2} g: they hold {FRICTION_SEARCH_G:.0} g at the measuring point with the \
+                 key level, and would hold the key wherever it was put."
+            ),
+        }
+    }
+
+    /// The bushings' friction as the bench is set, grams at the measuring
+    /// point as it stands now, the key level: the torque read on that arm.
+    /// Not what Stanwood's protocol reads them as, on the key resting
+    /// nose-up: the sheet's key friction weight.
+    pub fn key_friction_weight_g(&self) -> f64 {
+        self.friction.weight_at(self.assembly.measuring_point())
+    }
+}
+
+/// Setting the bushings straight, for the tests.
+#[cfg(test)]
+impl KeyBench {
+    /// Bushings that hold `grams` at the measuring point with the key level,
+    /// set as that torque, the way the bench sets its default: for the tests
+    /// whose arithmetic reads the friction on the level arm, not through
+    /// Stanwood's protocol.
+    pub(crate) fn set_bushings_holding_g(&mut self, grams: f64) {
+        self.friction = AxisFriction::of_weight_at(grams, self.assembly.measuring_point());
+        self.friction_basis = Basis::SetByHand;
+        self.relax();
+    }
+}
+
+/// Reading the bench's sheet, for the tests.
+#[cfg(test)]
+pub(crate) mod read {
+    use super::{KeyBench, Measurement, ProcedureId};
+    use pa_core::measure::walk::{HALVINGS, STEP_G};
+    use pa_core::solve::statics::RESIDUAL_TOLERANCE;
+    use pa_core::G;
+
+    /// A reading of `b`'s sheet, which must not be refused.
+    pub(crate) fn measured(b: &KeyBench, p: ProcedureId) -> Measurement {
+        match b.sheet().get(p) {
+            Some(Ok(m)) => m.clone(),
+            other => panic!("{p:?}: {other:?}"),
+        }
+    }
+
+    /// Its value: grams, the ratio, or metres.
+    pub(crate) fn value(b: &KeyBench, p: ProcedureId) -> f64 {
+        measured(b, p).value
+    }
+
+    /// A height or a dip, millimetres.
+    pub(crate) fn mm(b: &KeyBench, p: ProcedureId) -> f64 {
+        1000.0 * value(b, p)
+    }
+
+    /// What a walk resolves a threshold to, grams: half the bracket its
+    /// halvings leave, and what the static solve may leave out of balance
+    /// where it decides whether the key moves, its residual's tolerance of a
+    /// load scale under two newtons, over a reach under 0.3 m, read at a
+    /// measuring arm of at least 0.2 m.
+    pub(crate) fn resolution() -> f64 {
+        0.5 * STEP_G / f64::from(1u32 << HALVINGS)
+            + 1000.0 * RESIDUAL_TOLERANCE * 2.0 * 0.3 / (G * 0.2)
     }
 }
 
@@ -1558,9 +1624,12 @@ mod tests {
     /// The bench reports the regulation it was asked for.
     #[test]
     fn a_standard_bench_reports_what_it_achieved_beside_what_it_was_asked_for() {
-        let r = KeyBench::standard()
-            .readout()
-            .expect("the standard bench reads");
+        let b = KeyBench::standard();
+        let r = b.readout().expect("the standard bench reads");
+        let (height, dip) = (
+            read::mm(&b, ProcedureId::KeyHeight),
+            read::mm(&b, ProcedureId::KeyDip),
+        );
 
         // Target and achieved are two numbers, and the bench carries both. They
         // differ for one physical reason, reported rather than hidden: the
@@ -1584,23 +1653,18 @@ mod tests {
         assert!((r.key_height_target_mm - 65.0).abs() < 1e-12);
         assert!((r.key_dip_target_mm - 10.2).abs() < 1e-12);
         assert!(
-            (r.key_height_mm - r.key_height_target_mm).abs() < one_paper_height_mm,
-            "height achieved {} against target {}, missing by more than one paper",
-            r.key_height_mm,
+            (height - r.key_height_target_mm).abs() < one_paper_height_mm,
+            "height achieved {height} against target {}, missing by more than one paper",
             r.key_height_target_mm
         );
         assert!(
-            (r.key_dip_mm - r.key_dip_target_mm).abs() < one_paper_dip_mm,
-            "dip achieved {} against target {}, missing by more than one paper",
-            r.key_dip_mm,
+            (dip - r.key_dip_target_mm).abs() < one_paper_dip_mm,
+            "dip achieved {dip} against target {}, missing by more than one paper",
             r.key_dip_target_mm
         );
 
-        assert!(
-            (0.50..=0.60).contains(&r.key_ratio),
-            "ratio {}",
-            r.key_ratio
-        );
+        let ratio = read::value(&b, ProcedureId::KeyWeightRatio);
+        assert!((0.50..=0.60).contains(&ratio), "ratio {ratio}");
         assert!(
             r.key_mass_g > 40.0 && r.key_mass_g < 160.0,
             "mass {} g",
@@ -1610,7 +1674,8 @@ mod tests {
 
     /// Consistency, the audit's BWA-10: **a weight between the up weight and
     /// the down weight leaves the key where it is, and the bench says that
-    /// friction holds it.**
+    /// friction holds it, and how far the weight stands from moving it, by
+    /// the sheet's own D and U.**
     ///
     /// Put a weight on the measuring point and three things can happen, not
     /// two. Past the down weight the key goes down onto its front punching,
@@ -1620,28 +1685,41 @@ mod tests {
     /// modelling dry friction as set-valued rather than as a `tanh`. A
     /// regularized model would creep instead.
     ///
-    /// The sheet's D and U are the closed form with the key level, and the
-    /// key stands tilted on its stops, which moves each edge of the band by
-    /// its centre of mass's height times the tilt, about 0.3 g on this key:
-    /// so the weights are taken a gram inside the band and a gram past it.
-    /// The margin the verdict reports is checked against the one-coordinate
-    /// closed form at the key's own attitude, which shares no code with the
-    /// mechanism's generalized forces.
+    /// D is read by the walk from the key resting on its cloth, U from the
+    /// key down on its punching, and the touch weight leaves the key on those
+    /// same stops at the same attitudes. So on the cloth the margin the
+    /// verdict reports is how far the weight stands below D, and on the
+    /// punching how far above U, both to the walk's resolution: the panel's
+    /// "between U and D" and the sheet are one reading.
     #[test]
     fn a_weight_between_up_and_down_weight_leaves_the_key_where_it_is() {
         let mut b = KeyBench::standard();
-        let r = b.readout().unwrap();
-        let (down, up) = (r.down_weight_g, r.up_weight_g);
+        let (down, up) = (
+            read::value(&b, ProcedureId::DownWeight),
+            read::value(&b, ProcedureId::UpWeight),
+        );
         let middle = 0.5 * (down + up);
         let rest_on = |stop| Some(TouchVerdict::RestingOn { stop });
-        for (onto, past, stop) in [
-            (up - 1.0, down + 1.0, ContactCode::BackRailCloth),
-            (down + 1.0, up - 1.0, ContactCode::FrontRailPunching),
+        // A hundredth of a gram from the edge each stop is left past: on the
+        // cloth D, on the punching U.
+        for (onto, past, stop, near) in [
+            (
+                up - 1.0,
+                down + 1.0,
+                ContactCode::BackRailCloth,
+                down - 0.01,
+            ),
+            (
+                down + 1.0,
+                up - 1.0,
+                ContactCode::FrontRailPunching,
+                up + 0.01,
+            ),
         ] {
             b.set_finger_weight(onto);
             assert_eq!(b.finger_verdict(), rest_on(stop), "{onto} g");
             let there = b.sin_angle();
-            for w in [up + 1.0, middle, down - 1.0] {
+            for w in [up + 1.0, middle, down - 1.0, near] {
                 b.set_finger_weight(w);
                 let Some(TouchVerdict::HeldByFriction { touching, margin_g }) = b.finger_verdict()
                 else {
@@ -1653,13 +1731,14 @@ mod tests {
                     there.to_bits(),
                     "{w} g moved the key off the {stop:?}"
                 );
-                let s = b.sin_angle();
-                let a = b.assembly();
-                let expected = 1000.0 * (b.friction_bound() - a.net_torque(s, w).unwrap().abs())
-                    / a.measuring_arm_at(s);
+                let expected = match stop {
+                    ContactCode::BackRailCloth => down - w,
+                    _ => w - up,
+                };
                 assert!(
-                    (margin_g - expected).abs() < 1e-9,
-                    "{w} g: a margin of {margin_g} g, against {expected} g by the closed form"
+                    (margin_g - expected).abs() <= read::resolution(),
+                    "{w} g on the {stop:?}: a margin of {margin_g} g, the sheet's D and U give \
+                     {expected} g"
                 );
                 assert!(margin_g > 0.0);
             }
@@ -1712,7 +1791,8 @@ mod tests {
     #[test]
     fn a_key_at_the_bottom_of_its_dip_is_held_by_the_punching() {
         let mut b = KeyBench::standard();
-        b.set_key_friction_weight(2.0);
+        b.set_key_friction_weight(2.0)
+            .expect("Stanwood's protocol reads 2 g on this key");
         assert_eq!(
             b.finger_verdict(),
             Some(TouchVerdict::RestingOn {
@@ -1723,54 +1803,72 @@ mod tests {
         );
     }
 
-    /// Widening the friction widens the band, and does not move its centre.
+    /// Widening the friction widens the band, and leaves its centre where
+    /// the seats' tilt lets it: D is read at the top seat and U at the
+    /// bottom, where the measuring point stands a little nearer the pin's
+    /// vertical at the top, so the extra friction reads a hair heavier there.
+    /// The bound is derived from the seats' arms, with the walks' resolution.
     #[test]
     fn more_friction_makes_a_wider_band_around_the_same_centre() {
         let mut b = KeyBench::standard();
-        let before = b.readout().unwrap();
-        b.set_key_friction_weight(12.0);
-        let after = b.readout().unwrap();
+        let band = |b: &KeyBench| {
+            [
+                ProcedureId::DownWeight,
+                ProcedureId::UpWeight,
+                ProcedureId::BalanceWeight,
+            ]
+            .map(|p| read::value(b, p))
+        };
+        let [d0, u0, bw0] = band(&b);
+        b.set_bushings_holding_g(12.0);
+        let [d1, u1, bw1] = band(&b);
+        assert!(
+            (d1 - u1) - (d0 - u0) > 2.0 * 6.0,
+            "doubling the friction must widen the band by twice the extra, or more"
+        );
 
+        let (_, seats) = b.seated().unwrap();
+        let point = b.measuring_point_on_key();
+        let arm = |q: f64| point.x * q.cos() - point.y * q.sin();
+        let tilt = 0.5 * 6.0 * point.x * (1.0 / arm(seats.top.q[0]) - 1.0 / arm(seats.bottom.q[0]));
         assert!(
-            (after.down_weight_g - after.up_weight_g) > (before.down_weight_g - before.up_weight_g),
-            "doubling the friction must widen the band"
+            (bw1 - bw0 - tilt).abs() <= 2.0 * read::resolution(),
+            "the centre moved by {} g, the seats' arms account for {tilt} g",
+            bw1 - bw0
         );
-        assert!(
-            (after.balance_weight_g - before.balance_weight_g).abs() < 1e-9,
-            "and must not move its centre"
-        );
+        assert!(tilt.abs() < 0.05, "a few hundredths of a gram: {tilt}");
     }
 
     /// The leading workshop is three operations on the model, and each one
-    /// moves the balance weight in the direction a technician expects.
+    /// moves the balance weight in the direction a technician expects; taking
+    /// the lead out again gives back the very sheet the key had.
     #[test]
     fn leading_moves_the_balance_weight_and_unleading_puts_it_back() {
         let mut b = KeyBench::standard();
-        let before = b.readout().unwrap();
+        let before = b.sheet();
+        let balance = |b: &KeyBench| read::value(b, ProcedureId::BalanceWeight);
+        let bw = balance(&b);
 
         b.add_lead(0.150, 10.0);
-        let leaded = b.readout().unwrap();
-        assert_eq!(leaded.lead_count, 1);
+        assert_eq!(b.readout().unwrap().lead_count, 1);
+        let leaded = balance(&b);
         assert!(
-            leaded.balance_weight_g < before.balance_weight_g,
-            "lead in front must lighten the touch: {} -> {}",
-            before.balance_weight_g,
-            leaded.balance_weight_g
+            leaded < bw,
+            "lead in front must lighten the touch: {bw} -> {leaded}"
         );
         assert!(
-            leaded.front_weight_g > before.front_weight_g,
+            read::value(&b, ProcedureId::FrontWeight)
+                > read::value(&KeyBench::standard(), ProcedureId::FrontWeight),
             "and must raise the front weight"
         );
 
         // Moving it further forward does more of the same.
         b.move_lead(0, 0.200);
-        let moved = b.readout().unwrap();
-        assert!(moved.balance_weight_g < leaded.balance_weight_g);
+        assert!(balance(&b) < leaded);
 
         b.remove_lead(0);
-        let after = b.readout().unwrap();
-        assert_eq!(after.lead_count, 0);
-        assert!((after.balance_weight_g - before.balance_weight_g).abs() < 1e-9);
+        assert_eq!(b.readout().unwrap().lead_count, 0);
+        assert_eq!(b.sheet(), before, "the key as it was, the sheet as it was");
     }
 
     /// A weight moves the key between its two seats and no further: a heavy
@@ -1884,15 +1982,13 @@ mod tests {
     #[test]
     fn key_levelling_works_through_the_bench() {
         let mut b = KeyBench::standard();
-        let before = b.readout().unwrap();
+        let before = read::mm(&b, ProcedureId::KeyHeight);
         let (paper, _) = b.papers();
         b.set_balance_paper(paper + 0.0005);
-        let after = b.readout().unwrap();
+        let after = read::mm(&b, ProcedureId::KeyHeight);
         assert!(
-            after.key_height_mm > before.key_height_mm,
-            "0.5 mm of paper must raise the key: {} -> {}",
-            before.key_height_mm,
-            after.key_height_mm
+            after > before,
+            "0.5 mm of paper must raise the key: {before} -> {after}"
         );
     }
 
@@ -1929,17 +2025,19 @@ mod contact_readout_tests {
     fn the_dip_follows_the_contact_and_not_the_target() {
         let mut b = KeyBench::standard();
         let before = b.readout().unwrap();
+        let dip_before = read::mm(&b, ProcedureId::KeyDip);
         let (_, paper) = b.papers();
 
         let shim = 0.0005;
         b.set_front_paper(paper + shim);
         let after = b.readout().unwrap();
+        let dip_after = read::mm(&b, ProcedureId::KeyDip);
 
         // The front rail pin is 225 mm from the balance pin and the key front
         // 258 mm, so a shim at the punching shows up at the key front, where
         // the dip is read, multiplied by 258/225.
         let expected = shim * 1000.0 * (258.0 / 225.0);
-        let moved = before.key_dip_mm - after.key_dip_mm;
+        let moved = dip_before - dip_after;
         assert!(
             (moved - expected).abs() < 0.02,
             "a {shim} m shim moved the dip by {moved} mm, expected about {expected}"
@@ -1997,7 +2095,7 @@ mod contact_readout_tests {
              rests nose-down"
         );
         assert!(
-            (r.key_dip_mm - r.key_dip_target_mm).abs() < 2.0 * two_papers,
+            (read::mm(&b, ProcedureId::KeyDip) - r.key_dip_target_mm).abs() < 2.0 * two_papers,
             "and the travel that attitude leaves is the dip"
         );
     }
@@ -2005,11 +2103,9 @@ mod contact_readout_tests {
     /// On a frame no key can sit in, the key is drawn where it would ride.
     ///
     /// The refusal and the diagnosis are not enough: the drawing has to reach
-    /// the riding position too. Asking `travel()`, which answers for any frame
-    /// with two stop angles, instead of whether those two angles leave an
-    /// admissible one, draws the key at the back rail's angle — through its
-    /// front punching, and with the balance punching still touching, which is
-    /// the one thing the picture has to show is no longer true.
+    /// the riding position too. A key drawn at its cloth's angle alone would
+    /// stand through its front punching, the balance punching still touching,
+    /// which is the one thing the picture has to show is no longer true.
     #[test]
     fn a_wedged_frame_draws_the_key_riding_clear_of_its_bearing() {
         let mut b = KeyBench::standard();
@@ -2304,23 +2400,140 @@ mod contact_readout_tests {
         }
     }
 
-    /// The friction band and the friction weight are the same thing, twice.
+    /// Consistency, and the owner's way of setting friction: **the key
+    /// friction weight is typed in grams at the measuring point, as
+    /// Stanwood's protocol reads it, and kept as a torque.** Typed at 13 mm
+    /// from the lip, the protocol reads it back in full, to the walk's
+    /// resolution, and a whole gram shows as that gram; turned into a torque
+    /// on the level arm instead, 6 g typed would read back 6.35 g and show
+    /// 7 g. Then the bushings stay as they were set. With the measuring point
+    /// moved 7 mm further back the torque keeps its bits, read on the level
+    /// arm heavier in the ratio of the arms; the key friction weight zeroed
+    /// on the frame moves by the ratio of the two arms the key presents where
+    /// it rests, nose-up, `x cos θ − y sin θ`, to each walk's resolution; and
+    /// Stanwood's reads the same bushings as more grams, the arm 3 % shorter.
+    /// A lead fitted and the capstan moved leave the torque's bits too, and
+    /// move what Stanwood's protocol reads.
     #[test]
-    fn the_friction_band_is_the_friction_weight() {
+    fn the_key_friction_weight_is_typed_in_grams_and_kept_as_a_torque() {
         let mut b = KeyBench::standard();
-        for kf in [2.0, 6.0, 13.5] {
-            b.set_key_friction_weight(kf);
-            let r = b.readout().unwrap();
+        let stanwood =
+            |b: &KeyBench| read::measured(b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
+        for kf in [2.0, 6.0, 13.0] {
+            b.set_key_friction_weight(kf)
+                .expect("Stanwood's protocol reads it on this key");
+            let back = stanwood(&b);
             assert!(
-                (r.friction_band_g - kf).abs() < 1e-9,
-                "band {} against a key friction weight of {kf} g",
-                r.friction_band_g
+                (back.value - kf).abs() <= read::resolution(),
+                "typed {kf} g, read back {} g",
+                back.value
             );
-            assert!(
-                (r.friction_weight_g - kf).abs() < 1e-9,
-                "and (D-U)/2 must be the same number"
+            assert_eq!(
+                back.shown.to_bits(),
+                kf.to_bits(),
+                "typed {kf} g, shown {} g",
+                back.shown
             );
         }
+        let at_13 = b.assembly().measuring_point();
+        let torque = b.friction;
+        assert_eq!(torque.radius_m, Some(at_13), "kept with where it was typed");
+        let typed = stanwood(&b).value;
+        let level = b.readout().unwrap().key_friction_weight_g;
+        let protocol = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
+        b.set_measuring_point_from_lip(b.measuring_point_from_lip() + 0.007);
+        let at_20 = b.assembly().measuring_point();
+        assert_eq!(b.friction, torque, "moving the point changed the bushings");
+        let moved = b.readout().unwrap().key_friction_weight_g;
+        assert!(
+            (moved - level * at_13 / at_20).abs() <= 1e-12,
+            "the same bushings read {moved} g on the level arm, not {} g, 7 mm further back",
+            level * at_13 / at_20
+        );
+        let reread = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
+        let (_, seats) = b.seated().unwrap();
+        let rest = seats.top.q[0];
+        let height = b.measuring_point_on_key().y;
+        let arm = |x: f64| x * rest.cos() - height * rest.sin();
+        let ratio = arm(at_13) / arm(at_20);
+        assert!(
+            (reread - protocol * ratio).abs() <= (1.0 + ratio) * read::resolution(),
+            "the protocol read {protocol} g, then {reread} g, not {} g",
+            protocol * ratio
+        );
+        let further = stanwood(&b).value;
+        assert!(
+            further - typed > 0.1,
+            "13 g typed read {further} g 7 mm further back"
+        );
+
+        b.add_lead(0.150, 10.0);
+        b.set_capstan(-0.125);
+        assert_eq!(b.friction, torque, "editing the key changed the bushings");
+        assert_ne!(
+            stanwood(&b).value.to_bits(),
+            further.to_bits(),
+            "and Stanwood's protocol reads them as other grams"
+        );
+    }
+
+    /// Consistency, and what the owner sees: **a key friction weight no
+    /// bushings read is refused, with why, and nothing changes.** Under what
+    /// Stanwood's protocol reads on this key with no friction at all, about a
+    /// third of a gram, it is refused with that reading; on a frame whose
+    /// stops fight the protocol cannot be read at all, and the refusal names
+    /// the fault the frame shows; a weight that is not a number is refused.
+    /// Each time the bushings, the sheet and the readout stay as they were:
+    /// never set to something else in silence.
+    #[test]
+    fn a_key_friction_weight_no_bushings_read_is_refused_and_nothing_changes() {
+        let everything = |b: &KeyBench| {
+            format!(
+                "{:?} {:?} {:?} {:?}",
+                b.friction,
+                b.friction_basis,
+                b.sheet(),
+                b.readout()
+            )
+        };
+        let mut b = KeyBench::standard();
+        let before = everything(&b);
+        let refused = b
+            .set_key_friction_weight(0.0)
+            .expect_err("no bushings read 0 g on this key");
+        let BushingsRefusal::UnderNoFriction { least_g } = refused else {
+            panic!("{refused:?}");
+        };
+        assert!(least_g > 0.2 && least_g < 0.5, "{least_g}");
+        assert_eq!(everything(&b), before, "a refusal changed the bench");
+        let said = b.why_friction_not_set(0.0, &refused);
+        for words in ["0.00 g", &format!("{least_g:.2} g"), "no friction at all"] {
+            assert!(said.contains(words), "{said:?} does not say {words:?}");
+        }
+        assert_eq!(
+            b.set_key_friction_weight(f64::NAN),
+            Err(BushingsRefusal::NotANumber)
+        );
+        assert_eq!(everything(&b), before, "a refusal changed the bench");
+
+        let level = b.assembly().frame.balance_bearing_height();
+        let cloth = b.assembly().frame.back_rail_cloth;
+        b.set_back_rail_height(level + 0.005 - cloth);
+        let before = everything(&b);
+        let refused = b
+            .set_key_friction_weight(6.0)
+            .expect_err("on a frame whose stops fight no key friction weight is read");
+        assert!(
+            matches!(refused, BushingsRefusal::Procedure(Refused::Seat(_))),
+            "{refused:?}"
+        );
+        assert_eq!(everything(&b), before, "a refusal changed the bench");
+        let fault = b.frame_fault().expect("the stops fight");
+        let said = b.why_friction_not_set(6.0, &refused);
+        assert!(
+            said.contains("Stanwood's protocol") && said.contains(fault),
+            "{said:?}"
+        );
     }
 }
 
@@ -2352,13 +2565,13 @@ mod paper_tests {
     fn laying_a_paper_raises_the_key_by_that_paper() {
         let mut b = KeyBench::standard();
         let before = b.readout().unwrap();
+        let height_before = read::mm(&b, ProcedureId::KeyHeight);
         let n = b.papers_on(Which::Balance).len();
 
         b.add_paper(Which::Balance, 0.0002);
         assert_eq!(b.papers_on(Which::Balance).len(), n + 1);
 
-        let after = b.readout().unwrap();
-        let risen = after.key_height_mm - before.key_height_mm;
+        let risen = read::mm(&b, ProcedureId::KeyHeight) - height_before;
 
         // The lever is the **back rail contact's**, not the balance pin's, and
         // that is worth knowing twice over. The key still rests tail-down on
@@ -2380,23 +2593,19 @@ mod paper_tests {
     #[test]
     fn taking_the_paper_back_out_is_exactly_reversible() {
         let mut b = KeyBench::standard();
-        let before = b.readout().unwrap();
+        let before = read::mm(&b, ProcedureId::KeyDip);
 
         b.add_paper(Which::Front, 0.0004);
-        let shimmed = b.readout().unwrap();
-        assert!(
-            shimmed.key_dip_mm < before.key_dip_mm,
-            "paper must shallow the dip"
-        );
+        let shimmed = read::mm(&b, ProcedureId::KeyDip);
+        assert!(shimmed < before, "paper must shallow the dip");
 
         let last = b.papers_on(Which::Front).len() - 1;
         b.remove_paper(Which::Front, last);
-        let after = b.readout().unwrap();
-        assert!(
-            (after.key_dip_mm - before.key_dip_mm).abs() < 1e-9,
-            "removing the paper must restore the dip exactly: {} -> {}",
-            before.key_dip_mm,
-            after.key_dip_mm
+        let after = read::mm(&b, ProcedureId::KeyDip);
+        assert_eq!(
+            after.to_bits(),
+            before.to_bits(),
+            "removing the paper must restore the dip exactly: {before} -> {after}"
         );
     }
 
@@ -2415,8 +2624,9 @@ mod paper_tests {
         );
         // Which is why the bench reports the achieved dip beside the target:
         // the miss is physical, not numerical.
-        let r = KeyBench::standard().readout().unwrap();
-        assert!((r.key_dip_mm - r.key_dip_target_mm).abs() < 0.1);
+        let b = KeyBench::standard();
+        let r = b.readout().unwrap();
+        assert!((read::mm(&b, ProcedureId::KeyDip) - r.key_dip_target_mm).abs() < 0.1);
     }
 }
 
@@ -2424,10 +2634,11 @@ mod paper_tests {
 mod regulation_tests {
     use super::*;
 
-    /// Everything the sheet and the papers say, to the bit.
+    /// Everything the sheet, the readout and the papers say, to the bit.
     fn everything(b: &KeyBench) -> String {
         format!(
-            "{:?} {:?} {:?} {:?}",
+            "{:?} {:?} {:?} {:?} {:?}",
+            b.sheet(),
             b.readout(),
             b.papers_on(Which::Balance),
             b.papers_on(Which::Front),
@@ -2451,12 +2662,12 @@ mod regulation_tests {
         let achieved = b.regulate(targets).expect("66 mm and 10 mm are reachable");
         let r = b.readout().expect("the regulated bench reads");
         assert_eq!(
-            r.key_height_mm.to_bits(),
-            (achieved.key_height * 1000.0).to_bits()
+            read::value(&b, ProcedureId::KeyHeight).to_bits(),
+            achieved.key_height.to_bits()
         );
         assert_eq!(
-            r.key_dip_mm.to_bits(),
-            (achieved.key_dip * 1000.0).to_bits()
+            read::value(&b, ProcedureId::KeyDip).to_bits(),
+            achieved.key_dip.to_bits()
         );
         assert_eq!(b.targets(), targets);
         assert!((r.key_height_target_mm - 66.0).abs() < 1e-12);
@@ -2587,80 +2798,101 @@ mod regulation_tests {
 mod protocol_roundtrip_tests {
     use super::*;
 
-    /// Level 4, and the one that matters most: **the simulator measures its own
-    /// friction with the trade's protocol and gets back what was put in.**
+    /// Level 4, consistency, and the one that matters most: **the simulator
+    /// measures its own friction with the trade's protocol and gets back
+    /// what was put in**, read where the protocol reads it.
     ///
-    /// Set the key friction weight, then run Stanwood's procedure on the model
-    /// — zero the front weight with a temporary weight, put the key on its
-    /// frame, find the least weight at the measuring point that makes it fall
-    /// — and read the answer off. The two must agree.
-    ///
-    /// It is not independent of the parameter. With a constant friction bound
-    /// the procedure returns that bound read back through the measuring arm at
-    /// the key's resting attitude, so the round trip checks the zeroing, the
-    /// arm and the contact state — a wrong lever arm, datum or sign would show
-    /// up here — and does not test the friction model itself.
-    ///
-    /// The tolerance is **derived from the key's attitude, not chosen.** The
-    /// weighing algebra states the measuring arm with the key level, while the
-    /// protocol runs through the exact contact solve on a key resting nose-up
-    /// by the whole of its dip — and a tilted key presents a shorter arm,
-    /// `cos θ · dx + sin θ · dy`, by about half a percent. So the protocol
-    /// returns the parameter scaled by that ratio, and the bound is the ratio
-    /// rather than a number anybody picked. Closing it means making the
-    /// weighing algebra attitude-aware, which is not this test's business.
+    /// Type a key friction weight, then run the protocols on the model.
+    /// Stanwood's, by which it was typed, reads it back in full, to the
+    /// walk's resolution, and to the gram as gram weights give it, as typed.
+    /// The variant zeroed on the frame cancels the key's balance where it
+    /// rests and reads the bushings alone: the torque the typed weight was
+    /// turned into, through the arm the measuring point has where the key
+    /// rests, nose-up by its dip, `x cos θ − y sin θ`, to the walk's
+    /// resolution. Not independent of the parameter: a wrong arm, datum or
+    /// sign shows here, the friction model does not.
     #[test]
     fn the_bench_measures_its_own_friction_by_the_protocol() {
         for kf in [2.0, 6.0, 9.5, 14.0] {
             let mut b = KeyBench::standard();
-            b.set_key_friction_weight(kf);
-            let on_cloth = b.assembly.sin_angle_on_back_rail().expect("an attitude");
-            let tilt_slip =
-                (b.assembly.measuring_arm() / b.assembly.measuring_arm_at(on_cloth) - 1.0).abs();
-
-            let measured = b
-                .measure_key_friction_weight()
-                .expect("the protocol must be runnable on a standard bench");
+            b.set_key_friction_weight(kf)
+                .expect("Stanwood's protocol reads it on this key");
+            let stanwood = read::measured(&b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
             assert!(
-                (measured - kf).abs() < kf * tilt_slip + 0.005,
-                "set {kf} g of key friction, the protocol measured {measured} g — \
-                 further out than the {:.2} % the key's attitude accounts for",
-                tilt_slip * 100.0
+                (stanwood.value - kf).abs() <= read::resolution(),
+                "typed {kf} g of key friction, Stanwood's protocol measured {} g",
+                stanwood.value
+            );
+            assert_eq!(
+                stanwood.shown.to_bits(),
+                kf.ceil().to_bits(),
+                "read to the gram as gram weights give it"
+            );
+            let (_, seats) = b.seated().unwrap();
+            let point = b.measuring_point_on_key();
+            let rest = seats.top.q[0];
+            let tilted = point.x * rest.cos() - point.y * rest.sin();
+            let measured = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
+            let expected = 1000.0 * b.friction.bound_n_m / (G * tilted);
+            assert!(
+                (measured - expected).abs() <= read::resolution(),
+                "the bushings set for {kf} g measured {measured} g zeroed on the frame, not \
+                 the {expected} g their torque gives over the arm at rest"
             );
         }
     }
 
     /// Leading the key does not change what the protocol measures.
     ///
-    /// The procedure zeroes the front weight first, precisely so that the
-    /// answer is friction and not balance. If leads moved the reading, that
-    /// first step would not be doing its job — and the measure would be a
-    /// down weight wearing a different name.
+    /// The procedure zeroes the key's balance first, precisely so that the
+    /// answer is friction and not balance: zeroed on the frame, 30 g of lead
+    /// leave it where it was, to the walk's resolution. Stanwood's, zeroed
+    /// on the levelled jig, keeps what the tilt does to the key and the
+    /// weights, a few tenths of a gram here, under the gram it is read to.
     #[test]
     fn leading_the_key_does_not_change_its_measured_friction() {
         let mut b = KeyBench::standard();
-        b.set_key_friction_weight(7.0);
-        let bare = b.measure_key_friction_weight().unwrap();
+        b.set_key_friction_weight(7.0)
+            .expect("Stanwood's protocol reads 7 g on this key");
+        let bare = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
+        let stanwood = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
 
         b.add_lead(0.160, 18.0);
         b.add_lead(0.110, 12.0);
-        let leaded = b.measure_key_friction_weight().unwrap();
-
+        let leaded = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         assert!(
-            (leaded - bare).abs() < 0.05,
+            (leaded - bare).abs() <= 2.0 * read::resolution(),
             "30 g of lead changed the measured friction from {bare} to {leaded}"
+        );
+        let leaded_stanwood = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
+        assert!(
+            (leaded_stanwood - stanwood).abs() < 0.5,
+            "Stanwood's from {stanwood} g to {leaded_stanwood} g"
         );
     }
 
-    /// A frictionless key measures no friction.
+    /// A frictionless key measures no friction, and reads none: it goes
+    /// down as soon as its balance is overcome, which the walk finds to its
+    /// resolution, and a threshold of nothing but the walk's own rounding
+    /// reads 0 g, not the 1 g rounding it up would make of it. The bushings
+    /// are set straight, with no friction: Stanwood's protocol reads about a
+    /// third of a gram on this key even then, so no key friction weight
+    /// typed gives them.
     #[test]
     fn a_frictionless_key_measures_nothing() {
         let mut b = KeyBench::standard();
-        b.set_key_friction_weight(0.0);
-        let measured = b.measure_key_friction_weight().unwrap();
+        b.set_bushings_holding_g(0.0);
+        let m = read::measured(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         assert!(
-            measured.abs() < 0.05,
-            "a key with no friction should need no weight to fall, got {measured} g"
+            m.value.abs() <= read::resolution(),
+            "a key with no friction should need no weight to fall, got {} g",
+            m.value
+        );
+        assert_eq!(
+            m.shown.to_bits(),
+            0.0_f64.to_bits(),
+            "and reads 0 g, not {} g",
+            m.shown
         );
     }
 }
@@ -2669,32 +2901,36 @@ mod protocol_roundtrip_tests {
 mod state_tests {
     use super::*;
 
-    /// Consistency: **the seated pose never reads the session's state.**
-    /// Key height, dip, the out-of-level at the bottom and the bedding at the
-    /// back are the same bits whatever the weight on the measuring point has
-    /// done to the key and whatever its friction: the procedure seats the key
-    /// by rule, friction off, from its nominal pose, so the sheet is the same
-    /// whatever the user did with the touch weight.
+    /// Consistency: **the procedures never read the session's state.** The
+    /// whole sheet, D and U and the key friction weights with key height and
+    /// dip, and the seats' bearing at the back and out of level at the
+    /// bottom, are the same bits whatever the weight on the measuring point
+    /// has done to the key: each procedure seats the key by rule, friction
+    /// off, from its nominal pose. Friction moves the weighings and leaves
+    /// the seats as they were.
     #[test]
     fn the_sheet_reads_the_seats_whatever_the_touch_weight_did() {
         let mut b = KeyBench::standard();
-        let seated = |r: &BenchReadout| {
+        let seated = |b: &KeyBench| {
+            let r = b.readout().unwrap();
             [
-                r.key_height_mm,
-                r.key_dip_mm,
+                read::value(b, ProcedureId::KeyHeight),
+                read::value(b, ProcedureId::KeyDip),
                 r.out_of_level_deg,
                 r.bedding_at_the_back_deg,
                 r.bears_at_the_back_mm,
             ]
             .map(f64::to_bits)
         };
-        let before = seated(&b.readout().unwrap());
+        let (sheet, before) = (b.sheet(), seated(&b));
         for weight in [-60.0, -6.0, 60.0, 0.0] {
             b.set_finger_weight(weight);
-            assert_eq!(seated(&b.readout().unwrap()), before, "{weight} g");
+            assert_eq!(b.sheet(), sheet, "{weight} g");
+            assert_eq!(seated(&b), before, "{weight} g");
         }
-        b.set_key_friction_weight(18.0);
-        assert_eq!(seated(&b.readout().unwrap()), before, "18 g of friction");
+        b.set_key_friction_weight(18.0)
+            .expect("Stanwood's protocol reads 18 g on this key");
+        assert_eq!(seated(&b), before, "18 g of friction");
     }
 
     /// An edit the key can follow moves it from where it stood: a paper laid
@@ -2762,7 +2998,7 @@ mod state_tests {
             -40.0, 23.0, -40.0, 22.0, -40.0, 30.0, -60.0, 60.0, -60.0, 10.0, -60.0, 1.0,
         ];
         let mut stiff = KeyBench::standard();
-        stiff.set_key_friction_weight(15.0);
+        stiff.set_bushings_holding_g(15.0);
         let mut moved = KeyBench::standard();
         let (front, _) = moved.rail_positions();
         let (balance, front_height, _, _) = moved.frame_dimensions();
@@ -2793,7 +3029,8 @@ mod state_tests {
             b.add_lead(0.150, 10.0);
             b.add_paper(Which::Balance, 0.0002);
             b.set_finger_weight(-4.0);
-            b.set_key_friction_weight(9.0);
+            b.set_key_friction_weight(9.0)
+                .expect("Stanwood's protocol reads 9 g on this key");
             b.set_finger_weight(30.0);
             let r = b.readout().unwrap();
             let p = b.key_placement();
@@ -2802,7 +3039,7 @@ mod state_tests {
                     .clone()
                     .map(|s| s.q.iter().map(|x| x.to_bits()).collect::<Vec<_>>()),
                 [p.origin.x, p.origin.y, p.cos, p.sin].map(f64::to_bits),
-                format!("{r:?}"),
+                format!("{r:?} {:?}", b.sheet()),
             )
         };
         assert_eq!(run(), run());
@@ -2848,44 +3085,45 @@ mod measuring_point_tests {
 
         let before = b.readout().unwrap();
         // The bench is built with 6 g of key friction weight taken at its own
-        // measuring point, so its sheet reads the 6 g back. A friction radius
+        // measuring point, so it reads the 6 g back there. A friction radius
         // left at another point would read as another number here.
         assert!(
-            (before.friction_weight_g - 6.0).abs() < 1e-12,
-            "the standard bench reads {} g of friction, not the 6 g it was built with",
-            before.friction_weight_g
+            (before.key_friction_weight_g - 6.0).abs() < 1e-12,
+            "the standard bench is set to {} g of key friction, not the 6 g it was built with",
+            before.key_friction_weight_g
+        );
+        let fw_before = read::value(&b, ProcedureId::FrontWeight);
+        let (height_before, dip_before) = (
+            read::mm(&b, ProcedureId::KeyHeight),
+            read::mm(&b, ProcedureId::KeyDip),
         );
         let arm_before = lip - b.measuring_point_from_lip();
         b.set_measuring_point_from_lip(b.measuring_point_from_lip() + 0.007);
         let after = b.readout().unwrap();
+        let fw_after = read::value(&b, ProcedureId::FrontWeight);
         let arm_after = lip - b.measuring_point_from_lip();
 
         // The same static moment, read on each arm.
-        for (fw, arm) in [
-            (before.front_weight_g, arm_before),
-            (after.front_weight_g, arm_after),
-        ] {
+        for (fw, arm) in [(fw_before, arm_before), (fw_after, arm_after)] {
             assert!(
                 (fw * arm - moment_g_m).abs() < 1e-12,
                 "{fw} g on a {arm} m arm is not the key's static moment, {moment_g_m} g·m"
             );
         }
-        let expected = before.front_weight_g * arm_before / arm_after;
+        let expected = fw_before * arm_before / arm_after;
         assert!(
-            (after.front_weight_g - expected).abs() < 1e-12,
-            "7 mm further back, front weight read {} g against the lever's {expected} g",
-            after.front_weight_g
+            (fw_after - expected).abs() < 1e-12,
+            "7 mm further back, front weight read {fw_after} g against the lever's {expected} g"
         );
 
         // The key itself has not changed, and neither has its key front.
         assert_eq!(after.key_mass_g, before.key_mass_g);
-        assert_eq!(after.key_height_mm, before.key_height_mm);
+        assert_eq!(read::mm(&b, ProcedureId::KeyHeight), height_before);
         let bottom = 2.0 * pa_core::solve::statics::GAP_TOLERANCE * 1000.0 * (258.0 / 225.0);
+        let dip_after = read::mm(&b, ProcedureId::KeyDip);
         assert!(
-            (after.key_dip_mm - before.key_dip_mm).abs() <= bottom,
-            "the dip moved from {} to {} mm",
-            before.key_dip_mm,
-            after.key_dip_mm
+            (dip_after - dip_before).abs() <= bottom,
+            "the dip moved from {dip_before} to {dip_after} mm"
         );
     }
 
@@ -2898,24 +3136,24 @@ mod measuring_point_tests {
     ///
     /// * the jig: front weight `FW = M / arm`, key weight ratio
     ///   `KR = capstan arm / arm`;
-    /// * the closed form on the frame, with the bearing at the pin:
-    ///   `D = (b − M) / arm`, `U = (−b − M) / arm`, so `BW = −M / arm` and
-    ///   `F = b / arm`;
-    /// * key friction weight, run as a procedure: the friction torque over the
-    ///   arm the key presents at rest, nose-up, `cos θ · arm + sin θ · h`;
-    /// * the weight the settle solve puts on the key, on that same arm.
+    /// * the key friction weight zeroed on the frame, by the walk: the
+    ///   friction torque over the arm the key presents at rest, nose-up,
+    ///   `cos θ · arm − sin θ · h`, to the walk's resolution;
+    /// * the touch weight, which acts on the key at that point.
     ///
-    /// The friction is set before the point moves, so F also checks that it is
-    /// kept as a torque with its radius: read at the new point it is the same
-    /// torque over a different arm, not the same grams.
+    /// The friction is set before the point moves, so the key friction weight
+    /// also checks that it is kept as a torque with its radius: read at the
+    /// new point it is the same torque over a different arm, not the same
+    /// grams.
     #[test]
     fn every_protocol_reads_the_same_measuring_point() {
         let mut b = KeyBench::standard();
         let key = b.assembly().key.clone();
         let lip = key.front_edge + key.keytop_overhang;
+        let height = key.stick_height + key.keytop_thickness;
 
         let kf_g = 6.0;
-        b.set_key_friction_weight(kf_g);
+        b.set_bushings_holding_g(kf_g);
         let torque = kf_g * 1e-3 * (lip - b.measuring_point_from_lip());
 
         b.set_measuring_point_from_lip(MEASURING_POINT_HALF_INCH);
@@ -2923,15 +3161,16 @@ mod measuring_point_tests {
         assert!((b.measuring_point_from_lip() - MEASURING_POINT_HALF_INCH).abs() < 1e-15);
         assert!((b.assembly().measuring_point() - arm).abs() < 1e-15);
 
-        let r = b.readout().unwrap();
         let m = key.mass_properties().unwrap().static_moment_x();
         let read_on = [
-            ("front weight", 1000.0 * m / r.front_weight_g),
-            ("key weight ratio", -key.capstan / r.key_ratio),
-            ("down weight", 1000.0 * (torque - m) / r.down_weight_g),
-            ("up weight", 1000.0 * (-torque - m) / r.up_weight_g),
-            ("balance weight", -1000.0 * m / r.balance_weight_g),
-            ("friction weight", 1000.0 * torque / r.friction_weight_g),
+            (
+                "front weight",
+                1000.0 * m / read::value(&b, ProcedureId::FrontWeight),
+            ),
+            (
+                "key weight ratio",
+                -key.capstan / read::value(&b, ProcedureId::KeyWeightRatio),
+            ),
         ];
         for (what, on) in read_on {
             assert!(
@@ -2940,32 +3179,28 @@ mod measuring_point_tests {
             );
         }
 
-        // Key friction weight, by the procedure. It reads the torque over the
-        // arm the key presents on its cloth, from the same point. The search
-        // halves a 200 g bracket 32 times, so the reading is within one final
-        // interval, 200 / 2^32 g, of the least weight: that is the tolerance.
-        let rest = b.assembly().sin_angle_on_back_rail().unwrap();
-        let tilted =
-            (1.0 - rest * rest).sqrt() * arm + rest * (key.stick_height + key.keytop_thickness);
-        let kf = r
-            .measured_kf_g
-            .expect("the procedure runs on the standard bench");
-        let resolution_g = 200.0 / 2f64.powi(32);
+        // The key friction weight, by the walk, over the arm the key presents
+        // on its cloth from the same point.
+        let (_, seats) = b.seated().unwrap();
+        let rest = seats.top.q[0];
+        let tilted = rest.cos() * arm - rest.sin() * height;
+        let kf = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         assert!(
-            (1000.0 * torque / kf - tilted).abs() < tilted * resolution_g / kf,
-            "key friction weight was read on a {} m arm; the measuring point presents {tilted} m",
+            (kf - 1000.0 * torque / tilted).abs() <= read::resolution(),
+            "the key friction weight was read on a {} m arm; the measuring point presents \
+             {tilted} m",
             1000.0 * torque / kf
         );
 
-        // And the weight the settle solve puts on the key acts there too.
-        let a = b.assembly();
-        let w = 25.0;
-        let from_weight = a.net_torque(rest, w).unwrap() - a.net_torque(rest, 0.0).unwrap();
-        assert!(
-            (from_weight - w * 1e-3 * tilted).abs() < 1e-15,
-            "{w} g on the key acts on a {} m arm, not the measuring point's {tilted} m",
-            from_weight / (w * 1e-3)
+        // And the touch weight acts there too.
+        let mounted = b.key_on_frame(0.0).unwrap();
+        let at = b.touch(&mounted).at.at;
+        assert_eq!(
+            at.x.to_bits(),
+            arm.to_bits(),
+            "the touch weight stands at {at:?}"
         );
+        assert_eq!(at.y.to_bits(), height.to_bits());
     }
 
     /// The marker on the section follows the setting.
@@ -3035,7 +3270,7 @@ mod measuring_point_tests {
     fn moving_the_point_moves_the_weight_on_it_and_the_key_settles_again() {
         let mut b = KeyBench::standard();
         b.add_lead(-0.120, 30.0);
-        b.set_key_friction_weight(2.0);
+        b.set_bushings_holding_g(2.0);
         b.set_measuring_point_from_lip(0.030);
         b.set_finger_weight(10.6);
         assert!(

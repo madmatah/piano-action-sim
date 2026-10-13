@@ -15,10 +15,14 @@
 //!
 //! # What a sheet holds
 //!
-//! Every field of [`BenchReadout`] (or that there is none, when the bench
-//! cannot weigh its frame), the reason it cannot, the faults, where the key is
-//! drawn and the papers on both punchings. Numbers are written as the shortest
-//! decimal that reads back to the same double, then as its bit pattern.
+//! Every reading of the weighing sheet ([`KeyBench::sheet`]): its value in
+//! full, what the trade reads it as, its trust, and for the key friction
+//! weights the temporary weight and where it stood; or why it is refused.
+//! Then every field of [`BenchReadout`] (or that there is none, when the
+//! bench cannot seat its key), the reason it cannot, the faults, where the
+//! key is drawn and the papers on both punchings. Numbers are written as the
+//! shortest decimal that reads back to the same double, then as its bit
+//! pattern.
 //!
 //! One reading is recorded one step earlier than the sheet shows it. The
 //! bench turns the bedding at the back into degrees with `atan`, from the
@@ -37,7 +41,7 @@
 
 use std::fmt::Write as _;
 
-use crate::key_bench::{BenchReadout, Fault, KeyBench, TouchVerdict, Which};
+use crate::key_bench::{BenchReadout, Fault, KeyBench, Measurement, TouchVerdict, Trust, Which};
 
 /// One bench whose readings the golden sheet records.
 #[derive(Debug, Clone, Copy)]
@@ -130,6 +134,7 @@ pub fn sheet(fixture: &Fixture) -> String {
          # same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;\n\
          # a change that moves a reading rewrites this file and says why.\n",
     );
+    write_sheet(&mut out, &bench);
     write_readout(&mut out, &bench);
     write_frame(&mut out, &bench);
     write_pose(&mut out, &bench);
@@ -157,6 +162,69 @@ fn optional(out: &mut String, name: &str, x: Option<f64>) {
     }
 }
 
+fn write_sheet(out: &mut String, bench: &KeyBench) {
+    let sheet = bench.sheet();
+    for reading in &sheet.readings {
+        let name = format!("sheet.{}", reading.procedure.code());
+        match &reading.result {
+            Ok(m) => write_measurement(out, &name, m),
+            Err(why) => line(out, &name, &format!("refused {why:?}")),
+        }
+    }
+}
+
+fn write_measurement(out: &mut String, name: &str, m: &Measurement) {
+    // Destructured without `..`, so that a field added to a measurement is a
+    // compile error here until the sheet records it, or says why not.
+    let Measurement {
+        procedure: _,
+        value,
+        shown,
+        unit,
+        resolution: _,
+        rounding: _,
+        conditions,
+        trust,
+        report: _,
+        fingerprint,
+    } = m;
+    // The procedure is the line's name; the resolution and the rounding are
+    // the procedure's own, fixed with it; the report counts the solver's
+    // steps, a path and not a reading, which the fingerprint answers for.
+    number(out, &format!("{name}.value"), *value);
+    number(out, &format!("{name}.shown"), *shown);
+    line(out, &format!("{name}.unit"), unit.code());
+    let trust = match trust {
+        Trust::Metrological => "metrological".to_owned(),
+        Trust::Indicative { because } => format!(
+            "indicative {}",
+            because
+                .iter()
+                .map(|i| i.code())
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+    };
+    line(out, &format!("{name}.trust"), &trust);
+    line(out, &format!("{name}.fingerprint"), fingerprint);
+    if let Some(walk) = conditions.walk {
+        number(out, &format!("{name}.walk.from_g"), walk.from_g);
+    }
+    if let Some(t) = conditions.temporary_weight {
+        number(out, &format!("{name}.temporary_weight.mass_g"), t.mass_g);
+        number(
+            out,
+            &format!("{name}.temporary_weight.station_x"),
+            t.station.x,
+        );
+        number(
+            out,
+            &format!("{name}.temporary_weight.station_y"),
+            t.station.y,
+        );
+    }
+}
+
 fn write_readout(out: &mut String, bench: &KeyBench) {
     let Some(readout) = bench.readout() else {
         line(out, "readout", "none");
@@ -165,20 +233,11 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
     // Destructured field by field and without `..`, so that a field added to
     // the readout is a compile error here until the sheet records it.
     let BenchReadout {
-        front_weight_g,
-        key_ratio,
-        key_height_mm,
-        key_dip_mm,
-        down_weight_g,
-        up_weight_g,
-        balance_weight_g,
-        friction_weight_g,
         key_mass_g,
         lead_count,
         gap_front_mm,
         gap_back_mm,
-        measured_kf_g,
-        friction_band_g,
+        key_friction_weight_g,
         key_height_target_mm,
         key_dip_target_mm,
         finger,
@@ -189,20 +248,11 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
         stopped_by_the_mortise,
     } = readout;
 
-    number(out, "readout.front_weight_g", front_weight_g);
-    number(out, "readout.key_ratio", key_ratio);
-    number(out, "readout.key_height_mm", key_height_mm);
-    number(out, "readout.key_dip_mm", key_dip_mm);
-    number(out, "readout.down_weight_g", down_weight_g);
-    number(out, "readout.up_weight_g", up_weight_g);
-    number(out, "readout.balance_weight_g", balance_weight_g);
-    number(out, "readout.friction_weight_g", friction_weight_g);
     number(out, "readout.key_mass_g", key_mass_g);
     line(out, "readout.lead_count", &lead_count.to_string());
     optional(out, "readout.gap_front_mm", gap_front_mm);
     optional(out, "readout.gap_back_mm", gap_back_mm);
-    optional(out, "readout.measured_kf_g", measured_kf_g);
-    number(out, "readout.friction_band_g", friction_band_g);
+    number(out, "readout.key_friction_weight_g", key_friction_weight_g);
     number(out, "readout.key_height_target_mm", key_height_target_mm);
     number(out, "readout.key_dip_target_mm", key_dip_target_mm);
     match finger {
@@ -283,12 +333,13 @@ mod tests {
         assert!(wedged.frame_fault().is_some(), "the stops must fight");
         assert!(wedged.readout().is_none(), "and the bench cannot weigh it");
 
-        let back_heavy = back_heavy_key().readout().expect("a back-heavy key weighs");
-        assert!(
-            back_heavy.front_weight_g < 0.0,
-            "{}",
-            back_heavy.front_weight_g
-        );
+        let back_heavy = back_heavy_key().sheet();
+        let front_weight = back_heavy
+            .get(crate::key_bench::ProcedureId::FrontWeight)
+            .and_then(|r| r.as_ref().ok())
+            .expect("a back-heavy key weighs")
+            .value;
+        assert!(front_weight < 0.0, "{front_weight}");
 
         let mortise = mortise_limited_dip()
             .readout()

@@ -169,6 +169,10 @@ button:hover {
   font-size: 0.68rem;
   text-align: right;
 }
+.row.refused .value {
+  color: var(--alert);
+  font-weight: 400;
+}
 
 .verdict {
   margin: 0.3rem 0 0.8rem;

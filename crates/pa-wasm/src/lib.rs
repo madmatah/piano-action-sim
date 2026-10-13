@@ -21,9 +21,10 @@
 //! wrong, it is wrong in the domain, and fixing it here would put the engine and
 //! the browser permanently out of step.
 
+use pa_app::golden;
 use pa_app::key_bench::{
     why_not_regulated, ContactCode, ContactState, Fault, HowItBears, KeyBench, Material,
-    Provenance, Role, Sweep, Targets, TouchVerdict, Which, KEY, PAPER_THICKNESSES,
+    Provenance, Role, Sweep, Targets, TouchVerdict, Trust, Unit, Which, KEY, PAPER_THICKNESSES,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -218,17 +219,39 @@ fn source(range: &core::ops::Range<u16>, p: Provenance) -> SourceDto {
     }
 }
 
+/// One reading of the weighing sheet, as the panel shows it: what the trade
+/// reads it as, the value in full beside it, or why it is refused.
+#[derive(Serialize)]
+struct ReadingDto {
+    /// Which reading, the engine's identifier.
+    procedure: &'static str,
+    /// What the trade reads it as, in `unit`; `null` when refused.
+    shown: Option<f32>,
+    /// The value in full, in `unit`; `null` when refused.
+    exact: Option<f32>,
+    /// `"g"`, `"mm"`, or `""` for a ratio.
+    unit: &'static str,
+    /// The protocol's resolution, in `unit`: what `shown` is read to.
+    resolution: f32,
+    /// `"metrological"`, or `"indicative"` where an input it reads is
+    /// estimated or assumed.
+    trust: &'static str,
+    /// Those inputs: `"key_mass"`, `"key_friction"`, `"geometry"`.
+    because: Vec<&'static str>,
+    /// The temporary weight a key friction weight stood on the key, grams.
+    temporary_weight_g: Option<f32>,
+    /// Where it stood, millimetres from the balance pin, positive in front.
+    temporary_weight_at_mm: Option<f32>,
+    /// Why it is refused, in a sentence; `null` when it is read.
+    refused: Option<String>,
+}
+
 /// The trade quantities, in the trade's units.
 #[derive(Serialize)]
 struct ReadoutDto {
-    front_weight_g: f32,
-    key_ratio: f32,
-    key_height_mm: f32,
-    key_dip_mm: f32,
-    down_weight_g: f32,
-    up_weight_g: f32,
-    balance_weight_g: f32,
-    friction_weight_g: f32,
+    /// Every reading of the weighing sheet, in its order, each by its
+    /// procedure run on the model.
+    sheet: Vec<ReadingDto>,
     key_mass_g: f32,
     lead_count: u32,
     balance_paper_mm: f32,
@@ -246,9 +269,10 @@ struct ReadoutDto {
     /// Whether friction alone holds the key where it is: the weight lies
     /// between the up weight and the down weight at its attitude.
     held_by_friction: bool,
-    /// How far the weight stands inside the friction band, from the band's
-    /// nearer edge, grams at the measuring point; `null` when a stop carries
-    /// the key.
+    /// How far the weight stands from moving the key, grams at the
+    /// measuring point: on the cloth from the sheet's down weight, on the
+    /// front stop from its up weight, touching neither from the nearer edge
+    /// of the band; `null` when a stop carries the key.
     friction_margin_g: Option<f32>,
     out_of_level_deg: f32,
     bedding_at_the_back_deg: f32,
@@ -264,10 +288,11 @@ struct ReadoutDto {
     /// The gap at the back rail cloth, millimetres, or `null` where no
     /// feature of the two can meet.
     gap_back_mm: Option<f32>,
-    friction_band_g: f32,
-    /// What the protocol measures on the model, or `null` if it cannot be run
-    /// on this geometry.
-    measured_kf_g: Option<f32>,
+    /// The bushings' friction as set, its torque read as grams at the
+    /// measuring point as it stands now, the key level: a torque, so moving
+    /// the measuring point changes this. Not the key friction weight it was
+    /// typed as, which the sheet reads by Stanwood's protocol.
+    key_friction_weight_g: f32,
     /// The papers actually stacked under the balance punching, millimetres,
     /// in the order they were laid.
     balance_papers_mm: Vec<f32>,
@@ -463,15 +488,54 @@ impl Bench {
         let rails = self.inner.frame_dimensions();
         let positions = self.inner.rail_positions();
         let felts = self.inner.felts();
+        let sheet = self
+            .inner
+            .sheet()
+            .readings
+            .iter()
+            .map(|reading| match &reading.result {
+                Ok(m) => {
+                    let (scale, unit) = match m.unit {
+                        Unit::Metre => (1000.0, "mm"),
+                        Unit::Gram => (1.0, "g"),
+                        Unit::One => (1.0, ""),
+                    };
+                    let (trust, because) = match &m.trust {
+                        Trust::Metrological => ("metrological", Vec::new()),
+                        Trust::Indicative { because } => {
+                            ("indicative", because.iter().map(|i| i.code()).collect())
+                        }
+                    };
+                    let temporary = m.conditions.temporary_weight;
+                    ReadingDto {
+                        procedure: reading.procedure.code(),
+                        shown: Some((m.shown * scale) as f32),
+                        exact: Some((m.value * scale) as f32),
+                        unit,
+                        resolution: (m.resolution * scale) as f32,
+                        trust,
+                        because,
+                        temporary_weight_g: temporary.map(|t| t.mass_g as f32),
+                        temporary_weight_at_mm: temporary.map(|t| mm(t.station.x)),
+                        refused: None,
+                    }
+                }
+                Err(why) => ReadingDto {
+                    procedure: reading.procedure.code(),
+                    shown: None,
+                    exact: None,
+                    unit: "",
+                    resolution: 0.0,
+                    trust: "indicative",
+                    because: Vec::new(),
+                    temporary_weight_g: None,
+                    temporary_weight_at_mm: None,
+                    refused: Some(self.inner.why_refused(why)),
+                },
+            })
+            .collect();
         serde_json::to_string(&ReadoutDto {
-            front_weight_g: r.front_weight_g as f32,
-            key_ratio: r.key_ratio as f32,
-            key_height_mm: r.key_height_mm as f32,
-            key_dip_mm: r.key_dip_mm as f32,
-            down_weight_g: r.down_weight_g as f32,
-            up_weight_g: r.up_weight_g as f32,
-            balance_weight_g: r.balance_weight_g as f32,
-            friction_weight_g: r.friction_weight_g as f32,
+            sheet,
             key_mass_g: r.key_mass_g as f32,
             lead_count: r.lead_count as u32,
             balance_paper_mm: (balance_paper * 1000.0) as f32,
@@ -498,8 +562,7 @@ impl Bench {
             finger_weight_g: self.inner.finger_weight() as f32,
             gap_front_mm: r.gap_front_mm.map(|v| v as f32),
             gap_back_mm: r.gap_back_mm.map(|v| v as f32),
-            friction_band_g: r.friction_band_g as f32,
-            measured_kf_g: r.measured_kf_g.map(|v| v as f32),
+            key_friction_weight_g: r.key_friction_weight_g as f32,
             balance_papers_mm: self
                 .inner
                 .papers_on(Which::Balance)
@@ -610,9 +673,16 @@ impl Bench {
         self.inner.set_front_paper(mm * 1e-3);
     }
 
-    /// Key friction weight, grams at the measuring point.
-    pub fn set_key_friction_weight(&mut self, g: f64) {
-        self.inner.set_key_friction_weight(g);
+    /// Key friction weight, grams at the measuring point, as Stanwood's
+    /// protocol reads it: the bushings set to the torque at which the
+    /// protocol reads it back. Returns why it was refused, the bushings left
+    /// as they were, or nothing when it was set.
+    pub fn set_key_friction_weight(&mut self, g: f64) -> Option<String> {
+        let why = self.inner.set_key_friction_weight(g).err()?;
+        Some(format!(
+            "Refused, the bushings left as they were: {}",
+            self.inner.why_friction_not_set(g, &why)
+        ))
     }
 
     /// Moves the capstan, millimetres behind the balance pin (pass a positive
@@ -710,6 +780,18 @@ impl Bench {
     pub fn set_front_felt(&mut self, mm: f64) {
         self.inner.set_front_felt(mm * 1e-3);
     }
+}
+
+/// The golden sheet of the fixture bench `name`, as the native engine writes
+/// it (`crates/pa-app/tests/golden/`): for the test that WebAssembly
+/// computes every reading to the same bits as the native build. `None` for a
+/// name no fixture has.
+#[wasm_bindgen]
+pub fn golden_sheet(name: &str) -> Option<String> {
+    golden::FIXTURES
+        .iter()
+        .find(|f| f.name == name)
+        .map(golden::sheet)
 }
 
 impl Default for Bench {

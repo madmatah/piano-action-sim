@@ -8,18 +8,21 @@
 //!
 //! | Module | Responsibility |
 //! |---|---|
-//! | [`geometry`] | planar primitives, lines and arcs, the signed distances contacts are measured by, and the one-coordinate kinematics |
+//! | [`geometry`] | planar primitives, lines and arcs, and the signed distances contacts are measured by |
 //! | [`mechanism`] | bodies in a tree: poses, Jacobian columns, loads, coordinate limits and friction, prescribed coordinates and their reactions, the parts the bodies carry and the contacts declared between them |
 //! | [`contact`] | parts on bodies, the ranges of their outlines a contact may read, contact pairs and their rows over every coordinate, how deep drawn parts stand in one another, and how a key bears on a stop |
 //! | [`solve`] | the static solve: one load increment, its box problem and the dense algebra under it |
 //! | [`parts`] | the key and its frame as parametric designs, the parts they build, and the composite key's mass |
-//! | [`parts::assembly`] | the key on its frame at one coordinate: stops, rest attitudes, settle |
+//! | [`parts::assembly`] | the key, its frame and its protocol, and the stops a frame whose stops fight is drawn riding on |
 //! | [`parts::faults`] | what about a key and its frame no keyboard could be built from, read off the drawn parts |
 //! | [`parts::mounts`] | the mechanisms a key is put in to be read, the jig and the key on its frame, the key's contacts with its frame, and its nominal pose there |
 //! | [`parts::verdicts`] | what holds a key where it stands, from determinate quantities |
 //! | [`measure`] | the trade's weighing quantities, as the technician's protocols define them |
 //! | [`measure::jig`] | Stanwood's front weight jig, run on the mechanism |
 //! | [`measure::seat`] | the seated pose, from which key height and dip are read |
+//! | [`measure::walk`] | the breakaway walk, from which down and up weight are read |
+//! | [`measure::weighing`] | every reading of the weighing sheet, by its procedure, and the bushings a typed key friction weight reads on, by Stanwood's protocol inverted |
+//! | [`measure::measurement`] | a reading with its value, what the trade reads it as, its conditions and its trust |
 //! | [`regulation`] | the regulation solve: key height and dip targets to the papers laid on the two punchings, by the seated pose itself |
 //!
 //! # What holds today, and what holds it
@@ -30,21 +33,25 @@
 //!    declaring the ranges of it a contact may read. The contacts read those
 //!    ranges and nothing else: a [`contact::ContactPair`] holds nothing but
 //!    them, and its rows are read off the parts a mechanism carries; the
-//!    static solve places the key on them ([`measure::seat`]), and the
-//!    regulation solve reads the key placed there ([`regulation`]). The
-//!    one-coordinate statics left under the key friction weight protocol
-//!    still read stops of their own, built from the same fields:
-//!    [`parts::KeyDesign::underside_corners`] for the key, the bearing heights
-//!    of [`parts::FrameDesign`] for the frame.
+//!    static solve places the key on them ([`measure::seat`]), and every
+//!    procedure of the sheet reads the key placed there ([`measure::weighing`],
+//!    [`regulation`]). The drawing of a frame whose stops fight still reads
+//!    stops of its own, built from the same fields
+//!    ([`parts::assembly::KeyAssembly::riding_on_both_stops`]);
 //!    `every_stop_face_is_a_declared_range_of_a_drawn_part` holds every face
 //!    they read to a declared range.
 //! 2. **Regulation is expressed as trade targets**, and the geometry is solved
 //!    to meet them ([`regulation::Regulating::solve`]): the papers laid, what
 //!    they give beside the targets, or the target refused with what keeps it
 //!    out of reach.
-//! 3. **Dry friction at the key's centres is set-valued**: an interval of
+//! 3. **Every reading is a protocol run on the model**: the jig, the seated
+//!    pose and the breakaway walk ([`measure::weighing`]), each coming back
+//!    as a [`measure::measurement::Measurement`] or refused with its reason.
+//!    Their closed forms are test oracles only.
+//! 4. **Dry friction at the key's centres is set-valued**: an interval of
 //!    admissible torque, never a regularized law, a box row of the static
-//!    solve ([`solve::statics`]) and of [`parts::KeyAssembly::settle`].
+//!    solve ([`solve::statics`]), stored as a torque with the radius it was
+//!    read at ([`mechanism::AxisFriction`]).
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]

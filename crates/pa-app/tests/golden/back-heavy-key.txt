@@ -3,20 +3,71 @@
 # Every reading in full bits: the shortest decimal that reads back to the
 # same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
 # a change that moves a reading rewrites this file and says why.
-readout.front_weight_g -8.093919058496057 0xc020301628a96c61
-readout.key_ratio 0.5242914979757087 0x3fe0c6fef6ac0c72
-readout.key_height_mm 64.98878883168035 0x40503f4850f3ade6
-readout.key_dip_mm 10.21172226763914 0x40246c66dc6eb0ac
-readout.down_weight_g 14.09391905849606 0x402c301628a96c62
-readout.up_weight_g 2.0939190584960583 0x4000c058a2a5b186
-readout.balance_weight_g 8.09391905849606 0x4020301628a96c62
-readout.friction_weight_g 6.0 0x4018000000000000
+sheet.front_weight.value -8.093919058496057 0xc020301628a96c61
+sheet.front_weight.shown -8.1 0xc020333333333333
+sheet.front_weight.unit g
+sheet.front_weight.trust indicative key_mass,geometry
+sheet.front_weight.fingerprint statics/1
+sheet.key_weight_ratio.value 0.5242914979757087 0x3fe0c6fef6ac0c72
+sheet.key_weight_ratio.shown 0.52 0x3fe0a3d70a3d70a4
+sheet.key_weight_ratio.unit 
+sheet.key_weight_ratio.trust indicative geometry
+sheet.key_weight_ratio.fingerprint statics/1
+sheet.key_height.value 0.06498878883168036 0x3fb0a31af2a382f8
+sheet.key_height.shown 0.06498878883168036 0x3fb0a31af2a382f8
+sheet.key_height.unit m
+sheet.key_height.trust indicative geometry
+sheet.key_height.fingerprint statics/1
+sheet.key_dip.value 0.01021172226763914 0x3f84e9e229671b50
+sheet.key_dip.shown 0.01021172226763914 0x3f84e9e229671b50
+sheet.key_dip.unit m
+sheet.key_dip.trust indicative geometry
+sheet.key_dip.fingerprint statics/1
+sheet.down_weight.value 14.465720770689414 0x402cee72f3ee5b9f
+sheet.down_weight.shown 15.0 0x402e000000000000
+sheet.down_weight.unit g
+sheet.down_weight.trust indicative key_mass,key_friction,geometry
+sheet.down_weight.fingerprint statics/1
+sheet.down_weight.walk.from_g 8.435882208677695 0x4020df2bf3ee5b9f
+sheet.up_weight.value 2.093208103652481 0x4000bee3e3e746d4
+sheet.up_weight.shown 2.0 0x4000000000000000
+sheet.up_weight.unit g
+sheet.up_weight.trust indicative key_mass,key_friction,geometry
+sheet.up_weight.fingerprint statics/1
+sheet.up_weight.walk.from_g 8.093154697890762 0x40202fb1f8f9d1b5
+sheet.balance_weight.value 8.279464437170947 0x40208f15f67416aa
+sheet.balance_weight.shown 8.5 0x4021000000000000
+sheet.balance_weight.unit g
+sheet.balance_weight.trust indicative key_mass,key_friction,geometry
+sheet.balance_weight.fingerprint statics/1
+sheet.friction_weight.value 6.186256333518466 0x4018beb9faf489ea
+sheet.friction_weight.shown 6.5 0x401a000000000000
+sheet.friction_weight.unit g
+sheet.friction_weight.trust indicative key_mass,key_friction,geometry
+sheet.friction_weight.fingerprint statics/1
+sheet.key_friction_weight_zeroed_on_the_jig.value 6.393711600037207 0x401993292238dcd0
+sheet.key_friction_weight_zeroed_on_the_jig.shown 7.0 0x401c000000000000
+sheet.key_friction_weight_zeroed_on_the_jig.unit g
+sheet.key_friction_weight_zeroed_on_the_jig.trust indicative key_mass,key_friction,geometry
+sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/1
+sheet.key_friction_weight_zeroed_on_the_jig.walk.from_g 0.36387303802548854 0x3fd749b2238dcd02
+sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.mass_g 13.327986716323524 0x402aa7eddff84391
+sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.station_x 0.15 0x3fc3333333333333
+sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.station_y 0.026000000000000002 0x3f9a9fbe76c8b43a
+sheet.key_friction_weight_zeroed_on_the_frame.value 6.0298385620117205 0x40181e8e00000002
+sheet.key_friction_weight_zeroed_on_the_frame.shown 7.0 0x401c000000000000
+sheet.key_friction_weight_zeroed_on_the_frame.unit g
+sheet.key_friction_weight_zeroed_on_the_frame.trust indicative key_friction,geometry
+sheet.key_friction_weight_zeroed_on_the_frame.fingerprint statics/1
+sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 1.4394516110675399e-15 0x3cd9ee4c82ad25ab
+sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 13.928790669181291 0x402bdb8a7359ed5d
+sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x 0.15 0x3fc3333333333333
+sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_y 0.026000000000000002 0x3f9a9fbe76c8b43a
 readout.key_mass_g 151.1166896392422 0x4062e3bbebe90a79
 readout.lead_count 1
 readout.gap_front_mm 8.923314898166891 0x4021d8bcbaf7129f
 readout.gap_back_mm -6.657001339060997e-14 0xbd32bce000000000
-readout.measured_kf_g none
-readout.friction_band_g 6.0 0x4018000000000000
+readout.key_friction_weight_g 6.0 0x4018000000000000
 readout.key_height_target_mm 65.0 0x4050400000000000
 readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
 readout.finger RestingOn BackRailCloth

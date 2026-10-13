@@ -300,8 +300,9 @@ it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
   back rail cloth, and KF is the least weight, to the gram, on the measuring point
   that makes the key drop, stack removed. Alternatively, a key leveling lead holds
   the back of the key down on the frame and KF = (D − U)/2, stack off [V, Stanwood
-  2000, p. 22; glossary, p. 22]. The bench zeroes the front weight with the key on
-  its frame, not on the levelled jig (FOUNDATIONS §2.2).
+  2000, p. 22; glossary, p. 22]. The bench reads it both ways, labelled: zeroed
+  on the levelled jig, as Stanwood does, and zeroed where the key rests on its
+  frame, which reads the bushings alone (FOUNDATIONS §2.2).
 - **Support Spring Balance Weight (BWS)**: the balance weight with the wippen
   support spring disengaged, minus the balance weight with it engaged. "Engaging the
   support spring equally reduces Up Weight (U), Down Weight (D) and Balance Weight

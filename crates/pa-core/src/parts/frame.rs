@@ -536,14 +536,14 @@ pub const PAPER_THICKNESSES: [f64; PAPER_KINDS] = [
 /// Every thickness in [`PAPER_THICKNESSES`] is a whole number of these, which
 /// is what lets [`papers_for`] search the drawer *exactly* rather than
 /// approximately. `every_paper_is_a_whole_number_of_steps` holds it true.
-const PAPER_STEP: f64 = 0.000_01;
+pub(crate) const PAPER_STEP: f64 = 0.000_01;
 
 /// The tallest stack worth searching for, metres.
 ///
 /// Beyond this the design is wrong and not the drawer, and the regulation
 /// solve has already refused it ([`crate::regulation::STACK_SEARCH`]); this
 /// only stops a wild number from sizing a table.
-const PAPER_SEARCH_LIMIT: f64 = 0.100;
+pub(crate) const PAPER_SEARCH_LIMIT: f64 = 0.100;
 
 /// How far short of a whole number of [`PAPER_STEP`]s a wanted thickness may
 /// fall and still count as that number, metres: a picometre.
@@ -553,7 +553,7 @@ const PAPER_SEARCH_LIMIT: f64 = 0.100;
 /// written as 0.6999… as 0.69 mm and lose a whole step. A picometre is ten
 /// million times less than the step, so no thickness a technician can tell
 /// apart from the next step is ever rounded up to it.
-const PAPER_EPSILON: f64 = 1e-12;
+pub(crate) const PAPER_EPSILON: f64 = 1e-12;
 
 /// Builds the stack of real papers that comes closest to a wanted thickness
 /// without overshooting — thickest first, which is how a pile is laid.

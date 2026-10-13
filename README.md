@@ -19,32 +19,40 @@ and punchings laid from a drawer of real papers). The key turns on its balance
 pin against contacts read off the drawn parts, with set-valued friction at the
 balance: a static solve puts it where its weight and the weight on it leave it,
 a weight between the up weight and the down weight moves nothing, and the bench
-says that friction holds it. Key height and key dip are read with the key
-seated by the trade's gestures, its back held down at the capstan and its front
-pressed down, and solved from targets to punching stacks by that seated pose,
-laid in papers within one paper of the targets, a target a stop forbids refused
-with its shortfall in millimetres; front weight and key
-weight ratio are read by running Stanwood's jig on the model, the key a body on
-a pin held level and the scale reading the force
-that holds it; key friction weight is measured by Stanwood's procedure run on
-the model. Every touchweight is read at one measuring point, a setting of the
-bench, 13 mm back from the covering's lip by default. A frame edited out of fit
-with its key is drawn as it is, its faults named in millimetres. The key's
-contacts with its frame are read off the drawn parts, as signed gaps with their
-gradients over every coordinate, and marked on the section and the solid.
+says that friction holds it. Key height and key dip are read with the key seated
+by the trade's gestures, its back held down at the capstan and its front pressed
+down, and solved from targets to punching stacks by that seated pose, laid in
+papers within one paper of the targets, a target a stop forbids refused with its
+shortfall in millimetres; front weight and key weight ratio are read by running
+Stanwood's jig on the model, the key a body on a pin held level and the scale
+reading the force that holds it; down weight and up weight are walked a gram at
+a time from the key resting at the top and at the bottom of its stroke until it
+goes all the way, and balance and friction weight are read from those two; the
+key friction weight is read by Stanwood's protocol, zeroed on the levelled jig,
+and by its variant zeroed where the key rests on its frame. A key friction
+weight is typed as Stanwood's protocol reads it, and the bushings are set to the
+torque at which that protocol, run on the model, reads it back; one no bushings
+read is refused with why. Weights are read as gram weights give them, down
+weight and key friction weight rounded up to the gram, up weight down, a
+threshold the walk cannot tell from a whole gram read as that gram, with each
+value in full beside it, its trust, and the counts of the solves it took. Every
+touchweight is read at one measuring point, a setting of the bench, 13 mm back
+from the covering's lip by default. A frame edited out of fit with its key is
+drawn as it is, its faults named in millimetres. The key's contacts with its
+frame are read off the drawn parts, as signed gaps with their gradients over
+every coordinate, and marked on the section and the solid.
 
-Down weight, up weight and balance weight on the weighing sheet come from a
-closed form taken with the key level, and friction weight is its input, a
-friction torque, read back at the measuring point; making each of them a
-procedure run on the model is planned. What the stage simplifies is listed in
+Every reading on the weighing sheet is a procedure run on the model; their
+closed forms are the tests' oracles. What the stage simplifies is listed in
 [`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §2.3, first among them a mass
-model that cannot predict front weight.
+model that cannot predict front weight, which makes every reading on the
+default bench an indication rather than a measurement.
 
 | Part | What it is |
 |---|---|
 | `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
 | `crates/pa-app` | the single-key bench, as a use case, and the golden sheet that records its every reading |
-| `crates/pa-cli` | `weigh`: the weighing sheet in a terminal; `golden`: rewrites the golden sheet |
+| `crates/pa-cli` | `weigh`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section and in solid (React, react-three-fiber), from the same Rust compiled to WebAssembly |
 
 ## What is planned
@@ -55,8 +63,8 @@ In this order, each stage with its engine and its view
 - a general quasi-static core with the key as its first client, on
   Hirschkorn's published Boston GP-178 key, a parameter registry that loads
   `data/params/`, a validation layer, and an interface in English and French
-  (its first parts, the mechanism, the jig and the contacts over all
-  coordinates, are built);
+  (its first parts, the mechanism, the contacts over all coordinates, the
+  static solve and every reading of the sheet by procedure, are built);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;

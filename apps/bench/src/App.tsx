@@ -8,7 +8,18 @@
 
 import type { Bench } from '@pas/wasm'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { type Readout, type Regulation, readout, regulate, type Scene, scene, start } from './bench'
+import {
+  type Readout,
+  type Regulation,
+  reading,
+  readout,
+  regulate,
+  type Scene,
+  scene,
+  setKeyFrictionWeight,
+  start,
+} from './bench'
+import { typedNumber } from './fields'
 import { CONTACT_COLOUR, SagittalView, type ViewMode } from './SagittalView'
 
 interface State {
@@ -82,6 +93,80 @@ function Row({
       <span className="target">
         {target === undefined ? '' : `${targetLabel} ${fixed(target, 2)}`}
       </span>
+    </div>
+  )
+}
+
+/** What each reading of the sheet is called, by the engine's identifier. */
+const LABEL: Record<string, string> = {
+  front_weight: 'front weight FW',
+  key_weight_ratio: 'key weight ratio KR',
+  key_height: 'key height',
+  key_dip: 'key dip',
+  down_weight: 'down weight D',
+  up_weight: 'up weight U',
+  balance_weight: 'balance weight BW',
+  friction_weight: 'friction weight F',
+  key_friction_weight_zeroed_on_the_jig: 'key friction weight KF, zeroed on the jig',
+  key_friction_weight_zeroed_on_the_frame: 'key friction weight KF, zeroed on the frame',
+}
+
+/** What makes a reading indicative, as the sheet's note says it. */
+const BECAUSE: Record<string, string> = {
+  key_mass: 'the key’s mass is derived from its volume at an assumed wood density',
+  key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
+  geometry: 'some of its dimensions have no record',
+}
+
+/**
+ * The decimals a reading is shown to, from the resolution the protocol reads
+ * it to: none for the gram, one for a tenth or a half gram, two for a
+ * hundredth or a paper.
+ */
+function decimals(resolution: number): number {
+  return resolution >= 1 ? 0 : resolution >= 0.1 ? 1 : 2
+}
+
+/**
+ * One reading of the sheet as the trade reads it, the value in full small
+ * beside it, or the target where the reading has one; or that it is
+ * refused, the engine's reason on hover and in the note below the sheet.
+ */
+function Measured({
+  r,
+  procedure,
+  target,
+}: {
+  r: Readout
+  procedure: string
+  target?: number | undefined
+}) {
+  const m = reading(r, procedure)
+  const label = LABEL[procedure] ?? procedure
+  if (!m || m.shown === null || m.exact === null) {
+    return (
+      <div className="row refused" data-procedure={procedure} title={m?.refused ?? ''}>
+        <span className="label">{label}</span>
+        <span className="value">refused</span>
+        <span className="unit" />
+        <span className="target" />
+      </div>
+    )
+  }
+  const shownTo = decimals(m.resolution)
+  const beside = target === undefined ? fixed(m.exact, shownTo + 2) : `target ${fixed(target, 2)}`
+  return (
+    <div
+      className={`row ${m.trust}`}
+      data-procedure={procedure}
+      data-shown={m.shown}
+      data-exact={m.exact}
+      title={m.because.map((b) => BECAUSE[b] ?? b).join('; ')}
+    >
+      <span className="label">{label}</span>
+      <span className="value">{fixed(m.shown, shownTo)}</span>
+      <span className="unit">{m.unit}</span>
+      <span className="target exact">{beside}</span>
     </div>
   )
 }
@@ -176,11 +261,51 @@ function Slider({
   )
 }
 
+/** The temporary weight a key friction weight stood on the key, as the note says it. */
+function kfWeight(r: Readout, procedure: string): string {
+  const m = reading(r, procedure)
+  if (m?.temporary_weight_g == null || m.temporary_weight_at_mm == null) return ''
+  const at = m.temporary_weight_at_mm
+  return ` (${fixed(m.temporary_weight_g, 1)} g, ${fixed(Math.abs(at), 0)} mm ${
+    at < 0 ? 'behind' : 'in front of'
+  } the balance pin)`
+}
+
+/**
+ * What the sheet's readings rest on that nobody measured, and why any is
+ * refused: one note each, under the weights.
+ */
+function sheetNotes(r: Readout) {
+  const because = [...new Set(r.sheet.flatMap((m) => m.because))]
+  const refused = r.sheet.filter((m) => m.refused !== null)
+  return (
+    <>
+      {because.length > 0 && (
+        <p className="note">
+          These readings are indicative, not measurements:{' '}
+          {because.map((b) => BECAUSE[b] ?? b).join('; ')}.
+        </p>
+      )}
+      {refused.map((m) => (
+        <p key={m.procedure} className="note degenerate">
+          {LABEL[m.procedure] ?? m.procedure} is refused: {m.refused}
+        </p>
+      ))}
+    </>
+  )
+}
+
 export function App() {
   const bench = useRef<Bench | undefined>(undefined)
   const [state, setState] = useState<State>()
 
-  const [friction, setFriction] = useState(6)
+  // The key friction weight the bushings read by Stanwood's protocol, the
+  // one it is typed as: taken from the sheet at every refresh, so it follows
+  // the bushings as the measuring point and the key are changed. Why the last
+  // one typed was refused, the engine's sentence, shown until anything else
+  // is done.
+  const [friction, setFriction] = useState(Number.NaN)
+  const [frictionRefused, setFrictionRefused] = useState<string | null>(null)
   const [finger, setFinger] = useState(0)
   const [view, setView] = useState<ViewMode>(
     // `?view=section` opens on the flat technical section rather than the
@@ -204,11 +329,13 @@ export function App() {
   // this before the panel first renders. NaN rather than a plausible number,
   // so that an unseeded value could never pass for the protocol's.
   const [measuringPoint, setMeasuringPoint] = useState(Number.NaN)
-  // The targets typed for the next regulation, seeded from the engine's at
-  // boot, and how the last one asked for came out: the engine's sentence,
-  // shown until anything else is done.
-  const [heightTarget, setHeightTarget] = useState(Number.NaN)
-  const [dipTarget, setDipTarget] = useState(Number.NaN)
+  // The targets typed for the next regulation, as typed, seeded from the
+  // engine's at boot, and how the last one asked for came out: the engine's
+  // sentence, shown until anything else is done. Kept as the text in the
+  // field, read as a number only when it holds one (`typedNumber`), so that an
+  // emptied field is not sent as a target of 0 mm.
+  const [heightTarget, setHeightTarget] = useState('')
+  const [dipTarget, setDipTarget] = useState('')
   const [regulation, setRegulation] = useState<Regulation | null>(null)
   const [newLeadMass, setNewLeadMass] = useState(10)
 
@@ -228,6 +355,12 @@ export function App() {
       readout: fresh ?? prev?.readout ?? null,
       stale: fresh === null,
     }))
+    // The bushings are a torque and stay as they were set; what Stanwood's
+    // protocol reads them as moves with the measuring point and the key. The
+    // friction slider takes it from the engine rather than keep a number the
+    // key no longer reads.
+    const kf = fresh ? reading(fresh, 'key_friction_weight_zeroed_on_the_jig')?.exact : null
+    if (kf != null) setFriction(kf)
   }, [])
 
   useEffect(() => {
@@ -259,25 +392,35 @@ export function App() {
         setFrontPin(r.front_pin_mm)
         setFrontMortise(r.front_mortise_mm)
         setMeasuringPoint(r.measuring_point_from_lip_mm)
-        setHeightTarget(r.key_height_target_mm)
-        setDipTarget(r.key_dip_target_mm)
+        setHeightTarget(String(r.key_height_target_mm))
+        setDipTarget(String(r.key_dip_target_mm))
       }
       refresh()
     })
   }, [refresh])
 
-  const act = (f: (b: Bench) => void) => {
+  const act = <T,>(f: (b: Bench) => T): T | undefined => {
     const b = bench.current
-    if (!b) return
-    f(b)
+    if (!b) return undefined
+    const out = f(b)
     setRegulation(null)
+    setFrictionRefused(null)
     refresh()
+    return out
   }
 
+  // A target field that holds no number is not sent: the button waits, and
+  // the page says which field needs one.
+  const height = typedNumber(heightTarget)
+  const dip = typedNumber(dipTarget)
+  const needsNumber = [
+    ...(height === null ? ['key height'] : []),
+    ...(dip === null ? ['key dip'] : []),
+  ]
   const regulateTo = () => {
     const b = bench.current
-    if (!b) return
-    setRegulation(regulate(b, heightTarget, dipTarget))
+    if (!b || height === null || dip === null) return
+    setRegulation(regulate(b, height, dip))
     refresh()
   }
 
@@ -365,13 +508,6 @@ export function App() {
               onChange={(v) => {
                 setMeasuringPoint(v)
                 act((b) => b.set_measuring_point_from_lip(v))
-                // The friction torque stays where it was set, so the key
-                // friction weight it reads as at the new point is another
-                // number. The friction slider takes it from the engine rather
-                // than keep one the key no longer reads.
-                const b = bench.current
-                const fresh = b ? readout(b) : null
-                if (fresh) setFriction(fresh.friction_band_g)
               }}
             />
             <p className="note">
@@ -380,25 +516,34 @@ export function App() {
               moment, and the same friction torque, read on another arm. Key height and dip are read
               at the key front, and do not move.
             </p>
-            <Row label="down weight D" value={r.down_weight_g} unit="g" />
-            <Row label="up weight U" value={r.up_weight_g} unit="g" />
-            <Row label="balance weight BW" value={r.balance_weight_g} unit="g" />
-            <Row
-              label="friction weight F"
-              value={r.friction_weight_g}
-              unit="g"
-              target={r.measured_kf_g ?? undefined}
-              targetLabel="protocol"
-            />
-            <Row label="front weight FW" value={r.front_weight_g} unit="g" />
-            <Row label="key weight ratio KR" value={r.key_ratio} unit="" />
-            <Row
-              label="key height"
-              value={r.key_height_mm}
-              unit="mm"
-              target={r.key_height_target_mm}
-            />
-            <Row label="key dip" value={r.key_dip_mm} unit="mm" target={r.key_dip_target_mm} />
+            <Measured r={r} procedure="down_weight" />
+            <Measured r={r} procedure="up_weight" />
+            <Measured r={r} procedure="balance_weight" />
+            <Measured r={r} procedure="friction_weight" />
+            <Measured r={r} procedure="key_friction_weight_zeroed_on_the_jig" />
+            <Measured r={r} procedure="key_friction_weight_zeroed_on_the_frame" />
+            <Measured r={r} procedure="front_weight" />
+            <Measured r={r} procedure="key_weight_ratio" />
+            <p className="note">
+              Every weight is read the way gram weights give it: the down weight and the key
+              friction weight as the least whole gram that takes the key down, the up weight as the
+              most whole grams it lifts, balance and friction weight from those two, so to the half
+              gram; the front weight to the tenth, as a scale reads it. The value in full stands
+              small beside each. D is walked up from the key resting on its cloth, U down from the
+              key on its front punching, each a gram at a time until the key goes all the way.
+            </p>
+            <p className="note">
+              The key friction weight is read twice. Stanwood’s protocol zeroes the front weight on
+              the levelled jig with a temporary weight
+              {kfWeight(r, 'key_friction_weight_zeroed_on_the_jig')}, then puts the key back on its
+              frame and finds the least weight that makes it fall. The other cancels the key’s
+              balance where it rests on its frame
+              {kfWeight(r, 'key_friction_weight_zeroed_on_the_frame')}, which reads the bushings
+              alone. They differ by what the key’s tilt at rest does to the weights’ arms.
+            </p>
+            {sheetNotes(r)}
+            <Measured r={r} procedure="key_height" target={r.key_height_target_mm} />
+            <Measured r={r} procedure="key_dip" target={r.key_dip_target_mm} />
             <p className="note">
               Both read at the front of the key with the key seated the way a technician seats it:
               the back of the key held down at the capstan, where the action holds it, for the
@@ -426,8 +571,9 @@ export function App() {
             </p>
             <p className="note">
               With no action on the capstan, <b>BW = −FW</b>: the equation of balance with its
-              right-hand side removed. A bare front-heavy key falls on its own, which is why these
-              branches are negative.
+              right-hand side removed, but for what the key’s rest attitude adds, read here at its
+              two seats rather than level. A bare front-heavy key falls on its own, which is why
+              these branches are negative.
             </p>
 
             <h2>Regulation</h2>
@@ -440,7 +586,7 @@ export function App() {
                   max={90}
                   step={0.01}
                   value={heightTarget}
-                  onChange={(e) => setHeightTarget(Number(e.target.value))}
+                  onChange={(e) => setHeightTarget(e.target.value)}
                 />
                 mm
               </label>
@@ -452,14 +598,21 @@ export function App() {
                   max={20}
                   step={0.01}
                   value={dipTarget}
-                  onChange={(e) => setDipTarget(Number(e.target.value))}
+                  onChange={(e) => setDipTarget(e.target.value)}
                 />
                 mm
               </label>
-              <button type="button" onClick={regulateTo}>
+              <button type="button" onClick={regulateTo} disabled={needsNumber.length > 0}>
                 regulate to these targets
               </button>
             </div>
+            {needsNumber.length > 0 && (
+              <p className="needs-number degenerate">
+                {needsNumber.join(' and ')} {needsNumber.length === 1 ? 'needs' : 'need'} a number,
+                in millimetres: nothing is regulated until{' '}
+                {needsNumber.length === 1 ? 'it has' : 'they have'} one.
+              </p>
+            )}
             {regulation && (
               <p className={`regulated ${regulation.laid ? 'note' : 'degenerate'}`}>
                 {regulation.said}
@@ -501,10 +654,24 @@ export function App() {
               step={0.5}
               unit="g"
               onChange={(v) => {
+                // A weight the engine refuses leaves the bushings as they were,
+                // so the slider goes back to what they read, even on a frame no
+                // sheet can be read on to say so.
+                const was = friction
                 setFriction(v)
-                act((b) => b.set_key_friction_weight(v))
+                const refused = act((b) => setKeyFrictionWeight(b, v)) ?? null
+                if (refused !== null) setFriction(was)
+                setFrictionRefused(refused)
               }}
             />
+            {frictionRefused && <p className="friction-refused degenerate">{frictionRefused}</p>}
+            <p className="note">
+              The key friction weight is typed as Stanwood’s protocol reads it, zeroed on the
+              levelled jig: the bench sets the bushings to the torque at which that protocol, run on
+              this key, reads back what is typed, and the sheet shows it. The bushings then stay as
+              they are. Moving the measuring point or changing the key changes the grams they read,
+              as it would at the bench, and this slider follows the sheet.
+            </p>
 
             <h2>Punchings and cloth</h2>
             <p className="note">
@@ -735,8 +902,8 @@ export function App() {
               the key is {r.finger}
               {r.friction_margin_g === null ? null : (
                 <div className="gaps">
-                  the weight lies between U and D, {r.friction_margin_g.toFixed(1)} g inside the
-                  band
+                  the weight lies between U and D, {fixed(r.friction_margin_g, 2)} g from moving the
+                  key
                 </div>
               )}
               <div className="gaps">
@@ -744,8 +911,8 @@ export function App() {
                 {gap(r.gap_back_mm)}
               </div>
               <div className="gaps">
-                admissible friction torque ±{r.friction_band_g.toFixed(2)} g at the measuring point
-                — an interval, not a value
+                the bushings hold any torque within ±{fixed(r.key_friction_weight_g, 2)} g at the
+                measuring point, the key level — an interval, not a value
               </div>
             </div>
             <p className="note">

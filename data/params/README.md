@@ -28,7 +28,7 @@ has no record or disagrees with it.
 | capstan 129.5 mm behind the balance pin | key weight ratio | no source gives it: Thorin gives 128.7 mm (his §4.5.2) and 129 mm (his Table 2.1). The owner's measured 122 mm is recorded in `key-section.json` and not used |
 | key front 258 mm in front of the balance pin | key height, key dip, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, so at 247 mm | 13 mm ahead of Thorin's key arm, L = 0.245 m (his Table 2.1); no record |
 | rail heights 26.6, 25.9 and 19.0 mm (balance, front, back) | key height, key dip | assumed |
-| key friction weight 6 g | the friction band | assumed, of the order the trade measures |
+| key friction weight 6 g | the bushings' friction, a torque: 6 g at the measuring point with the key level, which Stanwood's protocol reads as 6.35 g on the key at rest; D, U, BW, F and both key friction weights | assumed, of the order the trade measures |
 | felt washers 1.5 and 2.0 mm (balance, front), back rail cloth 3.0 mm | key height, key dip | assumed |
 | front mortise depth 22 mm | the mortise stop | 3 mm of recess and 19 mm of mortise, written only in a note of `key-frame-sections.json` |
 | balance crown height 6 mm, balance pin 11.2 mm proud | the drawing | assumed |

@@ -9,47 +9,9 @@
 
 use super::KR_PROTOCOL_LOAD_G;
 use crate::geometry::Point;
-use crate::parts::assembly::{sines_satisfying, KeyAssembly, ReadAt};
 use crate::parts::{FrameDesign, KeyDesign};
 use crate::regulation::Targets;
-
-/// The key's rest and bottom attitudes by the one-coordinate statics, and
-/// the trade quantities they give.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Travel {
-    /// Sine of the key angle at rest. Positive means front-down.
-    pub sin_rest: f64,
-    /// Sine of the key angle at the bottom of the dip.
-    pub sin_bottom: f64,
-    /// Height of the key's top surface at the front edge, at rest, metres.
-    pub key_height: f64,
-    /// Vertical travel of the front edge between rest and bottom, metres.
-    pub key_dip: f64,
-}
-
-/// The key's rest and bottom by the one-coordinate statics, and the key
-/// height and dip they give: the closed-form angles of
-/// [`KeyAssembly::first_touch`], against which the seated pose
-/// ([`super::seat`]) is checked wherever the brute-force oracle confirms
-/// them. Leaves with the angle machinery it reads.
-pub trait Travelling {
-    /// Rest on the back rail cloth, bottom on the front stop, the key height
-    /// at rest and the dip, read at the key front.
-    fn travel(&self) -> Option<Travel>;
-}
-
-impl Travelling for KeyAssembly {
-    fn travel(&self) -> Option<Travel> {
-        let sin_rest = self.sin_angle_on_back_rail()?;
-        let sin_bottom = self.sin_angle_on_front_rail()?;
-        Some(Travel {
-            sin_rest,
-            sin_bottom,
-            key_height: self.key_height_at(ReadAt::FrontEdge, sin_rest),
-            key_dip: self.key_dip_at(ReadAt::FrontEdge)?,
-        })
-    }
-}
+use crate::G;
 
 /// The key on the level jig, by the closed forms of Stanwood's current
 /// protocols: the key's static moment about its balance pin over the
@@ -112,7 +74,7 @@ impl KeyWeighing {
 /// bearing's height `h`, the attitude's sine `s` (front-down) and cosine `c`:
 /// `h − x s + y c` for the point `(x, y)`. Their difference has no `h` and is
 /// linear in `s` and `c`, so the attitude is a root of
-/// [`crate::parts::assembly::sines_satisfying`], the one nearest `near`, and
+/// [`sines_satisfying`], the one nearest `near`, and
 /// `h` follows from either condition. Exact for a point fixed on the key on
 /// a stop's flat; a key bearing on its cloth's rounded edge slides along it,
 /// so `bears` and `stop_y` are the contact the seated pose finds at the
@@ -173,6 +135,40 @@ pub fn pivot_punching_for_dip(
     Some(bearing - punching_x * s / c)
 }
 
+/// Solves `p·cos θ + q·sin θ = k` for `sin θ`.
+///
+/// Every condition of the exact pivot inverse reduces to this: the height of
+/// a point of the key, written out in the key's own rotation. Clearing the
+/// cosine by squaring gives a quadratic in `sin θ`, so the answer is closed
+/// form, with no search.
+///
+/// Squaring admits the branch where the cosine comes out **negative**: the
+/// key turned past a right angle, standing on its stop upside down. The
+/// quadratic cannot tell the two apart, so each root is put back into the
+/// **unsquared** condition and kept only if it satisfies it.
+pub fn sines_satisfying(p: f64, q: f64, k: f64) -> [Option<f64>; 2] {
+    let a = p * p + q * q;
+    if a < 1e-18 {
+        return [None, None];
+    }
+    let b = -2.0 * q * k;
+    let c = k * k - p * p;
+    let disc = b * b - 4.0 * a * c;
+    if disc < 0.0 {
+        return [None, None];
+    }
+    let root = disc.sqrt();
+    let genuine = |s: f64| {
+        let cos = (1.0 - s * s).max(0.0).sqrt();
+        s.is_finite() && s.abs() <= 1.0 && (p * cos + q * s - k).abs() < 1e-9
+    };
+    let pair = [(-b + root) / (2.0 * a), (-b - root) / (2.0 * a)];
+    [
+        genuine(pair[0]).then_some(pair[0]),
+        genuine(pair[1]).then_some(pair[1]),
+    ]
+}
+
 /// Of two roots, the one nearest `near`.
 fn nearest(roots: [Option<f64>; 2], near: f64) -> Option<f64> {
     roots
@@ -223,4 +219,79 @@ pub fn small_angle_placement(
         return None;
     }
     Some((balance_stack, front_stack))
+}
+
+/// The two branches of a weighing, grams at the measuring point.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Branches {
+    /// Down weight, grams.
+    pub down_g: f64,
+    /// Up weight, grams.
+    pub up_g: f64,
+}
+
+impl Branches {
+    /// Balance weight, `(D + U) / 2`, grams.
+    pub fn balance_weight_g(&self) -> f64 {
+        0.5 * (self.down_g + self.up_g)
+    }
+}
+
+/// The key on its frame weighed by the closed form taken with the key level,
+/// turning about its balance pin, one friction torque at its bushings: D and
+/// U as if the key rested level, which the walks read within the tilt of the
+/// seats they start from.
+///
+/// With the key level, a weight `W` on the measuring point at arm `d` turns
+/// it front-down by `W g d`, its own weight by its moment `M`; the bushings
+/// hold any torque within `±b`. So the key goes down past
+/// `D = (b − M) / (g d)` and rises below `U = (−b − M) / (g d)`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct KeyOnFrame {
+    /// The moment of the key's weight about its pin, newton-metres, positive
+    /// turning the front down.
+    pub weight_moment_n_m: f64,
+    /// The pin to the measuring point, metres.
+    pub measuring_arm_m: f64,
+    /// The bushings' friction bound, newton-metres.
+    pub friction_n_m: f64,
+}
+
+impl KeyOnFrame {
+    /// The two branches, grams at the measuring point. Negative where the
+    /// key goes down by itself and would have to be held up.
+    pub fn branches(&self) -> Branches {
+        let per_gram = 1e-3 * G * self.measuring_arm_m;
+        Branches {
+            down_g: (self.friction_n_m - self.weight_moment_n_m) / per_gram,
+            up_g: (-self.friction_n_m - self.weight_moment_n_m) / per_gram,
+        }
+    }
+}
+
+/// The band of a key on a pin at attitude `theta`, radians nose-up, by hand:
+/// the weight on `measuring_point` past which the key goes down, and below
+/// which it rises, its masses `masses` (kilograms, each at a point of the
+/// key's frame, whose origin is the pin) and its bushings holding any torque
+/// within `±friction_n_m`.
+///
+/// A point `(x, y)` of the key at `theta` stands `x cos θ − y sin θ` in front
+/// of the pin, so a weight on it turns the key front-down by that arm times
+/// its weight. At the attitude a seat stands at, the walk from that seat
+/// starts the key moving exactly here.
+pub fn band_at(
+    masses: &[(f64, Point)],
+    measuring_point: Point,
+    friction_n_m: f64,
+    theta: f64,
+) -> Branches {
+    let (s, c) = (libm::sin(theta), libm::cos(theta));
+    let arm = |p: Point| p.x * c - p.y * s;
+    let moment: f64 = masses.iter().map(|&(m, p)| m * G * arm(p)).sum();
+    KeyOnFrame {
+        weight_moment_n_m: moment,
+        measuring_arm_m: arm(measuring_point),
+        friction_n_m,
+    }
+    .branches()
 }
