@@ -16,7 +16,7 @@
 
 use pa_core::contact::{Bearing as ContactBearing, Part, Rows, ROW_MARGIN};
 pub use pa_core::contact::{ContactCode, HowItBears, Material, PartCode, Provenance, Role, Sweep};
-use pa_core::geometry::{KeyBearing, Point};
+use pa_core::geometry::Point;
 use pa_core::measure::jig::{JigRefusal, KeyJig};
 /// A reading of the sheet and what it carries, re-exported so an adapter can
 /// show each without reaching past the application layer.
@@ -35,15 +35,14 @@ pub use pa_core::measure::weighing::{BushingsRefusal, Refused, Sheet};
 use pa_core::measure::weighing::{Weighing, FRICTION_SEARCH_G};
 use pa_core::measure::TouchweightProtocol;
 use pa_core::mechanism::{AxisFriction, BodyId, MaterialPoint, Placement, PointLoad, Problem};
-use pa_core::parts::assembly::nose_up_angle;
 pub use pa_core::parts::faults::Fault;
 /// The punching thicknesses a drawer holds, re-exported so an adapter can
 /// offer the drawer without reaching past the application layer.
 pub use pa_core::parts::frame::PAPER_THICKNESSES;
 use pa_core::parts::frame::{papers_for, KeyKind};
-use pa_core::parts::mounts::{self, Mounted, OnItsFrame};
-use pa_core::parts::verdicts::{holding, Holding};
-use pa_core::parts::{FrameDesign, FrameRanges, KeyAssembly, KeyDesign, KeyRanges, Lead};
+use pa_core::parts::mounts::{self, KeyMount, Mounted, OnItsFrame};
+use pa_core::parts::verdicts::{edge_overlaps, holding, Holding, TOUCHING};
+use pa_core::parts::{FrameDesign, FrameRanges, KeyDesign, KeyRanges, Lead};
 /// The regulation's targets and outcomes, re-exported so an adapter can ask
 /// for a regulation and say how it came out without reaching past the
 /// application layer.
@@ -58,7 +57,7 @@ use crate::composite_key;
 /// What the bench reports beside its weighing sheet ([`KeyBench::sheet`]),
 /// in the trade's own units: how the key stands on its frame, what holds it
 /// under the touch weight, and the settings the sheet was read with.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BenchReadout {
     /// Total mass of the key with its leads, grams: the composite key's,
     /// derived from its volume ([`composite_key`]), not a weighing.
@@ -122,6 +121,17 @@ pub struct BenchReadout {
     pub stopped_by_the_mortise: bool,
 }
 
+/// How a key whose stops fight stands on them, seated: off its balance
+/// punching, on its front stop and its back rail cloth.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Riding {
+    /// The front stop it rides on: the front punching, or the front rail pin
+    /// in its mortise or on the wood beside it.
+    pub front: ContactCode,
+    /// How far above its balance punching it stands, metres.
+    pub lift: f64,
+}
+
 /// What holds the key where the weight on its measuring point has left it.
 ///
 /// Read from determinate quantities only ([`pa_core::parts::verdicts`]):
@@ -129,7 +139,7 @@ pub struct BenchReadout {
 /// weight and the weight on it, every stop removed, lies inside its
 /// friction's band. Never from how a static solve split a load between a
 /// stop and the friction, which rigid statics leave open.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TouchVerdict {
     /// The weight pushes the key into this stop past what its friction
     /// holds: the stop carries it.
@@ -149,14 +159,46 @@ pub enum TouchVerdict {
         /// attitude.
         margin_g: f64,
     },
+    /// Off its balance punching, on its front stop and its back rail cloth:
+    /// its stops fight, and hold it higher than its punching would.
+    RidesOnBothStops {
+        /// The front stop it rides on.
+        front: ContactCode,
+        /// How far above its balance punching it stands, millimetres.
+        lift_mm: f64,
+    },
+    /// Off its balance punching, held by what it touches, with its friction
+    /// or without: its cloth and its friction where a pull has turned it up
+    /// on it, its front punching and its front pin against the wall of its
+    /// slot, which hold it alone, where a front rail raised under it has
+    /// tipped it forward off its punching.
+    LiftsOffBalancePunching {
+        /// The stops it touches, from the contacts closed where it stands,
+        /// in the order the key's contacts are declared.
+        touching: Vec<ContactCode>,
+        /// Whether they need its friction to hold it there: false where
+        /// they balance its weight and the weight on it alone.
+        needs_friction: bool,
+        /// How far above its balance punching it stands, millimetres.
+        lift_mm: f64,
+    },
+    /// The key is lifted off its frame: no equilibrium in the model holds it
+    /// on its balance pin, a weight or its stops taking its slide to the top
+    /// of its range, where the key leaves the pin's drawn top, or its
+    /// punching standing above that top. The key is drawn where the last
+    /// equilibrium left it, or level on its punching where none has held it
+    /// since the frame was edited.
+    LiftsOffItsFrame,
 }
 
 /// Where the key stands on its frame: its coordinates as the last static
-/// increment left them, and the placement they give its body.
+/// increment left them, the placement they give each body, and how far above
+/// its balance punching that left the key, metres.
 #[derive(Debug, Clone, PartialEq)]
 struct State {
     q: Vec<f64>,
-    placement: Placement,
+    placements: Vec<Placement>,
+    lift: f64,
 }
 
 /// Why a regulation the bench was asked for was not laid. The papers, the
@@ -233,9 +275,14 @@ pub enum Which {
     Front,
 }
 
-/// The key's body in the bench's scene. The ground, which carries the frame,
-/// is body 0.
-pub const KEY: BodyId = BodyId(1);
+/// The key's body in the bench's scene: the ground, which carries the frame,
+/// is body 0, and the slide the key lifts off its balance punching on,
+/// which carries nothing drawn, body 1.
+pub const KEY: BodyId = BodyId(2);
+
+/// How the bench stands its key on its frame: free to lift off its balance
+/// punching.
+const MOUNT: KeyMount = KeyMount::OnPunching;
 
 /// One part, as the view draws it: its outline in its body's own frame, arcs
 /// cut into short lines.
@@ -281,77 +328,89 @@ fn pair_of(mounted: &Mounted, code: ContactCode) -> Option<u16> {
     u16::try_from(i).ok()
 }
 
-/// A key riding on its cloth and its front pin, bottomed in its mortise.
-const RIDES_ON_THE_PIN: &str = "the front rail pin bottoms in its mortise before the back rail \
-     cloth lets the tail come up, so the key rides on both and lifts off its balance punching. \
-     A real keyboard does exactly that; this bench cannot weigh it, because the bearing is \
-     modelled as a pivot.";
+/// What a stop is called in a sentence that may list several: no comma
+/// inside a name, so that a list of them reads as one.
+fn stop_name(code: ContactCode) -> &'static str {
+    match code {
+        ContactCode::BalanceRailPunching => "balance punching",
+        ContactCode::FrontRailPunching => "front punching",
+        ContactCode::BackRailCloth => "back rail cloth",
+        ContactCode::FrontPinInTheMortise => "front rail pin at the top of its mortise",
+        ContactCode::FrontPinOnTheWood => "front rail pin against the wood beside its mortise",
+    }
+}
 
-/// A key riding on its cloth and its front punching.
-const RIDES_ON_THE_PUNCHING: &str = "the back rail cloth holds the tail higher than the front \
-     punching lets the front come down, so the key rides on both and lifts off its balance \
-     punching. A real keyboard does exactly that; this bench cannot weigh it, because the \
-     bearing is modelled as a pivot.";
-
-/// Whether a seat refused for `fighting` stops is a key whose stops fight:
-/// its back rail cloth and a front stop the riding drawing reads, the front
-/// punching or the pin in its mortise. A pin standing in the key's wood
-/// beside its mortise leaves the key no seat either, but the stops the riding
-/// is drawn on do not see it.
-fn fight(refusal: &SeatRefusal) -> bool {
-    match refusal {
-        SeatRefusal::CannotSeat { fighting } => {
-            fighting.contains(&ContactCode::BackRailCloth)
-                && !fighting.contains(&ContactCode::FrontPinOnTheWood)
-                && (fighting.contains(&ContactCode::FrontRailPunching)
-                    || fighting.contains(&ContactCode::FrontPinInTheMortise))
-        }
-        _ => false,
+/// The stops `codes` name, as a sentence lists them: "its front punching and
+/// its back rail cloth"; "its stops" where there are none.
+pub fn stops_named(codes: &[ContactCode]) -> String {
+    let names: Vec<String> = codes
+        .iter()
+        .map(|&c| format!("its {}", stop_name(c)))
+        .collect();
+    match names.split_last() {
+        None => "its stops".to_owned(),
+        Some((last, [])) => last.clone(),
+        Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
     }
 }
 
 /// Why a key cannot be seated, as the sentence a technician is told.
 ///
-/// Each names the part at fault and what the key would do on a real
-/// keyboard, which the key on a pivot cannot. Where the stops fight, the
-/// bench names the front stop it draws the key riding on
-/// ([`KeyBench::frame_fault`]); this names the pin wherever it fights.
-fn why_no_seat(refusal: &SeatRefusal) -> &'static str {
+/// A key whose stops fight is seated riding on them ([`KeyBench::riding`]),
+/// so what is left here is a key the model has no seat for: a stop standing
+/// in its drawn parts that no motion of the key on its frame clears, such as
+/// a front rail pin in the wood beside its mortise, or one sunk where no
+/// contact reads it; a key off its balance pin, its stops holding it past
+/// where it leaves the pin or its punching standing above the pin's top;
+/// nothing under its front or its tail; or geometry edited into nonsense.
+fn why_no_seat(refusal: &SeatRefusal) -> String {
     match refusal {
-        SeatRefusal::CannotSeat { fighting }
-            if fighting.contains(&ContactCode::FrontPinOnTheWood) =>
-        {
-            "the front rail pin meets the key's wood outside its mortise, so the key cannot \
-             come down onto its cloth and its punching. On a real keyboard it would sit on the \
-             pin and lift off its balance punching; this bench cannot weigh it, because the \
-             bearing is modelled as a pivot."
+        SeatRefusal::CannotSeat { fighting } => {
+            let (stands, them) = if fighting.len() == 1 {
+                ("stands", "it")
+            } else {
+                ("stand", "them")
+            };
+            format!(
+                "the key has no seat on this frame: {} {stands} in its drawn parts, and the \
+                 model finds no pose of the key on its frame clear of {them}.",
+                stops_named(fighting)
+            )
         }
-        SeatRefusal::CannotSeat { fighting }
-            if fighting.contains(&ContactCode::FrontPinInTheMortise) =>
-        {
-            RIDES_ON_THE_PIN
-        }
-        SeatRefusal::CannotSeat { .. } => RIDES_ON_THE_PUNCHING,
+        SeatRefusal::LiftsOffItsFrame { leaves_its_pin } if *leaves_its_pin < 0.0 => format!(
+            "the balance punching stands {:.2} mm above the top of the balance pin: a key on it \
+             is off its pin and off its frame.",
+            -leaves_its_pin * 1000.0
+        ),
+        SeatRefusal::LiftsOffItsFrame { leaves_its_pin } => format!(
+            "its stops would hold the key more than {:.2} mm above its balance punching, where it \
+             leaves its balance pin: off its pin and off its frame.",
+            leaves_its_pin * 1000.0
+        ),
         SeatRefusal::NoStopBelowTheFront => {
             "nothing stops the front of the key: the front punching's centre stands off the \
              key's underside, so the key bears on nothing at the bottom of its dip."
+                .to_owned()
         }
         SeatRefusal::NoStopUnderTheTail => {
             "nothing holds the back of the key down: the back rail cloth stands where the \
              key's tail cannot reach it."
+                .to_owned()
         }
         SeatRefusal::CapstanNotBehindTheBearing => {
             "the capstan stands at or in front of the balance bearing, where the action \
              cannot hold the back of the key down."
+                .to_owned()
         }
         SeatRefusal::MeasuringPointNotInFront => {
             "the measuring point stands at or behind the balance bearing, where a weight \
              cannot take the key down."
+                .to_owned()
         }
         SeatRefusal::NotConverged { .. } => {
-            "the key could not be seated within the static solve's cap of steps."
+            "the key could not be seated within the static solve's cap of steps.".to_owned()
         }
-        SeatRefusal::Mechanism(_) => "the geometry is degenerate.",
+        SeatRefusal::Mechanism(_) => "the geometry is degenerate.".to_owned(),
     }
 }
 
@@ -371,9 +430,12 @@ fn why_refused(why: &Refused) -> String {
              cannot hold the key level."
                 .to_owned()
         }
-        Refused::Seat(refusal) => why_no_seat(refusal).to_owned(),
+        Refused::Seat(refusal) => why_no_seat(refusal),
         Refused::Walk(WalkRefusal::NoTravel) => {
             "the key has no stroke: it stands at the bottom of its dip at rest.".to_owned()
+        }
+        Refused::Walk(WalkRefusal::LiftsOffItsFrame) => {
+            "a weight the walk put on the measuring point lifts the key off its frame.".to_owned()
         }
         Refused::Walk(WalkRefusal::NoLever) => {
             "a weight on the measuring point does not turn the key.".to_owned()
@@ -491,6 +553,14 @@ pub fn why_not_regulated(why: &NotRegulated, targets: Targets) -> String {
              underside"
                 .into()
         }
+        (Limit::OffItsBalancePin, Target::KeyHeight) => {
+            "the key would leave its balance pin first, the paper raising its balance punching \
+             past the pin's top"
+                .into()
+        }
+        (Limit::OffItsBalancePin, Target::KeyDip) => {
+            "the key would ride off its balance pin before the dip is that shallow".into()
+        }
     };
     format!(
         "{:.2} mm of {what} is out of reach, by {}: {why}.",
@@ -502,7 +572,14 @@ pub fn why_not_regulated(why: &NotRegulated, targets: Targets) -> String {
 /// The bench.
 #[derive(Debug, Clone)]
 pub struct KeyBench {
-    assembly: KeyAssembly,
+    /// The key.
+    key: KeyDesign,
+    /// The frame it sits on.
+    frame: FrameDesign,
+    /// How the key is weighed: where on it every weight is centred. Held
+    /// once, because every touchweight reads it, so none can be weighed at a
+    /// point the others are not.
+    protocol: TouchweightProtocol,
     /// Whether this key is a natural or a sharp — which row of pins it stands
     /// on, and later which graduation band it belongs to.
     kind: KeyKind,
@@ -520,11 +597,16 @@ pub struct KeyBench {
     balance_papers: Vec<f64>,
     /// The papers on the front punching.
     front_papers: Vec<f64>,
-    /// Where the key stands on its frame, as the last action left it: what
-    /// every touch weight and every edit is applied to, as an increment.
-    /// `None` where no equilibrium holds the key, as on a frame whose stops
-    /// fight.
+    /// Where the key stands on its frame, as the last equilibrium left it:
+    /// what every touch weight and every edit is applied to, as an
+    /// increment. `None` where no equilibrium has held the key since it was
+    /// put on its frame.
     state: Option<State>,
+    /// Whether the weight on the measuring point lifts the key off its
+    /// frame: the last increment found no equilibrium, the key's slide
+    /// leaning on the top of its range. The state is then the last
+    /// equilibrium, where the key is drawn.
+    lifts_off: bool,
     /// Whether the last action put the key back by the initialization
     /// instead of moving it from where it stood.
     reinitialized: bool,
@@ -538,16 +620,9 @@ impl KeyBench {
     /// Refused when the targets cannot be met on this geometry, with why:
     /// a real answer and not an error to swallow.
     pub fn new(key: KeyDesign, frame: FrameDesign, targets: Targets) -> Result<Self, NotRegulated> {
-        let assembly = KeyAssembly {
-            key,
-            frame,
-            bearing: KeyBearing {
-                offset_from_pin: 0.0,
-            },
-            // Stanwood's protocol until the bench is told otherwise; see
-            // `set_measuring_point_from_lip`.
-            protocol: TouchweightProtocol::default(),
-        };
+        // Stanwood's protocol until the bench is told otherwise; see
+        // `set_measuring_point_from_lip`.
+        let protocol = TouchweightProtocol::default();
         // Six grams is the order of Key Friction Weight on a well-centred key;
         // it is a starting value to be replaced by a measurement, and it is the
         // single parameter the two non-confusion tests move. [S] It is set
@@ -559,9 +634,11 @@ impl KeyBench {
         // this key's measuring point, read where every protocol reads it, not
         // a number retyped from the default key: that would give any other key
         // a friction bound measured on someone else's arm.
-        let friction = AxisFriction::of_weight_at(6.0, assembly.measuring_point());
+        let friction = AxisFriction::of_weight_at(6.0, protocol.measuring_point(&key));
         let mut bench = Self {
-            assembly,
+            key,
+            frame,
+            protocol,
             kind: KeyKind::Natural,
             friction,
             friction_basis: Basis::Assumed,
@@ -570,6 +647,7 @@ impl KeyBench {
             balance_papers: Vec::new(),
             front_papers: Vec::new(),
             state: None,
+            lifts_off: false,
             reinitialized: false,
         };
         let (stacks, _) = bench.solve(targets)?;
@@ -597,11 +675,11 @@ impl KeyBench {
     /// and what they give.
     fn solve(&self, targets: Targets) -> Result<(Stacks, Achieved), NotRegulated> {
         let outcome = Regulating {
-            key: &self.assembly.key,
-            frame: &self.assembly.frame,
+            key: &self.key,
+            frame: &self.frame,
             kind: self.kind,
-            mass: composite_key::mass(&self.assembly.key),
-            protocol: &self.assembly.protocol,
+            mass: composite_key::mass(&self.key),
+            protocol: &self.protocol,
         }
         .solve(targets)
         .map_err(NotRegulated::Unsolvable)?;
@@ -654,20 +732,32 @@ impl KeyBench {
         self.targets
     }
 
-    /// Read-only view of the assembly.
-    pub fn assembly(&self) -> &KeyAssembly {
-        &self.assembly
+    /// The key, as it stands.
+    pub fn key(&self) -> &KeyDesign {
+        &self.key
+    }
+
+    /// The frame, as it stands, the papers laid on its punchings as totals.
+    pub fn frame(&self) -> &FrameDesign {
+        &self.frame
+    }
+
+    /// The protocol the key is weighed by.
+    pub fn protocol(&self) -> &TouchweightProtocol {
+        &self.protocol
+    }
+
+    /// The measuring point, metres in front of the balance pin: the
+    /// protocol's, on this key ([`TouchweightProtocol::measuring_point`]).
+    pub fn measuring_point(&self) -> f64 {
+        self.protocol.measuring_point(&self.key)
     }
 
     /// Sine of the key's current angle, positive front-down: where the last
-    /// action left it, or where it rides on a frame whose stops fight, or
-    /// level where neither holds it.
+    /// equilibrium left it, riding on its stops off its balance punching on a
+    /// frame whose stops fight, or level where nothing has held it.
     pub fn sin_angle(&self) -> f64 {
-        match (&self.state, self.riding()) {
-            (Some(state), _) => -state.placement.sin,
-            (None, Some((s, _))) => s,
-            (None, None) => 0.0,
-        }
+        -self.key_placement().sin
     }
 
     /// Whether the last action put the key back by the initialization
@@ -680,45 +770,119 @@ impl KeyBench {
 
     /// The initialization: the key put on its frame from its nominal pose
     /// under the weight on its measuring point, friction off
-    /// (`docs/FOUNDATIONS.md` §6.5). Building the bench runs it, and so does
-    /// an edit the key cannot follow. The state it finds needs no friction,
-    /// so with friction on the key stays there.
+    /// (`docs/FOUNDATIONS.md` §6.5); where it finds no state from there, from
+    /// the key lowered onto its frame from above
+    /// ([`mounts::lowered_onto_its_frame`]), as the seats are. Building the
+    /// bench runs it, and so does an edit the key cannot follow. The state it
+    /// finds needs no friction, so with friction on the key stays there.
+    ///
+    /// A key with no pose on its balance pin within the row margin of
+    /// clearing its frame, its nominal pose sunk in the frame deeper than
+    /// that, clears its frame only off its pin: it is off its frame, as the
+    /// seats find it, and no solve starts from where no row reads it. A key
+    /// its nominal pose carries off its pin, a start at the top of the
+    /// slide's range a whole degree from where it rides below, is put on its
+    /// frame from above instead, and is off it only where that finds no
+    /// state either.
     fn initialize(&mut self) {
-        self.state = self.on_frame(0.0).ok().and_then(|k| {
-            let start = mounts::nominal_pose(&k.mounted);
-            let loads = [self.touch(&k.mounted)];
-            let eq = Statics::new()
-                .solve(&k.mounted.mechanism, &start, &loads, &[], Friction::Off)
-                .ok()?;
-            Self::state_at(&k.mounted, eq.q)
-        });
+        self.lifts_off = false;
+        self.state = match self.on_frame() {
+            Ok(k) => {
+                let loads = [self.touch(&k.mounted)];
+                let place = |start: &[f64]| {
+                    k.mounted
+                        .solve(&mut Statics::new(), start, &loads, Friction::Off)
+                };
+                let start = mounts::nominal_pose(&k.mounted);
+                let from_above = || {
+                    mounts::lowered_onto_its_frame(&k.mounted)
+                        .filter(|above| *above != start)
+                        .and_then(|above| place(&above).ok())
+                        .and_then(|eq| Self::state_at(&k.mounted, eq.q))
+                };
+                if mounts::overlap_on_its_frame(&k.mounted, &start) > ROW_MARGIN {
+                    self.lifts_off = true;
+                    None
+                } else {
+                    match place(&start) {
+                        Ok(eq) => Self::state_at(&k.mounted, eq.q).or_else(from_above),
+                        // Carried off its pin from its nominal pose, which
+                        // can stand at the top of the slide's range a whole
+                        // degree from where the key rides below it: off its
+                        // frame unless it finds a state from above.
+                        Err(refusal) if k.mounted.lifts_off_its_frame(&refusal) => {
+                            let state = from_above();
+                            self.lifts_off = state.is_none();
+                            state
+                        }
+                        Err(_) => from_above(),
+                    }
+                }
+            }
+            Err(_) => None,
+        };
     }
 
     /// Applies the bench's last action to the key, as one static increment
     /// from where it stands with its friction on: a weight on the measuring
     /// point, a lead, a paper, any edit of the key or of its frame
     /// (`docs/FOUNDATIONS.md` §6.5). The key stays where it was left if it
-    /// still can, which is the band the touch exercise teaches. An edit that
-    /// leaves it sunk in its frame deeper than the row margin, or from which
-    /// no increment can be solved, starts it again from the initialization,
-    /// and [`Self::reinitialized`] says so.
+    /// still can, which is the band the touch exercise teaches; a key resting
+    /// on its balance punching rises and falls with it as papers are laid
+    /// under it, as a key on its punching does. A weight that lifts the key
+    /// off its frame finds no equilibrium: the key stays drawn where the last
+    /// one left it, and the bench says the weight lifts it off
+    /// ([`TouchVerdict::LiftsOffItsFrame`]), whether the increment found it
+    /// so or, failing, the initialization did. An edit that leaves it sunk
+    /// in its frame deeper than the row margin, its rails included, which no
+    /// contact reads ([`mounts::overlap_on_its_frame`]), or from which no
+    /// increment can be solved otherwise, starts it again from the
+    /// initialization, and [`Self::reinitialized`] says so.
     fn relax(&mut self) {
-        let moved = self.state.as_ref().and_then(|state| {
-            let k = self.on_frame(0.0).ok()?;
-            let m = &k.mounted.mechanism;
-            if m.overlap(&m.pose(&state.q)) > ROW_MARGIN {
+        // Whether the key's last state, unmoved, still stands clear of its
+        // frame, so that it can stay drawn there if no equilibrium is found.
+        let mut clear = false;
+        let outcome = self.state.as_ref().and_then(|state| {
+            let k = self.on_frame().ok()?;
+            let mut from = state.q.clone();
+            if let Some(lift) = &k.mounted.lift {
+                if state.lift <= TOUCHING {
+                    from[lift.coord.0] = lift.on_punching + state.lift;
+                }
+            }
+            if mounts::overlap_on_its_frame(&k.mounted, &from) > ROW_MARGIN {
                 return None;
             }
+            clear = from == state.q;
             let loads = [self.touch(&k.mounted)];
-            let eq = Statics::new()
-                .solve(m, &state.q, &loads, &[], Friction::On)
-                .ok()?;
-            Self::state_at(&k.mounted, eq.q)
+            match k
+                .mounted
+                .solve(&mut Statics::new(), &from, &loads, Friction::On)
+            {
+                Ok(eq) => Self::state_at(&k.mounted, eq.q).map(Ok),
+                Err(refusal) if k.mounted.lifts_off_its_frame(&refusal) => Some(Err(())),
+                Err(_) => None,
+            }
         });
-        self.reinitialized = moved.is_none() && self.state.is_some();
-        match moved {
-            Some(state) => self.state = Some(state),
-            None => self.initialize(),
+        self.reinitialized = outcome.is_none() && self.state.is_some();
+        match outcome {
+            Some(Ok(state)) => {
+                self.state = Some(state);
+                self.lifts_off = false;
+            }
+            Some(Err(())) => self.lifts_off = true,
+            None => {
+                let last = self.state.clone();
+                self.initialize();
+                // The initialization finds the key lifting off its frame
+                // where the increment found nothing: the last equilibrium
+                // still stands clear of the frame, and the key is drawn
+                // there.
+                if clear && self.lifts_off && self.state.is_none() {
+                    self.state = last;
+                    self.reinitialized = false;
+                }
+            }
         }
     }
 
@@ -731,7 +895,10 @@ impl KeyBench {
             return None;
         }
         Some(State {
-            placement: pose.placement(mounted.key),
+            placements: (0..mounted.mechanism.bodies().len())
+                .map(|b| pose.placement(BodyId(b)))
+                .collect(),
+            lift: mounted.lift_at(&q),
             q,
         })
     }
@@ -741,87 +908,73 @@ impl KeyBench {
         PointLoad {
             at: MaterialPoint {
                 body: mounted.key,
-                at: self
-                    .assembly
-                    .protocol
-                    .measuring_point_on_key(&self.assembly.key),
+                at: self.protocol.measuring_point_on_key(&self.key),
             },
             force: Point::new(0.0, -self.finger_weight_g * 1e-3 * G),
         }
     }
 
-    /// The attitude a frame whose stops fight draws the key in, and how far
-    /// it stands off its balance punching there: riding on both stops.
-    ///
-    /// The key on a pivot has no attitude on such a frame, and no state; the
-    /// key is somewhere all the same, and it is not inside the wood.
-    /// **Ask whether the stops fight**, not whether a seat fails: a frame
-    /// can refuse its seats for other reasons, and only this one rides.
-    fn riding(&self) -> Option<(f64, f64)> {
-        if self.stops_fight() {
-            self.assembly.riding_on_both_stops()
-        } else {
-            None
-        }
-    }
-
-    /// The attitude the key is drawn in, as its coordinates on a mount
-    /// raised by the lift: where the last action left it, or riding on a
-    /// frame whose stops fight, or level.
-    fn drawn(&self) -> (Vec<f64>, f64) {
-        match (&self.state, self.riding()) {
-            (Some(state), _) => (state.q.clone(), 0.0),
-            (None, Some((s, lift))) => (vec![nose_up_angle(s)], lift),
-            (None, None) => (vec![0.0], 0.0),
-        }
-    }
-
-    /// Whether the key's stops fight: the seated pose refuses the key a
-    /// seat, naming its back rail cloth and a front stop the riding drawing
-    /// reads as fighting ([`fight`]): the core's refusal of a seat, read as
-    /// the trade reads a frame.
-    ///
-    /// One predicate, because the drawing and the diagnosis have to agree
-    /// about which frames are impossible. A pin standing in the key's wood
-    /// beside its mortise leaves the key no seat either, but the stops the
-    /// riding is drawn on do not see it, so such a key is drawn level.
-    fn stops_fight(&self) -> bool {
-        self.seated().err().is_some_and(|refusal| fight(&refusal))
+    /// The key's coordinates where it is drawn: where the last equilibrium
+    /// left it, or level on its balance punching where nothing has held it.
+    fn drawn(&self, mounted: &Mounted) -> Vec<f64> {
+        self.state
+            .as_ref()
+            .map_or_else(|| mounted.level(), |state| state.q.clone())
     }
 
     /// Why this frame cannot be weighed, if it cannot: the seated pose's
     /// refusal ([`SeatRefusal`]), as the sentence a technician is told.
     ///
-    /// Different failures, and a technician needs to be told which. Stops
-    /// that fight, which a real keyboard rides on clear of its balance
-    /// punching, a degree of freedom this model does not have: named by the
-    /// front stop the key is drawn riding on, the pin in its mortise or the
-    /// punching, since raising the pin until it bottoms early over-constrains
-    /// the key just as a thick cloth does, and blaming the cloth then names
-    /// two parts that are innocent. Then a pin standing in the key's wood,
-    /// nothing under the front or the tail, or geometry edited into nonsense.
-    pub fn frame_fault(&self) -> Option<&'static str> {
-        let refusal = self.seated().err()?;
-        Some(if fight(&refusal) {
-            if self.assembly.stopped_by_the_mortise() {
-                RIDES_ON_THE_PIN
-            } else {
-                RIDES_ON_THE_PUNCHING
-            }
-        } else {
-            why_no_seat(&refusal)
+    /// A frame whose stops fight is not one: its key is seated riding on
+    /// them, off its balance punching ([`Self::riding`]), and only what needs
+    /// a stroke is refused. What is left has no seat in the model: a stop
+    /// standing in the key's drawn parts that no motion of the key on its
+    /// frame clears, stops that would hold it off its frame, nothing under
+    /// its front or its tail, or geometry edited into nonsense.
+    pub fn frame_fault(&self) -> Option<String> {
+        self.seated().err().map(|refusal| why_no_seat(&refusal))
+    }
+
+    /// How the key rides on its stops, seated at the top of its stroke: off
+    /// its balance punching, on its front stop and its back rail cloth, where
+    /// its stops fight and hold it higher than its punching would. `None`
+    /// where its punching carries it, or where it cannot be seated.
+    pub fn riding(&self) -> Option<Riding> {
+        let (_, seats) = self.seated().ok()?;
+        let top = &seats.top;
+        top.rides().then(|| Riding {
+            front: top
+                .held_by
+                .iter()
+                .copied()
+                .find(|&c| c != ContactCode::BackRailCloth)
+                .unwrap_or(ContactCode::FrontRailPunching),
+            lift: top.lift,
         })
     }
 
+    /// How the key rides on its stops, as the sentence a technician is told,
+    /// naming the stops and the lift in millimetres; `None` where its
+    /// punching carries it.
+    pub fn why_it_rides(&self) -> Option<String> {
+        let riding = self.riding()?;
+        Some(format!(
+            "the key rides on {}, {:.2} mm above its balance punching: its stops hold it \
+             higher than its punching does, so it has no stroke, and no weight takes it from one \
+             seat to the other.",
+            stops_named(&[riding.front, ContactCode::BackRailCloth]),
+            riding.lift * 1000.0
+        ))
+    }
+
     /// Why a reading of the sheet is refused, as the sentence a technician
-    /// is told: a seat refused as [`Self::frame_fault`] says it, so the sheet
-    /// and the frame's fault name the same part.
+    /// is told: a key with no stroke because it rides on its stops is told
+    /// so, with the stops and the lift ([`Self::why_it_rides`]).
     pub fn why_refused(&self, why: &Refused) -> String {
         match why {
-            Refused::Seat(_) => match self.frame_fault() {
-                Some(fault) => fault.to_owned(),
-                None => why_refused(why),
-            },
+            Refused::Walk(WalkRefusal::NoTravel) => {
+                self.why_it_rides().unwrap_or_else(|| why_refused(why))
+            }
             other => why_refused(other),
         }
     }
@@ -850,14 +1003,14 @@ impl KeyBench {
     /// that is what the drawer holds and what a technician counts.
     pub fn parts(&self) -> (Vec<Part>, KeyRanges, FrameRanges) {
         let mut parts = Vec::new();
-        let frame = self.assembly.frame.parts(
-            &self.assembly.key,
+        let frame = self.frame.parts(
+            &self.key,
             self.kind,
             &self.balance_papers,
             &self.front_papers,
             &mut parts,
         );
-        let key = self.assembly.key.parts(KEY, &mut parts);
+        let key = self.key.parts(KEY, &mut parts);
         (parts, key, frame)
     }
 
@@ -890,67 +1043,78 @@ impl KeyBench {
             .collect()
     }
 
-    /// Where each body of the scene stands: the ground's frame is the world's,
-    /// and the key's stands where its statics put it. One placement per body,
+    /// Where each body of the scene stands: the ground's frame is the
+    /// world's, the slide the key lifts on stands on the balance pin's axis,
+    /// and the key's frame where its statics put it. One placement per body,
     /// in body order, applied by the view as it is given.
     pub fn poses(&self) -> Vec<Placement> {
-        vec![Placement::WORLD, self.key_placement()]
+        match &self.state {
+            Some(state) => state.placements.clone(),
+            None => {
+                let level = self.level();
+                vec![Placement::WORLD, level, level]
+            }
+        }
+    }
+
+    /// The key's frame level on its balance punching, where it is drawn when
+    /// nothing has held it: its origin on the balance pin's axis, at the
+    /// punching's top.
+    fn level(&self) -> Placement {
+        Placement {
+            origin: Point::new(
+                self.frame.sections.balance.pin_x(0.0, self.kind),
+                self.frame.balance_bearing_height(),
+            ),
+            ..Placement::WORLD
+        }
     }
 
     /// Where the key's frame stands in the keybed's: its origin, at the
     /// balance pin on the underside, and its rotation, positive nose-up.
     ///
-    /// Where the last action left the key, as its mechanism places it; on a
-    /// frame whose stops fight, riding on both, standing off its balance
-    /// punching by the lift; level where nothing holds it. Nothing else
-    /// places a point of the key.
+    /// Where the last equilibrium left the key, as its mechanism places it:
+    /// on its balance punching, or riding on its stops off it; level on its
+    /// punching where nothing has held it. Nothing else places a point of the
+    /// key.
     pub fn key_placement(&self) -> Placement {
-        if let Some(state) = &self.state {
-            return state.placement;
-        }
-        let (s, lift) = self.riding().unwrap_or((0.0, 0.0));
-        let c = (1.0 - s * s).max(0.0).sqrt();
-        Placement {
-            origin: Point::new(0.0, self.assembly.frame.balance_bearing_height() + lift),
-            cos: c,
-            // The attitude's sine is positive front-down, a clockwise turn.
-            sin: -s,
-        }
+        self.state
+            .as_ref()
+            .map_or_else(|| self.level(), |state| state.placements[KEY.0])
     }
 
     /// The key on its frame as a mechanism, with the points the procedures
     /// load and read ([`mounts::on_its_frame`], which the regulation solve
-    /// mounts the key with too): turning about its balance bearing, raised
-    /// by `lift` as a frame whose stops fight raises it, its bushings'
-    /// friction the bench's bound.
+    /// mounts the key with too): free to lift off its balance punching, its
+    /// bushings' friction the bench's bound.
     ///
-    /// The key turns about its balance pin, at the origin of its frame,
-    /// which is where every key the bench builds bears: the bench builds no
-    /// bearing offset from the pin ([`KeyBearing`]), and the mount does not
-    /// read one.
-    fn on_frame(&self, lift: f64) -> Result<OnItsFrame, Problem> {
+    /// The key turns about its balance pin, at the origin of its frame, and
+    /// bears on its balance punching at the punching's centre, on the pin's
+    /// axis: where the felt is drawn, which is where every key the bench
+    /// builds bears.
+    fn on_frame(&self) -> Result<OnItsFrame, Problem> {
         mounts::on_its_frame(
-            &self.assembly.key,
-            &self.assembly.frame,
+            MOUNT,
+            &self.key,
+            &self.frame,
             self.kind,
             &self.balance_papers,
             &self.front_papers,
-            composite_key::mass(&self.assembly.key),
+            composite_key::mass(&self.key),
             self.friction.bound_n_m,
-            lift,
         )
     }
 
     /// The key on its frame as a mechanism: its parts and its frame's, the
-    /// contacts between them ([`mounts::key_on_frame`]), and the key turning
-    /// about its balance bearing, raised by `lift` off it, metres, as a frame
-    /// whose stops fight raises it.
+    /// contacts between them ([`mounts::key_on_frame`],
+    /// [`mounts::balance_punching`]), and the key free to lift off its
+    /// balance punching.
     ///
     /// The parts are [`Self::parts`]' own, the ones the view draws, so every
     /// contact reads a range of a drawn part. `None` only if the parts cannot
     /// be read, which the builders never produce.
-    pub fn key_on_frame(&self, lift: f64) -> Option<Mounted> {
-        self.on_frame(lift).ok().map(|k| k.mounted)
+    pub fn key_on_frame(&self) -> Option<Mounted> {
+        self.on_frame().ok().map(|k| k.mounted)
     }
 
     /// The key seated at the top of its stroke and at the bottom, by the
@@ -958,14 +1122,11 @@ impl KeyBench {
     /// and the bearings at the back and at the bottom are read, whatever the
     /// weight on the measuring point is doing.
     fn seated(&self) -> Result<(OnItsFrame, Seats), SeatRefusal> {
-        let k = self.on_frame(0.0).map_err(SeatRefusal::Mechanism)?;
+        let k = self.on_frame().map_err(SeatRefusal::Mechanism)?;
         let seats = Seating {
             mounted: &k.mounted,
             capstan: k.capstan,
-            measuring_point: self
-                .assembly
-                .protocol
-                .measuring_point_on_key(&self.assembly.key),
+            measuring_point: self.protocol.measuring_point_on_key(&self.key),
             margin: SEAT_MARGIN,
             standing: &[],
         }
@@ -982,14 +1143,12 @@ impl KeyBench {
     }
 
     /// The contacts the view marks: every row within the margin the static
-    /// solve reads, at the attitude the key is drawn in, its frame's lift
-    /// included.
+    /// solve reads, where the key is drawn, its balance punching's included.
     pub fn contacts(&self) -> Vec<ShownContact> {
-        let (q, lift) = self.drawn();
-        let Some(mounted) = self.key_on_frame(lift) else {
+        let Some(mounted) = self.key_on_frame() else {
             return Vec::new();
         };
-        let rows = Self::rows_at(&mounted, &q, ROW_MARGIN);
+        let rows = Self::rows_at(&mounted, &self.drawn(&mounted), ROW_MARGIN);
         let pairs = mounted.mechanism.pairs();
         rows.rows()
             .iter()
@@ -1000,6 +1159,18 @@ impl KeyBench {
                 gap: r.gap,
             })
             .collect()
+    }
+
+    /// How far each punching the key bears on, read at its centre, overlaps
+    /// it where the key is drawn, metres: what its felt would compress under
+    /// a key out of level on it, which the rigid reading at the centre
+    /// leaves aside ([`edge_overlaps`]). Under the key at rest on its
+    /// balance punching, nose-up by its dip, a quarter of a millimetre.
+    pub fn edge_overlaps(&self) -> Vec<(ContactCode, f64)> {
+        let Some(mounted) = self.key_on_frame() else {
+            return Vec::new();
+        };
+        edge_overlaps(&mounted, &self.drawn(&mounted))
     }
 
     /// How the key bears on its back rail cloth seated at the top of its
@@ -1029,10 +1200,7 @@ impl KeyBench {
     pub fn measuring_point_on_key(&self) -> Point {
         let (parts, key, _) = self.parts();
         let lip = key.lip.point(&parts);
-        Point::new(
-            lip.x - self.assembly.protocol.measuring_point_from_lip,
-            lip.y,
-        )
+        Point::new(lip.x - self.protocol.measuring_point_from_lip, lip.y)
     }
 
     /// The leads, in the key's frame, as centre and radius in metres.
@@ -1042,9 +1210,8 @@ impl KeyBench {
     /// thing. Drawing them to scale matters — a technician judges a leading by
     /// looking at it.
     pub fn lead_discs(&self) -> Vec<(Point, f64)> {
-        let w = self.assembly.key.width;
-        self.assembly
-            .key
+        let w = self.key.width;
+        self.key
             .leads
             .iter()
             .map(|l| {
@@ -1074,9 +1241,9 @@ impl KeyBench {
     /// the bench's bushings and on the jig, at its measuring point, and
     /// handed to `read`; refused where either mount is degenerate.
     fn weigh<T>(&self, read: impl FnOnce(&Weighing<'_>) -> T) -> Result<T, Refused> {
-        let key = &self.assembly.key;
-        let protocol = &self.assembly.protocol;
-        let k = self.on_frame(0.0).map_err(Refused::Mechanism)?;
+        let key = &self.key;
+        let protocol = &self.protocol;
+        let k = self.on_frame().map_err(Refused::Mechanism)?;
         let jig =
             KeyJig::new(key, protocol, composite_key::mass(key)).map_err(Refused::Mechanism)?;
         Ok(read(&Weighing {
@@ -1108,14 +1275,14 @@ impl KeyBench {
     /// `None` where the key cannot be seated ([`Self::frame_fault`] says
     /// why) or has nowhere to stand.
     pub fn readout(&self) -> Option<BenchReadout> {
-        let key = &self.assembly.key;
+        let key = &self.key;
         let props = key.mass_properties()?;
         let (k, seats) = self.seated().ok()?;
-        let state = self.state.as_ref()?;
+        let finger = self.finger_verdict()?;
 
         // The gaps where the key stands now, read off the contact rows at
         // the attitude it is drawn in.
-        let rows = Self::rows_at(&k.mounted, &state.q, f64::INFINITY);
+        let rows = Self::rows_at(&k.mounted, &self.drawn(&k.mounted), f64::INFINITY);
         let gap_mm = |code| Some(rows.gap(pair_of(&k.mounted, code)?)? * 1000.0);
 
         // Where the tail bears at the top seat, and how: one reading of the
@@ -1139,7 +1306,7 @@ impl KeyBench {
             key_friction_weight_g: self.key_friction_weight_g(),
             key_height_target_mm: self.targets.key_height * 1000.0,
             key_dip_target_mm: self.targets.key_dip * 1000.0,
-            finger: self.verdict(&k.mounted, state)?,
+            finger,
             key_mass_g: props.mass * 1000.0,
             lead_count: key.leads.len(),
         })
@@ -1152,6 +1319,19 @@ impl KeyBench {
         let load = self.touch(mounted);
         Some(match holding(mounted, &state.q, &[load])? {
             Holding::RestingOn { stop } => TouchVerdict::RestingOn { stop },
+            Holding::RidesOnBothStops { front, lift } => TouchVerdict::RidesOnBothStops {
+                front,
+                lift_mm: lift * 1000.0,
+            },
+            Holding::LiftsOffBalancePunching {
+                touching,
+                needs_friction,
+                lift,
+            } => TouchVerdict::LiftsOffBalancePunching {
+                touching,
+                needs_friction,
+                lift_mm: lift * 1000.0,
+            },
             Holding::HeldByFriction { touching, margin } => {
                 // A gram at the measuring point turns the key by its weight
                 // times the point's vertical speed per radian.
@@ -1172,16 +1352,13 @@ impl KeyBench {
 
     /// Fits a lead at `from_balance` metres, of `mass_g` grams.
     pub fn add_lead(&mut self, from_balance: f64, mass_g: f64) {
-        self.assembly
-            .key
-            .leads
-            .push(Lead::at(from_balance, mass_g * 1e-3));
+        self.key.leads.push(Lead::at(from_balance, mass_g * 1e-3));
         self.relax();
     }
 
     /// Moves lead `i` to a new position. No effect if there is no such lead.
     pub fn move_lead(&mut self, i: usize, from_balance: f64) {
-        if let Some(l) = self.assembly.key.leads.get_mut(i) {
+        if let Some(l) = self.key.leads.get_mut(i) {
             l.from_balance = from_balance;
         }
         self.relax();
@@ -1189,16 +1366,15 @@ impl KeyBench {
 
     /// Removes lead `i`. No effect if there is no such lead.
     pub fn remove_lead(&mut self, i: usize) {
-        if i < self.assembly.key.leads.len() {
-            self.assembly.key.leads.remove(i);
+        if i < self.key.leads.len() {
+            self.key.leads.remove(i);
         }
         self.relax();
     }
 
     /// The leads as `(position in metres, mass in grams)`.
     pub fn leads(&self) -> Vec<(f64, f64)> {
-        self.assembly
-            .key
+        self.key
             .leads
             .iter()
             .map(|l| (l.from_balance, l.mass * 1000.0))
@@ -1240,8 +1416,8 @@ impl KeyBench {
 
     /// Pushes the two stack totals into the geometry.
     fn sync_stacks(&mut self) {
-        self.assembly.frame.balance_punching.paper = self.balance_papers.iter().sum();
-        self.assembly.frame.front_punching.paper = self.front_papers.iter().sum();
+        self.frame.balance_punching.paper = self.balance_papers.iter().sum();
+        self.frame.front_punching.paper = self.front_papers.iter().sum();
     }
 
     /// Sets the paper under the balance punching to a given total, metres.
@@ -1265,8 +1441,8 @@ impl KeyBench {
     /// The two paper stacks, metres.
     pub fn papers(&self) -> (f64, f64) {
         (
-            self.assembly.frame.balance_punching.paper,
-            self.assembly.frame.front_punching.paper,
+            self.frame.balance_punching.paper,
+            self.frame.front_punching.paper,
         )
     }
 
@@ -1304,15 +1480,15 @@ impl KeyBench {
         if !from_lip.is_finite() {
             return;
         }
-        let covering = self.assembly.key.keytop_length.max(0.0);
-        self.assembly.protocol.measuring_point_from_lip = from_lip.clamp(0.0, covering);
+        let covering = self.key.keytop_length.max(0.0);
+        self.protocol.measuring_point_from_lip = from_lip.clamp(0.0, covering);
         self.relax();
     }
 
     /// How far back from the front lip of the key every weight is centred,
     /// metres.
     pub fn measuring_point_from_lip(&self) -> f64 {
-        self.assembly.protocol.measuring_point_from_lip
+        self.protocol.measuring_point_from_lip
     }
 
     /// The weight currently on the measuring point, grams.
@@ -1321,10 +1497,15 @@ impl KeyBench {
     }
 
     /// What holds the key where the weight on its measuring point has left
-    /// it. `None` where nothing does: a frame whose stops fight, or one with
-    /// nothing under the key.
+    /// it: a stop, its friction, its two stops off its balance punching; or
+    /// that the weight lifts it off its frame. `None` where nothing holds
+    /// it for any other reason: a key that has not been put on its frame,
+    /// with nothing under it.
     pub fn finger_verdict(&self) -> Option<TouchVerdict> {
-        let mounted = self.key_on_frame(0.0)?;
+        if self.lifts_off {
+            return Some(TouchVerdict::LiftsOffItsFrame);
+        }
+        let mounted = self.key_on_frame()?;
         self.verdict(&mounted, self.state.as_ref()?)
     }
 
@@ -1347,7 +1528,7 @@ impl KeyBench {
     /// Negative: the capstan is behind the pin. Clamped to stay behind it,
     /// since a capstan in front of the balance pin is not a grand action.
     pub fn set_capstan(&mut self, from_balance: f64) {
-        self.assembly.key.capstan = from_balance.min(-0.010);
+        self.key.capstan = from_balance.min(-0.010);
         self.relax();
     }
 
@@ -1357,13 +1538,13 @@ impl KeyBench {
     /// moves with it, a set distance back from the covering's lip, so with
     /// the capstan and that distance it sets the key weight ratio.
     pub fn set_front_edge(&mut self, from_balance: f64) {
-        self.assembly.key.front_edge = from_balance.max(0.050);
+        self.key.front_edge = from_balance.max(0.050);
         self.relax();
     }
 
     /// Screws the capstan up or down, metres above the keystick.
     pub fn set_capstan_height(&mut self, height: f64) {
-        self.assembly.key.capstan_screw.height = height.clamp(0.002, 0.030);
+        self.key.capstan_screw.height = height.clamp(0.002, 0.030);
         self.relax();
     }
 
@@ -1382,19 +1563,19 @@ impl KeyBench {
     /// here would roll two trade operations into one button and hide which of
     /// them the reader is looking at.
     pub fn place_the_frame_under_the_key(&mut self) {
-        self.assembly.frame = self.assembly.frame.clone().placed_under(&self.assembly.key);
+        self.frame = self.frame.clone().placed_under(&self.key);
         self.relax();
     }
 
     /// Where the front rail stands, metres in front of the balance pin.
     pub fn set_front_rail(&mut self, from_balance: f64) {
-        self.assembly.frame.front_rail = from_balance.max(0.010);
+        self.frame.front_rail = from_balance.max(0.010);
         self.relax();
     }
 
     /// Where the back rail stands, metres behind the balance pin (negative).
     pub fn set_back_rail(&mut self, from_balance: f64) {
-        self.assembly.frame.back_rail = from_balance.min(-0.010);
+        self.frame.back_rail = from_balance.min(-0.010);
         self.relax();
     }
 
@@ -1402,18 +1583,15 @@ impl KeyBench {
     ///
     /// The back one is signed as it is stored — negative, behind the pin.
     pub fn rail_positions(&self) -> (f64, f64) {
-        (
-            self.assembly.frame.front_rail,
-            self.assembly.frame.back_rail,
-        )
+        (self.frame.front_rail, self.frame.back_rail)
     }
 
     /// The three dimensions the bench exposes, in metres.
     pub fn key_dimensions(&self) -> (f64, f64, f64) {
         (
-            self.assembly.key.capstan,
-            self.assembly.key.front_edge,
-            self.assembly.key.capstan_screw.height,
+            self.key.capstan,
+            self.key.front_edge,
+            self.key.capstan_screw.height,
         )
     }
 
@@ -1421,37 +1599,37 @@ impl KeyBench {
 
     /// Height of the bare balance rail above the keybed, metres.
     pub fn set_balance_rail_height(&mut self, h: f64) {
-        self.assembly.frame.balance_rail_height = h.max(0.0);
+        self.frame.balance_rail_height = h.max(0.0);
         self.relax();
     }
 
     /// Height of the bare front rail above the keybed, metres.
     pub fn set_front_rail_height(&mut self, h: f64) {
-        self.assembly.frame.front_rail_height = h.max(0.0);
+        self.frame.front_rail_height = h.max(0.0);
         self.relax();
     }
 
     /// Height of the bare back rail above the keybed, metres.
     pub fn set_back_rail_height(&mut self, h: f64) {
-        self.assembly.frame.back_rail_height = h.max(0.0);
+        self.frame.back_rail_height = h.max(0.0);
         self.relax();
     }
 
     /// Thickness of the back rail cloth, metres.
     pub fn set_back_rail_cloth(&mut self, t: f64) {
-        self.assembly.frame.back_rail_cloth = t.max(0.0);
+        self.frame.back_rail_cloth = t.max(0.0);
         self.relax();
     }
 
     /// How far the front rail pin stands above the bare rail, metres.
     pub fn set_front_pin_height(&mut self, h: f64) {
-        self.assembly.frame.sections.front.pin_height = h.max(0.0);
+        self.frame.sections.front.pin_height = h.max(0.0);
         self.relax();
     }
 
     /// Depth of the key's front mortise above its underside, metres.
     pub fn set_front_mortise_depth(&mut self, d: f64) {
-        self.assembly.key.front_mortise_depth = d.max(0.0);
+        self.key.front_mortise_depth = d.max(0.0);
         self.relax();
     }
 
@@ -1459,15 +1637,15 @@ impl KeyBench {
     /// metres.
     pub fn front_pin_and_mortise(&self) -> (f64, f64) {
         (
-            self.assembly.frame.sections.front.pin_height,
-            self.assembly.key.front_mortise_depth,
+            self.frame.sections.front.pin_height,
+            self.key.front_mortise_depth,
         )
     }
 
     /// The four frame dimensions, metres: balance rail, front rail, back rail,
     /// back rail cloth.
     pub fn frame_dimensions(&self) -> (f64, f64, f64, f64) {
-        let f = &self.assembly.frame;
+        let f = &self.frame;
         (
             f.balance_rail_height,
             f.front_rail_height,
@@ -1483,21 +1661,21 @@ impl KeyBench {
     /// how you adjust and felt is what you fit, and because the felt is the
     /// part that will compress once the contact law arrives.
     pub fn set_balance_felt(&mut self, felt: f64) {
-        self.assembly.frame.balance_punching.felt = felt.max(0.0);
+        self.frame.balance_punching.felt = felt.max(0.0);
         self.relax();
     }
 
     /// Thickness of the felt washer on the front punching, metres.
     pub fn set_front_felt(&mut self, felt: f64) {
-        self.assembly.frame.front_punching.felt = felt.max(0.0);
+        self.frame.front_punching.felt = felt.max(0.0);
         self.relax();
     }
 
     /// The two felt washers, metres.
     pub fn felts(&self) -> (f64, f64) {
         (
-            self.assembly.frame.balance_punching.felt,
-            self.assembly.frame.front_punching.felt,
+            self.frame.balance_punching.felt,
+            self.frame.front_punching.felt,
         )
     }
 
@@ -1527,7 +1705,7 @@ impl KeyBench {
             .map_err(BushingsRefusal::Procedure)??;
         self.friction = AxisFriction {
             bound_n_m: found.bound_n_m,
-            radius_m: Some(self.assembly.measuring_point()),
+            radius_m: Some(self.measuring_point()),
         };
         self.friction_basis = Basis::SetByHand;
         self.relax();
@@ -1562,7 +1740,7 @@ impl KeyBench {
     /// Not what Stanwood's protocol reads them as, on the key resting
     /// nose-up: the sheet's key friction weight.
     pub fn key_friction_weight_g(&self) -> f64 {
-        self.friction.weight_at(self.assembly.measuring_point())
+        self.friction.weight_at(self.measuring_point())
     }
 }
 
@@ -1574,7 +1752,7 @@ impl KeyBench {
     /// whose arithmetic reads the friction on the level arm, not through
     /// Stanwood's protocol.
     pub(crate) fn set_bushings_holding_g(&mut self, grams: f64) {
-        self.friction = AxisFriction::of_weight_at(grams, self.assembly.measuring_point());
+        self.friction = AxisFriction::of_weight_at(grams, self.measuring_point());
         self.friction_basis = Basis::SetByHand;
         self.relax();
     }
@@ -1827,10 +2005,14 @@ mod tests {
             "doubling the friction must widen the band by twice the extra, or more"
         );
 
-        let (_, seats) = b.seated().unwrap();
+        let (k, seats) = b.seated().unwrap();
         let point = b.measuring_point_on_key();
         let arm = |q: f64| point.x * q.cos() - point.y * q.sin();
-        let tilt = 0.5 * 6.0 * point.x * (1.0 / arm(seats.top.q[0]) - 1.0 / arm(seats.bottom.q[0]));
+        let angle = k.mounted.angle.0;
+        let tilt = 0.5
+            * 6.0
+            * point.x
+            * (1.0 / arm(seats.top.q[angle]) - 1.0 / arm(seats.bottom.q[angle]));
         assert!(
             (bw1 - bw0 - tilt).abs() <= 2.0 * read::resolution(),
             "the centre moved by {} g, the seats' arms account for {tilt} g",
@@ -1872,9 +2054,9 @@ mod tests {
     }
 
     /// A weight moves the key between its two seats and no further: a heavy
-    /// one presses it down onto the bottom seat and a heavy lift raises it
-    /// onto the top seat, whatever their size, because past a stop a
-    /// weight only loads the stop.
+    /// one presses it down onto the bottom seat, whatever its size, because
+    /// past a stop a weight only loads the stop, and a lift raises it onto
+    /// the top seat, its balance punching still carrying it.
     ///
     /// The bound is derived. The touch weight and the seat's preparation
     /// loads put the key on the same rigid stop, and each static solve
@@ -1887,18 +2069,203 @@ mod tests {
         let angle = k.mounted.angle.0;
         let bound = 2.0 * 1e-12 / 0.2;
         for (weights, seat) in [
-            ([60.0, 400.0], &seats.bottom),
-            ([-60.0, -400.0], &seats.top),
+            (&[60.0, 400.0][..], &seats.bottom),
+            (&[-30.0, -60.0][..], &seats.top),
         ] {
-            for w in weights {
+            for &w in weights {
                 b.set_finger_weight(w);
-                let q = b.state.as_ref().expect("a state").q[angle];
+                let q = &b.state.as_ref().expect("a state").q;
                 assert!(
-                    (q - seat.q[angle]).abs() <= bound,
-                    "{w} g left the key at {q} rad, its seat is at {} rad",
+                    (q[angle] - seat.q[angle]).abs() <= bound,
+                    "{w} g left the key at {} rad, its seat is at {} rad",
+                    q[angle],
                     seat.q[angle]
                 );
+                assert_eq!(k.mounted.lift_at(q).to_bits(), 0.0_f64.to_bits(), "{w} g");
             }
+        }
+    }
+
+    /// The audit's RUST-8, consistency: **a lift the key's own vertical
+    /// equilibrium cannot hold lifts it off its frame, and the bench says
+    /// so**, never certifying it held.
+    ///
+    /// On the key's cloth, a pull at the measuring point turns the key about
+    /// the cloth's edge: its balance punching carries the key's weight less
+    /// the pull less what the cloth takes, and the cloth takes the pull's
+    /// moment about the pin over its arm, less what the key's own weight and
+    /// its friction do. By hand, with the key at its top seat's attitude, its
+    /// arms read off the bench and the friction against the motion that took
+    /// it there: the punching is left carrying nothing at a pull of about
+    /// 62 g. A gram short of it the key stays on its cloth and its punching,
+    /// within a tenth of a micron of it. A few hundredths of a gram past it,
+    /// friction can still hold the key turned up on its cloth, lifted off
+    /// its punching within its pin
+    /// (`a_pull_never_draws_the_key_above_its_balance_pin`); a few tenths
+    /// past it and beyond, with nothing above the key to hold it, the key
+    /// turns up off its punching past where it leaves its balance pin, off
+    /// its frame, and the bench says the weight lifts it off: no
+    /// equilibrium, the key drawn where the last one left it, never reported
+    /// held.
+    #[test]
+    fn a_pull_past_what_the_punching_carries_lifts_the_key_off_its_frame() {
+        let mut b = KeyBench::standard();
+        let (k, seats) = b.seated().expect("the standard bench seats");
+        let m = &k.mounted.mechanism;
+        let mass = m.body(k.mounted.key).mass.expect("weighed");
+        let pose = m.pose(&seats.top.q);
+        let place = pose.placement(k.mounted.key);
+        let cloth = b.bearing_at_the_back().expect("on its cloth").point.x;
+        let com = place.world(mass.com);
+        let at = place.world(b.measuring_point_on_key());
+        let bound = b.friction.bound_n_m;
+        // The pull `p` newtons at which the punching carries nothing: the
+        // cloth then carries the key's weight less the pull, and the moments
+        // about the cloth's edge balance with the friction against the turn.
+        let w = mass.mass * G;
+        let pull = (w * (com.x - cloth) + bound) / (at.x - cloth);
+        let grams = 1000.0 * pull / G;
+        let held_to = grams.floor() - 1.0;
+        assert!(held_to > 55.0, "the punching carries the key to {grams} g");
+        b.set_finger_weight(-held_to);
+        let q = b.state.as_ref().expect("held").q.clone();
+        assert!(
+            k.mounted.lift_at(&q).abs() <= TOUCHING,
+            "{held_to} g lifted the key"
+        );
+        assert!(
+            matches!(
+                b.finger_verdict(),
+                Some(TouchVerdict::RestingOn {
+                    stop: ContactCode::BackRailCloth
+                })
+            ),
+            "{:?}",
+            b.finger_verdict()
+        );
+        for past in [grams.ceil() + 2.0, 100.0, 400.0] {
+            b.set_finger_weight(-past);
+            assert_eq!(
+                b.finger_verdict(),
+                Some(TouchVerdict::LiftsOffItsFrame),
+                "-{past} g"
+            );
+            assert!(!b.reinitialized(), "the key stays where it was");
+            let r = b.readout().expect("the sheet still reads");
+            assert_eq!(r.finger, TouchVerdict::LiftsOffItsFrame);
+            let still = &b.state.as_ref().expect("the last equilibrium").q;
+            assert_eq!(
+                still.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                q.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                "drawn where the last equilibrium left it"
+            );
+        }
+        b.set_finger_weight(0.0);
+        assert_eq!(
+            b.finger_verdict(),
+            Some(TouchVerdict::RestingOn {
+                stop: ContactCode::FrontRailPunching
+            }),
+            "and back down on its punching once the weight comes off"
+        );
+    }
+
+    /// Consistency: **a pull never draws the key above its balance pin.**
+    /// The key leaves its pin where its balance hole, the key frame's origin
+    /// on the pin's axis, clears the drawn pin's top, 9 mm above its
+    /// punching on the standard bench. Pulled up at its measuring point past
+    /// what its punching carries, the key turns up on its cloth off its
+    /// punching as far as its friction lets it: under a millimetre at
+    /// 62.7 g, 8.5 mm at 62.85 g. A little more and it would turn up past
+    /// the pin's top, 13 mm at 63 g, where it has left its pin: the bench
+    /// says the weight lifts it off its frame, and draws it where the last
+    /// equilibrium left it. At every pull from 62.5 to 63.5 g, by hundredths
+    /// of a gram, each from the key at rest, the key's balance hole is drawn
+    /// at or below the pin's drawn top, read off the part the view draws,
+    /// and a key said to be lifted off its punching is drawn that far above
+    /// it.
+    #[test]
+    fn a_pull_never_draws_the_key_above_its_balance_pin() {
+        let base = KeyBench::standard();
+        let pin_top = base
+            .outlines()
+            .iter()
+            .find(|o| o.code == PartCode::BalanceRailPin)
+            .expect("the bench draws a balance pin")
+            .points
+            .iter()
+            .map(|p| p.y)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let bearing = base.frame().balance_bearing_height();
+        let (mut lifted, mut off) = (0, 0);
+        for k in 0..=100 {
+            let grams = 62.5 + 0.01 * f64::from(k);
+            let mut b = base.clone();
+            b.set_finger_weight(-grams);
+            let hole = b.key_placement().origin.y;
+            assert!(
+                hole <= pin_top,
+                "{grams} g draws the key's balance hole {} mm above its pin's top",
+                (hole - pin_top) * 1000.0
+            );
+            match b.finger_verdict() {
+                Some(TouchVerdict::LiftsOffBalancePunching { lift_mm, .. }) => {
+                    assert!(
+                        ((hole - bearing) * 1000.0 - lift_mm).abs() < 1e-9,
+                        "{grams} g: drawn {} mm up, said {lift_mm} mm",
+                        (hole - bearing) * 1000.0
+                    );
+                    lifted += 1;
+                }
+                Some(TouchVerdict::LiftsOffItsFrame) => off += 1,
+                _ => {}
+            }
+        }
+        assert!(
+            lifted > 0 && off > 0,
+            "{lifted} pulls held the key lifted within its pin, {off} lifted it off"
+        );
+        let mut b = base.clone();
+        b.set_finger_weight(-63.0);
+        assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
+    }
+
+    /// Consistency: **a key its friction holds off its punching stays
+    /// there.** Pulled 62.7 g at its measuring point, a few hundredths of a
+    /// gram past what its punching carries, the key turns up on its cloth
+    /// and leaves its punching by under a millimetre, where its friction
+    /// holds it. Pulled 60.7 g, inside the band its friction holds it in,
+    /// it stays where it was to the bit, still lifted, on its cloth: the
+    /// increment starts from where the last one left the key's slide, never
+    /// from the key put back on its punching, which would carry it down.
+    #[test]
+    fn a_key_its_friction_holds_off_its_punching_stays_there() {
+        let mut b = KeyBench::standard();
+        b.set_finger_weight(-62.7);
+        let lifted = b.finger_verdict();
+        let Some(TouchVerdict::LiftsOffBalancePunching {
+            touching,
+            needs_friction,
+            lift_mm,
+        }) = lifted.clone()
+        else {
+            panic!("62.7 g: {lifted:?}");
+        };
+        assert_eq!(touching, vec![ContactCode::BackRailCloth]);
+        assert!(needs_friction, "the cloth alone holds no pull");
+        assert!(lift_mm > 0.1 && lift_mm < 1.0, "lifted {lift_mm} mm");
+        let held = b.key_placement();
+        b.set_finger_weight(-60.7);
+        assert!(!b.reinitialized());
+        assert_eq!(b.finger_verdict(), lifted);
+        let still = b.key_placement();
+        for (x, y) in [
+            (held.origin.x, still.origin.x),
+            (held.origin.y, still.origin.y),
+            (held.cos, still.cos),
+            (held.sin, still.sin),
+        ] {
+            assert_eq!(x.to_bits(), y.to_bits(), "60.7 g moved the key");
         }
     }
 
@@ -1954,7 +2321,7 @@ mod tests {
         let mut b = KeyBench::standard();
         b.set_finger_weight(-60.0);
         let pose = b.key_placement();
-        let bearing = b.assembly().frame.balance_bearing_height();
+        let bearing = b.frame().balance_bearing_height();
         assert!(pose.origin.x.abs() < 1e-15 && (pose.origin.y - bearing).abs() < 1e-15);
         assert!(
             (pose.cos * pose.cos + pose.sin * pose.sin - 1.0).abs() < 4.0 * f64::EPSILON,
@@ -1970,8 +2337,8 @@ mod tests {
         let mut b = KeyBench::standard();
         for from_lip in [0.013, 0.0127, 0.030] {
             b.set_measuring_point_from_lip(from_lip);
-            let protocol = b.assembly().protocol;
-            let weighed = protocol.measuring_point_on_key(&b.assembly().key);
+            let protocol = *b.protocol();
+            let weighed = protocol.measuring_point_on_key(b.key());
             let marked = b.measuring_point_on_key();
             assert_eq!(marked.x.to_bits(), weighed.x.to_bits());
             assert_eq!(marked.y.to_bits(), weighed.y.to_bits());
@@ -2075,7 +2442,7 @@ mod contact_readout_tests {
     #[test]
     fn the_default_frame_puts_the_key_level_at_the_bottom_of_its_travel() {
         let b = KeyBench::standard();
-        let f = &b.assembly.frame;
+        let f = &b.frame;
         let out = (f.front_bearing_height() - f.balance_bearing_height()) * 1000.0;
         let two_papers = 2.0 * PAPER_THICKNESSES[0] * 1000.0;
         assert!(
@@ -2100,69 +2467,364 @@ mod contact_readout_tests {
         );
     }
 
-    /// On a frame no key can sit in, the key is drawn where it would ride.
-    ///
-    /// The refusal and the diagnosis are not enough: the drawing has to reach
-    /// the riding position too. A key drawn at its cloth's angle alone would
-    /// stand through its front punching, the balance punching still touching,
-    /// which is the one thing the picture has to show is no longer true.
+    /// Consistency: **a front pin a few tenths of a millimetre into the wood
+    /// beside its slot draws the key on the pin, never through it.** Its
+    /// front end 0.3 mm into the wood in front of the slot, its top well up
+    /// in the slot: the bench puts the key on such a frame as the seats do,
+    /// lowered from above where its nominal pose finds no state, and the key
+    /// rides on the pin and its cloth, nothing drawn sunk, the frame seated.
     #[test]
-    fn a_wedged_frame_draws_the_key_riding_clear_of_its_bearing() {
+    fn a_pin_a_few_tenths_into_the_wood_draws_the_key_on_it() {
         let mut b = KeyBench::standard();
-        let level = b.assembly.frame.balance_bearing_height();
-        assert!(b.frame_fault().is_none(), "the standard bench is buildable");
+        let pin = b.frame().sections.front.pin.expect("a pin").length();
+        let (_, front_end) = b.key().front_mortise_span();
+        b.set_front_rail(front_end - 0.5 * pin + 0.0003);
+        assert_eq!(b.frame_fault(), None);
         assert!(
-            b.riding().is_none() && (b.key_placement().origin.y - level).abs() < 1e-15,
-            "and on it the key sits on its bearing, not above it"
+            matches!(
+                b.finger_verdict(),
+                Some(TouchVerdict::RidesOnBothStops {
+                    front: ContactCode::FrontPinOnTheWood,
+                    ..
+                })
+            ),
+            "{:?}",
+            b.finger_verdict()
         );
+        let m = b.key_on_frame().expect("mounted").mechanism;
+        let q = &b.state.as_ref().expect("a state").q;
+        assert!(m.overlap(&m.pose(q)) <= SEAT_OVERLAP, "nothing drawn sunk");
+    }
 
-        // Hold the tail higher than the punching lets the front come down.
-        b.set_back_rail_height(level + 0.005 - b.assembly.frame.back_rail_cloth);
-        assert!(
-            b.frame_fault().is_some(),
-            "this frame is meant to be refused"
-        );
-        assert!(b.readout().is_none(), "and refused by the weighing too");
+    /// Consistency: **a back rail raised through the key's tail in one move
+    /// draws the key riding as it is seated.** From where the bench builds
+    /// it to 55 mm in one move, as a click on its slider's track moves it,
+    /// the rail and its cloth stand in the tail of the key where it rested,
+    /// the cloth clear above it: no contact reads a rail, and only the key
+    /// read against its rails is found sunk. The cloth then holds the tail
+    /// so high that the key would ride 15 mm above its balance punching,
+    /// past the top of the bench's pin, 9 mm up: on that pin the key is off
+    /// its frame, and the bench says so. On a balance pin 20 mm taller, put
+    /// back by the loading rule, the key is drawn on its front punching and
+    /// its cloth, as high above its balance punching as its seats ride,
+    /// never on its punching with the rail drawn through it.
+    #[test]
+    fn a_back_rail_raised_through_the_key_in_one_move_draws_it_riding() {
+        let mut b = KeyBench::standard();
+        b.set_back_rail_height(0.055);
+        assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
+        assert!(b.riding().is_none() && b.frame_fault().is_some());
 
-        let (sin, lift) = b.riding().expect("the key rides on both stops");
+        let mut b = KeyBench::standard();
+        b.frame.sections.balance.pin_height += 0.020;
+        b.relax();
+        assert!(!b.reinitialized(), "a taller pin moves nothing");
+        b.set_back_rail_height(0.055);
+        assert!(b.reinitialized(), "put back by the loading rule");
+        let level = b.frame().balance_bearing_height();
+        let riding = b.riding().expect("the key rides on its stops");
+        let drawn_lift = b.key_placement().origin.y - level;
         assert!(
-            (b.key_placement().origin.y - (level + lift)).abs() < 1e-15,
-            "and it is drawn where it rides"
+            (drawn_lift - riding.lift).abs() < 1e-9,
+            "drawn {drawn_lift} m above its punching, seated {} m",
+            riding.lift
         );
-        assert!(
-            lift > 0.0,
-            "the key must be drawn clear of the balance punching, not through \
-             the wood: it lifted by {lift} m"
+        let closed: Vec<ContactCode> = b
+            .contacts()
+            .iter()
+            .filter(|c| c.state() == ContactState::Closed)
+            .map(|c| c.code)
+            .collect();
+        assert_eq!(
+            closed,
+            vec![ContactCode::FrontRailPunching, ContactCode::BackRailCloth]
         );
+    }
 
-        // And where it is drawn, it really is on both stops.
-        let front = b.assembly.front_stop();
-        let back = b.assembly.back_stop();
-        let cos = (1.0 - sin * sin).max(0.0).sqrt();
-        for (name, stop) in [("front", front), ("back", back)] {
-            // Signed distance from each of the stop's edge centres to the
-            // underside line, which passes through the lifted bearing along
-            // (cos, -sin) and has (sin, cos) for its upward normal. A centre
-            // sits one radius below the line when the key rests on that edge,
-            // so this reads zero on the edge that carries the key and negative
-            // on the one it clears.
-            let clearances: Vec<f64> = stop
-                .edges()
-                .iter()
-                .map(|c| c.x * sin + (c.y - (level + lift)) * cos + stop.edge_radius)
-                .collect();
+    /// Consistency: **a key riding just under its balance pin's top is drawn
+    /// riding there, not off its frame.** The cloth 5 mm above the balance
+    /// bearing, the key rides 2.27 mm up on its front punching and its
+    /// cloth; the key 17 mm short and its cloth 3 mm lower, it rides 4.45 mm
+    /// up on its front pin standing in its wood and its cloth. With the
+    /// balance pin cut to 0.3 mm above where the key rides, the bench finds
+    /// no frame fault and seats it riding where it rode, and the loading
+    /// rule, run again, draws it there: no attitude a whole degree apart
+    /// clears the frame below the pin's top, each whole degree either side
+    /// of where the key rides costing more lift than the pin leaves, and the
+    /// attitude is narrowed between them.
+    #[test]
+    fn a_key_riding_just_under_its_pins_top_is_drawn_riding_there() {
+        let wedged = |b: &mut KeyBench| {
+            let level = b.frame().balance_bearing_height();
+            let cloth = b.frame().back_rail_cloth;
+            b.set_back_rail_height(level + 0.005 - cloth);
+        };
+        let short = |b: &mut KeyBench| {
+            let (_, front_edge, _) = b.key_dimensions();
+            b.set_front_edge(front_edge - 0.017);
+            let h = b.frame().back_rail_height;
+            b.set_back_rail_height(h - 0.003);
+        };
+        for edit in [&wedged as &dyn Fn(&mut KeyBench), &short] {
+            let mut b = KeyBench::standard();
+            edit(&mut b);
+            let ride = b.riding().expect("the key rides on its stops").lift;
+            let f = &mut b.frame;
+            let room = f.sections.balance.pin_height - f.balance_punching.height();
+            f.sections.balance.pin_height += ride + 0.0003 - room;
+            b.relax();
+            assert_eq!(b.frame_fault(), None);
+            let riding = b.riding().expect("the key rides on its pin");
             assert!(
-                clearances.iter().all(|d| *d < 1e-9),
-                "the key is drawn through the {name} stop: {clearances:?}"
+                (riding.lift - ride).abs() < 1e-9,
+                "rides {} m up, {ride} m on the bench's pin",
+                riding.lift
             );
-            // A strip is carried on one of its two edges, not on its middle,
-            // and which one depends on how the frame is wedged — so the claim
-            // is that one of them is touching, not that a named one is.
+            b.initialize();
             assert!(
-                clearances.iter().any(|d| d.abs() < 1e-9),
-                "the riding key must touch the {name} stop; it stands {clearances:?} off it"
+                matches!(
+                    b.finger_verdict(),
+                    Some(TouchVerdict::RidesOnBothStops { .. })
+                ),
+                "{:?}",
+                b.finger_verdict()
+            );
+            let drawn = b.key_placement().origin.y - b.frame().balance_bearing_height();
+            assert!(
+                (drawn - ride).abs() < 1e-9,
+                "drawn {drawn} m above its punching, rides {ride} m"
             );
         }
+    }
+
+    /// Consistency: **a key off its balance punching is said to touch what
+    /// the view marks it touching.** The front rail raised to 41.7 mm stands
+    /// its punching so high that the key, front-heavy, tips forward onto it
+    /// and leaves its balance punching: the front punching carries it, the
+    /// front pin's top corner meets the wall of the key's slot, and its tail
+    /// stands clear of its cloth. The touch verdict names those two stops,
+    /// the ones the view marks closed besides the balance punching, which
+    /// stands open below the key, and not the cloth.
+    #[test]
+    fn a_key_off_its_punching_is_said_to_touch_what_the_view_marks() {
+        let mut b = KeyBench::standard();
+        b.set_front_rail_height(0.0417);
+        let verdict = b.finger_verdict();
+        let Some(TouchVerdict::LiftsOffBalancePunching { touching, .. }) = verdict else {
+            panic!("{verdict:?}");
+        };
+        let mut closed: Vec<ContactCode> = b
+            .contacts()
+            .iter()
+            .filter(|c| c.state() == ContactState::Closed)
+            .map(|c| c.code)
+            .collect();
+        closed.dedup();
+        assert_eq!(touching, closed);
+        assert_eq!(
+            touching,
+            vec![
+                ContactCode::FrontRailPunching,
+                ContactCode::FrontPinOnTheWood
+            ]
+        );
+    }
+
+    /// Consistency: **a weight that lifts the key off its frame leaves it
+    /// drawn where it stood, whichever solve finds it lifting off.** On
+    /// bushings of 3 g, 62 g pulling at the measuring point of the key at
+    /// rest is past what its punching and its cloth hold: the increment from
+    /// where the key stands stops at its cap before the key's slide meets
+    /// the top of its range, and the initialization, from the key's nominal
+    /// pose, finds the key lifting off its frame. The bench says the weight
+    /// lifts the key off, and the key stays drawn where it stood, bit for
+    /// bit, not put back by the loading rule and drawn level on its
+    /// punching.
+    #[test]
+    fn a_pull_that_lifts_the_key_off_its_frame_leaves_it_where_it_stood() {
+        let mut b = KeyBench::standard();
+        b.set_key_friction_weight(3.0).expect("bushings read 3 g");
+        let stood = b.key_placement();
+        b.set_finger_weight(-62.0);
+        assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
+        assert!(!b.reinitialized(), "the key stays where it was");
+        let drawn = b.key_placement();
+        for (x, y) in [
+            (drawn.origin.x, stood.origin.x),
+            (drawn.origin.y, stood.origin.y),
+            (drawn.cos, stood.cos),
+            (drawn.sin, stood.sin),
+        ] {
+            assert_eq!(x.to_bits(), y.to_bits(), "drawn where it stood");
+        }
+    }
+
+    /// Consistency: **a riding key has no stroke, and its dip reads
+    /// nothing.** The key front 2.3725 mm forward of where the bench builds
+    /// it stands the front rail pin 0.87 mm into the wood behind the key's
+    /// front mortise, and the key rides on the pin and its cloth. Its top
+    /// seat is solved free to lift from where it stands level on its
+    /// punching, and converges only with the two rows that carry it closed;
+    /// its bottom seat, solved from the top, is the same pose, so the dip
+    /// reads nothing to the bit, where rows read closed while microns open
+    /// would leave 23 nm between the seats. No weight that needs a stroke is
+    /// walked between them: D, U and both key friction weights are refused
+    /// as the riding key's sentence says.
+    #[test]
+    fn a_riding_key_has_no_stroke_however_its_seats_are_rounded() {
+        let mut b = KeyBench::standard();
+        let (_, front_edge, _) = b.key_dimensions();
+        b.set_front_edge(front_edge + 0.0023725);
+        let riding = b.riding().expect("the key rides on the pin and its cloth");
+        assert_eq!(riding.front, ContactCode::FrontPinOnTheWood);
+        assert_eq!(
+            read::value(&b, ProcedureId::KeyDip).to_bits(),
+            0.0_f64.to_bits(),
+            "a riding key has no dip"
+        );
+        let sheet = b.sheet();
+        for p in [
+            ProcedureId::DownWeight,
+            ProcedureId::UpWeight,
+            ProcedureId::KeyFrictionWeightZeroedOnTheJig,
+            ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
+        ] {
+            assert_eq!(
+                sheet.get(p),
+                Some(&Err(Refused::Walk(WalkRefusal::NoTravel))),
+                "{p:?}"
+            );
+        }
+    }
+
+    /// What the owner sees on a frame whose stops fight, the audit's RUST-2:
+    /// **the key drawn riding on its two stops, off its balance punching, on
+    /// its parts as drawn, and the reason its touchweights are refused.** Its
+    /// cloth holding the tail 5 mm above the balance bearing, the key at rest
+    /// rides on the cloth and the front punching, 2.27 mm above its balance
+    /// punching: the view marks those two closed, and the punching, more than
+    /// the millimetre the view marks below the key, not at all; the key is
+    /// drawn that far above it, where a straight underside laid on the two
+    /// stops would stand 0.81 mm clear of the cloth, under the chamfer. Read
+    /// off the drawn outlines, the drawn underside,
+    /// chamfer included, stands on the drawn cloth's face or edge within the
+    /// sagitta of a drawn arc, and nowhere in it. The jig's readings and the
+    /// key height are read, the dip is nothing, and every weight that needs a
+    /// stroke is refused with the sentence that names the two stops and the
+    /// lift. No frame fault: the key is seated.
+    #[test]
+    fn a_wedged_frame_is_drawn_riding_on_its_stops_and_says_why_it_cannot_be_weighed() {
+        let mut b = KeyBench::standard();
+        let level = b.frame().balance_bearing_height();
+        let cloth = b.frame().back_rail_cloth;
+        b.set_back_rail_height(level + 0.005 - cloth);
+        let riding = b.riding().expect("the key rides on its stops");
+        assert_eq!(riding.front, ContactCode::FrontRailPunching);
+        assert!(
+            (riding.lift - 0.00227).abs() < 0.00001,
+            "lifted {} m",
+            riding.lift
+        );
+        assert!(b.frame_fault().is_none());
+        assert_eq!(
+            b.finger_verdict(),
+            Some(TouchVerdict::RidesOnBothStops {
+                front: ContactCode::FrontRailPunching,
+                lift_mm: 1000.0 * (b.key_placement().origin.y - level),
+            })
+        );
+        let shown = b.contacts();
+        let state_of = |code| {
+            shown
+                .iter()
+                .find(|c| c.code == code)
+                .map(ShownContact::state)
+        };
+        assert_eq!(
+            state_of(ContactCode::BackRailCloth),
+            Some(ContactState::Closed)
+        );
+        assert_eq!(
+            state_of(ContactCode::FrontRailPunching),
+            Some(ContactState::Closed)
+        );
+        assert_eq!(state_of(ContactCode::BalanceRailPunching), None);
+        let drawn_lift = b.key_placement().origin.y - level;
+        assert!(
+            (drawn_lift - riding.lift).abs() < 1e-9,
+            "drawn {drawn_lift} m above its punching, seated {} m",
+            riding.lift
+        );
+
+        // The drawn underside over the drawn cloth's face, where the cloth
+        // stands at its full height: nowhere in it, and its lowest there
+        // within a micron of it, a thousandth of the 0.81 mm a straight
+        // underside left. The key bears on the cloth's front edge, just past
+        // the face, nose-down by its ride: over the face's end it stands the
+        // edge's radius times the turn's square above it, tens of nanometres.
+        let drawn = b.outlines();
+        let poses = b.poses();
+        let cloth = drawn
+            .iter()
+            .find(|o| o.code == PartCode::BackRailCloth)
+            .expect("the cloth is drawn");
+        let top = cloth.points.iter().fold(f64::MIN, |a, p| a.max(p.y));
+        let (x0, x1) = cloth
+            .points
+            .iter()
+            .filter(|p| p.y > top - 1e-12)
+            .fold((f64::MAX, f64::MIN), |(lo, hi), p| {
+                (lo.min(p.x), hi.max(p.x))
+            });
+        let (parts, ranges, _) = b.parts();
+        let mut lowest = f64::MAX;
+        for range in &ranges.underside {
+            for seg in range.segs(&parts) {
+                let (a, c) = (
+                    poses[KEY.0].world(seg.start()),
+                    poses[KEY.0].world(seg.end()),
+                );
+                for step in 0..=4000 {
+                    let t = f64::from(step) / 4000.0;
+                    let x = a.x + t * (c.x - a.x);
+                    if x >= x0 && x <= x1 {
+                        lowest = lowest.min(a.y + t * (c.y - a.y) - top);
+                    }
+                }
+            }
+        }
+        assert!(
+            lowest > -1e-9 && lowest < 1e-6,
+            "the drawn key stands {lowest} m off the cloth's drawn face"
+        );
+
+        let sheet = b.sheet();
+        for p in [
+            ProcedureId::FrontWeight,
+            ProcedureId::KeyWeightRatio,
+            ProcedureId::KeyHeight,
+        ] {
+            assert!(sheet.get(p).is_some_and(Result::is_ok), "{p:?}");
+        }
+        assert_eq!(
+            read::value(&b, ProcedureId::KeyDip).to_bits(),
+            0.0_f64.to_bits()
+        );
+        let rides = b.why_it_rides().expect("it rides");
+        for words in ["front punching", "back rail cloth", "2.27 mm", "no stroke"] {
+            assert!(rides.contains(words), "{rides:?} does not say {words:?}");
+        }
+        for p in [
+            ProcedureId::DownWeight,
+            ProcedureId::UpWeight,
+            ProcedureId::KeyFrictionWeightZeroedOnTheJig,
+            ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
+        ] {
+            let why = sheet.get(p).unwrap().as_ref().expect_err("no stroke");
+            assert_eq!(why, &Refused::Walk(WalkRefusal::NoTravel), "{p:?}");
+            assert_eq!(b.why_refused(why), rides, "{p:?}");
+        }
+        assert!(b.readout().is_some(), "and the readout reads");
     }
 
     /// The key is drawn resting on its cloth, not inside it.
@@ -2258,6 +2920,7 @@ mod contact_readout_tests {
             let on = match r.finger {
                 TouchVerdict::RestingOn { stop } => Some(stop),
                 TouchVerdict::HeldByFriction { touching, .. } => touching,
+                other => panic!("{weight} g: {other:?}"),
             };
             match on {
                 Some(ContactCode::FrontRailPunching) => {
@@ -2296,14 +2959,14 @@ mod contact_readout_tests {
         for fixture in &crate::golden::FIXTURES {
             let b = (fixture.build)();
             let (drawn, _, _) = b.parts();
-            let mounted = b.key_on_frame(0.0).expect("the key mounts on its frame");
+            let mounted = b.key_on_frame().expect("the key mounts on its frame");
             assert_eq!(
                 mounted.mechanism.parts(),
                 &drawn[..],
                 "{}: the contacts read the parts the view draws",
                 fixture.name
             );
-            assert_eq!(mounted.mechanism.pairs().len(), 4, "{}", fixture.name);
+            assert_eq!(mounted.mechanism.pairs().len(), 5, "{}", fixture.name);
             for pair in mounted.mechanism.pairs() {
                 for range in pair.a.ranges.iter().chain(&pair.b.ranges) {
                     let part = &drawn[range.part.index()];
@@ -2326,8 +2989,9 @@ mod contact_readout_tests {
     /// of the cloth within a millimetre (the cloth's front edge is no contact
     /// of its own, its nearest point to the chamfer being where it meets the
     /// face, and the face falling away from it towards the back edge); down
-    /// on its punching, the punching closed at its centre. A closed
-    /// contact's two points coincide.
+    /// on its punching, the punching closed at its centre; and the balance
+    /// punching closed at its centre all along, the key bearing on it. A
+    /// closed contact's two points coincide.
     ///
     /// The one other row within a millimetre at rest is the front pin's,
     /// open, beside the front wall of its mortise: the slot moves back along
@@ -2346,15 +3010,27 @@ mod contact_readout_tests {
                 .collect()
         };
         b.set_finger_weight(-60.0);
-        assert_eq!(closed(&b), vec![ContactCode::BackRailCloth]);
+        assert_eq!(
+            closed(&b),
+            vec![ContactCode::BackRailCloth, ContactCode::BalanceRailPunching]
+        );
         let at_rest = b.contacts();
-        let back_edge = b.assembly().back_stop().edges()[0].x;
+        let section = b.frame().sections.back;
+        let back_edge = section.centre_x(b.frame().back_rail) - section.half_length;
         for c in &at_rest {
             if c.code == ContactCode::FrontPinOnTheWood {
                 assert!(
                     c.gap > 0.0 && c.gap < 0.0015 && c.gap <= ROW_MARGIN,
                     "the pin stands {} m off its mortise's wall",
                     c.gap
+                );
+                continue;
+            }
+            if c.code == ContactCode::BalanceRailPunching {
+                assert_eq!(c.state(), ContactState::Closed, "{c:?}");
+                assert!(
+                    c.on_frame.x.abs() < 1e-12,
+                    "at the punching's centre: {c:?}"
                 );
                 continue;
             }
@@ -2387,15 +3063,25 @@ mod contact_readout_tests {
         );
 
         b.set_finger_weight(60.0);
-        assert_eq!(closed(&b), vec![ContactCode::FrontRailPunching]);
-        let punching = b.assembly().punching_stop();
+        assert_eq!(
+            closed(&b),
+            vec![
+                ContactCode::FrontRailPunching,
+                ContactCode::BalanceRailPunching
+            ]
+        );
+        let f = b.frame();
+        let centre = Point::new(
+            f.sections.front.pin_x(f.front_rail, KeyKind::Natural),
+            f.front_bearing_height(),
+        );
         for c in b.contacts() {
-            if c.state() == ContactState::Closed {
+            if c.state() == ContactState::Closed && c.code == ContactCode::FrontRailPunching {
                 assert!(
-                    (c.on_frame.x - punching.at).abs() < 1e-12,
+                    (c.on_frame.x - centre.x).abs() < 1e-12,
                     "at the punching's centre"
                 );
-                assert!((c.on_frame.y - punching.top).abs() < 1e-12);
+                assert!((c.on_frame.y - centre.y).abs() < 1e-12);
             }
         }
     }
@@ -2435,14 +3121,14 @@ mod contact_readout_tests {
                 back.shown
             );
         }
-        let at_13 = b.assembly().measuring_point();
+        let at_13 = b.measuring_point();
         let torque = b.friction;
         assert_eq!(torque.radius_m, Some(at_13), "kept with where it was typed");
         let typed = stanwood(&b).value;
         let level = b.readout().unwrap().key_friction_weight_g;
         let protocol = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         b.set_measuring_point_from_lip(b.measuring_point_from_lip() + 0.007);
-        let at_20 = b.assembly().measuring_point();
+        let at_20 = b.measuring_point();
         assert_eq!(b.friction, torque, "moving the point changed the bushings");
         let moved = b.readout().unwrap().key_friction_weight_g;
         assert!(
@@ -2451,8 +3137,8 @@ mod contact_readout_tests {
             level * at_13 / at_20
         );
         let reread = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
-        let (_, seats) = b.seated().unwrap();
-        let rest = seats.top.q[0];
+        let (k, seats) = b.seated().unwrap();
+        let rest = seats.top.q[k.mounted.angle.0];
         let height = b.measuring_point_on_key().y;
         let arm = |x: f64| x * rest.cos() - height * rest.sin();
         let ratio = arm(at_13) / arm(at_20);
@@ -2516,22 +3202,22 @@ mod contact_readout_tests {
         );
         assert_eq!(everything(&b), before, "a refusal changed the bench");
 
-        let level = b.assembly().frame.balance_bearing_height();
-        let cloth = b.assembly().frame.back_rail_cloth;
+        let level = b.frame().balance_bearing_height();
+        let cloth = b.frame().back_rail_cloth;
         b.set_back_rail_height(level + 0.005 - cloth);
         let before = everything(&b);
         let refused = b
             .set_key_friction_weight(6.0)
             .expect_err("on a frame whose stops fight no key friction weight is read");
-        assert!(
-            matches!(refused, BushingsRefusal::Procedure(Refused::Seat(_))),
-            "{refused:?}"
+        assert_eq!(
+            refused,
+            BushingsRefusal::Procedure(Refused::Walk(WalkRefusal::NoTravel))
         );
         assert_eq!(everything(&b), before, "a refusal changed the bench");
-        let fault = b.frame_fault().expect("the stops fight");
+        let rides = b.why_it_rides().expect("the stops fight, the key rides");
         let said = b.why_friction_not_set(6.0, &refused);
         assert!(
-            said.contains("Stanwood's protocol") && said.contains(fault),
+            said.contains("Stanwood's protocol") && said.contains(&rides),
             "{said:?}"
         );
     }
@@ -2828,9 +3514,9 @@ mod protocol_roundtrip_tests {
                 kf.ceil().to_bits(),
                 "read to the gram as gram weights give it"
             );
-            let (_, seats) = b.seated().unwrap();
+            let (k, seats) = b.seated().unwrap();
             let point = b.measuring_point_on_key();
-            let rest = seats.top.q[0];
+            let rest = seats.top.q[k.mounted.angle.0];
             let tilted = point.x * rest.cos() - point.y * rest.sin();
             let measured = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
             let expected = 1000.0 * b.friction.bound_n_m / (G * tilted);
@@ -3070,7 +3756,7 @@ mod measuring_point_tests {
     #[test]
     fn moving_the_measuring_point_changes_front_weight_exactly_by_the_lever() {
         let mut b = KeyBench::standard();
-        let key = b.assembly().key.clone();
+        let key = b.key().clone();
         let lip = key.front_edge + key.keytop_overhang;
         let moment_g_m = 1000.0 * key.mass_properties().unwrap().static_moment_x();
 
@@ -3078,9 +3764,9 @@ mod measuring_point_tests {
         // proud of the key front at 258 mm, so the arm is 247 mm.
         assert!((b.measuring_point_from_lip() - 0.013).abs() < 1e-15);
         assert!(
-            (b.assembly().measuring_point() - (0.258 + 0.002 - 0.013)).abs() < 1e-12,
+            (b.measuring_point() - (0.258 + 0.002 - 0.013)).abs() < 1e-12,
             "the default measuring point is 247 mm in front of the balance pin, not {} m",
-            b.assembly().measuring_point()
+            b.measuring_point()
         );
 
         let before = b.readout().unwrap();
@@ -3148,7 +3834,7 @@ mod measuring_point_tests {
     #[test]
     fn every_protocol_reads_the_same_measuring_point() {
         let mut b = KeyBench::standard();
-        let key = b.assembly().key.clone();
+        let key = b.key().clone();
         let lip = key.front_edge + key.keytop_overhang;
         let height = key.stick_height + key.keytop_thickness;
 
@@ -3159,7 +3845,7 @@ mod measuring_point_tests {
         b.set_measuring_point_from_lip(MEASURING_POINT_HALF_INCH);
         let arm = lip - b.measuring_point_from_lip();
         assert!((b.measuring_point_from_lip() - MEASURING_POINT_HALF_INCH).abs() < 1e-15);
-        assert!((b.assembly().measuring_point() - arm).abs() < 1e-15);
+        assert!((b.measuring_point() - arm).abs() < 1e-15);
 
         let m = key.mass_properties().unwrap().static_moment_x();
         let read_on = [
@@ -3181,8 +3867,8 @@ mod measuring_point_tests {
 
         // The key friction weight, by the walk, over the arm the key presents
         // on its cloth from the same point.
-        let (_, seats) = b.seated().unwrap();
-        let rest = seats.top.q[0];
+        let (k, seats) = b.seated().unwrap();
+        let rest = seats.top.q[k.mounted.angle.0];
         let tilted = rest.cos() * arm - rest.sin() * height;
         let kf = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         assert!(
@@ -3193,7 +3879,7 @@ mod measuring_point_tests {
         );
 
         // And the touch weight acts there too.
-        let mounted = b.key_on_frame(0.0).unwrap();
+        let mounted = b.key_on_frame().unwrap();
         let at = b.touch(&mounted).at.at;
         assert_eq!(
             at.x.to_bits(),
@@ -3250,10 +3936,10 @@ mod measuring_point_tests {
         b.set_measuring_point_from_lip(-0.005);
         assert_eq!(b.measuring_point_from_lip(), 0.0);
         b.set_measuring_point_from_lip(0.500);
-        assert_eq!(b.measuring_point_from_lip(), b.assembly().key.keytop_length);
+        assert_eq!(b.measuring_point_from_lip(), b.key().keytop_length);
         // And a value that is not a distance changes nothing.
         b.set_measuring_point_from_lip(f64::NAN);
-        assert_eq!(b.measuring_point_from_lip(), b.assembly().key.keytop_length);
+        assert_eq!(b.measuring_point_from_lip(), b.key().keytop_length);
     }
 
     /// A weight on the key moves with the measuring point, and the key is

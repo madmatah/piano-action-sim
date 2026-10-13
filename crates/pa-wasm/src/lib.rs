@@ -23,8 +23,9 @@
 
 use pa_app::golden;
 use pa_app::key_bench::{
-    why_not_regulated, ContactCode, ContactState, Fault, HowItBears, KeyBench, Material,
-    Provenance, Role, Sweep, Targets, TouchVerdict, Trust, Unit, Which, KEY, PAPER_THICKNESSES,
+    stops_named, why_not_regulated, ContactCode, ContactState, Fault, HowItBears, KeyBench,
+    Material, Provenance, Role, Sweep, Targets, TouchVerdict, Trust, Unit, Which, KEY,
+    PAPER_THICKNESSES,
 };
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -151,7 +152,17 @@ struct SceneDto {
     /// Why this frame cannot be weighed, when it cannot. Travels with the
     /// scene rather than with the readout, because the readout is exactly
     /// what is missing in that case.
-    frame_fault: Option<&'static str>,
+    frame_fault: Option<String>,
+    /// How the key rides on its stops, off its balance punching, where its
+    /// stops fight, in a sentence naming the stops and the lift; `null`
+    /// where its balance punching carries it. The key is drawn so, and every
+    /// weight that needs a stroke is refused for it.
+    riding: Option<String>,
+    /// How far each punching the key bears on, read at its centre, overlaps
+    /// the key where it is drawn: what its felt would compress under a key
+    /// out of level on it, which the rigid reading at the centre leaves
+    /// aside.
+    edge_overlaps: Vec<EdgeOverlapDto>,
     /// Everything about this key and this frame that no keyboard could be
     /// built from, already written out as sentences a technician reads.
     ///
@@ -163,6 +174,15 @@ struct SceneDto {
     /// a fault is to say it, and a second place deciding the wording is a
     /// second place for it to drift from the geometry that found it.
     faults: Vec<String>,
+}
+
+/// A punching read at its centre whose drawn edge overlaps the key.
+#[derive(Serialize)]
+struct EdgeOverlapDto {
+    /// Which punching, `snake_case`.
+    pair: &'static str,
+    /// How far its drawn edge stands into the key, millimetres.
+    mm: f32,
 }
 
 /// How a regulation the page asked for came out: laid, or refused with the
@@ -263,9 +283,11 @@ struct ReadoutDto {
     /// pin, at the top of its mortise", "on the front rail pin, against the
     /// wood round its mortise" or "on the back rail cloth"; or, between the
     /// up weight and the down weight, the same stop "held by friction", or
-    /// "held by friction alone" touching nothing. Friction holding the key is
-    /// a state of its own, and the one the touch exercise teaches.
-    finger: &'static str,
+    /// "held by friction alone" touching nothing; riding on its two stops,
+    /// lifted off its balance punching by so much; or lifted off its frame.
+    /// Friction holding the key is a state of its own, and the one the touch
+    /// exercise teaches.
+    finger: String,
     /// Whether friction alone holds the key where it is: the weight lies
     /// between the up weight and the down weight at its attitude.
     held_by_friction: bool,
@@ -344,29 +366,57 @@ fn say(fault: &Fault) -> String {
     }
 }
 
+/// Where a stop is, as the touch panel says the key stands on it.
+fn on_the(stop: ContactCode) -> &'static str {
+    match stop {
+        ContactCode::BalanceRailPunching => "on the balance punching",
+        ContactCode::FrontRailPunching => "on the front punching",
+        ContactCode::FrontPinInTheMortise => "on the front rail pin, at the top of its mortise",
+        ContactCode::FrontPinOnTheWood => {
+            "on the front rail pin, against the wood round its mortise"
+        }
+        ContactCode::BackRailCloth => "on the back rail cloth",
+    }
+}
+
 /// What holds the key, as the sentence the touch panel shows after "the key
 /// is".
-fn say_verdict(verdict: TouchVerdict) -> &'static str {
+fn say_verdict(verdict: &TouchVerdict) -> String {
     match verdict {
-        TouchVerdict::RestingOn { stop } => match stop {
-            ContactCode::FrontRailPunching => "on the front punching",
-            ContactCode::FrontPinInTheMortise => "on the front rail pin, at the top of its mortise",
-            ContactCode::FrontPinOnTheWood => {
-                "on the front rail pin, against the wood round its mortise"
-            }
-            ContactCode::BackRailCloth => "on the back rail cloth",
-        },
+        TouchVerdict::RestingOn { stop } => on_the(*stop).to_owned(),
         TouchVerdict::HeldByFriction { touching, .. } => match touching {
-            Some(ContactCode::FrontRailPunching) => "on the front punching, held by friction",
-            Some(ContactCode::FrontPinInTheMortise) => {
-                "on the front rail pin, at the top of its mortise, held by friction"
-            }
-            Some(ContactCode::FrontPinOnTheWood) => {
-                "on the front rail pin, against the wood round its mortise, held by friction"
-            }
-            Some(ContactCode::BackRailCloth) => "on the back rail cloth, held by friction",
-            None => "held by friction alone",
+            Some(stop) => format!("{}, held by friction", on_the(*stop)),
+            None => "held by friction alone".to_owned(),
         },
+        TouchVerdict::RidesOnBothStops { front, lift_mm } => format!(
+            "riding {} and on the back rail cloth, {lift_mm:.2} mm above its balance punching",
+            on_the(*front)
+        ),
+        TouchVerdict::LiftsOffBalancePunching {
+            touching, lift_mm, ..
+        } if touching.is_empty() => {
+            format!("lifted {lift_mm:.2} mm off its balance punching, touching nothing")
+        }
+        TouchVerdict::LiftsOffBalancePunching {
+            touching,
+            needs_friction: true,
+            lift_mm,
+        } => format!(
+            "lifted {lift_mm:.2} mm off its balance punching, on {}, held there by its friction",
+            stops_named(touching)
+        ),
+        TouchVerdict::LiftsOffBalancePunching {
+            touching,
+            needs_friction: false,
+            lift_mm,
+        } => format!(
+            "lifted {lift_mm:.2} mm off its balance punching, held there by {}",
+            stops_named(touching)
+        ),
+        TouchVerdict::LiftsOffItsFrame => {
+            "lifted off its frame, off its balance pin: no equilibrium in the model holds it there"
+                .to_owned()
+        }
     }
 }
 
@@ -471,6 +521,16 @@ impl Bench {
             },
             contacts,
             frame_fault: self.inner.frame_fault(),
+            riding: self.inner.why_it_rides(),
+            edge_overlaps: self
+                .inner
+                .edge_overlaps()
+                .into_iter()
+                .map(|(code, overlap)| EdgeOverlapDto {
+                    pair: code.code(),
+                    mm: mm(overlap),
+                })
+                .collect(),
             faults: self.inner.faults().iter().map(say).collect(),
         })
         .unwrap_or_else(|_| "null".to_owned())
@@ -553,11 +613,11 @@ impl Bench {
             stopped_by_the_mortise: r.stopped_by_the_mortise,
             front_pin_mm: (self.inner.front_pin_and_mortise().0 * 1000.0) as f32,
             front_mortise_mm: (self.inner.front_pin_and_mortise().1 * 1000.0) as f32,
-            finger: say_verdict(r.finger),
+            finger: say_verdict(&r.finger),
             held_by_friction: matches!(r.finger, TouchVerdict::HeldByFriction { .. }),
             friction_margin_g: match r.finger {
                 TouchVerdict::HeldByFriction { margin_g, .. } => Some(margin_g as f32),
-                TouchVerdict::RestingOn { .. } => None,
+                _ => None,
             },
             finger_weight_g: self.inner.finger_weight() as f32,
             gap_front_mm: r.gap_front_mm.map(|v| v as f32),
@@ -797,5 +857,45 @@ pub fn golden_sheet(name: &str) -> Option<String> {
 impl Default for Bench {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Consistency: **the touch panel names what a key lifted off its
+    /// balance punching touches, and friction only where they need it.** The
+    /// front rail raised to 41.7 mm tips the key forward off its balance
+    /// punching, onto its front punching and its front pin against the wall
+    /// of its slot, its cloth open: the sentence names the two as what holds
+    /// it, which they do with no friction, and not the cloth. Pulled 62.7 g,
+    /// turned up on its cloth off its punching, it names the cloth alone, and
+    /// the friction that holds the pull with it.
+    #[test]
+    fn a_key_lifted_off_its_punching_is_said_to_stand_on_what_it_touches() {
+        let mut bench = KeyBench::standard();
+        bench.set_front_rail_height(0.0417);
+        let said = say_verdict(&bench.finger_verdict().expect("a verdict"));
+        assert!(said.starts_with("lifted "), "{said}");
+        assert!(
+            said.contains(
+                "held there by its front punching and its front rail pin against the wood"
+            ),
+            "{said}"
+        );
+        assert!(
+            !said.contains("cloth") && !said.contains("friction"),
+            "{said}"
+        );
+
+        let mut bench = KeyBench::standard();
+        bench.set_finger_weight(-62.7);
+        let said = say_verdict(&bench.finger_verdict().expect("a verdict"));
+        assert!(
+            said.contains("on its back rail cloth, held there by its friction"),
+            "{said}"
+        );
+        assert!(!said.contains("front"), "{said}");
     }
 }

@@ -33,19 +33,19 @@
 //! ([`crate::parts::KeyDesign::parts`], [`crate::parts::FrameDesign::parts`]),
 //! drawn by the bench in each body's own frame and read by the faults
 //! ([`crate::parts::faults`]); the key's contacts with its frame as pairs of
-//! their declared ranges ([`crate::parts::mounts::key_on_frame`]), read into
-//! rows for the static solve that places the key ([`crate::solve`]), for the
-//! bench's gaps, for how the key bears on its cloth, and for the contacts the
-//! view marks; and how deep drawn parts stand in one another, read off their
-//! outlines ([`crate::mechanism::Mechanism::overlap`]), where a solve starts
-//! and whether a state it finds is one. The drawing of a frame whose stops
-//! fight still reads its own construction of the stops, built from the same
-//! fields: the bearing heights of [`crate::parts::FrameDesign`]
-//! ([`crate::parts::assembly`]). A test holds every face it reads to a
-//! declared range of a drawn part
-//! (`every_stop_face_is_a_declared_range_of_a_drawn_part`). Planned: that
-//! construction leaves with the key's vertical freedom, after which nothing
-//! reads anything but a drawn range.
+//! their declared ranges ([`crate::parts::mounts::key_on_frame`]), its
+//! balance punching among them ([`crate::parts::mounts::balance_punching`]),
+//! read into rows for the static solve that places the key
+//! ([`crate::solve`]), for the bench's gaps, for how the key bears on its
+//! cloth, and for the contacts the view marks; and how deep drawn parts stand
+//! in one another, read off their outlines
+//! ([`crate::mechanism::Mechanism::overlap`]), where a solve starts and
+//! whether a state it finds is one. Nothing reads anything but a drawn range,
+//! a key riding on a frame whose stops fight included: it rides on the same
+//! pairs, lifted off its balance punching. The brute-force oracle holds every
+//! row's points on the drawn outlines
+//! (`every_contact_lies_on_its_drawn_outline`). Planned: a compliant felt law
+//! through the same rows ([`ContactLaw`]).
 
 mod bearing;
 mod features;

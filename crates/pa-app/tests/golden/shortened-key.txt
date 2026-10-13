@@ -1,5 +1,5 @@
 # golden sheet: shortened-key
-# the standard bench with the key front brought back 18 mm, the frame left where it was: the front pin stands outside its mortise, under the key
+# the standard bench with the key front brought back 18 mm, the frame left where it was: the front pin stands outside its mortise, under the key, and the key rides on it and its cloth
 # Every reading in full bits: the shortest decimal that reads back to the
 # same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
 # a change that moves a reading rewrites this file and says why.
@@ -13,16 +13,39 @@ sheet.key_weight_ratio.shown 0.57 0x3fe23d70a3d70a3d
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
 sheet.key_weight_ratio.fingerprint statics/1
-sheet.key_height refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
-sheet.key_dip refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
-sheet.down_weight refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
-sheet.up_weight refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
+sheet.key_height.value 0.0769912165267309 0x3fb3b5b2450fc2a7
+sheet.key_height.shown 0.0769912165267309 0x3fb3b5b2450fc2a7
+sheet.key_height.unit m
+sheet.key_height.trust indicative geometry
+sheet.key_height.fingerprint statics/1
+sheet.key_dip.value 0.0 0x0000000000000000
+sheet.key_dip.shown 0.0 0x0000000000000000
+sheet.key_dip.unit m
+sheet.key_dip.trust indicative geometry
+sheet.key_dip.fingerprint statics/1
+sheet.down_weight refused Walk(NoTravel)
+sheet.up_weight refused Walk(NoTravel)
 sheet.balance_weight refused From { reading: DownWeight }
 sheet.friction_weight refused From { reading: DownWeight }
-sheet.key_friction_weight_zeroed_on_the_jig refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
-sheet.key_friction_weight_zeroed_on_the_frame refused Seat(CannotSeat { fighting: [BackRailCloth, FrontPinOnTheWood] })
-readout none
-frame_fault the front rail pin meets the key's wood outside its mortise, so the key cannot come down onto its cloth and its punching. On a real keyboard it would sit on the pin and lift off its balance punching; this bench cannot weigh it, because the bearing is modelled as a pivot.
+sheet.key_friction_weight_zeroed_on_the_jig refused Walk(NoTravel)
+sheet.key_friction_weight_zeroed_on_the_frame refused Walk(NoTravel)
+readout.key_mass_g 116.94482963924216 0x405d3c7816bc358a
+readout.lead_count 0
+readout.gap_front_mm 21.240851696471065 0x40353da874ef8783
+readout.gap_back_mm -2.8189256484623115e-15 0xbce9640000000000
+readout.key_friction_weight_g 6.471615720524017 0x4019e2ef3b3fb874
+readout.key_height_target_mm 65.0 0x4050400000000000
+readout.key_dip_target_mm 10.200000000000001 0x4024666666666667
+readout.finger RidesOnBothStops FrontPinOnTheWood
+readout.finger.lift_mm 5.990172326043694 0x4017f5efbbf70c33
+readout.out_of_level_deg -3.8849537234693554 0xc00f14629e2631c9
+readout.bedding_at_the_back.slope 0.03536383349305175 0x3fa21b3558a0b084
+readout.bears_at_the_back_mm 212.0176708705973 0x406a8090c28069d5
+readout.back_bearing StopEdge
+readout.stopped_by_the_mortise false
+frame_fault none
+riding.front FrontPinOnTheWood
+riding.lift 0.005990172326043694 0x3f788926a3cddf70
 faults 1
 fault.0 PinOutsideTheMortise
 fault.0.by 0.016499999999999987 0x3f90e56041893748
@@ -33,6 +56,6 @@ papers.front 3
 papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
 papers.front.2 8e-5 0x3f14f8b588e368f1
-pose.sin_angle 0.0 0x0000000000000000
-pose.measuring_point.x 0.229 0x3fcd4fdf3b645a1d
-pose.measuring_point.y 0.0548 0x3fac0ebedfa43fe6
+pose.sin_angle -0.06775328938212277 0xbfb158479217b758
+pose.measuring_point.x 0.22671219668821488 0x3fcd04e7bf30aa79
+pose.measuring_point.y 0.07624593034352754 0x3fb384da71474eb7

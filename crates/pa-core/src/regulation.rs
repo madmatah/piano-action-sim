@@ -38,6 +38,24 @@
 //! bisection needs only the order. Each stack keeps the felt fitted on it;
 //! the search runs over the paper laid on the felt.
 //!
+//! Where the stops fight at a stack, the key rides on them off its balance
+//! punching, its seats one: no paper under that punching moves it, and no
+//! dip can be read. A trial that rides counts as one whose stops fight, so
+//! the search moves away from it. A key that still rides with all the paper
+//! the search lays rides at every stack, at the height its stops set: a key
+//! height under it is refused as the stops' doing, one over it as the
+//! rail's, which only more paper would reach.
+//!
+//! A stack can also stand the key off its balance pin
+//! ([`crate::parts::mounts::Mounted::leaves_its_pin`]): under the balance
+//! punching, paper that raises the punching past the pin's top; on the front
+//! punching, paper that makes the key ride past where it leaves its pin.
+//! Neither is a seat. For key height such a trial counts as one past the
+//! target, since more paper only raises the punching further, and a key
+//! height no stack reaches on the pin is refused as the pin's doing; for the
+//! dip it counts as one whose stops fight. A key off its pin with no paper at
+//! all has no seat at any stack.
+//!
 //! # Within one paper, and refused with its reason
 //!
 //! A drawer of eight thicknesses cannot make every stack, so the regulation
@@ -58,7 +76,7 @@ use crate::measure::seat::{SeatRefusal, Seating, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::MassProps;
 use crate::parts::frame::{papers_for, FrameDesign, KeyKind};
-use crate::parts::mounts::{on_its_frame, OnItsFrame};
+use crate::parts::mounts::{on_its_frame, KeyMount, OnItsFrame};
 use crate::parts::KeyDesign;
 use crate::solve::{SolveReport, Statics};
 
@@ -119,6 +137,10 @@ pub enum Limit {
     /// The rail stands too low under the key for the target: the target asks
     /// for more than [`STACK_SEARCH`] of paper on its stack.
     RailTooLow,
+    /// The key would leave its balance pin before the target is reached: the
+    /// paper the target asks for raises the balance punching, and the key on
+    /// it, past the pin's top.
+    OffItsBalancePin,
 }
 
 /// One punching stack as the solve leaves it.
@@ -215,10 +237,22 @@ enum Trial {
         reading: f64,
         held_by: Vec<ContactCode>,
     },
-    /// The stops fight at this stack, naming them.
+    /// The stops fight at this stack, naming them: the key has no seat
+    /// between them.
     Fights(Vec<ContactCode>),
+    /// The stops fight at this stack and the key rides on them, lifted off
+    /// its balance punching: the stops it rides on, and the reading where it
+    /// rides, which they set and the stack does not.
+    Rides {
+        held_by: Vec<ContactCode>,
+        reading: f64,
+    },
     /// Nothing stops the front of the key.
     NoStopBelowTheFront,
+    /// The key stands off its balance pin at this stack, and off its frame:
+    /// how far above its punching it leaves its pin, metres, negative where
+    /// the punching stands above the pin's top.
+    OffItsPin { leaves_its_pin: f64 },
 }
 
 /// Which stack a bisection searches.
@@ -342,13 +376,13 @@ impl Regulating<'_> {
     ) -> Result<OnItsFrame, Unsolvable> {
         // Seats are solved friction off, so the bushings' bound is not read.
         on_its_frame(
+            KeyMount::OnPunching,
             self.key,
             frame,
             self.kind,
             balance_papers,
             front_papers,
             self.mass,
-            0.0,
             0.0,
         )
         .map_err(|p| Unsolvable::NoSeat(SeatRefusal::Mechanism(p)))
@@ -376,6 +410,13 @@ impl Regulating<'_> {
         let frame = self.frame_with(paper, 0.0);
         let k = self.mount(&frame, &[], &[])?;
         match self.seating(&k).top(statics) {
+            Ok(seat) if seat.rides() => {
+                *report = report.and(seat.report);
+                Ok(Trial::Rides {
+                    reading: seat.height(&k.mounted, k.front_top),
+                    held_by: seat.held_by,
+                })
+            }
             Ok(seat) => {
                 *report = report.and(seat.report);
                 Ok(Trial::Seated {
@@ -384,6 +425,9 @@ impl Regulating<'_> {
                 })
             }
             Err(SeatRefusal::CannotSeat { fighting }) => Ok(Trial::Fights(fighting)),
+            Err(SeatRefusal::LiftsOffItsFrame { leaves_its_pin }) => {
+                Ok(Trial::OffItsPin { leaves_its_pin })
+            }
             Err(refusal) => Err(Unsolvable::NoSeat(refusal)),
         }
     }
@@ -400,6 +444,14 @@ impl Regulating<'_> {
         let frame = self.frame_with(balance, paper);
         let k = self.mount(&frame, &[], &[])?;
         match self.seating(&k).seats(statics) {
+            Ok(seats) if seats.top.rides() => {
+                *report = report.and(seats.top.report).and(seats.bottom.report);
+                let (top, bottom) = seats.heights(&k.mounted, k.front_top);
+                Ok(Trial::Rides {
+                    reading: top - bottom,
+                    held_by: seats.top.held_by,
+                })
+            }
             Ok(seats) => {
                 *report = report.and(seats.top.report).and(seats.bottom.report);
                 let (top, bottom) = seats.heights(&k.mounted, k.front_top);
@@ -410,6 +462,9 @@ impl Regulating<'_> {
             }
             Err(SeatRefusal::CannotSeat { fighting }) => Ok(Trial::Fights(fighting)),
             Err(SeatRefusal::NoStopBelowTheFront) => Ok(Trial::NoStopBelowTheFront),
+            Err(SeatRefusal::LiftsOffItsFrame { leaves_its_pin }) => {
+                Ok(Trial::OffItsPin { leaves_its_pin })
+            }
             Err(refusal) => Err(Unsolvable::NoSeat(refusal)),
         }
     }
@@ -441,14 +496,17 @@ impl Regulating<'_> {
     ///
     /// Key height rises with its stack, and the stops fight below the stack
     /// at which the front of the key comes down onto its front punching or
-    /// its pin; the dip falls with its stack, and the stops fight above the
-    /// stack at which the front punching meets the key at rest. So a trial
-    /// that fights sends the search up for key height and down for the dip,
+    /// its pin, the key riding on them; the dip falls with its stack, and the
+    /// stops fight above the stack at which the front punching meets the key
+    /// at rest. So a trial that fights sends the search up for key height and
+    /// down for the dip,
     /// and the answer is bracketed by two seated trials, one each side of the
     /// target, [`HALVINGS`] halvings apart: the one past the target for key
     /// height, so that its reading is not under it, and the one short of it
-    /// for the dip, so that its reading is not shallower. A target the
-    /// search cannot bracket is refused, naming what keeps it out.
+    /// for the dip, so that its reading is not shallower. A trial that
+    /// stands the key off its balance pin sends the search down either way:
+    /// past the target for key height, the stops fighting for the dip. A
+    /// target the search cannot bracket is refused, naming what keeps it out.
     fn bisect(
         &self,
         statics: &mut Statics,
@@ -484,6 +542,9 @@ impl Regulating<'_> {
         // The bare felt: no paper at all.
         let mut lo_seated = false;
         let mut lo_reading = f64::NAN;
+        // For key height, the reading at the low end of the bracket, seated
+        // or riding; `None` where the stops fight there with no seat.
+        let mut lo_at: Option<f64> = None;
         let mut last_fight: Vec<ContactCode> = Vec::new();
         match trial(statics, report, 0.0)? {
             Trial::Seated { reading, held_by } => {
@@ -501,6 +562,7 @@ impl Regulating<'_> {
                 }
                 lo_seated = true;
                 lo_reading = reading;
+                lo_at = Some(reading);
             }
             Trial::Fights(fighting) => {
                 if !rising {
@@ -509,7 +571,20 @@ impl Regulating<'_> {
                 }
                 last_fight = fighting;
             }
+            Trial::Rides { held_by, reading } => {
+                if !rising {
+                    return out(fight_limit(target, &held_by), wanted);
+                }
+                last_fight = held_by;
+                lo_at = Some(reading);
+            }
             Trial::NoStopBelowTheFront => return out(Limit::NoStopBelowTheFront, wanted),
+            // Off its pin with no paper at all: no stack has it on its pin.
+            Trial::OffItsPin { leaves_its_pin } => {
+                return Err(Unsolvable::NoSeat(SeatRefusal::LiftsOffItsFrame {
+                    leaves_its_pin,
+                }));
+            }
         }
 
         // The most paper the search lays.
@@ -528,7 +603,23 @@ impl Regulating<'_> {
                 }
                 hi_reading = reading;
             }
-            Trial::Fights(fighting) => {
+            // Riding with the most paper the search lays, the key rides with
+            // any less, at the height its stops set: a target under it is
+            // kept out by the stops, one over it by the rail, which more
+            // paper than the search lays would lift the key off them towards.
+            Trial::Rides { held_by, reading } if rising => {
+                let by = past(reading);
+                let limit = if by < 0.0 {
+                    Limit::RailTooLow
+                } else {
+                    fight_limit(target, &held_by)
+                };
+                return out(limit, by);
+            }
+            Trial::Fights(fighting)
+            | Trial::Rides {
+                held_by: fighting, ..
+            } => {
                 if rising {
                     return Err(Unsolvable::NoSeat(SeatRefusal::CannotSeat { fighting }));
                 }
@@ -536,6 +627,9 @@ impl Regulating<'_> {
                 last_fight = fighting;
             }
             Trial::NoStopBelowTheFront => return out(Limit::NoStopBelowTheFront, wanted),
+            // Off its pin with the most paper the search lays: the search
+            // goes on below it.
+            Trial::OffItsPin { .. } => hi_seated = false,
         }
 
         let (mut lo, mut hi) = (0.0, STACK_SEARCH);
@@ -546,6 +640,7 @@ impl Regulating<'_> {
                     lo = mid;
                     lo_seated = true;
                     lo_reading = reading;
+                    lo_at = Some(reading);
                 }
                 Trial::Seated { reading, .. } => {
                     hi = mid;
@@ -556,17 +651,49 @@ impl Regulating<'_> {
                     if rising {
                         lo = mid;
                         lo_seated = false;
+                        lo_at = None;
                     } else {
                         hi = mid;
                         hi_seated = false;
                     }
                     last_fight = fighting;
                 }
+                Trial::Rides { held_by, reading } => {
+                    if rising {
+                        lo = mid;
+                        lo_seated = false;
+                        lo_at = Some(reading);
+                    } else {
+                        hi = mid;
+                        hi_seated = false;
+                    }
+                    last_fight = held_by;
+                }
                 Trial::NoStopBelowTheFront => return out(Limit::NoStopBelowTheFront, wanted),
+                Trial::OffItsPin { .. } => {
+                    hi = mid;
+                    hi_seated = false;
+                }
             }
         }
 
         if rising {
+            if !hi_seated {
+                // Past the target the key stands off its balance pin, so the
+                // target lies past the highest key height the pin lets the
+                // stack reach: the reading at the low end of the bracket,
+                // seated there or riding. A key riding past the target at
+                // every stack on its pin is kept out by its stops.
+                return match lo_at {
+                    Some(reading) if past(reading) < 0.0 => {
+                        out(Limit::OffItsBalancePin, past(reading))
+                    }
+                    Some(reading) => out(fight_limit(target, &last_fight), past(reading)),
+                    None => Err(Unsolvable::NoSeat(SeatRefusal::CannotSeat {
+                        fighting: last_fight,
+                    })),
+                };
+            }
             if !lo_seated {
                 // Every seated trial stood past the target: it lies below
                 // the lowest key height the stops leave.
@@ -673,7 +800,8 @@ mod tests {
 
     /// The cases the tests regulate: the bench's targets, a higher key and a
     /// shallower dip, a deeper dip, a lower key on thinner felts, and a
-    /// sharp, its mortise over its own row of pins.
+    /// sharp, turning on its own row's balance pin, its mortise over its own
+    /// row's front pin.
     fn cases() -> Vec<(&'static str, Bench, Targets)> {
         let thin = {
             let mut b = Bench::standard();
@@ -684,7 +812,9 @@ mod tests {
         let sharp = {
             let mut b = Bench::standard();
             b.kind = KeyKind::Sharp;
-            b.key.front_mortise_from_front_edge += b.frame.sections.front.sharp_row_offset;
+            let rows = &b.frame.sections;
+            b.key.front_mortise_from_front_edge +=
+                rows.front.sharp_row_offset - rows.balance.sharp_row_offset;
             b
         };
         vec![
@@ -722,7 +852,11 @@ mod tests {
         match trial {
             Ok(Trial::Seated { reading, .. }) => reading,
             Ok(Trial::Fights(fighting)) => panic!("the stops fight: {fighting:?}"),
+            Ok(Trial::Rides { held_by, .. }) => panic!("the key rides on {held_by:?}"),
             Ok(Trial::NoStopBelowTheFront) => panic!("nothing stops the front"),
+            Ok(Trial::OffItsPin { leaves_its_pin }) => {
+                panic!("the key stands off its pin, which it leaves {leaves_its_pin} m up")
+            }
             Err(e) => panic!("{e:?}"),
         }
     }
@@ -855,7 +989,7 @@ mod tests {
     /// solve's machinery: no mechanism, no rows, no static solve, only the
     /// key's two conditions at rest and one at the bottom, each linear in
     /// the sine and cosine of the attitude, solved in closed form
-    /// ([`crate::parts::assembly::sines_satisfying`]). It needs where the key
+    /// ([`crate::measure::oracle::sines_satisfying`]). It needs where the key
     /// bears on its cloth, which slides along the chamfer with the attitude,
     /// and takes it from the seat the solve's answer gives.
     ///
@@ -906,7 +1040,9 @@ mod tests {
                 "{name}: the oracle's key height {top} m, the seated pose's {seated} m"
             );
             let bottom = -libm::sin(seats.bottom.q[k.mounted.angle.0]);
-            let x = f.sections.front.pin_x(f.front_rail, bench.kind);
+            // The front punching's centre, along the key from its own pin.
+            let x = f.sections.front.pin_x(f.front_rail, bench.kind)
+                - f.sections.balance.pin_x(0.0, bench.kind);
             let punching = oracle::pivot_punching_for_dip(
                 k.front_top,
                 bearing,
@@ -951,8 +1087,8 @@ mod tests {
         let mut sink = SolveReport::NOTHING;
         let height = reading(r.height_trial(&mut statics, &mut sink, balance));
         let dip = reading(r.dip_trial(&mut statics, &mut sink, balance, front));
-        let (_, at) = bench.seated(balance, front);
-        let s_bottom = -libm::sin(at.bottom.q[0]);
+        let (k, at) = bench.seated(balance, front);
+        let s_bottom = -libm::sin(at.bottom.q[k.mounted.angle.0]);
         let s = s_top.abs().max(s_bottom.abs());
         let dropped = s * s * (bench.key.stick_height + bench.key.keytop_thickness);
         for (what, read, target) in [
@@ -1077,14 +1213,25 @@ mod tests {
     ///   paper on it;
     /// - 10.2 mm of dip on a 3 mm front felt: the felt alone, no paper under
     ///   it, stops the key short;
-    /// - 120 mm of key height: more than the search lays under the balance
-    ///   punching;
+    /// - 120 mm of key height: past the highest the key stands on its
+    ///   balance pin, the paper raising its punching to the pin's top, short
+    ///   by what the seated pose reads there; on a pin 50 mm tall, more than
+    ///   the search lays under the balance punching;
     /// - the front rail raised 10 mm, its pin pulled: at 65 mm the front of
     ///   the key would rest on the front punching's felt with its tail on
     ///   the cloth, the stops fighting; with the pin in place, the pin
     ///   bottoming in its mortise is what fights;
     /// - a key 18 mm shorter under its frame: the front pin stands under its
     ///   wood, and only a key raised clear of the pin has a seat;
+    /// - a front pin 0.3 mm into the wood in front of its slot, its top well
+    ///   up in the slot: lowered onto its frame, the key rides on the pin
+    ///   until the balance stack raises it clear, well above the target;
+    /// - the back rail cloth holding the tail 40 mm above the balance
+    ///   bearing, on a balance pin 50 mm tall: the key rides on its cloth and
+    ///   its front pin with all the paper the search lays, its front below
+    ///   the target, which only more paper would reach; on the bench's pin it
+    ///   rides past its pin's top, off its frame, and has no seat at any
+    ///   stack;
     /// - a front punching whose centre stands past the key's front: no dip
     ///   at all, the whole target short.
     #[test]
@@ -1130,7 +1277,27 @@ mod tests {
             key_height: 0.120,
             ..TARGETS
         };
+        // The paper that brings the punching's top to the pin's: a
+        // nanometre less, and the key stands on its pin as high as any
+        // stack has it there.
+        let f = &bench.frame;
+        let to_the_top = f.sections.balance.pin_height - f.balance_punching.felt;
+        let highest = reading(r.height_trial(&mut Statics::new(), &mut sink, to_the_top - 1e-9));
         let (target, limit, short) = refused(&bench, tall);
+        assert_eq!(
+            (target, limit),
+            (Target::KeyHeight, Limit::OffItsBalancePin)
+        );
+        // Within the nanometre and the bisection's resolution through the
+        // stack's lever on key height, under three, and the seats' noise.
+        let bound = 3.0 * (1e-9 + resolution()) + SEAT_NOISE;
+        assert!(
+            (short - (0.120 - highest)).abs() <= bound,
+            "short by {short} m, the key stands {highest} m high at its pin's top"
+        );
+        let mut pinned = Bench::standard();
+        pinned.frame.sections.balance.pin_height = 0.050;
+        let (target, limit, short) = refused(&pinned, tall);
         assert_eq!((target, limit), (Target::KeyHeight, Limit::RailTooLow));
         assert!(short < 0.120);
 
@@ -1153,6 +1320,50 @@ mod tests {
             (Target::KeyHeight, Limit::FrontPinOnTheWood)
         );
 
+        let mut into_the_wood = Bench::standard();
+        let pin = into_the_wood
+            .frame
+            .sections
+            .front
+            .pin
+            .expect("a pin")
+            .length();
+        let (_, front_end) = into_the_wood.key.front_mortise_span();
+        into_the_wood.frame.front_rail = front_end - 0.5 * pin + 0.0003;
+        let (target, limit, _) = refused(&into_the_wood, TARGETS);
+        assert_eq!(
+            (target, limit),
+            (Target::KeyHeight, Limit::FrontPinOnTheWood)
+        );
+
+        let mut wedged = Bench::standard();
+        let f = &mut wedged.frame;
+        f.back_rail_height = f.balance_bearing_height() + 0.040 - f.back_rail_cloth;
+        assert!(
+            matches!(
+                wedged.solve(TARGETS),
+                Err(Unsolvable::NoSeat(SeatRefusal::LiftsOffItsFrame { .. }))
+            ),
+            "{:?}",
+            wedged.solve(TARGETS)
+        );
+        wedged.frame.sections.balance.pin_height = 0.050;
+        let r = wedged.regulating();
+        let mut sink = SolveReport::NOTHING;
+        let rides = match r.height_trial(&mut Statics::new(), &mut sink, STACK_SEARCH) {
+            Ok(Trial::Rides { reading, .. }) => reading,
+            _ => panic!("the key rides with all the paper the search lays"),
+        };
+        assert!(rides < TARGETS.key_height);
+        assert_eq!(
+            refused(&wedged, TARGETS),
+            (
+                Target::KeyHeight,
+                Limit::RailTooLow,
+                TARGETS.key_height - rides
+            )
+        );
+
         let mut past = Bench::standard();
         past.frame.front_rail = past.key.front_edge + 0.0002;
         past.frame.sections.front.pin = None;
@@ -1160,6 +1371,58 @@ mod tests {
             refused(&past, TARGETS),
             (Target::KeyDip, Limit::NoStopBelowTheFront, TARGETS.key_dip)
         );
+    }
+
+    /// Consistency: **stacks that stand the key off its balance pin steer
+    /// the search and are never laid.** The bench's balance pin cut to
+    /// 5.5 mm above its rail leaves the key 3.3 mm of lift on its punching
+    /// before it leaves the pin: the search's balance stacks past 4 mm raise
+    /// the punching past the pin's top, and its front stack of 20 mm makes
+    /// the key ride 4.9 mm up, past it too. Each such trial is refused as
+    /// off its pin and counts as one past the key height target, or as one
+    /// whose stops fight for the dip, as the same trials on the bench's
+    /// taller pin count, seated past the target or riding: so the papers
+    /// laid and what they give are the bench's own, to the bit. 75 mm of key
+    /// height, which only a punching past the cut pin's top would reach, is
+    /// refused as the pin's doing.
+    #[test]
+    fn stacks_that_stand_the_key_off_its_pin_steer_the_search_and_are_never_laid() {
+        let bench = Bench::standard();
+        let mut cut = Bench::standard();
+        cut.frame.sections.balance.pin_height = 0.0055;
+        let (stacks, achieved) = met(bench.solve(TARGETS));
+        let (cut_stacks, cut_achieved) = met(cut.solve(TARGETS));
+        assert_eq!(cut_stacks, stacks);
+        assert_eq!(
+            cut_achieved.key_height.to_bits(),
+            achieved.key_height.to_bits()
+        );
+        assert_eq!(cut_achieved.key_dip.to_bits(), achieved.key_dip.to_bits());
+
+        let r = cut.regulating();
+        let mut sink = SolveReport::NOTHING;
+        let mut statics = Statics::new();
+        let laid = total(&stacks.balance.papers);
+        for trial in [
+            r.height_trial(&mut statics, &mut sink, 0.005),
+            r.dip_trial(&mut statics, &mut sink, laid, STACK_SEARCH),
+        ] {
+            assert!(
+                matches!(trial, Ok(Trial::OffItsPin { .. })),
+                "a trial past the cut pin's top is read as seated"
+            );
+        }
+        match cut.solve(Targets {
+            key_height: 0.075,
+            ..TARGETS
+        }) {
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyHeight,
+                limited_by: Limit::OffItsBalancePin,
+                shortfall_m,
+            }) => assert!(shortfall_m > 0.0 && shortfall_m < 0.01, "{shortfall_m} m"),
+            other => panic!("75 mm of key height on the cut pin: {other:?}"),
+        }
     }
 
     /// A target that is not a number is refused before anything is solved.

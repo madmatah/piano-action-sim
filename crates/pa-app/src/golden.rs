@@ -19,7 +19,8 @@
 //! full, what the trade reads it as, its trust, and for the key friction
 //! weights the temporary weight and where it stood; or why it is refused.
 //! Then every field of [`BenchReadout`] (or that there is none, when the
-//! bench cannot seat its key), the reason it cannot, the faults, where the
+//! bench cannot seat its key), the reason it cannot, how the key rides on
+//! its stops where they fight (written only there), the faults, where the
 //! key is drawn and the papers on both punchings. Numbers are written as the
 //! shortest decimal that reads back to the same double, then as its bit
 //! pattern.
@@ -35,13 +36,16 @@
 //! # The fixtures
 //!
 //! The default bench, and four benches that each exercise a part of the
-//! statics the default does not: a frame whose stops fight, a back-heavy key,
-//! a dip stopped by the pin in its mortise, and a key shortened under a frame
-//! left where it was, whose front pin then stands in its wood.
+//! statics the default does not: a frame whose stops fight, its key riding
+//! on them off its balance punching; a back-heavy key; a dip stopped by the
+//! pin in its mortise; and a key shortened under a frame left where it was,
+//! whose front pin then stands under its wood and carries it.
 
 use std::fmt::Write as _;
 
-use crate::key_bench::{BenchReadout, Fault, KeyBench, Measurement, TouchVerdict, Trust, Which};
+use crate::key_bench::{
+    BenchReadout, Fault, KeyBench, Measurement, Riding, TouchVerdict, Trust, Which,
+};
 
 /// One bench whose readings the golden sheet records.
 #[derive(Debug, Clone, Copy)]
@@ -90,14 +94,15 @@ pub const FIXTURES: [Fixture; 5] = [
     Fixture {
         name: "shortened-key",
         what: "the standard bench with the key front brought back 18 mm, the frame left \
-               where it was: the front pin stands outside its mortise, under the key",
+               where it was: the front pin stands outside its mortise, under the key, and the \
+               key rides on it and its cloth",
         build: shortened_key,
     },
 ];
 
 fn wedged_frame() -> KeyBench {
     let mut bench = KeyBench::standard();
-    let frame = &bench.assembly().frame;
+    let frame = bench.frame();
     let height = frame.balance_bearing_height() + 0.005 - frame.back_rail_cloth;
     bench.set_back_rail_height(height);
     bench
@@ -268,6 +273,31 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
             );
             number(out, "readout.finger.margin_g", margin_g);
         }
+        TouchVerdict::RidesOnBothStops { front, lift_mm } => {
+            line(
+                out,
+                "readout.finger",
+                &format!("RidesOnBothStops {front:?}"),
+            );
+            number(out, "readout.finger.lift_mm", lift_mm);
+        }
+        TouchVerdict::LiftsOffBalancePunching {
+            touching,
+            needs_friction,
+            lift_mm,
+        } => {
+            let on: Vec<String> = touching.iter().map(|c| format!("{c:?}")).collect();
+            line(
+                out,
+                "readout.finger",
+                &format!(
+                    "LiftsOffBalancePunching touching {} needs_friction {needs_friction}",
+                    on.join(",")
+                ),
+            );
+            number(out, "readout.finger.lift_mm", lift_mm);
+        }
+        TouchVerdict::LiftsOffItsFrame => line(out, "readout.finger", "LiftsOffItsFrame"),
     }
     number(out, "readout.out_of_level_deg", out_of_level_deg);
     // The slope, one step before the platform's `atan` turns it into the
@@ -289,7 +319,17 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
 }
 
 fn write_frame(out: &mut String, bench: &KeyBench) {
-    line(out, "frame_fault", bench.frame_fault().unwrap_or("none"));
+    line(
+        out,
+        "frame_fault",
+        bench.frame_fault().as_deref().unwrap_or("none"),
+    );
+    // Where the key rides on its stops, seated: written only there, so that
+    // a sheet whose key bears on its punching reads as it did.
+    if let Some(Riding { front, lift }) = bench.riding() {
+        line(out, "riding.front", &format!("{front:?}"));
+        number(out, "riding.lift", lift);
+    }
     let faults = bench.faults();
     line(out, "faults", &faults.len().to_string());
     for (i, fault) in faults.iter().enumerate() {
@@ -329,9 +369,17 @@ mod tests {
     /// for holds, so the sheet records that case and not the default again.
     #[test]
     fn every_fixture_exercises_what_it_names() {
+        use crate::key_bench::{ContactCode, ProcedureId, Refused, WalkRefusal};
         let wedged = wedged_frame();
-        assert!(wedged.frame_fault().is_some(), "the stops must fight");
-        assert!(wedged.readout().is_none(), "and the bench cannot weigh it");
+        let riding = wedged.riding().expect("the stops must fight, the key ride");
+        assert_eq!(riding.front, ContactCode::FrontRailPunching);
+        assert!(wedged.frame_fault().is_none(), "a riding key is seated");
+        assert!(wedged.readout().is_some(), "and reads what needs no stroke");
+        assert_eq!(
+            wedged.sheet().get(ProcedureId::DownWeight),
+            Some(&Err(Refused::Walk(WalkRefusal::NoTravel))),
+            "and has no stroke to weigh"
+        );
 
         let back_heavy = back_heavy_key().sheet();
         let front_weight = back_heavy
@@ -354,9 +402,10 @@ mod tests {
                 .any(|f| matches!(f, Fault::PinOutsideTheMortise { .. })),
             "the pin must stand outside the mortise"
         );
-        assert!(
-            short.readout().is_none() && short.frame_fault().is_some(),
-            "and, standing in the key's wood, leave it no seat"
+        assert_eq!(
+            short.riding().map(|r| r.front),
+            Some(ContactCode::FrontPinOnTheWood),
+            "and, standing under the key's wood, carry it"
         );
     }
 

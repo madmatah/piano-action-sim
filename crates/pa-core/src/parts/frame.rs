@@ -148,6 +148,14 @@ impl FrameDesign {
     }
 }
 
+/// The radius the back rail cloth's two top edges are rounded to, metres.
+///
+/// Half a millimetre: small enough that where the key bears on an edge is
+/// essentially the end of the cloth's face, large enough to be a real curve
+/// rather than a numerical fiction. A shape, not a setting: it is drawn, and
+/// the contact with the key's underside reads the arcs as drawn.
+pub const CLOTH_EDGE_RADIUS: f64 = 0.0005;
+
 /// How far in from the end of the key the back rail is set, metres.
 ///
 /// The tail has to overhang the rail — the key is lifted off the frame from
@@ -704,10 +712,10 @@ impl FrameDesign {
     /// actually laid, bottom first, because two stacks of one height are not
     /// one object on a bench: a technician counts papers.
     ///
-    /// Built from the same fields the stops read, with the same arithmetic,
-    /// so the faces they share are the same bits: a punching's felt is drawn
-    /// up to the bearing height the stops read, whatever its papers sum to,
-    /// and the cloth's face and edges are the back stop's own.
+    /// A punching's felt is drawn up to its bearing height
+    /// ([`Self::balance_bearing_height`], [`Self::front_bearing_height`]),
+    /// whatever its papers sum to, and the cloth's face to the back
+    /// bearing's, its edges rounded to [`CLOTH_EDGE_RADIUS`].
     pub fn parts(
         &self,
         key: &super::KeyDesign,
@@ -784,14 +792,13 @@ impl FrameDesign {
             &s.front,
         );
 
-        // The cloth: a strip the length of the rail, its two top edges rounded
-        // to the radius the back stop gives them, the arcs centred on the
-        // face's two ends where the stop centres them. Each line takes its
-        // ends from the arcs beside it, so the outline closes bit for bit.
+        // The cloth: a strip the length of the rail, its two top edges rounded,
+        // the arcs centred under the face's two ends. Each line takes its ends
+        // from the arcs beside it, so the outline closes bit for bit.
         let centre = s.back.centre_x(self.back_rail);
         let (x0, x1) = (centre - s.back.half_length, centre + s.back.half_length);
         let (bottom, top) = (self.back_rail_height, self.back_bearing_height());
-        let r = super::assembly::PUNCHING_EDGE_RADIUS;
+        let r = CLOTH_EDGE_RADIUS;
         let front_edge = Seg::Arc {
             c: Point::new(x1, top - r),
             r,
@@ -844,8 +851,8 @@ impl FrameDesign {
         };
 
         // The punching stacks: papers first, each its own washer turned about
-        // the pin, then the felt, drawn up to the bearing height the stops
-        // read. A washer's rim is measured and its thickness is not.
+        // the pin, then the felt, drawn up to the stack's bearing height. A
+        // washer's rim is measured and its thickness is not.
         let mut stack = |rail_top: f64,
                          axis_x: f64,
                          sec: &RailSection,
@@ -1218,15 +1225,15 @@ mod part_tests {
         }
     }
 
-    /// The cloth is drawn with the rounded edges the back stop rounds: two
-    /// quarter circles of the stop's radius, centred on the ends of its face,
-    /// the face between them.
+    /// The cloth is drawn with its rounded edges: two quarter circles of
+    /// [`CLOTH_EDGE_RADIUS`], centred under the ends of its face, the face
+    /// between them.
     #[test]
     fn the_cloth_is_drawn_with_its_rounded_edges() {
         let frame = FrameDesign::default();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         let top = ranges.cloth_top.segs(&parts);
-        let r = super::super::assembly::PUNCHING_EDGE_RADIUS;
+        let r = CLOTH_EDGE_RADIUS;
         let centre = frame.sections.back.centre_x(frame.back_rail);
         let half = frame.sections.back.half_length;
         match (top[0], top[1], top[2]) {
@@ -1252,7 +1259,7 @@ mod part_tests {
     ///
     /// The felt does not grow: it is lifted. That is the operation, and a model
     /// where the washer got thicker instead would teach the wrong thing. The
-    /// felt is drawn up to the bearing height the stops read, so its drawn
+    /// felt is drawn up to its stack's bearing height, so its drawn
     /// thickness is the felt's within the roundings of that height's sum.
     #[test]
     fn adding_paper_lifts_the_felt_without_thickening_it() {

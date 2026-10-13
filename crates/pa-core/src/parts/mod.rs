@@ -24,7 +24,6 @@
 //! [`KeyDesign`] is therefore signed: positive in front of the balance pin,
 //! negative behind it.
 
-pub mod assembly;
 pub mod faults;
 #[cfg(test)]
 pub(crate) mod fixtures;
@@ -33,7 +32,6 @@ pub mod key;
 pub mod mounts;
 pub mod verdicts;
 
-pub use assembly::KeyAssembly;
 pub use faults::Fault;
 pub use frame::{FrameDesign, FrameRanges, PunchingStack};
 pub use key::KeyRanges;
@@ -391,7 +389,7 @@ impl Lead {
 /// The measuring point itself is **not** here. Where a weight is centred is a
 /// convention of the protocol, not a dimension of the wood, so it is set on
 /// [`crate::measure::TouchweightProtocol`] and read through
-/// [`KeyAssembly::measuring_point`].
+/// [`crate::measure::TouchweightProtocol::measuring_point`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyDesign {
     /// The key front, metres in front of the balance pin: the outer face of
@@ -566,18 +564,6 @@ impl KeyDesign {
     /// contacts read those.
     pub fn underside_flat(&self) -> (f64, f64) {
         (self.tail_end + self.tail_rise_run, self.front_edge)
-    }
-
-    /// The corners of the underside, from the tail forward: the end of the
-    /// tail, the kink where the chamfer runs out into the flat, and the front
-    /// of the key. What the drawn underside's chain is held to by the tests.
-    pub fn underside_corners(&self) -> [Point; 3] {
-        let (flat_from, flat_to) = self.underside_flat();
-        [
-            Point::new(self.tail_end, self.tail_rise),
-            Point::new(flat_from, 0.0),
-            Point::new(flat_to, 0.0),
-        ]
     }
 
     /// The volume model's polygon: the key's whole sagittal section, as an

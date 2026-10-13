@@ -53,7 +53,9 @@ mod tests {
     /// Every number frozen in the solver and the procedures that read with
     /// it, in a fixed order: the static solve's caps and tolerances, the box
     /// problem's, the dense algebra's rank tolerance, the row margin, the
-    /// key's angle limit and the step of its nominal pose, the seated pose's
+    /// key's angle limit and the step of its nominal pose, the steps that
+    /// narrow the attitude of a key lowered onto its frame from above, in how
+    /// many pieces of the cap a key free to lift is solved, the seated pose's
     /// margin and overlap, the walk's step, cap and halvings, how near a
     /// contact counts as touching, the regulation's search and halvings, the
     /// drawer's search; then how near a whole gram the walk's threshold reads
@@ -67,8 +69,9 @@ mod tests {
     /// Not here, because each reading carries it or its record holds it: the
     /// measuring point, a setting every reading names in its conditions; each
     /// reading's resolution and rounding rule; the drawer's papers and the
-    /// parts' dimensions, data with their records. Nor the numbers the bench
-    /// draws with and reads nothing by.
+    /// parts' dimensions, data with their records, among them how far above
+    /// its balance punching the key leaves its pin, which the drawn pin
+    /// gives. Nor the numbers the bench draws with and reads nothing by.
     fn frozen() -> Vec<u64> {
         use crate::measure::{jig, seat, walk, weighing};
         use crate::parts::{frame, mounts, verdicts};
@@ -95,6 +98,8 @@ mod tests {
             crate::contact::ROW_MARGIN.to_bits(),
             mounts::KEY_ANGLE_LIMIT.to_bits(),
             mounts::NOMINAL_STEP.to_bits(),
+            u64::from(mounts::ATTITUDE_REFINEMENTS),
+            u64::from(mounts::FREE_PIECES),
             seat::SEAT_MARGIN.to_bits(),
             seat::SEAT_OVERLAP.to_bits(),
             walk::STEP_G.to_bits(),
@@ -129,7 +134,7 @@ mod tests {
         let hash = fnv1a(&frozen());
         assert_eq!(
             (SOLVER_FINGERPRINT, hash),
-            ("statics/1", 0x96de_00f1_015e_438b),
+            ("statics/1", 0xf2f9_288c_3a9c_cf51),
             "a frozen number changed: the hash is now {hash:#018x}. Give the solver a new \
              fingerprint and record the hash beside it."
         );

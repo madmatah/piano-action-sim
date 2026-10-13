@@ -78,12 +78,18 @@
 //! # Converged, under a cap
 //!
 //! An increment has converged when the step moves no point by more than
-//! [`STEP_TOLERANCE`], every gap is at least `−`[`GAP_TOLERANCE`], the
-//! stationarity residual on each coordinate, over its reach, is at most
+//! [`STEP_TOLERANCE`], every gap is at least `−`[`GAP_TOLERANCE`], every row
+//! carrying a load is closed to within [`GAP_TOLERANCE`], the stationarity
+//! residual on each coordinate, over its reach, is at most
 //! [`RESIDUAL_TOLERANCE`] times the load scale, and the step's box problem
 //! was solved, not left at its cap of sweeps: the residual is the step's
 //! own metric times the step, small whenever the step is, and only
-//! multipliers that solve their box problem make it an equilibrium's. Where
+//! multipliers that solve their box problem make it an equilibrium's. The
+//! residual cannot see a load on a row standing open: under a metric many
+//! accepted steps have softened, the box problem's tolerance reads rows no
+//! motion closes together as closed while they stand microns open, and the
+//! loads balance to the rounding. A still step from such a state is turned
+//! back, which stiffens the metric until the rows close or let go. Where
 //! the step and the gaps pass and the residual does not, the residual is
 //! measured again with every gap already closed to within the tolerance taken
 //! as closed: the step's own includes the force of closing what rounding
@@ -290,6 +296,9 @@ pub struct Statics {
     nu: Vec<f64>,
     u_closed: Vec<f64>,
     nu_closed: Vec<f64>,
+    /// Where the last solve refused as not converged left its iterate, and
+    /// how it went: what a caller continuing the same increment starts from.
+    stopped: (Vec<f64>, SolveReport),
 }
 
 impl Default for Statics {
@@ -416,7 +425,17 @@ impl Statics {
             nu: Vec::new(),
             u_closed: Vec::new(),
             nu_closed: Vec::new(),
+            stopped: (Vec::new(), SolveReport::NOTHING),
         }
+    }
+
+    /// Where the last solve refused as not converged stopped: its last
+    /// iterate, one value per coordinate, and its report. The same increment
+    /// continued from there, under the same loads, goes on along the path,
+    /// its friction's anchor moved on to that iterate as the solve itself
+    /// moves it. Empty before any such refusal.
+    pub fn stopped(&self) -> (&[f64], SolveReport) {
+        (&self.stopped.0, self.stopped.1)
     }
 
     /// A solver whose metric `P` is multiplied by `k`: the path changes, the
@@ -628,6 +647,7 @@ impl Statics {
                 };
                 raises += 1;
                 if raises > RAISES_PER_STEP {
+                    self.stopped = (q, report);
                     return Err(Refusal::NotConverged {
                         iterations: report.iterations,
                         residual: f64::INFINITY,
@@ -647,8 +667,11 @@ impl Statics {
                 .map(|(r, _)| self.gaps[r])
                 .fold(f64::INFINITY, f64::min);
             report.residual = residual;
+            // Every row carrying a load closed: a load on a row standing open
+            // is no equilibrium, however small the residual it balances.
+            let loaded_open = self.loaded_gap(&self.nu, load) > GAP_TOLERANCE;
             let still = solved && step <= STEP_TOLERANCE && least_gap >= -GAP_TOLERANCE;
-            if still && residual <= RESIDUAL_TOLERANCE * load {
+            if still && !loaded_open && residual <= RESIDUAL_TOLERANCE * load {
                 report.most_iterations = report.iterations;
                 return self.settled(m, q, &anchor, &free_ids, &bounds, &gf, report);
             }
@@ -665,7 +688,9 @@ impl Statics {
                     rho,
                     &mut report,
                 ) {
-                    if closed <= RESIDUAL_TOLERANCE * load {
+                    if closed <= RESIDUAL_TOLERANCE * load
+                        && self.loaded_gap(&self.nu_closed, load) <= GAP_TOLERANCE
+                    {
                         core::mem::swap(&mut self.nu, &mut self.nu_closed);
                         report.exact &= exact;
                         report.residual = closed;
@@ -707,12 +732,14 @@ impl Statics {
             );
             report.iterations += 1;
 
-            // A step that moves nothing from a state some gap still overlaps
-            // is no progress, however it scores: the box problem accepts its
-            // multipliers to a fraction of their scale, which a soft metric
-            // turns into nanometres of gap, left unresolved step after step
-            // while the metric only softens. Only a stiffer one tightens it.
-            let stalled = step <= STEP_TOLERANCE && least_gap < -GAP_TOLERANCE;
+            // A step that moves nothing from a state some gap still overlaps,
+            // or where a row standing open carries a load, is no progress,
+            // however it scores: the box problem accepts its multipliers to a
+            // fraction of their scale, which a soft metric turns into
+            // nanometres of overlap, or microns of gap left open under a
+            // contact that pushes, unresolved step after step while the
+            // metric only softens. Only a stiffer one tightens it.
+            let stalled = step <= STEP_TOLERANCE && (least_gap < -GAP_TOLERANCE || loaded_open);
             let rounding = MERIT_ROUNDING * f64::EPSILON * (here_size + there_size);
 
             if there <= here + rounding && !stalled {
@@ -735,6 +762,7 @@ impl Statics {
             }
             if report.iterations >= ITERATION_CAP {
                 report.most_iterations = report.iterations;
+                self.stopped = (q, report);
                 return Err(Refusal::NotConverged {
                     iterations: report.iterations,
                     residual,
@@ -859,6 +887,33 @@ impl Statics {
             }
         }
         v
+    }
+
+    /// How far open the widest contact or limit row stands at the state
+    /// among those its multipliers `nu` load, metres; zero where none is
+    /// loaded. A row is loaded when its multiplier passes the residual's
+    /// tolerance of the load scale `load`: a force under that, applied
+    /// through a row whose gradient over the reach is at most one, moves the
+    /// residual by no more than its tolerance, and the residual cannot tell
+    /// it from nothing.
+    ///
+    /// What the convergence test reads besides the residual. The box problem
+    /// accepts its multipliers to a part in 10⁹ of their scale, and under the
+    /// soft metric an increment ends on, after many accepted steps have
+    /// softened it, that tolerance holds a row's gap to nothing: rows that no
+    /// motion can close together are read as closed, their loads balancing
+    /// the key to the rounding while they stand microns open. Such a state
+    /// has a residual of nothing and no equilibrium: a contact pushes only
+    /// where it touches.
+    fn loaded_gap(&self, nu: &[f64], load: f64) -> f64 {
+        self.kinds
+            .iter()
+            .enumerate()
+            .filter(|&(r, kind)| {
+                !matches!(kind, Kind::Friction { .. }) && nu[r] > RESIDUAL_TOLERANCE * load
+            })
+            .map(|(r, _)| self.gaps[r])
+            .fold(0.0_f64, f64::max)
     }
 
     /// The friction an axis applies at a state of the increment, its bound
@@ -1729,6 +1784,77 @@ pub(crate) mod tests {
         );
     }
 
+    /// Consistency: **a load on a row standing open is no rest.** The key
+    /// front 2.3725 mm forward of where the bench builds it stands the front
+    /// rail pin 0.87 mm into the wood behind the key's front mortise, and the
+    /// key rides on the pin and its cloth, off its balance punching. Its top
+    /// seat starts level on its punching, the pin in its wood within the
+    /// row margin, and the stops fight there, so the key is solved free to
+    /// lift: some forty steps in, each accepted one softening the metric
+    /// threefold, the box problem reads the cloth's row and the pin's as
+    /// closed while they stand 2.2 and 0.18 µm open, each carrying most of a
+    /// newton, and the loads balance to the rounding. That is no
+    /// equilibrium: a contact pushes only where it touches. Converged, every
+    /// row that carries more than the residual's tolerance of the load
+    /// scale is closed to within [`GAP_TOLERANCE`], and the bottom seat,
+    /// solved from the top, is the same pose to the bit: the riding key's dip
+    /// is nothing, where the rows read closed while they stand open would
+    /// leave 23 nm between its two seats.
+    #[test]
+    fn a_load_on_a_row_standing_open_is_no_rest() {
+        use crate::parts::fixtures::{on_frame, regulated};
+        use crate::parts::frame::KeyKind;
+        use crate::parts::mounts::nominal_pose;
+
+        let mut a = regulated();
+        a.key.front_edge += 0.0023725;
+        let k = on_frame(&a, KeyKind::Natural, 0.0, true);
+        let seats = k
+            .seating()
+            .seats(&mut Statics::new())
+            .expect("the key rides on the pin and its cloth");
+        assert!(seats.top.rides(), "{:?}", seats.top);
+        // The top seat's increment again, from where the seat starts it, to
+        // read the rows that carry it.
+        let m = &k.mounted.mechanism;
+        let capstan = PointLoad {
+            at: MaterialPoint {
+                body: k.mounted.key,
+                at: k.capstan,
+            },
+            force: Point::new(0.0, -seats.capstan_load),
+        };
+        let start = nominal_pose(&k.mounted);
+        assert_eq!(k.mounted.lift_at(&start).to_bits(), 0.0_f64.to_bits());
+        let eq = k
+            .mounted
+            .solve(&mut Statics::new(), &start, &[capstan], Friction::Off)
+            .expect("the key rides");
+        let load = load_scale(m, &[capstan]);
+        let loaded: Vec<&Support> = eq
+            .supports
+            .iter()
+            .filter(|s| s.force > RESIDUAL_TOLERANCE * load)
+            .collect();
+        assert_eq!(loaded.len(), 2, "{:?}", eq.supports);
+        for s in loaded {
+            assert!(
+                s.gap.abs() <= GAP_TOLERANCE,
+                "a row carrying {} N stands {} m open",
+                s.force,
+                s.gap
+            );
+        }
+        for (x, y) in eq.q.iter().zip(&seats.top.q) {
+            assert_eq!(x.to_bits(), y.to_bits(), "the seat is that increment");
+        }
+        for (x, y) in seats.top.q.iter().zip(&seats.bottom.q) {
+            assert_eq!(x.to_bits(), y.to_bits(), "one pose for both seats");
+        }
+        let (top, bottom) = seats.heights(&k.mounted, k.front_top);
+        assert_eq!((top - bottom).to_bits(), 0.0_f64.to_bits(), "no dip");
+    }
+
     /// With nothing to stop it, the pendulum falls to its limit, the edge of
     /// the modelled world, and the increment is refused, naming the limit.
     #[test]
@@ -1765,11 +1891,13 @@ pub(crate) mod tests {
     /// every lift here must converge and pass the virtual-work inequality.
     /// Past 1.5 mm forward the pin stands across the slot's front edge, its
     /// face beyond the wall, and the key has no rest on a pivot: the
-    /// initialization refuses, naming the pin's pair.
+    /// initialization refuses, naming the pin's pair. On a pivot, the one
+    /// coordinate this solve is tested on here: a key free to lift rides on
+    /// the pin and its cloth instead.
     #[test]
     fn a_key_lifted_against_its_slots_front_wall_from_there_is_one_increment() {
         use crate::contact::ContactCode;
-        use crate::parts::fixtures::{on_frame, regulated};
+        use crate::parts::fixtures::{on_pivot, regulated};
         use crate::parts::frame::KeyKind;
         use crate::parts::mounts::nominal_pose;
 
@@ -1782,7 +1910,7 @@ pub(crate) mod tests {
             a.frame.front_rail += forward;
             let kf_g = rng.uniform(0.0, 15.0);
             let b = kf_g * 1e-3 * G * a.measuring_point();
-            let k = on_frame(&a, KeyKind::Natural, b, true);
+            let k = on_pivot(&a, KeyKind::Natural, b, true);
             let m = &k.mounted.mechanism;
             let wall = m
                 .pairs()

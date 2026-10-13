@@ -7,6 +7,9 @@ use super::SurfaceRef;
 /// The identifiers follow the parts' own ([`super::PartCode`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContactCode {
+    /// The key's underside on the balance rail punching: what the key bears
+    /// on at its pin, and lifts off when its other stops hold it higher.
+    BalanceRailPunching,
     /// The key's underside on the front rail punching: what the key comes
     /// down on at the bottom of its dip.
     FrontRailPunching,
@@ -28,6 +31,7 @@ impl ContactCode {
     /// The contact's identifier, English `snake_case`.
     pub fn code(self) -> &'static str {
         match self {
+            Self::BalanceRailPunching => "balance_rail_punching",
             Self::FrontRailPunching => "front_rail_punching",
             Self::BackRailCloth => "back_rail_cloth",
             Self::FrontPinInTheMortise => "front_pin_in_the_mortise",

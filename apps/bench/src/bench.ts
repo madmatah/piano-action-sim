@@ -101,9 +101,19 @@ export interface Contact {
   state: 'closed' | 'open' | 'overlapping'
 }
 
+/** A punching read at its centre whose drawn edge overlaps the key. */
+export interface EdgeOverlap {
+  /** Which punching, the engine's identifier. */
+  pair: string
+  /** How far its drawn edge stands into the key, millimetres: what its felt
+   * would compress under a key out of level on it. */
+  mm: number
+}
+
 export interface Scene {
   outlines: Outline[]
-  /** One per body, in body order. */
+  /** One per body, in body order: the ground, the slide the key lifts off its
+   * balance punching on, the key. */
   poses: Pose[]
   leads: Lead[]
   measuring_point: Marker
@@ -112,6 +122,12 @@ export interface Scene {
   /** Why this frame cannot be weighed, when it cannot. It travels with the
    * scene because the readout is precisely what is missing in that case. */
   frame_fault: string | null
+  /** How the key rides on its stops, off its balance punching, where they
+   * fight, in the engine's sentence naming the stops and the lift; `null`
+   * where its balance punching carries it. */
+  riding: string | null
+  /** The punchings the key bears on whose drawn edge overlaps it. */
+  edge_overlaps: EdgeOverlap[]
   /** Everything about this key and this frame that no keyboard could be built
    * from, already phrased. Empty on a keyboard that goes together — and on the
    * scene rather than the sheet, because a frame too broken to weigh is
@@ -158,8 +174,10 @@ export interface Readout {
   front_paper_mm: number
   key_height_target_mm: number
   key_dip_target_mm: number
-  /** What holds the key where the weight has left it: a stop it rests on,
-   * or, between the up weight and the down weight, its friction. */
+  /** What holds the key where the weight has left it: a stop it rests on;
+   * between the up weight and the down weight, its friction; its two stops,
+   * off its balance punching; or nothing, the weight lifting it off its
+   * frame. */
   finger: string
   /** Whether friction alone holds the key where it is. */
   held_by_friction: boolean

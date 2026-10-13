@@ -91,9 +91,9 @@ impl KeyDesign {
     /// key's frame: origin at the balance pin on the underside, `x` towards
     /// the player. Returns what they declare.
     ///
-    /// Built from the same fields as [`Self::underside_corners`], which the
-    /// stops read, and as the volume model's [`Self::outline_vertices`], with
-    /// the same arithmetic, so the points the three share are the same bits.
+    /// Built from the same fields as the volume model's
+    /// [`Self::outline_vertices`], with the same arithmetic, so the points
+    /// the two share are the same bits.
     pub fn parts(&self, body: BodyId, out: &mut Vec<Part>) -> KeyRanges {
         let top = self.stick_height;
         let wood_front = self.front_edge - self.front_board;
@@ -523,9 +523,22 @@ mod tests {
         assert!(mass.is_some(), "and that polygon weighs something");
     }
 
+    /// The corners of the underside the key's fields put it on, from the
+    /// tail forward: the end of the tail, the kink where the chamfer runs out
+    /// into the flat, and the front of the key.
+    fn corners(key: &KeyDesign) -> [Point; 3] {
+        let (flat_from, flat_to) = key.underside_flat();
+        [
+            Point::new(key.tail_end, key.tail_rise),
+            Point::new(flat_from, 0.0),
+            Point::new(flat_to, 0.0),
+        ]
+    }
+
     /// The underside is the chamfer, then one straight flat to the front of
-    /// the key, split at the mortise's edges: the corners the stops read are
-    /// its vertices, bit for bit, and the mortise's bottom is a segment of it.
+    /// the key, split at the mortise's edges: the corners the key's fields
+    /// put it on are its vertices, bit for bit, and the mortise's bottom is a
+    /// segment of it.
     #[test]
     fn the_underside_is_split_at_the_mortise_edges_and_runs_on_across_the_slot() {
         let key = KeyDesign::default();
@@ -533,7 +546,7 @@ mod tests {
         let stick = ranges.underside[0].segs(&parts);
         let front = ranges.underside[1].segs(&parts);
         assert_eq!(stick.len(), 4, "chamfer, flat, the slot's mouth, flat");
-        let [tail, kink, nose] = key.underside_corners();
+        let [tail, kink, nose] = corners(&key);
         assert!(same(stick[0].start(), tail));
         assert!(same(stick[0].end(), kink));
         assert!(same(front[0].end(), nose));
@@ -581,7 +594,7 @@ mod tests {
         let length = |segs: &[Seg]| -> f64 { segs.iter().map(|s| s.end().x - s.start().x).sum() };
         let key = KeyDesign::default();
         let (parts, ranges) = built(&key);
-        let [_, kink, nose] = key.underside_corners();
+        let [_, kink, nose] = corners(&key);
         let flat: Vec<Seg> = ranges
             .underside_flat
             .iter()

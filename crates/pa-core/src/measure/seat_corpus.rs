@@ -6,7 +6,10 @@
 //! the core finds passes the oracle, which samples the drawn outlines and
 //! shares no code with the rows; and every key that seats walks from each
 //! seat to the other, its down weight above its up weight by the band its
-//! friction makes. Four classes:
+//! friction makes. C12, consistency: wherever the balance punching carries
+//! the key, the key on its punching is the key on a pivot, to the bit, and
+//! the full problem, its punching free to lift, finds the same seats. Five
+//! classes:
 //!
 //! - **near**: the regulated bench, every rail, felt, cloth, pin and
 //!   mortise moved within a few millimetres, the chamfer from none to
@@ -18,7 +21,20 @@
 //!   the key at the bottom of its stroke;
 //! - **PHY-8's**: a tail with no chamfer, the key bearing on its cloth with
 //!   the flat of its underside, the back rail raised and lowered through
-//!   4 mm.
+//!   4 mm;
+//! - **wedged**: frames whose stops fight, the key riding on them off its
+//!   balance punching (the audit's RUST-2): the cloth holding the tail 1 to
+//!   8 mm above the balance bearing, the front punching's felt 11 to 16 mm
+//!   thicker, the balance rail lowered 8 to 12 mm, or the key shortened 17
+//!   to 24 mm under its frame so that its front pin stands under its wood.
+//!   The balance rail takes its pin down with it: lowered more than about
+//!   13 mm, the key would ride past where it leaves its pin, off its frame,
+//!   which `a_key_its_stops_hold_past_its_pin_is_off_its_frame` holds.
+//!   The front punching is raised by its felt and not by its rail: the rails
+//!   carry no contact, and a key riding nose-up by 2.7° or more on a front
+//!   rail raised with its punching meets the rail's back edge, 62 mm behind
+//!   the punching and a stack's height below it, which the model does not
+//!   see and the oracle does.
 
 use crate::contact::oracle::{self, polyline, SPACING};
 use crate::contact::{ContactCode, PairGeometry, PartCode, Role, Surface, SurfaceRef};
@@ -26,8 +42,7 @@ use crate::geometry::Point;
 use crate::measure::seat::SeatRefusal;
 use crate::measure::walk::{Stroke, CAP};
 use crate::mechanism::fixtures::XorShift;
-use crate::parts::assembly::KeyAssembly;
-use crate::parts::fixtures::{on_frame, regulated, OnFrame};
+use crate::parts::fixtures::{on_frame, on_pivot, regulated, OnFrame, Setup};
 use crate::parts::frame::KeyKind;
 use crate::solve::statics::{tests::assert_virtual_work, GAP_TOLERANCE, ITERATION_CAP};
 use crate::solve::{Friction, Statics};
@@ -192,6 +207,7 @@ enum Class {
     Wide,
     Rust9,
     Phy8,
+    Wedged,
 }
 
 fn mm(x: f64) -> f64 {
@@ -199,7 +215,7 @@ fn mm(x: f64) -> f64 {
 }
 
 /// The corpus, seeded.
-fn corpus() -> Vec<(Class, KeyAssembly)> {
+fn corpus() -> Vec<(Class, Setup)> {
     let mut rng = XorShift::new(0x00c8_c8c8);
     let mut out = Vec::new();
     for _ in 0..160 {
@@ -252,6 +268,20 @@ fn corpus() -> Vec<(Class, KeyAssembly)> {
         a.frame.back_rail_height += mm(-2.0 + 4.0 * f64::from(k) / 39.0);
         out.push((Class::Phy8, a));
     }
+    for k in 0..48 {
+        let mut a = regulated();
+        let f = &mut a.frame;
+        match k % 4 {
+            0 => {
+                f.back_rail_height =
+                    f.balance_bearing_height() + mm(rng.uniform(1.0, 8.0)) - f.back_rail_cloth;
+            }
+            1 => f.front_punching.felt += mm(rng.uniform(11.0, 16.0)),
+            2 => f.balance_rail_height -= mm(rng.uniform(8.0, 12.0)),
+            _ => a.key.front_edge -= mm(rng.uniform(17.0, 24.0)),
+        }
+        out.push((Class::Wedged, a));
+    }
     out
 }
 
@@ -260,7 +290,9 @@ fn corpus() -> Vec<(Class, KeyAssembly)> {
 ///
 /// A seat of a key a keyboard could be built from takes at most a quarter
 /// of the static solve's cap of steps, which `CLAUDE.md` rule 8 asks of a
-/// cap.
+/// cap, and so does a key riding on a frame whose stops fight, lowered onto
+/// its frame from above near where it rides. Every wedged key rides, at both
+/// seats, on the same pose, so it has no dip.
 #[test]
 fn the_seats_stand_where_the_oracle_confirms_them() {
     let mut statics = Statics::new();
@@ -290,6 +322,18 @@ fn the_seats_stand_where_the_oracle_confirms_them() {
                         panic!("{class:?}, the core's {which} seat: {e}\n{a:?}");
                     }
                 }
+                if class == Class::Wedged {
+                    assert!(
+                        seats.top.rides() && seats.bottom.rides(),
+                        "{seats:?}\n{a:?}"
+                    );
+                    let (top, bottom) = seats.heights(&k.mounted, k.front_top);
+                    assert!(
+                        (top - bottom).abs() <= 2.0 * GAP_TOLERANCE,
+                        "a riding key has no dip: {} m\n{a:?}",
+                        top - bottom
+                    );
+                }
                 if class == Class::Near {
                     let key = k.mounted.key;
                     let load = |at: Point, f: f64| crate::mechanism::PointLoad {
@@ -297,14 +341,9 @@ fn the_seats_stand_where_the_oracle_confirms_them() {
                         force: Point::new(0.0, -f),
                     };
                     let loads = [load(k.capstan, seats.capstan_load)];
-                    let eq = statics
-                        .solve(
-                            &k.mounted.mechanism,
-                            &seats.top.q,
-                            &loads,
-                            &[],
-                            Friction::Off,
-                        )
+                    let eq = k
+                        .mounted
+                        .solve(&mut statics, &seats.top.q, &loads, Friction::Off)
                         .expect("a seat solves again");
                     assert_virtual_work(
                         &k.mounted.mechanism,
@@ -312,7 +351,7 @@ fn the_seats_stand_where_the_oracle_confirms_them() {
                         &loads,
                         Friction::Off,
                         &eq.q.clone(),
-                        &[0],
+                        &[0, 1],
                         1e-6,
                         0xc6c8,
                     );
@@ -333,7 +372,8 @@ fn the_seats_stand_where_the_oracle_confirms_them() {
     assert_eq!(count("Near", "seated"), 160, "{tally:?}");
     assert_eq!(count("Rust9", "NoStopBelowTheFront"), 16, "{tally:?}");
     assert_eq!(count("Phy8", "seated"), 40, "{tally:?}");
-    for class in ["Near", "Phy8"] {
+    assert_eq!(count("Wedged", "seated"), 48, "{tally:?}");
+    for class in ["Near", "Phy8", "Wedged"] {
         let most = most_iterations.get(class).copied().unwrap_or(0);
         assert!(
             most <= ITERATION_CAP / 4,
@@ -404,4 +444,101 @@ fn every_walk_reaches_the_other_seat_and_reads_d_above_u() {
         walked += 1;
     }
     assert_eq!(walked, 200);
+}
+
+/// C12, consistency: **wherever the balance punching carries the key, the
+/// key on its punching is the key on a pivot.** On every key of the near and
+/// PHY-8 classes, a keyboard could be built from each:
+///
+/// - the seats the key free to lift is given, solved first on its punching,
+///   are the pivot's to the bit, the slide on the punching, and the
+///   punching loaded at both, the stops that hold them the same;
+/// - the full problem, the punching free to lift from the start, solved
+///   from the same nominal pose under the same loads with nothing held,
+///   comes to rest at the same seats, within what the static solve converges
+///   to: each contact closed within [`GAP_TOLERANCE`], which the arm from the
+///   nearest stop, at least 0.2 m from the pin, turns into an angle, the
+///   slide within it of the punching. Not the same bits: two coordinates are
+///   not solved in the order one is.
+/// - the breakaway walks read the same down and up weights, to the bit, on
+///   a 6 g band of friction.
+#[test]
+fn on_its_punching_the_key_is_the_key_on_a_pivot() {
+    use crate::mechanism::{MaterialPoint, PointLoad};
+    let mut statics = Statics::new();
+    let mut compared = 0;
+    for (class, a) in corpus() {
+        if !matches!(class, Class::Near | Class::Phy8) {
+            continue;
+        }
+        let arm = a.protocol.measuring_point(&a.key);
+        let bound = crate::mechanism::AxisFriction::of_weight_at(6.0, arm).bound_n_m;
+        let free = on_frame(&a, KeyKind::Natural, bound, true);
+        let pinned = on_pivot(&a, KeyKind::Natural, bound, true);
+        let seats = free
+            .seating()
+            .seats(&mut statics)
+            .expect("a near key seats");
+        let pivot = pinned
+            .seating()
+            .seats(&mut statics)
+            .expect("a near key seats");
+        let lift = free.mounted.lift.as_ref().expect("free to lift");
+        let angle = free.mounted.angle.0;
+        for (on, at) in [(&seats.top, &pivot.top), (&seats.bottom, &pivot.bottom)] {
+            assert_eq!(on.q[angle].to_bits(), at.q[0].to_bits(), "{class:?}\n{a:?}");
+            assert_eq!(on.q[lift.coord.0].to_bits(), lift.on_punching.to_bits());
+            assert_eq!(on.held_by, at.held_by);
+            assert_eq!(on.bearing_load.to_bits(), at.bearing_load.to_bits());
+            assert!(on.bearing_load > 0.0 && !on.rides());
+        }
+
+        let key = free.mounted.key;
+        let down = |at: Point, f: f64| PointLoad {
+            at: MaterialPoint { body: key, at },
+            force: Point::new(0.0, -f),
+        };
+        let top_loads = [down(free.capstan, seats.capstan_load)];
+        let bottom_loads = [
+            down(free.capstan, seats.capstan_load),
+            down(free.measuring_point, seats.press),
+        ];
+        let m = &free.mounted.mechanism;
+        let nominal = crate::parts::mounts::nominal_pose(&free.mounted);
+        let full_top = statics
+            .solve(m, &nominal, &top_loads, &[], Friction::Off)
+            .unwrap_or_else(|r| panic!("{class:?}, the full top seat: {r:?}\n{a:?}"));
+        let full_bottom = statics
+            .solve(m, &full_top.q, &bottom_loads, &[], Friction::Off)
+            .unwrap_or_else(|r| panic!("{class:?}, the full bottom seat: {r:?}\n{a:?}"));
+        let turned = 2.0 * GAP_TOLERANCE / 0.2;
+        for (full, seat) in [(&full_top, &seats.top), (&full_bottom, &seats.bottom)] {
+            assert!(
+                (full.q[angle] - seat.q[angle]).abs() <= turned,
+                "{class:?}: the full problem rests at {} rad, on the punching {} rad\n{a:?}",
+                full.q[angle],
+                seat.q[angle]
+            );
+            assert!(
+                (full.q[lift.coord.0] - lift.on_punching).abs() <= 2.0 * GAP_TOLERANCE,
+                "{class:?}: the full problem stands {} m off the punching\n{a:?}",
+                full.q[lift.coord.0] - lift.on_punching
+            );
+        }
+
+        for stroke in [Stroke::Down, Stroke::Up] {
+            let (x, y) = (
+                free.seating().walk(&mut statics, &seats, stroke),
+                pinned.seating().walk(&mut statics, &pivot, stroke),
+            );
+            let (x, y) = (x.expect("a near key walks"), y.expect("a near key walks"));
+            assert_eq!(
+                x.grams.to_bits(),
+                y.grams.to_bits(),
+                "{class:?}, {stroke:?}"
+            );
+        }
+        compared += 1;
+    }
+    assert_eq!(compared, 200);
 }

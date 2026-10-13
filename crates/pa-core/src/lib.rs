@@ -13,9 +13,8 @@
 //! | [`contact`] | parts on bodies, the ranges of their outlines a contact may read, contact pairs and their rows over every coordinate, how deep drawn parts stand in one another, and how a key bears on a stop |
 //! | [`solve`] | the static solve: one load increment, its box problem and the dense algebra under it |
 //! | [`parts`] | the key and its frame as parametric designs, the parts they build, and the composite key's mass |
-//! | [`parts::assembly`] | the key, its frame and its protocol, and the stops a frame whose stops fight is drawn riding on |
 //! | [`parts::faults`] | what about a key and its frame no keyboard could be built from, read off the drawn parts |
-//! | [`parts::mounts`] | the mechanisms a key is put in to be read, the jig and the key on its frame, the key's contacts with its frame, and its nominal pose there |
+//! | [`parts::mounts`] | the mechanisms a key is put in to be read, the jig and the key on its frame, free to lift off its balance punching or turning on a pivot, the key's contacts with its frame, the solve that lets it lift, and its nominal pose there |
 //! | [`parts::verdicts`] | what holds a key where it stands, from determinate quantities |
 //! | [`measure`] | the trade's weighing quantities, as the technician's protocols define them |
 //! | [`measure::jig`] | Stanwood's front weight jig, run on the mechanism |
@@ -35,11 +34,11 @@
 //!    them, and its rows are read off the parts a mechanism carries; the
 //!    static solve places the key on them ([`measure::seat`]), and every
 //!    procedure of the sheet reads the key placed there ([`measure::weighing`],
-//!    [`regulation`]). The drawing of a frame whose stops fight still reads
-//!    stops of its own, built from the same fields
-//!    ([`parts::assembly::KeyAssembly::riding_on_both_stops`]);
-//!    `every_stop_face_is_a_declared_range_of_a_drawn_part` holds every face
-//!    they read to a declared range.
+//!    [`regulation`]), as does the drawing, a key riding on a frame whose
+//!    stops fight included ([`parts::mounts::Mounted::solve`]). Nothing
+//!    reads anything but a drawn range, so the invariant holds by structure;
+//!    `every_contact_lies_on_its_drawn_outline` holds every row's points on
+//!    the drawn outlines.
 //! 2. **Regulation is expressed as trade targets**, and the geometry is solved
 //!    to meet them ([`regulation::Regulating::solve`]): the papers laid, what
 //!    they give beside the targets, or the target refused with what keeps it

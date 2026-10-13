@@ -57,7 +57,7 @@ use super::walk::{Breakaway, Stroke, WalkRefusal, HALVINGS, ROUNDING_TOLERANCE_G
 use crate::geometry::Point;
 use crate::mechanism::{AxisFriction, MaterialPoint, PointLoad, Problem};
 use crate::parts::frame::PAPER_THICKNESSES;
-use crate::parts::mounts::{KeyMount, OnItsFrame};
+use crate::parts::mounts::OnItsFrame;
 use crate::solve::{SolveReport, Statics, SOLVER_FINGERPRINT};
 use crate::G;
 
@@ -282,10 +282,11 @@ impl Weighing<'_> {
         }
     }
 
-    /// Conditions on the key's frame, at this measuring point.
+    /// Conditions on the key's frame, in its mount, at this measuring
+    /// point.
     fn on_its_frame(&self) -> Conditions {
         Conditions::at(
-            Mount::Frame(KeyMount::Pivot),
+            Mount::Frame(self.on_frame.mount),
             self.measuring_point_from_lip_m,
         )
     }
@@ -737,10 +738,7 @@ impl Weighing<'_> {
     /// else as it is.
     fn with_bushings(&self, bound_n_m: f64) -> Result<OnItsFrame, Problem> {
         let mut on_frame = self.on_frame.clone();
-        on_frame.mounted.mechanism = on_frame
-            .mounted
-            .mechanism
-            .with_friction(on_frame.mounted.angle, bound_n_m)?;
+        on_frame.mounted = on_frame.mounted.with_friction(bound_n_m)?;
         Ok(on_frame)
     }
 }
@@ -763,10 +761,10 @@ mod tests {
     use crate::measure::walk::HALVINGS;
     use crate::measure::{TouchweightProtocol, MEASURING_POINT_HALF_INCH};
     use crate::mechanism::{AxisFriction, MassProps};
-    use crate::parts::fixtures::{mass_of, regulated};
+    use crate::parts::fixtures::{mass_of, regulated, Setup};
     use crate::parts::frame::{papers_for, KeyKind};
-    use crate::parts::mounts::on_its_frame;
-    use crate::parts::{KeyAssembly, Lead};
+    use crate::parts::mounts::{on_its_frame, KeyMount};
+    use crate::parts::Lead;
     use crate::solve::statics::RESIDUAL_TOLERANCE;
 
     /// The composite bench's inputs: its mass derived from its volume, its
@@ -781,24 +779,25 @@ mod tests {
     struct Bench {
         on_frame: OnItsFrame,
         jig: KeyJig,
-        a: KeyAssembly,
+        a: Setup,
         friction: AxisFriction,
         mass: Option<MassProps>,
     }
 
     /// `a`'s key, its bushings holding `kf_g` grams at its measuring point
     /// with the key level, of mass `mass`.
-    fn bench_with(a: &KeyAssembly, kf_g: f64, mass: Option<MassProps>) -> Bench {
+    fn bench_with(a: &Setup, kf_g: f64, mass: Option<MassProps>) -> Bench {
         let friction = AxisFriction::of_weight_at(kf_g, a.protocol.measuring_point(&a.key));
         bench_on(a, friction, mass)
     }
 
     /// `a`'s key on bushings of `friction`, of mass `mass`.
-    fn bench_on(a: &KeyAssembly, friction: AxisFriction, mass: Option<MassProps>) -> Bench {
+    fn bench_on(a: &Setup, friction: AxisFriction, mass: Option<MassProps>) -> Bench {
         let balance = papers_for(a.frame.balance_punching.paper);
         let front = papers_for(a.frame.front_punching.paper);
         Bench {
             on_frame: on_its_frame(
+                KeyMount::OnPunching,
                 &a.key,
                 &a.frame,
                 KeyKind::Natural,
@@ -806,7 +805,6 @@ mod tests {
                 &front,
                 mass,
                 friction.bound_n_m,
-                0.0,
             )
             .expect("the key mounts on its frame"),
             jig: KeyJig::new(&a.key, &a.protocol, mass).expect("the key mounts on the jig"),
@@ -817,7 +815,7 @@ mod tests {
     }
 
     /// `a`'s key weighed by its volume model.
-    fn bench(a: &KeyAssembly, kf_g: f64) -> Bench {
+    fn bench(a: &Setup, kf_g: f64) -> Bench {
         bench_with(a, kf_g, mass_of(&a.key))
     }
 
@@ -843,7 +841,8 @@ mod tests {
                 .seating(&[])
                 .seats(&mut Statics::new())
                 .expect("the key seats");
-            (seats.top.q[0], seats.bottom.q[0])
+            let angle = self.on_frame.mounted.angle.0;
+            (seats.top.q[angle], seats.bottom.q[angle])
         }
 
         /// The band by hand at `theta`, the key's own mass and `extra`.
@@ -885,7 +884,7 @@ mod tests {
 
     /// The keys the tests weigh: the regulated bench, the same key with
     /// three times the friction, with none, and leaded back-heavy.
-    fn keys() -> Vec<(&'static str, KeyAssembly, f64)> {
+    fn keys() -> Vec<(&'static str, Setup, f64)> {
         let mut heavy = regulated();
         heavy.key.leads = vec![Lead::at(-0.120, 0.030)];
         vec![
@@ -1312,7 +1311,7 @@ mod tests {
         let cloth = vec![ContactCode::BackRailCloth];
         let punching = vec![ContactCode::FrontRailPunching];
         let d = read(&sheet, ProcedureId::DownWeight);
-        assert_eq!(d.conditions.mount, Mount::Frame(KeyMount::Pivot));
+        assert_eq!(d.conditions.mount, Mount::Frame(KeyMount::OnPunching));
         assert_eq!(d.conditions.held_by, cloth);
         let walked = d.conditions.walk.expect("a walk");
         let (top, bottom) = b.seats();
@@ -1494,7 +1493,7 @@ mod tests {
 
     /// The keys a key friction weight is typed on: heavy in front, heavy
     /// behind, and weighed at the half inch.
-    fn typed_on() -> Vec<(&'static str, KeyAssembly)> {
+    fn typed_on() -> Vec<(&'static str, Setup)> {
         let mut heavy = regulated();
         heavy.key.leads = vec![Lead::at(-0.120, 0.030)];
         let mut half_inch = regulated();
@@ -1578,7 +1577,8 @@ mod tests {
     /// of a gram on the regulated bench, refused with that reading; within
     /// the walk's bracket of it, no friction is the answer; past the search,
     /// refused with the most the search read; not a number, refused; and on
-    /// a frame whose stops fight, the protocol's own refusal.
+    /// a frame whose stops fight, the protocol's own refusal: the key rides
+    /// on its two stops and has no stroke for the protocol to walk.
     #[test]
     fn a_key_friction_weight_no_bushings_read_is_refused() {
         let a = regulated();
@@ -1616,14 +1616,11 @@ mod tests {
         let refused = bench(&wedged, 6.0)
             .weighing()
             .bushings_reading(&mut Statics::new(), 6.0);
-        assert!(
-            matches!(
-                refused,
-                Err(BushingsRefusal::Procedure(Refused::Seat(
-                    SeatRefusal::CannotSeat { .. }
-                )))
-            ),
-            "{refused:?}"
+        assert_eq!(
+            refused,
+            Err(BushingsRefusal::Procedure(Refused::Walk(
+                WalkRefusal::NoTravel
+            )))
         );
     }
 }

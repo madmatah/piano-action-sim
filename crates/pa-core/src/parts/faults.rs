@@ -22,13 +22,13 @@
 //! top against the front mortise, a punching's top against the key's
 //! underside, the cloth's face against the chamfer and the end of the key. It
 //! reads them at the nominal pose, the key level with its frame's origin over
-//! the balance pin, where a length along the key and a length along the keybed
-//! are the same number: none of them depends on where the key has come to
-//! rest.
+//! its row's balance pin, where the balance punching is drawn: a length along
+//! the key, carried along by where that pin stands, is a length along the
+//! keybed. None of them depends on where the key has come to rest.
 
 use super::frame::FrameRanges;
 use super::key::KeyRanges;
-use crate::contact::{Part, PartCode, SurfaceRef};
+use crate::contact::{Part, PartCode, SurfaceRef, Sweep};
 use crate::geometry::Seg;
 
 /// A way the frame and the key do not go together.
@@ -72,12 +72,13 @@ pub enum Fault {
     },
 }
 
-/// The least and the greatest `x` a range's segments reach, over their ends.
-fn span(range: &SurfaceRef, parts: &[Part]) -> (f64, f64) {
+/// The least and the greatest `x` a range's segments reach, over their ends,
+/// carried `along` the keybed.
+fn span(range: &SurfaceRef, parts: &[Part], along: f64) -> (f64, f64) {
     range
         .segs(parts)
         .iter()
-        .flat_map(|s| [s.start().x, s.end().x])
+        .flat_map(|s| [s.start().x + along, s.end().x + along])
         .fold((f64::MAX, f64::MIN), |(lo, hi), x| (lo.min(x), hi.max(x)))
 }
 
@@ -94,19 +95,25 @@ fn span(range: &SurfaceRef, parts: &[Part]) -> (f64, f64) {
 /// When `parts` is not the list `key` and `frame` were built into.
 pub fn faults(parts: &[Part], key: &KeyRanges, frame: &FrameRanges) -> Vec<Fault> {
     let mut out = Vec::new();
+    // Where the key's frame stands along the keybed: over its row's balance
+    // pin, the axis its balance punching is turned about.
+    let pin = match parts[frame.balance_rail_punching.index()].sweep {
+        Sweep::Revolved { axis_x } => axis_x,
+        Sweep::Extruded { .. } => 0.0,
+    };
     let chamfer = key.underside[0].segs(parts)[0];
-    let (tail_end, flat_from) = (chamfer.start().x, chamfer.end().x);
-    let (_, flat_to) = span(&key.underside[1], parts);
+    let (tail_end, flat_from) = (chamfer.start().x + pin, chamfer.end().x + pin);
+    let (_, flat_to) = span(&key.underside[1], parts, pin);
 
     // The pin has to stand within the slot cut for it, with its own length
     // inside: a pin whose end is past the end of the mortise is bearing on
     // wood, not running in a slot.
     if let Some(pin_top) = &frame.front_pin_top {
-        let (pin_back, pin_front) = span(pin_top, parts);
+        let (pin_back, pin_front) = span(pin_top, parts, 0.0);
         let (mortise_back, mortise_front) = parts[key.front_mortise.index()]
             .outline
             .iter()
-            .flat_map(|s| [s.start().x, s.end().x])
+            .flat_map(|s| [s.start().x + pin, s.end().x + pin])
             .fold((f64::MAX, f64::MIN), |(lo, hi), x| (lo.min(x), hi.max(x)));
         let past = (mortise_back - pin_back).max(pin_front - mortise_front);
         if past > 0.0 {
@@ -119,7 +126,7 @@ pub fn faults(parts: &[Part], key: &KeyRanges, frame: &FrameRanges) -> Vec<Fault
         (PartCode::BalanceRailPunching, &frame.balance_bearing),
         (PartCode::FrontRailPunching, &frame.front_bearing),
     ] {
-        let (back, front) = span(top, parts);
+        let (back, front) = span(top, parts, 0.0);
         let past = (flat_from - back).max(front - flat_to);
         if past > 0.0 {
             out.push(Fault::PunchingOffTheUnderside { rail, by: past });

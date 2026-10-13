@@ -181,21 +181,6 @@ impl Seg {
     }
 }
 
-/// The effective bearing of a key.
-///
-/// A key does not pivot on its balance rail pin: it pivots on the *bearing
-/// surface of the punching*, and where that bearing sits is adjustable. Stanwood
-/// documents cutting the front half of the balance rail punching away to shift
-/// the effective bearing point behind the pin, which drops the action ratio by
-/// 0.3 to 0.4 — a deliberate, reversible regulation action. Modelling the pivot
-/// as the pin would make that whole technique inexpressible.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct KeyBearing {
-    /// Offset of the effective bearing point from the balance rail pin, metres.
-    /// Positive towards the back of the key.
-    pub offset_from_pin: f64,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

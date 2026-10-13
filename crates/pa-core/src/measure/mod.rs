@@ -163,8 +163,9 @@ pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
 /// property of the wood: the same key read 13 mm or 1/2 inch back from its lip
 /// is the same key, and every touchweight read on it changes by the lever. So
 /// it stays out of [`KeyDesign`], which the outline and the mass are built
-/// from, and the assembly being weighed holds it once
-/// ([`crate::parts::KeyAssembly::protocol`]). Every protocol reads the
+/// from, and is held once beside the key and its frame by whatever weighs
+/// them: the bench, and the regulation solve
+/// ([`crate::regulation::Regulating::protocol`]). Every protocol reads the
 /// measuring point through [`Self::measuring_point`] — front weight and the
 /// key weight ratio on the jig, the press that seats the key at the bottom of
 /// its stroke, the weight the walks put on it for D and U and for both key

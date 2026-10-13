@@ -52,6 +52,25 @@ impl SolveReport {
         residual: 0.0,
     };
 
+    /// This increment's report, the increment then going on from where it
+    /// stopped as `then` reports: one increment, its steps and sweeps added
+    /// up, and how it ended, `then`'s.
+    pub fn continued(self, then: Self) -> Self {
+        let iterations = self.iterations + then.iterations;
+        Self {
+            increments: self.increments.max(then.increments),
+            iterations,
+            most_iterations: iterations,
+            rejected: self.rejected + then.rejected,
+            anchors: self.anchors + then.anchors,
+            sweeps: self.sweeps + then.sweeps,
+            exact_passes: self.exact_passes + then.exact_passes,
+            converged: then.converged,
+            exact: self.exact && then.exact,
+            residual: then.residual,
+        }
+    }
+
     /// This report and `other` together, as one procedure's.
     pub fn and(self, other: Self) -> Self {
         Self {

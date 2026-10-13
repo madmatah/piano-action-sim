@@ -533,11 +533,12 @@ for (const [via, contact] of [
   console.log(`  ok  friction holds it: ${middle} g leaves the key on its ${contact}`)
 }
 
-// On a frame whose stops fight the key cannot be seated, so Stanwood's protocol
-// cannot be run and no bushings can be found for a key friction weight typed
-// there: it is refused with the frame's fault, and the slider goes back to what
-// the bushings read, although no sheet can be read to say so. The balance rail
-// 6.6 mm low leaves the key riding on its front punching and its back cloth.
+// On a frame whose stops fight the key rides on them, off its balance punching:
+// the balance rail 6.6 mm low leaves the key on its front stop and its back
+// cloth. The view marks it bearing on those two and not on its balance
+// punching, the page says it rides, naming the stops and the lift, the key
+// height is read and the dip is nothing, and every weight that needs a stroke
+// is refused with that reason: the key has no stroke between two seats.
 const heldRead = await measured()
 const balanceRail = await evaluate(`
   [...document.querySelectorAll('label.slider')]
@@ -546,6 +547,43 @@ const balanceRail = await evaluate(`
 if (balanceRail === null) fail('balance rail slider missing')
 if ((await moveSlider('balance rail', 20)) !== 'ok') fail('balance rail slider missing')
 await settle()
+const riding = await evaluate(`document.querySelector('.riding')?.textContent ?? null`)
+if (
+  riding === null ||
+  !/rides on .*back rail cloth/.test(riding) ||
+  !/mm above its balance punching/.test(riding)
+) {
+  fail(`the key riding on its stops is not said: ${riding}`)
+}
+const ridingOn = await touching()
+if (
+  ridingOn === null ||
+  !ridingOn.includes('back_rail_cloth') ||
+  ridingOn.includes('balance_rail_punching')
+) {
+  fail(`the view marks the riding key bearing on ${ridingOn}`)
+}
+const ridingRead = await measured()
+if (!Number.isFinite(ridingRead.key_height?.exact) || ridingRead.key_dip?.exact !== 0) {
+  fail(
+    `the riding key's height and dip: ${JSON.stringify([ridingRead.key_height, ridingRead.key_dip])}`,
+  )
+}
+const noStroke = await evaluate(`
+  (() => {
+    const row = document.querySelector('[data-procedure="down_weight"]')
+    return row ? { refused: row.classList.contains('refused'), why: row.title } : null
+  })()
+`)
+if (!noStroke?.refused || !/rides on/.test(noStroke.why) || !/no stroke/.test(noStroke.why)) {
+  fail(`the riding key's down weight is not refused with why: ${JSON.stringify(noStroke)}`)
+}
+console.log(`  ok  rides on ${ridingOn.join(', ')}: ${riding}`)
+
+// Stanwood's protocol then has no stroke to walk, so no bushings can be found
+// for a key friction weight typed there: it is refused with that reason, and
+// the slider goes back to what the bushings read, although the sheet cannot
+// read them to say so.
 if ((await moveSlider('key friction weight', 9)) !== 'ok') fail('friction slider missing')
 await settle()
 const faultRefusal = await evaluate(

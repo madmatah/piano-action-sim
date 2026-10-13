@@ -31,7 +31,8 @@ has no record or disagrees with it.
 | key friction weight 6 g | the bushings' friction, a torque: 6 g at the measuring point with the key level, which Stanwood's protocol reads as 6.35 g on the key at rest; D, U, BW, F and both key friction weights | assumed, of the order the trade measures |
 | felt washers 1.5 and 2.0 mm (balance, front), back rail cloth 3.0 mm | key height, key dip | assumed |
 | front mortise depth 22 mm | the mortise stop | 3 mm of recess and 19 mm of mortise, written only in a note of `key-frame-sections.json` |
-| balance crown height 6 mm, balance pin 11.2 mm proud | the drawing | assumed |
+| balance crown height 6 mm | the drawing | assumed |
+| balance pin 11.2 mm proud | the drawing, and where the key leaves its pin: 9 mm above the regulated punching, past which a pull or the key's stops take it off its frame, and the most paper the regulation lays under the balance punching | assumed, waiting on the balance mortise |
 | the stops' rounded edges, 0.5 mm in radius | where the punchings and the cloth meet the key, and the cloth's drawn edges | assumed: a shape, not a setting; the dip does not move with it by more than 5 µm when it is doubled |
 | back rail 24 mm along the key | where the tail bears on its cloth | assumed, to be measured |
 | the capstan's proportions, in steel at 7850 kg/m³ | the key's mass | proportions scaled from a photograph, material assumed |

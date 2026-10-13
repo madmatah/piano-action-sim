@@ -166,6 +166,9 @@ fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
             Err(why) => println!("  {name:<22}refused: {}", bench.why_refused(why)),
         }
     }
+    if let Some(rides) = bench.why_it_rides() {
+        println!("  {rides}");
+    }
     match bench.readout() {
         Some(r) => {
             println!("  {:<22}{:>8.2} g", "key mass", r.key_mass_g);
@@ -173,7 +176,7 @@ fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
         }
         None => println!(
             "  the key cannot be seated: {}",
-            bench.frame_fault().unwrap_or("")
+            bench.frame_fault().unwrap_or_default()
         ),
     }
 }

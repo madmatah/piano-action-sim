@@ -51,8 +51,11 @@
 //!
 //! The window is the stroke between the two seats while the action has no
 //! let-off button, which the key alone has not. The key has reached the other
-//! seat when a contact that holds it there is closed, within
-//! [`TOUCHING`] of touching.
+//! seat when a stop that holds it there is closed, within [`TOUCHING`] of
+//! touching. A key riding on its two outer stops, off its balance punching,
+//! has both closed at either seat: its seats are one, it has no stroke, and
+//! the walk is refused ([`WalkRefusal::NoTravel`]), whatever rounding leaves
+//! between the two solves that seat it.
 
 use crate::contact::{ContactCode, Rows, ROW_MARGIN};
 use crate::geometry::Point;
@@ -126,7 +129,8 @@ pub struct Breakaway {
 /// Why a walk cannot be taken to its end.
 #[derive(Debug, Clone, PartialEq)]
 pub enum WalkRefusal {
-    /// The two seats are one: the key has no stroke between them.
+    /// The two seats are one: the key has no stroke between them, as a key
+    /// riding on its two outer stops has none.
     NoTravel,
     /// A weight on the measuring point does not turn the key at its seat.
     NoLever,
@@ -140,6 +144,11 @@ pub enum WalkRefusal {
         /// key leans on a limit.
         on: Vec<ContactCode>,
     },
+    /// A weight the walk put on the measuring point lifts the key off its
+    /// frame: past where it leaves its balance pin
+    /// ([`Mounted::leaves_its_pin`](crate::parts::mounts::Mounted::leaves_its_pin)),
+    /// with nothing modelled to stop it.
+    LiftsOffItsFrame,
     /// An increment reached the static solve's cap first.
     NotConverged {
         /// Steps taken.
@@ -178,6 +187,12 @@ impl Seating<'_> {
             Stroke::Down => (&seats.top, &seats.bottom, step_g),
             Stroke::Up => (&seats.bottom, &seats.top, -step_g),
         };
+        // A key riding on its stops has no stroke: its seats are one pose,
+        // to what rounding leaves between the two solves, and a walk from
+        // one would read that rounding as a stroke.
+        if seats.top.rides() || seats.bottom.rides() {
+            return Err(WalkRefusal::NoTravel);
+        }
         let ends: Vec<u16> = end
             .held_by
             .iter()
@@ -198,9 +213,10 @@ impl Seating<'_> {
         let mut increment = |statics: &mut Statics, from: &[f64], grams: f64| {
             let mut loads = self.standing.to_vec();
             loads.push(self.weight(grams));
-            let eq = statics
-                .solve(m, from, &loads, &[], Friction::On)
-                .map_err(|r| refused(m, r))?;
+            let eq = self
+                .mounted
+                .solve(statics, from, &loads, Friction::On)
+                .map_err(|r| refused(self.mounted, r))?;
             report = report.and(eq.report);
             Ok::<_, WalkRefusal>(eq.q)
         };
@@ -265,8 +281,9 @@ impl Seating<'_> {
     /// seat's stop carries nothing.
     ///
     /// One linear equation, the generalized force being linear in the
-    /// weight at a fixed pose: exact while the key's angle is its one free
-    /// coordinate, as on [`crate::parts::mounts::KeyMount::Pivot`].
+    /// weight at a fixed pose: exact while the key's angle is the one
+    /// coordinate it moves by, on a pivot or on its balance punching, which
+    /// carries it at both seats wherever a walk is taken.
     fn frictionless_balance(&self, seat: &Seat) -> Result<f64, WalkRefusal> {
         let m = &self.mounted.mechanism;
         let pose = m.pose(&seat.q);
@@ -289,7 +306,11 @@ impl Seating<'_> {
 }
 
 /// A static solve's refusal, as the walk's.
-fn refused(m: &crate::mechanism::Mechanism, refusal: Refusal) -> WalkRefusal {
+fn refused(mounted: &crate::parts::mounts::Mounted, refusal: Refusal) -> WalkRefusal {
+    if mounted.lifts_off_its_frame(&refusal) {
+        return WalkRefusal::LiftsOffItsFrame;
+    }
+    let m = &mounted.mechanism;
     match refusal {
         Refusal::Mechanism(p) => WalkRefusal::Mechanism(p),
         Refusal::NotConverged {

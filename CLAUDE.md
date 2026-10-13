@@ -34,14 +34,13 @@ trade's own protocols, and come back with the expected values.**
 1. **One part definition feeds contacts and drawing**: both are built in Rust
    from the same fields and exported, and the browser only renders them,
    applying each body's pose as given. The drawn parts declare the ranges a
-   contact may read, and a contact pair holds those ranges and nothing else.
-   The static solve places the key on those contacts, and every procedure
-   of the sheet and the regulation solve read the key placed there; the
-   drawing of a frame whose stops fight reads stops of its own, held to the
-   drawn ranges by a test until it leaves (planned, FOUNDATIONS §7.1).
-   Check:
+   contact may read, and a contact pair holds those ranges and nothing else,
+   so nothing a contact reads can drift from the drawing: the invariant holds
+   by structure. The static solve places the key on those contacts, and every
+   procedure of the sheet, the regulation solve and the drawing read the key
+   placed there. Check:
    `every_contact_surface_is_a_range_of_a_drawn_part`,
-   `every_stop_face_is_a_declared_range_of_a_drawn_part`.
+   `every_contact_lies_on_its_drawn_outline`.
 2. **Regulation is trade targets solved to geometry; the coordinate is
    normative**, the target kept beside it with its achieved value. Check:
    `the_regulated_key_meets_its_targets_then_lands_within_one_paper`.

@@ -491,6 +491,12 @@ export function App() {
             settings stay reachable.
           </p>
         )}
+        {!state.stale && state.scene.riding && (
+          <p className="riding degenerate">
+            The stops fight: {state.scene.riding} The key is drawn riding on them; what needs no
+            stroke is read below, and the weights that need one are refused.
+          </p>
+        )}
         {r === null ? (
           <p className="degenerate">Nothing has been weighed yet.</p>
         ) : (
@@ -916,10 +922,18 @@ export function App() {
               </div>
             </div>
             <p className="note">
-              The front punching is read at its centre: a felt washer under a key landing level
-              carries the load over its whole face, and the bench takes it at the middle. The
-              contacts marked on the view are where the key bears, and what stands within a
-              millimetre of it.
+              The punchings are read at their centre: a felt washer under a key carries the load
+              over its whole face, and the bench takes it at the middle, under the balance pin for
+              the balance punching. A key standing out of level on one overlaps the drawn felt's
+              edge by what the felt would compress
+              {state.scene.edge_overlaps.length === 0
+                ? ''
+                : `, here ${state.scene.edge_overlaps
+                    .map((o) => `${fixed(o.mm, 2)} mm at the ${o.pair.replaceAll('_', ' ')}`)
+                    .join(' and ')}`}
+              . The key is free to lift off its balance punching: where its stops fight it rides on
+              them, and a pull its punching cannot answer lifts it off. The contacts marked on the
+              view are where the key bears, and what stands within a millimetre of it.
             </p>
             <p className="note">
               There is no “press the key” control. The key is only ever where the physics puts it —
