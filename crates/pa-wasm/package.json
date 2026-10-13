@@ -2,13 +2,14 @@
   "name": "@pas/wasm",
   "version": "0.0.0",
   "private": true,
-  "description": "Wraps the pa-wasm crate so Turborepo drives wasm-pack as an ordinary workspace package. No experimental Cargo flag required. The entry points target pkg/, which wasm-pack generates and .gitignore excludes: it is a build artefact and must never be committed, or the committed copy and the built one will drift.",
+  "description": "Wraps the pa-wasm crate so Turborepo drives wasm-pack as an ordinary workspace package. No experimental Cargo flag required. The entry points target pkg/, which wasm-pack generates and .gitignore excludes: it is a build artefact and must never be committed, or the committed copy and the built one will drift. The boundary's TypeScript types are exported from types/, which pa-app's tests generate from the Rust types and which is committed, never edited by hand.",
   "scripts": {
     "build": "wasm-pack build --target web --out-dir pkg",
     "test": "node --test tests/golden.test.mjs"
   },
   "files": [
-    "pkg"
+    "pkg",
+    "types"
   ],
   "type": "module",
   "main": "pkg/pa_wasm.js",
@@ -17,6 +18,9 @@
     ".": {
       "types": "./pkg/pa_wasm.d.ts",
       "default": "./pkg/pa_wasm.js"
+    },
+    "./types": {
+      "types": "./types/index.ts"
     }
   }
 }

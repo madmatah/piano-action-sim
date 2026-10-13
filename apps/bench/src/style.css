@@ -268,3 +268,11 @@ button:hover {
 .replace {
   margin-top: 0.6rem;
 }
+
+/* The value in full beside a reading on a control, as the sheet shows it. */
+.slider small {
+  margin-left: 0.3rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}

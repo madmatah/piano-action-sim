@@ -251,27 +251,44 @@ for (const label of [
   if (!start[label]) fail(`the sheet has no row "${label}"`)
 }
 
-// The friction slider shows what Stanwood's protocol reads the bushings as, in
-// full, from the sheet: at boot, after a weight is typed or refused, and after
-// anything that changes what the same bushings read. It is the key friction
-// weight the owner types, so a number there the sheet does not read is a
-// setting the model does not hold.
-const frictionShown = () =>
+// The friction control shows what Stanwood's protocol reads the bushings as,
+// the sheet's own reading: as the trade reads it and in full, at boot, after a
+// weight is typed or refused, and after anything that changes what the same
+// bushings read. It is the key friction weight the owner types, so a number
+// there the sheet does not read is a setting the model does not hold. Where
+// the protocol cannot be read it shows no number, says why by the refusal's
+// code, and cannot be moved.
+const frictionControl = () =>
   evaluate(`
-    [...document.querySelectorAll('label.slider')]
-      .find((x) => x.textContent.includes('key friction weight'))
-      ?.querySelector('b')?.textContent ?? null
+    (() => {
+      const l = document.querySelector('label.slider.friction')
+      if (!l) return null
+      const number = (v) => (v === undefined ? null : Number(v))
+      return {
+        shown: number(l.dataset.shown),
+        exact: number(l.dataset.exact),
+        refusal: l.dataset.refusal ?? null,
+        disabled: l.querySelector('input').disabled,
+        text: l.querySelector('span')?.textContent ?? '',
+      }
+    })()
   `)
-const expectFrictionShown = async (what, exact) => {
-  const shown = await frictionShown()
-  if (!Number.isFinite(exact) || shown !== `${exact.toFixed(2)} g`) {
+const expectFrictionShown = async (what, reading) => {
+  const c = await frictionControl()
+  if (
+    !c ||
+    !Number.isFinite(reading?.exact) ||
+    c.shown !== reading.shown ||
+    c.exact !== reading.exact ||
+    c.disabled
+  ) {
     fail(
-      `${what}: the friction slider shows ${shown}, not the ${exact} g Stanwood's protocol reads`,
+      `${what}: the friction control shows ${JSON.stringify(c)}, not the reading ${JSON.stringify(reading)} of Stanwood's protocol`,
     )
   }
-  console.log(`  ok  the friction slider shows the sheet's reading, ${what}: ${shown}`)
+  console.log(`  ok  the friction control shows the sheet's reading, ${what}: ${c.text}`)
 }
-await expectFrictionShown('at boot', startRead.key_friction_weight_zeroed_on_the_jig?.exact)
+await expectFrictionShown('at boot', startRead.key_friction_weight_zeroed_on_the_jig)
 
 // The non-confusion test, run through the whole chain rather than in a unit
 // test: more friction must widen the band and leave its centre alone. D is
@@ -290,9 +307,9 @@ expectWithin('friction slider', startRead, moreFrictionRead, 'balance_weight', 0
 // The key friction weight is typed as Stanwood's protocol reads it, and reads
 // back as typed: the engine sets the bushings to the torque at which the
 // protocol, run on the model, reads the typed grams in full, to the walk's
-// resolution, half a bracket of 1/65 536 g. The value in full crosses the
-// boundary narrowed to f32, half a unit in its last place under a millionth of
-// a gram at 14 g; so it stands within 1e-5 g of 14, and 14 g shows as 14 g.
+// resolution, half a bracket of 1/65 536 g, under 8e-6 g. The value in full
+// crosses the boundary in full; so it stands within 1e-5 g of 14, and 14 g
+// shows as 14 g.
 const typedBack = moreFrictionRead.key_friction_weight_zeroed_on_the_jig
 if (typedBack?.shown !== 14 || !(Math.abs(typedBack.exact - 14) <= 1e-5)) {
   fail(
@@ -300,7 +317,7 @@ if (typedBack?.shown !== 14 || !(Math.abs(typedBack.exact - 14) <= 1e-5)) {
   )
 }
 console.log(`  ok  typed back: 14 g reads ${typedBack.exact} g, shown ${typedBack.shown} g`)
-await expectFrictionShown('14 g typed', typedBack.exact)
+await expectFrictionShown('14 g typed', typedBack)
 
 // A key friction weight no bushings read is refused with its reason, and the
 // bushings stay as they were: with no friction at all this key reads about a
@@ -308,12 +325,22 @@ await expectFrictionShown('14 g typed', typedBack.exact)
 // own balance and the temporary weight's, so 0 g is out of reach.
 if ((await moveSlider('key friction weight', 0)) !== 'ok') fail('friction slider missing')
 await settle()
-const frictionRefused = await evaluate(
-  `document.querySelector('.friction-refused')?.textContent ?? null`,
-)
-if (frictionRefused === null || !/no friction at all/.test(frictionRefused)) {
-  fail(`0 g of key friction weight was not refused with its reason: ${frictionRefused}`)
+// The engine refuses in codes and the page words them: the refusal's code is
+// on the message, and the message says something.
+const refusalShown = (selector) =>
+  evaluate(`
+    (() => {
+      const p = document.querySelector(${JSON.stringify(selector)})
+      return p ? { code: p.dataset.code ?? null, why: p.dataset.why ?? null, text: p.textContent } : null
+    })()
+  `)
+const frictionRefusal = await refusalShown('.friction-refused')
+if (frictionRefusal?.code !== 'under_no_friction' || !frictionRefusal.text) {
+  fail(
+    `0 g of key friction weight was not refused with its reason: ${JSON.stringify(frictionRefusal)}`,
+  )
 }
+const frictionRefused = frictionRefusal.text
 const keptRead = await measured()
 for (const key of ['key_friction_weight_zeroed_on_the_jig', 'friction_weight']) {
   if (keptRead[key]?.exact !== moreFrictionRead[key]?.exact) {
@@ -321,15 +348,15 @@ for (const key of ['key_friction_weight_zeroed_on_the_jig', 'friction_weight']) 
   }
 }
 console.log(`  ok  refused: ${frictionRefused}`)
-await expectFrictionShown('0 g refused', keptRead.key_friction_weight_zeroed_on_the_jig?.exact)
+await expectFrictionShown('0 g refused', keptRead.key_friction_weight_zeroed_on_the_jig)
 
 // The key's weighing must reach the engine: the key re-weighed whole, its
 // mass as the fields hold it and its front weight typed a gram heavier, read
 // where the sheet reads it. The sheet's front weight then reads what was
-// typed, to the f32 the boundary narrows it to, under a millionth of a gram
-// at 8 g; and the gram moves the balance weight and not the friction weight:
-// the measuring point's arm differs between the two seats by under one per
-// cent, so the friction weight in full moves by under 1 g × 1 % / 2, well
+// typed, to the round-off of turning it into a static moment and back, far
+// under 1e-5 g; and the gram moves the balance weight and not the friction
+// weight: the measuring point's arm differs between the two seats by under one
+// per cent, so the friction weight in full moves by under 1 g × 1 % / 2, well
 // within 0.05 g.
 const typedFront = Number(await fieldValue('front weight'))
 if (!Number.isFinite(typedFront)) fail('no front weight in the weighing fields')
@@ -426,7 +453,16 @@ const regulation = () =>
   evaluate(`
     (() => {
       const p = document.querySelector('.regulated')
-      return p ? { laid: p.classList.contains('note'), text: p.textContent } : null
+      return p
+        ? {
+            laid: p.classList.contains('note'),
+            outcome: p.dataset.outcome ?? null,
+            code: p.dataset.code ?? null,
+            limitedBy: p.dataset.limitedBy ?? null,
+            shortfallMm: p.dataset.shortfallMm === undefined ? null : Number(p.dataset.shortfallMm),
+            text: p.textContent,
+          }
+        : null
     })()
   `)
 if ((await setField('key dip', 12)) !== 'ok') fail('no key dip target')
@@ -437,8 +473,11 @@ const refused = await regulation()
 if (
   !refused ||
   refused.laid ||
-  !/mortise/.test(refused.text) ||
-  !/\d\.\d\d mm/.test(refused.text)
+  refused.outcome !== 'refused' ||
+  refused.code !== 'regulation_infeasible' ||
+  refused.limitedBy !== 'front_pin_in_mortise' ||
+  !(refused.shortfallMm > 0.7 && refused.shortfallMm < 0.9) ||
+  !refused.text
 ) {
   fail(`a 12 mm dip was not refused with its shortfall: ${JSON.stringify(refused)}`)
 }
@@ -452,7 +491,9 @@ await settle()
 if ((await clickButton('regulate to these targets')) !== 'ok') fail('no regulate button')
 await settle()
 const laid = await regulation()
-if (!laid?.laid) fail(`a 10.6 mm dip was not laid: ${JSON.stringify(laid)}`)
+if (!laid?.laid || laid.outcome !== 'laid') {
+  fail(`a 10.6 mm dip was not laid: ${JSON.stringify(laid)}`)
+}
 const regulated = await sheet()
 expectChanged('a regulation laid', afterRefusal, regulated, 'key dip')
 console.log(`  ok  regulation laid: ${laid.text}`)
@@ -475,10 +516,16 @@ if (heightTyped === null || heightTyped === '') fail('no key height target to em
 if ((await setField('key height', '')) !== 'ok') fail('no key height target')
 await settle()
 if ((await regulateDisabled()) !== true) fail('an empty key height can still be sent')
-const needs = await evaluate(`document.querySelector('.needs-number')?.textContent ?? null`)
-if (needs === null || !/key height needs a number/.test(needs)) {
-  fail(`the page does not say the key height needs a number: ${needs}`)
+const needsShown = await evaluate(`
+  (() => {
+    const p = document.querySelector('.needs-number')
+    return p ? { needs: p.dataset.needs, text: p.textContent } : null
+  })()
+`)
+if (needsShown?.needs !== 'key_height' || !needsShown.text) {
+  fail(`the page does not say the key height needs a number: ${JSON.stringify(needsShown)}`)
 }
+const needs = needsShown.text
 await clickButton('regulate to these targets')
 await settle()
 if (JSON.stringify(await regulation()) !== JSON.stringify(laid)) {
@@ -510,7 +557,7 @@ expectUnchanged('measuring point', regulated, remeasured, 'key height')
 expectUnchanged('measuring point', regulated, remeasured, 'key dip')
 await expectFrictionShown(
   'the measuring point moved',
-  remeasuredRead.key_friction_weight_zeroed_on_the_jig?.exact,
+  remeasuredRead.key_friction_weight_zeroed_on_the_jig,
 )
 
 // The contacts the engine reads off the drawn parts reach the view: a weight
@@ -545,7 +592,9 @@ const verdict = () =>
   evaluate(`
     (() => {
       const v = document.querySelector('.verdict')
-      return v ? { held: v.classList.contains('verdict-held'), text: v.textContent } : null
+      return v
+        ? { held: v.classList.contains('verdict-held'), code: v.dataset.verdict, text: v.textContent }
+        : null
     })()
   `)
 const middle = Math.round(2 * (await measured()).balance_weight?.exact) / 2
@@ -567,7 +616,7 @@ for (const [via, contact] of [
     fail(`${middle} g, between U and D, moved the key off its ${contact}: it bears on ${bears}`)
   }
   const said = await verdict()
-  if (!said?.held) {
+  if (!said?.held || said.code !== 'held_by_friction') {
     fail(`with ${middle} g, between U and D, the bench says: ${said?.text ?? 'nothing'}`)
   }
   console.log(`  ok  friction holds it: ${middle} g leaves the key on its ${contact}`)
@@ -576,9 +625,9 @@ for (const [via, contact] of [
 // On a frame whose stops fight the key rides on them, off its balance punching:
 // the balance rail 6.6 mm low leaves the key on its front stop and its back
 // cloth. The view marks it bearing on those two and not on its balance
-// punching, the page says it rides, naming the stops and the lift, the key
-// height is read and the dip is nothing, and every weight that needs a stroke
-// is refused with that reason: the key has no stroke between two seats.
+// punching, the page says it rides, naming the front stop and the lift, the
+// key height is read and the dip is nothing, and every weight that needs a
+// stroke is refused with that reason: the key has no stroke between two seats.
 const heldRead = await measured()
 const balanceRail = await evaluate(`
   [...document.querySelectorAll('label.slider')]
@@ -587,14 +636,20 @@ const balanceRail = await evaluate(`
 if (balanceRail === null) fail('balance rail slider missing')
 if ((await moveSlider('balance rail', 20)) !== 'ok') fail('balance rail slider missing')
 await settle()
-const riding = await evaluate(`document.querySelector('.riding')?.textContent ?? null`)
+const ridingShown = await evaluate(`
+  (() => {
+    const p = document.querySelector('.riding')
+    return p ? { front: p.dataset.front, liftMm: Number(p.dataset.liftMm), text: p.textContent } : null
+  })()
+`)
 if (
-  riding === null ||
-  !/rides on .*back rail cloth/.test(riding) ||
-  !/mm above its balance punching/.test(riding)
+  ridingShown?.front !== 'front_rail_punching' ||
+  !(ridingShown.liftMm > 0) ||
+  !ridingShown.text
 ) {
-  fail(`the key riding on its stops is not said: ${riding}`)
+  fail(`the key riding on its stops is not said: ${JSON.stringify(ridingShown)}`)
 }
+const riding = ridingShown.text
 const ridingOn = await touching()
 if (
   ridingOn === null ||
@@ -612,42 +667,55 @@ if (!Number.isFinite(ridingRead.key_height?.exact) || ridingRead.key_dip?.exact 
 const noStroke = await evaluate(`
   (() => {
     const row = document.querySelector('[data-procedure="down_weight"]')
-    return row ? { refused: row.classList.contains('refused'), why: row.title } : null
+    return row
+      ? {
+          refused: row.classList.contains('refused'),
+          code: row.dataset.refusal,
+          riding: row.dataset.riding,
+          why: row.title,
+        }
+      : null
   })()
 `)
-if (!noStroke?.refused || !/rides on/.test(noStroke.why) || !/no stroke/.test(noStroke.why)) {
+if (
+  !noStroke?.refused ||
+  noStroke.code !== 'no_travel' ||
+  noStroke.riding !== ridingShown.front ||
+  !noStroke.why
+) {
   fail(`the riding key's down weight is not refused with why: ${JSON.stringify(noStroke)}`)
 }
 console.log(`  ok  rides on ${ridingOn.join(', ')}: ${riding}`)
 
-// Stanwood's protocol then has no stroke to walk, so no bushings can be found
-// for a key friction weight typed there: it is refused with that reason, and
-// the slider goes back to what the bushings read, although the sheet cannot
-// read them to say so.
-if ((await moveSlider('key friction weight', 9)) !== 'ok') fail('friction slider missing')
-await settle()
-const faultRefusal = await evaluate(
-  `document.querySelector('.friction-refused')?.textContent ?? null`,
-)
-if (faultRefusal === null || !/cannot read a key friction weight/.test(faultRefusal)) {
-  fail(`9 g typed on a frame whose stops fight was not refused with why: ${faultRefusal}`)
+// Stanwood's protocol then has no stroke to walk, so the bushings have no key
+// friction weight to show and none can be set: the control shows none, says
+// why with the sheet's refusal, and cannot be moved, rather than show a
+// number the sheet read on another frame.
+const faultControl = await frictionControl()
+if (
+  faultControl?.shown !== null ||
+  faultControl.refusal !== 'no_travel' ||
+  !faultControl.disabled
+) {
+  fail(`the friction control on a frame whose stops fight: ${JSON.stringify(faultControl)}`)
 }
-await expectFrictionShown(
-  '9 g refused on a frame whose stops fight',
-  heldRead.key_friction_weight_zeroed_on_the_jig?.exact,
-)
-console.log(`  ok  refused on a frame whose stops fight: ${faultRefusal}`)
+console.log(`  ok  no key friction weight on a frame whose stops fight: ${faultControl.text}`)
 if ((await moveSlider('balance rail', balanceRail)) !== 'ok') fail('balance rail slider missing')
 await settle()
 // Put back by its slider in millimetres, the rail may stand a last bit away
-// from where it stood, so the readings are held to a thousandth of a gram: 9 g
-// set in silence would move them by grams.
+// from where it stood, so the readings are held to a thousandth of a gram:
+// bushings changed in silence would move them by grams. The control reads
+// the bushings again, as the sheet does.
 const backOnItsRail = await measured()
 for (const key of ['key_friction_weight_zeroed_on_the_jig', 'friction_weight']) {
   if (!(Math.abs(backOnItsRail[key]?.exact - heldRead[key]?.exact) <= 1e-3)) {
     fail(`the balance rail put back, ${key} reads ${JSON.stringify(backOnItsRail[key])}`)
   }
 }
+await expectFrictionShown(
+  'the balance rail put back',
+  backOnItsRail.key_friction_weight_zeroed_on_the_jig,
+)
 
 // The section draws every part flat, each in its own body's frame, a cut as a
 // void in the key's wood. It is a different drawing from the solid's, and a

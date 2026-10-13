@@ -323,11 +323,10 @@ fn write_readout(out: &mut String, bench: &KeyBench) {
 }
 
 fn write_frame(out: &mut String, bench: &KeyBench) {
-    line(
-        out,
-        "frame_fault",
-        bench.frame_fault().as_deref().unwrap_or("none"),
-    );
+    match bench.frame_fault() {
+        Some(why) => line(out, "frame_fault", &format!("{why:?}")),
+        None => line(out, "frame_fault", "none"),
+    }
     // Where the key rides on its stops, seated: written only there, so that
     // a sheet whose key bears on its punching reads as it did.
     if let Some(Riding { front, lift }) = bench.riding() {

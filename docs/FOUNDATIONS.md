@@ -643,23 +643,31 @@ back from the front lip of the key, each reading as the trade reads it with its
 value in full small beside it, both key friction weights labelled, a note naming
 what makes the readings indicative, and why any is refused, a frame whose stops
 fight drawn riding on them, off its balance punching, with why its weights are
-refused; regulation (key height and dip targets, laid as papers or refused with
-what keeps them out and by how much, and not sent while a target field holds no
-number; the punching papers; the key friction weight, typed in grams at the
-measuring point as Stanwood's protocol reads it, and refused with why where no
-bushings read it); punchings and cloth (felts, front rail pin and mortise, back
-rail cloth); the key, and the key weighed whole (its mass and its front weight
-typed in grams, with the distance back from the lip the front weight was read at
-in millimetres, what each is for said beside them, and refused with why where no
-key could weigh so); the frame (rails, placing the frame); touch (a weight on
-the measuring point; what holds the key: a stop or its friction with how far the
-weight stands from moving it, its two stops where they fight with how far above
-its balance punching it rides, the stops it touches where it stands lifted off
-its punching otherwise and its friction where they need it, or nothing, a key
-off its pin and its frame; the gaps at
-the front punching and the back rail cloth; and how far the
-punchings' drawn edges overlap the key). Faults are listed in millimetres, every
-number on the sheet is computed in Rust, and the page is in English.
+refused, and a frame that cannot seat its key still showing every setting and its
+sheet, the jig's readings read and the rest refused line by line with why;
+regulation (key height and dip targets, laid as papers or refused with what keeps
+them out and by how much, and not sent while a target field holds no number; the
+punching papers; the key friction weight, typed in grams at the measuring point
+and shown as Stanwood's protocol reads it, to the gram with its value in full
+beside it, refused with why where no bushings read it and not offered where the
+protocol cannot be read); punchings and cloth (felts, front rail pin and mortise,
+back rail cloth); the key, and the key weighed whole (its mass and its front
+weight typed in grams, with the distance back from the lip the front weight was
+read at in millimetres, what each is for said beside them, and refused with why
+where no key could weigh so); the frame (rails, placing the frame); touch (a
+weight on the measuring point; what holds the key: a stop or its friction with
+how far the weight stands from moving it, its two stops where they fight with how
+far above its balance punching it rides, the stops it touches where it stands
+lifted off its punching otherwise and its friction where they need it, or
+nothing, a key off its pin and its frame; the gaps at the front punching and the
+back rail cloth; the bushings' friction, named once, as the key friction weight
+Stanwood's protocol reads; and how far the punchings' drawn edges overlap the
+key). Every slider shows the value the engine holds, the key friction weight's
+as the sheet reads it and every other as the settings hold it, and keeps no copy
+of it; the target and weighing fields hold what is typed until it is sent.
+Faults are listed in millimetres, every number on the page is computed in
+Rust, and every sentence is the English catalogue's, composed from the codes the
+engine sends (§3.12).
 `pa-cli weigh` prints every reading with its procedure, its trust and the static
 solves it took.
 
@@ -885,14 +893,17 @@ realistic view cannot drift from the physics any more than the section can.
 
 ### 3.12 A bilingual interface
 
-**Planned.** English and French: the browser's language is detected, English is
-the default, a selector overrides it. Rust sends codes and numbers across the
-boundary, never sentences; all wording lives in one catalogue per language, the
-French one in the owner's trade vocabulary (glossary:
-`docs/research/A3-nomenclature-and-regulation.md` §6). The primary user works in
-French and the vocabulary is the point; contributors read English; wording built
-in Rust cannot be translated. Built: an English bench, its faults and verdicts
-sentences built in Rust (§7.2).
+English and French: the primary user works in French and the vocabulary is the
+point; contributors read English; wording built in Rust could not be translated.
+**Built:** Rust sends codes and numbers across the boundary, never sentences
+(§7.2), and the page composes every sentence it shows from one catalogue per
+language (`apps/bench/src/i18n/`), each family of codes typed from the generated
+types, so that a code the engine gains and a catalogue does not word fails the
+type-check. Emphasis is marked in the wording itself, so a translation carries
+it with its words. The English catalogue is the one built. **Planned:** the
+French catalogue, in the owner's trade vocabulary (glossary:
+`docs/research/A3-nomenclature-and-regulation.md` §6); the browser's language
+detected, English the default, and a selector.
 
 ## 4. What the dynamics prototype settles, and what it leaves open
 
@@ -1463,34 +1474,48 @@ key's always measured (§2.3).
 ### 7.2 The WebAssembly boundary
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
-double mount cannot construct two engines) and drives it with one setter per
-value; the three the engine may refuse, a regulation, a key friction weight and
-a weighing of the key, answer with the sentence saying why, the bench left as it
-was. It reads two JSON documents: the scene and the readout. The scene holds
-every part's outline in its own body's frame, in millimetres, with its material
-and the provenance of each stretch; one pose per body, an origin, a cosine and a
-sine, which the view applies and computes none of; the measuring
-point on the key; the contacts within a millimetre of closing, each its two
-surface points in the keybed's frame, its gap and whether it is closed, open or
-overlapping; and the faults. The readout holds the settings, the key's weighing
-as typed among them, the weighing sheet and what holds the key, all absent when
-the key cannot be seated: the sheet a list of readings by their procedures'
-codes, each what the trade reads it as with its value in full, its resolution,
-its trust and the temporary weight where it has one, or the sentence saying why
-it is refused. A function returns any fixture's golden sheet, for the test that
-holds the module to the native bits. Faults, verdicts and refusals are English
-sentences built in Rust, in `pa-app` and in the adapter, and the TypeScript
-types mirror both documents by hand.
+double mount cannot construct two engines) and reads five JSON documents, each
+apart (`crates/pa-app/src/boundary.rs`). The **settings**: every value the
+controls set, the key's weighing as typed and the bushings' friction as the
+torque it is stored as among them, always valid whatever the frame does; the
+key friction weight its control shows is the sheet's reading of that torque.
+The **sheet**: every reading by its procedure's code, read (its value in
+full, what the trade reads it as by the protocol's rounding, its unit and
+resolution, its trust, its conditions and the solves it took) or refused with
+its reason, whether or not the key can be seated, so that a frame that cannot
+seat its key reads its jig and refuses the rest line by line. The
+**diagnostics**: why the key cannot be seated, how it rides where its stops
+fight, the faults, how it stands at its two seats, what holds it under the
+weight on its measuring point and the gaps there, and how far the punchings'
+drawn edges overlap it. The **state**: one pose per body, an origin, a cosine and
+a sine, which the view applies and computes none of; the measuring point on the
+key; the contacts within a millimetre of closing, each its two surface points in
+the keybed's frame, its gap and whether it is closed, open or overlapping. The
+**scene**: every part's outline in its own body's frame, in millimetres, with its
+material and the provenance of each stretch, which the page keeps while the
+geometry does not change. Faults, verdicts and refusals cross as codes with
+their parameters in the trade's units, each unit in its parameter's name
+(`{"code":"pin_outside_mortise","by_mm":16.5}`); they mirror the domain's enums
+through matches with no catch-all arm, so a refusal added in `pa-core` and not
+mapped is a compile error. The page words them from its catalogue (§3.12) and
+writes each reading to its protocol's resolution. Each setting has its own
+setter; the three the engine may refuse, a regulation, a key friction weight and
+a weighing of the key, answer with the refusal's code, the bench left as it was.
+The TypeScript types of every document are generated from the Rust ones by
+`ts-rs` into `crates/pa-wasm/types/`, committed and re-exported by `@pas/wasm`
+as `@pas/wasm/types`, never edited by hand: a test in `pa-app` generates them
+and fails, rewriting them, wherever the committed files differ. `pa-cli` prints
+the same codes. A function returns any fixture's golden sheet, for the test that
+holds the module to the native bits.
 
-**Planned.** Settings and weighing come back separately: the settings always
-valid, each adjustable value with its unit, admissible range and step; the
-weighing nullable, with its reason when absent. Codes and numbers cross, never
-sentences (§3.12), with TypeScript types generated from the Rust ones. Outlines
-cross once per change of geometry, not with every scene, and poses at each
-step. Per-step state is a flat `f64` buffer read through a pointer and a
-length, the JavaScript view rebuilt whenever `memory.buffer` changes, since
-growing linear memory detaches old views. A step that produces a non-finite
-value stops and keeps the last finite state, so none is ever published.
+**Planned.** Settings addressed by path and actions by name, `set(path, value)`
+and `act`, described by `describe()` with each setting's unit, admissible range
+and step (§7.3), in place of one setter per value. Outlines cross only when the
+geometry changes, and poses at each step. Per-step state is a flat `f64` buffer
+read through a pointer and a length, the JavaScript view rebuilt whenever
+`memory.buffer` changes, since growing linear memory detaches old views. A step
+that produces a non-finite value stops and keeps the last finite state, so none
+is ever published.
 
 ### 7.3 The parameter registry and the validation layer
 
@@ -1579,7 +1604,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, and every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), built; the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), and the boundary in codes and numbers, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

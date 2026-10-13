@@ -66,7 +66,8 @@ In this order, each stage with its engine and its view
   Hirschkorn's published Boston GP-178 key, a parameter registry that loads
   `data/params/`, a validation layer, and an interface in English and French
   (its first parts, the mechanism, the contacts over all coordinates, the
-  static solve and every reading of the sheet by procedure, are built);
+  static solve, every reading of the sheet by procedure, and a boundary that
+  sends codes and numbers which the page words in English, are built);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;

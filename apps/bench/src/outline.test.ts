@@ -1,6 +1,6 @@
+import type { ContactState, MarkedContact } from '@pas/wasm/types'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import type { Contact } from './bench'
 import {
   axisSegments,
   contactStrokes,
@@ -109,7 +109,7 @@ describe('strokes and shared segments', () => {
 })
 
 describe('contactStrokes', () => {
-  const contact = (state: Contact['state'], at: number): Contact => ({
+  const contact = (state: ContactState, at: number): MarkedContact => ({
     pair: 'back_rail_cloth',
     on_key: [at, 2],
     on_frame: [at, 1],

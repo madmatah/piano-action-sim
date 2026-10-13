@@ -3,33 +3,55 @@
  *
  * Two halves: the sagittal section, which a technician validates by looking,
  * and the weighing sheet, which he validates by reading. Both come from the
- * same engine call, so they cannot disagree.
+ * same engine, so they cannot disagree.
+ *
+ * Every number on the page is the engine's: each slider shows the value the
+ * settings hold, the key friction weight's as the sheet reads it, each
+ * reading the sheet's, and nothing here keeps a copy of either to drift from
+ * them; the typed fields hold only what is typed until it is sent. Every
+ * sentence is the catalogue's (`i18n/`), composed from the codes and numbers
+ * the engine sends.
  */
 
 import type { Bench } from '@pas/wasm'
+import type {
+  Diagnostics,
+  FrictionRefusal,
+  Procedure,
+  Reading,
+  Regulation,
+  Scene,
+  Settings,
+  Sheet,
+  State,
+  WeighingRefusal,
+} from '@pas/wasm/types'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  type Readout,
-  type Regulation,
+  diagnostics,
   reading,
-  readout,
   regulate,
-  type Scene,
   scene,
   setKeyFrictionWeight,
+  settings,
+  sheet,
   start,
+  state,
   weighKey,
 } from './bench'
 import { typedNumber } from './fields'
+import { ANGLE_DEG, decimals, fixed, LENGTH_MM, MASS_G, typed } from './format'
+import { type Control, t, word } from './i18n'
+import { Rich } from './Rich'
 import { CONTACT_COLOUR, SagittalView, type ViewMode } from './SagittalView'
 
-interface State {
+/** Everything the engine said when it was last asked. */
+interface Engine {
+  settings: Settings
+  sheet: Sheet
+  diagnostics: Diagnostics
+  state: State
   scene: Scene
-  /** The last sheet the engine could produce. Kept when it can no longer
-   * produce one, so the settings that caused it stay on the page. */
-  readout: Readout | null
-  /** Whether that sheet is the last good one rather than the current one. */
-  stale: boolean
 }
 
 /**
@@ -50,125 +72,109 @@ function applyUrlState(b: Bench): void {
   if (Number.isFinite(weight) && q.has('weight')) b.set_finger_weight(weight)
 }
 
-/**
- * `x` to `digits` places, a reading that rounds to nothing shown as 0, never
- * as -0: a key level to a few attometres at the bottom of its dip is level.
- */
-function fixed(x: number, digits: number): string {
-  const shown = x.toFixed(digits)
-  return Number(shown) === 0 ? (0).toFixed(digits) : shown
+/** `x` to the decimals `resolution` is shown to, as the catalogue writes it. */
+function shown(x: number, resolution: number): string {
+  return t.number(x, decimals(resolution))
 }
 
+/**
+ * A quantity the bench reports beside its sheet, to the resolution its kind
+ * is shown to, with a target beside it where it has one; or refused, why on
+ * hover.
+ */
 function Row({
-  label,
+  control,
   value,
-  unit,
+  resolution,
   target,
-  targetLabel = 'target',
+  why,
 }: {
-  label: string
-  value: number
-  unit: string
-  /** A second number shown beside the first: the regulation target, or what a
-      protocol measured. Beside it and never instead of it — the measurement is
-      what counts, and seeing the two together is the point. */
+  control: Control
+  /** `null` where it cannot be read. */
+  value: number | null
+  resolution: number
+  /** A second number shown beside the first: what a design aims at. Beside it
+      and never instead of it — the reading is what counts, and seeing the
+      two together is the point. */
   // `| undefined` is explicit because the project runs with
   // `exactOptionalPropertyTypes`: an optional property and a property that may
   // be undefined are different types, and the distinction is worth keeping.
   target?: number | undefined
-  targetLabel?: string
+  /** Why it cannot be read. */
+  why: string | null
 }) {
-  return (
-    <div className="row">
-      <span className="label">{label}</span>
-      <span className="value">{fixed(value, 2)}</span>
-      <span className="unit">{unit}</span>
-      <span className="target">
-        {target === undefined ? '' : `${targetLabel} ${fixed(target, 2)}`}
-      </span>
-    </div>
-  )
-}
-
-/** What each reading of the sheet is called, by the engine's identifier. */
-const LABEL: Record<string, string> = {
-  front_weight: 'front weight FW',
-  key_weight_ratio: 'key weight ratio KR',
-  key_height: 'key height',
-  key_dip: 'key dip',
-  down_weight: 'down weight D',
-  up_weight: 'up weight U',
-  balance_weight: 'balance weight BW',
-  friction_weight: 'friction weight F',
-  key_friction_weight_zeroed_on_the_jig: 'key friction weight KF, zeroed on the jig',
-  key_friction_weight_zeroed_on_the_frame: 'key friction weight KF, zeroed on the frame',
-}
-
-/** What makes a reading indicative, as the sheet's note says it. */
-const BECAUSE: Record<string, string> = {
-  key_mass:
-    'the key’s mass is derived from its volume at an assumed wood density until you weigh it',
-  centre_of_mass_height:
-    'the height of the key’s centre of mass is estimated from its volume, which no scale gives',
-  key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
-  geometry: 'some of its dimensions have no record',
-}
-
-/** Names as a sentence lists them: "a", "a and b", "a, b and c". */
-function listed(names: string[]): string {
-  return names.length < 2
-    ? (names[0] ?? '')
-    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-}
-
-/**
- * The decimals a reading is shown to, from the resolution the protocol reads
- * it to: none for the gram, one for a tenth or a half gram, two for a
- * hundredth or a paper.
- */
-function decimals(resolution: number): number {
-  return resolution >= 1 ? 0 : resolution >= 0.1 ? 1 : 2
-}
-
-/**
- * One reading of the sheet as the trade reads it, the value in full small
- * beside it, or the target where the reading has one; or that it is
- * refused, the engine's reason on hover and in the note below the sheet.
- */
-function Measured({
-  r,
-  procedure,
-  target,
-}: {
-  r: Readout
-  procedure: string
-  target?: number | undefined
-}) {
-  const m = reading(r, procedure)
-  const label = LABEL[procedure] ?? procedure
-  if (!m || m.shown === null || m.exact === null) {
+  if (value === null) {
     return (
-      <div className="row refused" data-procedure={procedure} title={m?.refused ?? ''}>
-        <span className="label">{label}</span>
-        <span className="value">refused</span>
+      <div className="row refused" title={why ?? ''}>
+        <span className="label">{control.label}</span>
+        <span className="value">{t.sheet.refused}</span>
         <span className="unit" />
         <span className="target" />
       </div>
     )
   }
-  const shownTo = decimals(m.resolution)
-  const beside = target === undefined ? fixed(m.exact, shownTo + 2) : `target ${fixed(target, 2)}`
+  return (
+    <div className="row">
+      <span className="label">{control.label}</span>
+      <span className="value">{shown(value, resolution)}</span>
+      <span className="unit">{control.unit}</span>
+      <span className="target">
+        {target === undefined ? '' : t.sheet.target(shown(target, resolution))}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * One reading of the sheet as the trade reads it, by the protocol's rounding
+ * to its resolution, the value in full small beside it, or the target where
+ * the reading has one; or that it is refused, the reason on hover and in the
+ * note below the sheet.
+ */
+function Measured({
+  s,
+  procedure,
+  target,
+}: {
+  s: Sheet
+  procedure: Procedure
+  target?: number | undefined
+}) {
+  const m = reading(s, procedure)
+  const label = t.procedure[procedure]
+  if (m === undefined || m.outcome === 'refused') {
+    const why = m?.outcome === 'refused' ? m.why : null
+    return (
+      <div
+        className="row refused"
+        data-procedure={procedure}
+        data-refusal={why?.code}
+        data-riding={why?.code === 'no_travel' ? why.riding?.front : undefined}
+        title={why === null ? '' : word(t.refusal, why.code, why)}
+      >
+        <span className="label">{label}</span>
+        <span className="value">{t.sheet.refused}</span>
+        <span className="unit" />
+        <span className="target" />
+      </div>
+    )
+  }
+  const to = decimals(m.resolution)
+  const beside =
+    target === undefined ? t.number(m.value, to + 2) : t.sheet.target(shown(target, LENGTH_MM))
   return (
     <div
-      className={`row ${m.trust}`}
+      className={`row ${m.trust.code}`}
       data-procedure={procedure}
       data-shown={m.shown}
-      data-exact={m.exact}
-      title={m.because.map((b) => BECAUSE[b] ?? b).join('; ')}
+      data-exact={m.value}
+      title={
+        m.trust.code === 'indicative' ? m.trust.because.map((b) => t.because[b]).join('; ') : ''
+      }
     >
       <span className="label">{label}</span>
-      <span className="value">{fixed(m.shown, shownTo)}</span>
-      <span className="unit">{m.unit}</span>
+      <span className="value">{t.number(m.shown, to)}</span>
+      <span className="unit">{t.unit[m.unit]}</span>
       <span className="target exact">{beside}</span>
     </div>
   )
@@ -192,8 +198,7 @@ function PaperStack({
   papers: number[]
   sizes: number[]
   /** The engine's own total for this stack. Summing the papers here instead
-   * would be the one number on the page computed outside the engine — and it
-   * would be summed from values already narrowed to f32. */
+   * would be the one number on the page computed outside the engine. */
   total: number
   onAdd: (mm: number) => void
   onRemove: (i: number) => void
@@ -201,55 +206,57 @@ function PaperStack({
   return (
     <div className="stack">
       <div className="stacktitle">
-        {title} <b>{total.toFixed(2)} mm</b> in {papers.length}{' '}
-        {papers.length === 1 ? 'paper' : 'papers'}
+        <Rich text={t.papers.stack(title, shown(total, LENGTH_MM), papers.length)} />
       </div>
       <div className="drawer">
-        add
+        {t.papers.add}
         {sizes.map((mm) => (
           <button key={mm} type="button" onClick={() => onAdd(mm)}>
-            {mm.toFixed(2)}
+            {shown(mm, LENGTH_MM)}
           </button>
         ))}
       </div>
       <ul className="pile">
         {papers.map((mm, i) => (
           <li key={i}>
-            <span>{mm.toFixed(2)} mm</span>
+            <span>{t.papers.paper(shown(mm, LENGTH_MM))}</span>
             <button type="button" onClick={() => onRemove(i)}>
-              lift off
+              {t.papers.liftOff}
             </button>
           </li>
         ))}
-        {papers.length === 0 && <li className="empty">bare rail</li>}
+        {papers.length === 0 && <li className="empty">{t.papers.bare}</li>}
       </ul>
     </div>
   )
 }
 
+/** A control over one setting: its value as the settings hold it. */
 function Slider({
-  label,
+  control,
   value,
   min,
   max,
   step,
-  unit,
+  resolution = LENGTH_MM,
   onChange,
 }: {
-  label: string
+  control: Control
   value: number
   min: number
   max: number
   step: number
-  unit: string
+  /** What its value is shown to: a length to the hundredth of a millimetre
+   * unless said otherwise. */
+  resolution?: number
   onChange: (v: number) => void
 }) {
   return (
     <label className="slider">
       <span>
-        {label}{' '}
+        {control.label}{' '}
         <b>
-          {value.toFixed(2)} {unit}
+          {shown(value, resolution)} {control.unit}
         </b>
       </span>
       <input
@@ -264,114 +271,136 @@ function Slider({
   )
 }
 
-/** The temporary weight a key friction weight stood on the key, as the note says it. */
-function kfWeight(r: Readout, procedure: string): string {
-  const m = reading(r, procedure)
-  if (m?.temporary_weight_g == null || m.temporary_weight_at_mm == null) return ''
-  const at = m.temporary_weight_at_mm
-  return ` (${fixed(m.temporary_weight_g, 1)} g, ${fixed(Math.abs(at), 0)} mm ${
-    at < 0 ? 'behind' : 'in front of'
-  } the balance pin)`
+/**
+ * The bushings' control: the key friction weight Stanwood's protocol reads
+ * them as, the sheet's own reading, as the trade reads it with the value in
+ * full beside it. Typed in grams, stored as the torque that reads them back.
+ * Where the protocol cannot be read on this frame there is no key friction
+ * weight to show or to set, and the control says why instead.
+ */
+function FrictionControl({
+  kf,
+  onChange,
+}: {
+  kf: Reading | undefined
+  onChange: (g: number) => void
+}) {
+  const read = kf?.outcome === 'read' ? kf : null
+  const why = kf?.outcome === 'refused' ? kf.why : null
+  const control = t.friction.control
+  const to = read === null ? 0 : decimals(read.resolution)
+  return (
+    <label
+      className="slider friction"
+      data-shown={read?.shown}
+      data-exact={read?.value}
+      data-refusal={why?.code}
+      title={why === null ? '' : word(t.refusal, why.code, why)}
+    >
+      <span>
+        {control.label}{' '}
+        {read === null ? (
+          <b>{t.sheet.refused}</b>
+        ) : (
+          <>
+            <b>
+              {t.number(read.shown, to)} {control.unit}
+            </b>{' '}
+            <small>{t.number(read.value, to + 2)}</small>
+          </>
+        )}
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={20}
+        step={0.5}
+        value={read?.value ?? 0}
+        disabled={read === null}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </label>
+  )
 }
 
 /**
  * What the sheet's readings rest on that nobody measured, and why any is
  * refused: one note each, under the weights.
  */
-function sheetNotes(r: Readout) {
-  const because = [...new Set(r.sheet.flatMap((m) => m.because))]
-  const refused = r.sheet.filter((m) => m.refused !== null)
+function SheetNotes({ s }: { s: Sheet }) {
+  const because = [
+    ...new Set(
+      s.readings.flatMap((m) =>
+        m.outcome === 'read' && m.trust.code === 'indicative' ? m.trust.because : [],
+      ),
+    ),
+  ]
   return (
     <>
       {because.length > 0 && (
-        <p className="note">
-          These readings are indicative, not measurements:{' '}
-          {because.map((b) => BECAUSE[b] ?? b).join('; ')}.
-        </p>
+        <p className="note">{t.sheet.indicative(because.map((b) => t.because[b]))}</p>
       )}
-      {refused.map((m) => (
-        <p key={m.procedure} className="note degenerate">
-          {LABEL[m.procedure] ?? m.procedure} is refused: {m.refused}
-        </p>
-      ))}
+      {s.readings.map(
+        (m) =>
+          m.outcome === 'refused' && (
+            <p key={m.procedure} className="note degenerate">
+              {t.sheet.isRefused(t.procedure[m.procedure], word(t.refusal, m.why.code, m.why))}
+            </p>
+          ),
+      )}
     </>
   )
 }
 
+/** The temporary weight a key friction weight stood on the key, if it was read. */
+function temporaryWeight(s: Sheet, procedure: Procedure) {
+  const m = reading(s, procedure)
+  return m?.outcome === 'read' ? m.conditions.temporary_weight : null
+}
+
 export function App() {
   const bench = useRef<Bench | undefined>(undefined)
-  const [state, setState] = useState<State>()
-
-  // The key friction weight the bushings read by Stanwood's protocol, the
-  // one it is typed as: taken from the sheet at every refresh, so it follows
-  // the bushings as the measuring point and the key are changed. Why the last
-  // one typed was refused, the engine's sentence, shown until anything else
-  // is done.
-  const [friction, setFriction] = useState(Number.NaN)
-  const [frictionRefused, setFrictionRefused] = useState<string | null>(null)
-  const [finger, setFinger] = useState(0)
+  const [engine, setEngine] = useState<Engine>()
+  // The scene as the engine last wrote it: kept while the geometry does not
+  // change, so a weight on the key does not rebuild every part's mesh.
+  const drawn = useRef<{ json: string; scene: Scene } | undefined>(undefined)
   const [view, setView] = useState<ViewMode>(
     // `?view=section` opens on the flat technical section rather than the
     // solid, so a particular reading can be linked to.
     new URLSearchParams(window.location.search).get('view') === 'section' ? 'section' : 'solid',
   )
-  const [balanceFelt, setBalanceFelt] = useState(1.5)
-  const [frontFelt, setFrontFelt] = useState(2.0)
-  const [backCloth, setBackCloth] = useState(3.0)
-  const [capstan, setCapstan] = useState(129.5)
-  const [frontEdge, setFrontEdge] = useState(258)
-  const [capstanHeight, setCapstanHeight] = useState(12)
-  const [balanceRail, setBalanceRail] = useState(40)
-  const [frontRail, setFrontRail] = useState(30.7)
-  const [backRail, setBackRail] = useState(39)
-  const [frontRailAt, setFrontRailAt] = useState(225)
-  const [backRailAt, setBackRailAt] = useState(200)
-  const [frontPin, setFrontPin] = useState(24)
-  const [frontMortise, setFrontMortise] = useState(22)
-  // No default is written here: the engine holds it, and the boot below seeds
-  // this before the panel first renders. NaN rather than a plausible number,
-  // so that an unseeded value could never pass for the protocol's.
-  const [measuringPoint, setMeasuringPoint] = useState(Number.NaN)
-  // The targets typed for the next regulation, as typed, seeded from the
-  // engine's at boot, and how the last one asked for came out: the engine's
-  // sentence, shown until anything else is done. Kept as the text in the
-  // field, read as a number only when it holds one (`typedNumber`), so that an
-  // emptied field is not sent as a target of 0 mm.
+  // What is being typed for the next regulation and the next weighing,
+  // seeded from the engine at boot: kept as the text in the field, read as a
+  // number only when it holds one (`typedNumber`), so that an emptied field
+  // is not sent as 0. And what the engine answered the last action that it
+  // may refuse, shown until anything else is done.
   const [heightTarget, setHeightTarget] = useState('')
   const [dipTarget, setDipTarget] = useState('')
   const [regulation, setRegulation] = useState<Regulation | null>(null)
-  // The key's weighing as typed, seeded at boot from what the engine holds of
-  // the key, and why the last one asked for was refused, the engine's
-  // sentence, shown until anything else is done. Kept as the text in the
-  // fields, read as numbers only when they hold them (`typedNumber`).
+  const [frictionRefused, setFrictionRefused] = useState<FrictionRefusal | null>(null)
   const [weighMass, setWeighMass] = useState('')
   const [weighFront, setWeighFront] = useState('')
   const [weighFrom, setWeighFrom] = useState('')
-  const [weighRefused, setWeighRefused] = useState<string | null>(null)
+  const [weighRefused, setWeighRefused] = useState<WeighingRefusal | null>(null)
 
-  // Every mutation goes through the engine and the whole view is re-read from
-  // it. No value on this page is computed in TypeScript.
-  //
-  // A frame can be edited into one no key can sit in, and then there is no
-  // weighing. The page **keeps the last sheet it had** and says it is stale,
-  // rather than emptying itself: the sliders live in that panel, so hiding it
-  // would leave the user with no way back out of the frame they just built.
+  // Every mutation goes through the engine and the whole page is re-read
+  // from it. No value on this page is computed in TypeScript, and none is
+  // kept: a frame the key cannot be seated on still has every setting, and
+  // its sheet says reading by reading what cannot be read.
+  const read = useCallback((b: Bench): Engine => {
+    drawn.current = scene(b, drawn.current)
+    return {
+      settings: settings(b),
+      sheet: sheet(b),
+      diagnostics: diagnostics(b),
+      state: state(b),
+      scene: drawn.current.scene,
+    }
+  }, [])
   const refresh = useCallback(() => {
     const b = bench.current
-    if (!b) return
-    const fresh = readout(b)
-    setState((prev) => ({
-      scene: scene(b),
-      readout: fresh ?? prev?.readout ?? null,
-      stale: fresh === null,
-    }))
-    // The bushings are a torque and stay as they were set; what Stanwood's
-    // protocol reads them as moves with the measuring point and the key. The
-    // friction slider takes it from the engine rather than keep a number the
-    // key no longer reads.
-    const kf = fresh ? reading(fresh, 'key_friction_weight_zeroed_on_the_jig')?.exact : null
-    if (kf != null) setFriction(kf)
-  }, [])
+    if (b) setEngine(read(b))
+  }, [read])
 
   useEffect(() => {
     void start((b) => {
@@ -380,41 +409,19 @@ export function App() {
       applyUrlState(b)
     }).then((b) => {
       bench.current = b
-      const r = readout(b)
-      if (r) {
-        // Seed every control from the engine, so no slider starts out lying
-        // about what the model holds.
-        setBalanceFelt(r.balance_felt_mm)
-        setFrontFelt(r.front_felt_mm)
-        setBackCloth(r.back_cloth_mm)
-        setCapstan(r.capstan_behind_mm)
-        setFrontEdge(r.front_edge_mm)
-        setCapstanHeight(r.capstan_height_mm)
-        setBalanceRail(r.balance_rail_mm)
-        setFrontRail(r.front_rail_mm)
-        setBackRail(r.back_rail_mm)
-        setFrontRailAt(r.front_rail_at_mm)
-        setBackRailAt(r.back_rail_at_mm)
-        // The probe too: `?weight=` can set the engine before this runs, and a
-        // slider that disagrees with the sheet beside it is worse than no
-        // slider.
-        setFinger(r.finger_weight_g)
-        setFrontPin(r.front_pin_mm)
-        setFrontMortise(r.front_mortise_mm)
-        setMeasuringPoint(r.measuring_point_from_lip_mm)
-        setHeightTarget(String(r.key_height_target_mm))
-        setDipTarget(String(r.key_dip_target_mm))
-        // The weighing fields start from the key as the engine holds it: its
-        // mass, its front weight as the scale reads it, at the measuring
-        // point the sheet reads it at.
-        const fw = reading(r, 'front_weight')
-        setWeighMass(fixed(r.key_mass_g, 1))
-        setWeighFront(fw?.shown == null ? '' : fixed(fw.shown, 1))
-        setWeighFrom(fixed(r.measuring_point_from_lip_mm, 1))
-      }
-      refresh()
+      const e = read(b)
+      // The typed fields start from what the engine holds: the targets it
+      // was regulated to; the key's mass, its front weight as the scale
+      // reads it, at the measuring point the sheet reads it at.
+      setHeightTarget(typed(e.settings.targets.key_height_mm, LENGTH_MM))
+      setDipTarget(typed(e.settings.targets.key_dip_mm, LENGTH_MM))
+      const fw = reading(e.sheet, 'front_weight')
+      setWeighMass(e.settings.key.mass_g === null ? '' : fixed(e.settings.key.mass_g, 1))
+      setWeighFront(fw?.outcome === 'read' ? fixed(fw.shown, 1) : '')
+      setWeighFrom(fixed(e.settings.measuring_point_from_lip_mm, 1))
+      setEngine(e)
     })
-  }, [refresh])
+  }, [read])
 
   const act = <T,>(f: (b: Bench) => T): T | undefined => {
     const b = bench.current
@@ -432,8 +439,8 @@ export function App() {
   const height = typedNumber(heightTarget)
   const dip = typedNumber(dipTarget)
   const needsNumber = [
-    ...(height === null ? ['key height'] : []),
-    ...(dip === null ? ['key dip'] : []),
+    ...(height === null ? (['key_height'] as const) : []),
+    ...(dip === null ? (['key_dip'] as const) : []),
   ]
   const regulateTo = () => {
     const b = bench.current
@@ -448,9 +455,9 @@ export function App() {
   const weighedFront = typedNumber(weighFront)
   const weighedFrom = typedNumber(weighFrom)
   const weighNeeds = [
-    ...(weighedMass === null ? ['the key mass'] : []),
-    ...(weighedFront === null ? ['the front weight'] : []),
-    ...(weighedFrom === null ? ['the distance from the lip'] : []),
+    ...(weighedMass === null ? (['mass'] as const) : []),
+    ...(weighedFront === null ? (['front_weight'] as const) : []),
+    ...(weighedFrom === null ? (['from_lip'] as const) : []),
   ]
   const weighTheKey = () => {
     if (weighedMass === null || weighedFront === null || weighedFrom === null) return
@@ -458,593 +465,484 @@ export function App() {
     setWeighRefused(refused)
   }
 
-  if (!state) return <div className="booting">starting the engine…</div>
-  const r = state.readout
-  const fault = state.stale ? (state.scene.frame_fault ?? 'the geometry is degenerate.') : null
+  if (!engine) return <div className="booting">{t.booting}</div>
+  const s = engine.settings
+  const d = engine.diagnostics
+  const sh = engine.sheet
 
   // The contacts the key bears on where it is drawn, by the engine's
   // identifiers: on the view's element too, where the smoke test reads them.
-  const touching = state.scene.contacts.filter((c) => c.state === 'closed').map((c) => c.pair)
-  const gap = (mm: number | null) => (mm === null ? 'none' : `${fixed(mm, 3)} mm`)
+  const touching = engine.state.contacts.filter((c) => c.state === 'closed').map((c) => c.pair)
+  // Why the key cannot be seated on this frame, which every reading that
+  // seats it is refused for too.
+  const seatWhy =
+    d.seat_refused === null ? null : word(t.refusal, d.seat_refused.code, d.seat_refused)
+  const kf = reading(sh, 'key_friction_weight_zeroed_on_the_jig')
+  const seats = d.seats
 
   return (
     <div className="bench">
       <div className="view" data-touching={touching.join(' ')}>
-        <SagittalView scene={state.scene} mode={view} />
+        <SagittalView scene={engine.scene} state={engine.state} mode={view} />
         <div className="viewtabs">
           <button
             type="button"
             className={view === 'section' ? 'on' : ''}
             onClick={() => setView('section')}
           >
-            section
+            {t.view.section}
           </button>
           <button
             type="button"
             className={view === 'solid' ? 'on' : ''}
             onClick={() => setView('solid')}
           >
-            solid
+            {t.view.solid}
           </button>
-          <span className="hint">drag to turn · scroll to zoom</span>
+          <span className="hint">{t.view.hint}</span>
           <span className="legend">
-            <i style={{ background: CONTACT_COLOUR.closed }} /> bears
-            <i style={{ background: CONTACT_COLOUR.open }} /> open, under 1 mm
-            <i style={{ background: CONTACT_COLOUR.overlapping }} /> drawn parts overlap
+            <i style={{ background: CONTACT_COLOUR.closed }} /> {t.view.bears}
+            <i style={{ background: CONTACT_COLOUR.open }} /> {t.view.open}
+            <i style={{ background: CONTACT_COLOUR.overlapping }} /> {t.view.overlapping}
           </span>
         </div>
       </div>
 
       <aside className="panel">
-        <h1>Single-key bench</h1>
+        <h1>{t.title}</h1>
         <p className="protocol">
-          Weighed by Stanwood’s <i>Standard Protocols of the New Touchweight Metrology</i>, February
-          2000. Every weight is centred on the measuring point, marked on the section, a set
-          distance back from the front lip of the key.
+          <Rich text={t.protocol} />
         </p>
 
-        {state.scene.faults.length > 0 && (
+        {d.faults.length > 0 && (
           <div className="faults">
-            <b>This is not a keyboard anybody could build.</b>
+            <b>{t.faults.heading}</b>
             <ul>
-              {state.scene.faults.map((f) => (
-                <li key={f}>{f}</li>
+              {d.faults.map((f, i) => (
+                <li key={i} data-code={f.code}>
+                  {word(t.fault, f.code, f)}
+                </li>
               ))}
             </ul>
             <p>
-              The rails are placed under the key when the frame is built, and then they stay bolted
-              where they are. Change the key afterwards and they do not follow — a real keybed does
-              not either. <i>Place the frame under the key</i>, under The frame, unbolts them and
-              stands them where this key needs them.
+              <Rich text={t.faults.placement} />
             </p>
           </div>
         )}
-        {fault && (
-          <p className="degenerate">
-            No weighing is possible: {fault} The sheet below is the last one that was, kept so the
-            settings stay reachable.
+        {seatWhy !== null && (
+          <p className="degenerate no-weighing" data-code={d.seat_refused?.code}>
+            {t.noWeighing(seatWhy)}
           </p>
         )}
-        {!state.stale && state.scene.riding && (
-          <p className="riding degenerate">
-            The stops fight: {state.scene.riding} The key is drawn riding on them; what needs no
-            stroke is read below, and the weights that need one are refused.
+        {d.riding && (
+          <p
+            className="riding degenerate"
+            data-front={d.riding.front}
+            data-lift-mm={d.riding.lift_mm}
+          >
+            {t.stopsFight(t.riding(d.riding))}
           </p>
         )}
-        {r === null ? (
-          <p className="degenerate">Nothing has been weighed yet.</p>
-        ) : (
-          <>
-            <h2>Weighing sheet</h2>
-            <Slider
-              label="measuring point, back from the key’s front lip"
-              value={measuringPoint}
-              min={5}
-              max={30}
-              // A tenth of a millimetre, so the glossary's 1/2 inch, 12.7 mm,
-              // can be set as well as its 13 mm.
-              step={0.1}
-              unit="mm"
-              onChange={(v) => {
-                setMeasuringPoint(v)
-                act((b) => b.set_measuring_point_from_lip(v))
-              }}
-            />
-            <p className="note">
-              The lip is the covering’s, which overhangs the key front. Moving the point changes
-              every weight on this sheet by the lever and nothing about the key: the same static
-              moment, and the same friction torque, read on another arm. Key height and dip are read
-              at the key front, and do not move.
-            </p>
-            <Measured r={r} procedure="down_weight" />
-            <Measured r={r} procedure="up_weight" />
-            <Measured r={r} procedure="balance_weight" />
-            <Measured r={r} procedure="friction_weight" />
-            <Measured r={r} procedure="key_friction_weight_zeroed_on_the_jig" />
-            <Measured r={r} procedure="key_friction_weight_zeroed_on_the_frame" />
-            <Measured r={r} procedure="front_weight" />
-            <Measured r={r} procedure="key_weight_ratio" />
-            <p className="note">
-              Every weight is read the way gram weights give it: the down weight and the key
-              friction weight as the least whole gram that takes the key down, the up weight as the
-              most whole grams it lifts, balance and friction weight from those two, so to the half
-              gram; the front weight to the tenth, as a scale reads it. The value in full stands
-              small beside each. D is walked up from the key resting on its cloth, U down from the
-              key on its front punching, each a gram at a time until the key goes all the way.
-            </p>
-            <p className="note">
-              The key friction weight is read twice. Stanwood’s protocol zeroes the front weight on
-              the levelled jig with a temporary weight
-              {kfWeight(r, 'key_friction_weight_zeroed_on_the_jig')}, then puts the key back on its
-              frame and finds the least weight that makes it fall. The other cancels the key’s
-              balance where it rests on its frame
-              {kfWeight(r, 'key_friction_weight_zeroed_on_the_frame')}, which reads the bushings
-              alone. They differ by what the key’s tilt at rest does to the weights’ arms.
-            </p>
-            {sheetNotes(r)}
-            <Measured r={r} procedure="key_height" target={r.key_height_target_mm} />
-            <Measured r={r} procedure="key_dip" target={r.key_dip_target_mm} />
-            <p className="note">
-              Both read at the front of the key with the key seated the way a technician seats it:
-              the back of the key held down at the capstan, where the action holds it, for the
-              height; the front then pressed down until a stop takes it, for the dip — the punching,
-              or the pin in its mortise if that comes first. Whatever the weight below is doing to
-              the key, these do not move.
-            </p>
-            <Row label="key mass" value={r.key_mass_g} unit="g" />
-            <Row label="out of level, key down" value={r.out_of_level_deg} unit="°" target={0} />
-            <Row
-              label="bedding at the back"
-              value={r.bedding_at_the_back_deg}
-              unit="°"
-              target={0}
-            />
-            <Row label="bears at" value={r.bears_at_the_back_mm} unit="mm behind" />
-            <p className="note">
-              The key is <b>{r.back_bearing}</b>. A keyboard is set up so the key is{' '}
-              <b>level when it is fully down</b>, and so slightly nose-up when released — and the
-              chamfer under the tail is cut at that same angle so the tail beds <b>flat</b> on its
-              cloth. Both are design goals, not laws: rail heights, punchings and cloth are what
-              reach them, and plenty of keyboards miss. A key that misses bears on an edge instead,
-              which is where it bears from — so the bench reports all three rather than refusing the
-              frame. Nose-down is positive, and so is a rear end digging in.
-            </p>
-            <p className="note">
-              With no action on the capstan, <b>BW = −FW</b>: the equation of balance with its
-              right-hand side removed, but for what the key’s rest attitude adds, read here at its
-              two seats rather than level. A bare front-heavy key falls on its own, which is why
-              these branches are negative.
-            </p>
 
-            <h2>Regulation</h2>
-            <div className="targets">
-              <label className="field">
-                key height
-                <input
-                  type="number"
-                  min={40}
-                  max={90}
-                  step={0.01}
-                  value={heightTarget}
-                  onChange={(e) => setHeightTarget(e.target.value)}
-                />
-                mm
-              </label>
-              <label className="field">
-                key dip
-                <input
-                  type="number"
-                  min={0}
-                  max={20}
-                  step={0.01}
-                  value={dipTarget}
-                  onChange={(e) => setDipTarget(e.target.value)}
-                />
-                mm
-              </label>
-              <button type="button" onClick={regulateTo} disabled={needsNumber.length > 0}>
-                regulate to these targets
-              </button>
-            </div>
-            {needsNumber.length > 0 && (
-              <p className="needs-number degenerate">
-                {needsNumber.join(' and ')} {needsNumber.length === 1 ? 'needs' : 'need'} a number,
-                in millimetres: nothing is regulated until{' '}
-                {needsNumber.length === 1 ? 'it has' : 'they have'} one.
-              </p>
-            )}
-            {regulation && (
-              <p className={`regulated ${regulation.laid ? 'note' : 'degenerate'}`}>
-                {regulation.said}
-              </p>
-            )}
-            <p className="note">
-              The bench lays the papers as a technician does: the key height first, on the balance
-              punching, then the dip on the front punching with the key as it then stands, each the
-              closest stack the drawer makes from below. So it lands within one paper of each
-              target, not on it, and the sheet shows both. A target no stack reaches is refused,
-              with what keeps it out and by how many millimetres, and nothing is changed.
-            </p>
-            <p className="note">
-              A punching stack is a <b>pile of papers</b>, not a thickness. The operation is “lay a
-              two-tenths”, never “set it to 0.37”, so these are the papers in the drawer and the
-              pile you have built.
-            </p>
-            <PaperStack
-              title="balance punching — key height"
-              papers={r.balance_papers_mm}
-              total={r.balance_paper_mm}
-              sizes={r.paper_sizes_mm}
-              onAdd={(mm) => act((b) => b.add_balance_paper(mm))}
-              onRemove={(i) => act((b) => b.remove_balance_paper(i))}
+        <h2>{t.sheet.heading}</h2>
+        <Slider
+          control={t.sheet.measuringPoint}
+          value={s.measuring_point_from_lip_mm}
+          min={5}
+          max={30}
+          // A tenth of a millimetre, so the glossary's 1/2 inch, 12.7 mm, can
+          // be set as well as its 13 mm.
+          step={0.1}
+          onChange={(v) => act((b) => b.set_measuring_point_from_lip(v))}
+        />
+        <p className="note">{t.sheet.measuringPointNote}</p>
+        <Measured s={sh} procedure="down_weight" />
+        <Measured s={sh} procedure="up_weight" />
+        <Measured s={sh} procedure="balance_weight" />
+        <Measured s={sh} procedure="friction_weight" />
+        <Measured s={sh} procedure="key_friction_weight_zeroed_on_the_jig" />
+        <Measured s={sh} procedure="key_friction_weight_zeroed_on_the_frame" />
+        <Measured s={sh} procedure="front_weight" />
+        <Measured s={sh} procedure="key_weight_ratio" />
+        <p className="note">{t.sheet.gramWeights}</p>
+        <p className="note">
+          {t.sheet.keyFrictionTwice(
+            temporaryWeight(sh, 'key_friction_weight_zeroed_on_the_jig'),
+            temporaryWeight(sh, 'key_friction_weight_zeroed_on_the_frame'),
+          )}
+        </p>
+        <SheetNotes s={sh} />
+        <Measured s={sh} procedure="key_height" target={s.targets.key_height_mm} />
+        <Measured s={sh} procedure="key_dip" target={s.targets.key_dip_mm} />
+        <p className="note">{t.sheet.seatingNote}</p>
+        <Row
+          control={t.sheet.keyMass}
+          value={s.key.mass_g}
+          resolution={MASS_G}
+          why={t.refusal.key_not_weighed({ code: 'key_not_weighed' })}
+        />
+        <Row
+          control={t.sheet.outOfLevel}
+          value={seats?.out_of_level_at_bottom_deg ?? null}
+          resolution={ANGLE_DEG}
+          target={0}
+          why={seatWhy}
+        />
+        <Row
+          control={t.sheet.bedding}
+          value={seats?.bedding_at_the_back_deg ?? null}
+          resolution={ANGLE_DEG}
+          target={0}
+          why={seatWhy}
+        />
+        <Row
+          control={t.sheet.bearsAt}
+          value={seats?.bears_at_the_back_mm ?? null}
+          resolution={LENGTH_MM}
+          why={seatWhy}
+        />
+        <p className="note">
+          <Rich
+            text={
+              seats === null
+                ? t.sheet.bearingNote
+                : `${t.sheet.bearsHow(t.backBearing[seats.back_bearing])} ${t.sheet.bearingNote}`
+            }
+          />
+        </p>
+        <p className="note">
+          <Rich text={t.sheet.balanceNote} />
+        </p>
+
+        <h2>{t.regulation.heading}</h2>
+        <div className="targets">
+          <label className="field">
+            {t.regulation.keyHeight.label}
+            <input
+              type="number"
+              min={40}
+              max={90}
+              step={0.01}
+              value={heightTarget}
+              onChange={(e) => setHeightTarget(e.target.value)}
             />
-            <PaperStack
-              title="front punching — key dip"
-              papers={r.front_papers_mm}
-              total={r.front_paper_mm}
-              sizes={r.paper_sizes_mm}
-              onAdd={(mm) => act((b) => b.add_front_paper(mm))}
-              onRemove={(i) => act((b) => b.remove_front_paper(i))}
-            />
-            <Slider
-              label="key friction weight"
-              value={friction}
+            {t.regulation.keyHeight.unit}
+          </label>
+          <label className="field">
+            {t.regulation.keyDip.label}
+            <input
+              type="number"
               min={0}
               max={20}
-              step={0.5}
-              unit="g"
-              onChange={(v) => {
-                // A weight the engine refuses leaves the bushings as they were,
-                // so the slider goes back to what they read, even on a frame no
-                // sheet can be read on to say so.
-                const was = friction
-                setFriction(v)
-                const refused = act((b) => setKeyFrictionWeight(b, v)) ?? null
-                if (refused !== null) setFriction(was)
-                setFrictionRefused(refused)
-              }}
+              step={0.01}
+              value={dipTarget}
+              onChange={(e) => setDipTarget(e.target.value)}
             />
-            {frictionRefused && <p className="friction-refused degenerate">{frictionRefused}</p>}
-            <p className="note">
-              The key friction weight is typed as Stanwood’s protocol reads it, zeroed on the
-              levelled jig: the bench sets the bushings to the torque at which that protocol, run on
-              this key, reads back what is typed, and the sheet shows it. The bushings then stay as
-              they are. Moving the measuring point or changing the key changes the grams they read,
-              as it would at the bench, and this slider follows the sheet.
-            </p>
-
-            <h2>Punchings and cloth</h2>
-            <p className="note">
-              Paper is how you adjust, felt is what you fit. The rest geometry cares only about the
-              total; the split will matter once the felts are allowed to compress.
-            </p>
-            <Slider
-              label="balance felt"
-              value={balanceFelt}
-              min={0}
-              max={4}
-              step={0.05}
-              unit="mm"
-              onChange={(v) => {
-                setBalanceFelt(v)
-                act((b) => b.set_balance_felt(v))
-              }}
-            />
-            <Slider
-              label="front felt"
-              value={frontFelt}
-              min={0}
-              max={4}
-              step={0.05}
-              unit="mm"
-              onChange={(v) => {
-                setFrontFelt(v)
-                act((b) => b.set_front_felt(v))
-              }}
-            />
-            <Slider
-              label="front rail pin, above the rail"
-              value={frontPin}
-              min={5}
-              max={40}
-              step={0.5}
-              unit="mm"
-              onChange={(v) => {
-                setFrontPin(v)
-                act((b) => b.set_front_pin_height(v))
-              }}
-            />
-            <Slider
-              label="front mortise, above the underside"
-              value={frontMortise}
-              min={5}
-              max={40}
-              step={0.5}
-              unit="mm"
-              onChange={(v) => {
-                setFrontMortise(v)
-                act((b) => b.set_front_mortise_depth(v))
-              }}
-            />
-            <p className="note">
-              The key stops on its front punching <i>or</i> on the pin reaching the top of its
-              mortise, whichever comes first.{' '}
-              {r.stopped_by_the_mortise
-                ? 'Right now it is the pin: the dip below is shorter than the punchings alone would give.'
-                : 'Right now it is the punching, as on a sane frame.'}
-            </p>
-            <Slider
-              label="back rail cloth"
-              value={backCloth}
-              min={0}
-              max={6}
-              step={0.05}
-              unit="mm"
-              onChange={(v) => {
-                setBackCloth(v)
-                act((b) => b.set_back_rail_cloth(v))
-              }}
-            />
-
-            <h2>The key</h2>
-            <p className="note">
-              The key weight ratio is <b>not</b> a control. It is the ratio of two arms, so it
-              follows from the geometry exactly as the action ratio does; a slider for it would have
-              to pick which dimension to move. Changing a dimension does not re-solve the punchings
-              either: the regulation drifts and the sheet shows the miss, because that is what
-              happens on a real keyboard.
-            </p>
-            <Slider
-              label="capstan behind the balance pin"
-              value={capstan}
-              min={60}
-              max={200}
-              step={1}
-              unit="mm"
-              onChange={(v) => {
-                setCapstan(v)
-                act((b) => b.set_capstan_behind(v))
-              }}
-            />
-            <Slider
-              label="front edge from the balance pin"
-              value={frontEdge}
-              min={150}
-              max={340}
-              step={1}
-              unit="mm"
-              onChange={(v) => {
-                setFrontEdge(v)
-                act((b) => b.set_front_edge(v))
-              }}
-            />
-            <Slider
-              label="capstan height"
-              value={capstanHeight}
-              min={4}
-              max={24}
-              step={0.5}
-              unit="mm"
-              onChange={(v) => {
-                setCapstanHeight(v)
-                act((b) => b.set_capstan_height(v))
-              }}
-            />
-
-            <h2>The key, weighed whole</h2>
-            <p className="note">
-              A key arrives leaded, with leads nobody knows the masses of, so it is weighed whole,
-              its leads in it: type what the scale and the jig give for it.
-            </p>
-            <div className="targets">
-              <label className="field">
-                key mass
-                <input
-                  type="number"
-                  min={1}
-                  step={0.1}
-                  value={weighMass}
-                  onChange={(e) => setWeighMass(e.target.value)}
-                />
-                g
-              </label>
-              <label className="field">
-                front weight
-                <input
-                  type="number"
-                  step={0.1}
-                  value={weighFront}
-                  onChange={(e) => setWeighFront(e.target.value)}
-                />
-                g
-              </label>
-              <label className="field">
-                read at
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={weighFrom}
-                  onChange={(e) => setWeighFrom(e.target.value)}
-                />
-                mm from the lip
-              </label>
-              <button type="button" onClick={weighTheKey} disabled={weighNeeds.length > 0}>
-                weigh the key
-              </button>
-            </div>
-            {weighNeeds.length > 0 && (
-              <p className="weighing-needs degenerate">
-                {listed(weighNeeds)} {weighNeeds.length === 1 ? 'needs' : 'need'} a number: the key
-                is weighed when all three have one.
-              </p>
-            )}
-            {weighRefused && <p className="weigh-refused degenerate">{weighRefused}</p>}
-            <p className="note weighed">
-              {r.weighed === null
-                ? `Not weighed yet: its ${fixed(r.key_mass_g, 2)} g, and where its centre of mass stands, are derived from its volume at an assumed wood density.`
-                : `Weighed: ${fixed(r.weighed.mass_g, 2)} g, its front weight ${fixed(r.weighed.front_weight_g, 2)} g read ${fixed(r.weighed.from_lip_mm, 1)} mm back from the lip.`}
-            </p>
-            <p className="note">
-              The <b>key mass</b> is the whole key on a scale, capstan and leads included: the
-              weight gravity pulls at its centre of mass. The <b>front weight</b> is the levelled
-              key's weight on the jig's scale, the key turning on its balance pin and the roller
-              under the measuring point; times the arm it was read on, it is the key's static moment
-              about the pin, which places its centre of mass along the key. <b>Read at</b> is where
-              the roller stood, back from the covering's lip: the arm it was read on. The bench
-              keeps that static moment, so moving the measuring point afterwards, or changing the
-              key, reads the same moment on another arm, and the front weight on the sheet follows
-              by the lever. The height of the centre of mass, which no scale gives, stays an
-              estimate from the key's volume: it acts only through the key's tilt on its frame, a
-              few hundredths of a gram of down weight per millimetre, and the sheet marks every
-              reading it reaches.
-            </p>
-
-            <h2>The frame</h2>
-            <Slider
-              label="balance rail"
-              value={balanceRail}
-              min={10}
-              max={60}
-              step={0.1}
-              unit="mm"
-              onChange={(v) => {
-                setBalanceRail(v)
-                act((b) => b.set_balance_rail_height(v))
-              }}
-            />
-            <Slider
-              label="front rail"
-              value={frontRail}
-              min={10}
-              max={50}
-              step={0.5}
-              unit="mm"
-              onChange={(v) => {
-                setFrontRail(v)
-                act((b) => b.set_front_rail_height(v))
-              }}
-            />
-            <Slider
-              label="back rail"
-              value={backRail}
-              min={10}
-              max={60}
-              step={0.1}
-              unit="mm"
-              onChange={(v) => {
-                setBackRail(v)
-                act((b) => b.set_back_rail_height(v))
-              }}
-            />
-            <p className="note">
-              And where the two outer rails <b>stand</b> along the key. These are the frame's own
-              numbers, not the key's: a rail is screwed to the keybed, so lengthening a key moves
-              its mortise and its chamfer and leaves the rails behind. That is a design worth seeing
-              go wrong, which is why nothing here corrects itself — the sheet names the miss
-              instead.
-            </p>
-            <Slider
-              label="front rail, in front of the balance pin"
-              value={frontRailAt}
-              min={80}
-              max={320}
-              step={1}
-              unit="mm"
-              onChange={(v) => {
-                setFrontRailAt(v)
-                act((b) => b.set_front_rail_at(v))
-              }}
-            />
-            <Slider
-              label="back rail, behind the balance pin"
-              value={backRailAt}
-              min={120}
-              max={280}
-              step={1}
-              unit="mm"
-              onChange={(v) => {
-                setBackRailAt(v)
-                act((b) => b.set_back_rail_at(v))
-              }}
-            />
-            <button
-              type="button"
-              className="replace"
-              onClick={() => {
-                act((b) => b.place_the_frame_under_the_key())
-                const b = bench.current
-                const fresh = b ? readout(b) : null
-                if (fresh) {
-                  setFrontRailAt(fresh.front_rail_at_mm)
-                  setBackRailAt(fresh.back_rail_at_mm)
-                }
-              }}
-            >
-              place the frame under the key
-            </button>
-            <p className="note">
-              Moves the rails and <b>nothing else</b>. The key bears on the cloth at a new arm
-              afterwards, so the key height and the dip will have drifted off their targets and the
-              sheet will show it — shimming is a separate operation on a real bench too.
-            </p>
-
-            <h2>Touch</h2>
-            <p className="note">
-              Put a weight on the measuring point. Three things can happen, not two: above the down
-              weight the key descends, below the up weight it rises, and{' '}
-              <b>between them it does nothing at all</b>. That gap is the friction.
-            </p>
-            <Slider
-              label="weight on the measuring point"
-              value={finger}
-              min={-60}
-              max={60}
-              step={0.5}
-              unit="g"
-              onChange={(v) => {
-                setFinger(v)
-                act((b) => b.set_finger_weight(v))
-              }}
-            />
-            <div className={`verdict ${r.held_by_friction ? 'verdict-held' : 'verdict-stop'}`}>
-              the key is {r.finger}
-              {r.friction_margin_g === null ? null : (
-                <div className="gaps">
-                  the weight lies between U and D, {fixed(r.friction_margin_g, 2)} g from moving the
-                  key
-                </div>
-              )}
-              <div className="gaps">
-                gap at the front punching {gap(r.gap_front_mm)} · at the back rail cloth{' '}
-                {gap(r.gap_back_mm)}
-              </div>
-              <div className="gaps">
-                the bushings hold any torque within ±{fixed(r.key_friction_weight_g, 2)} g at the
-                measuring point, the key level — an interval, not a value
-              </div>
-            </div>
-            <p className="note">
-              The punchings are read at their centre: a felt washer under a key carries the load
-              over its whole face, and the bench takes it at the middle, under the balance pin for
-              the balance punching. A key standing out of level on one overlaps the drawn felt's
-              edge by what the felt would compress
-              {state.scene.edge_overlaps.length === 0
-                ? ''
-                : `, here ${state.scene.edge_overlaps
-                    .map((o) => `${fixed(o.mm, 2)} mm at the ${o.pair.replaceAll('_', ' ')}`)
-                    .join(' and ')}`}
-              . The key is free to lift off its balance punching: where its stops fight it rides on
-              them, and a pull its punching cannot answer lifts it off. The contacts marked on the
-              view are where the key bears, and what stands within a millimetre of it.
-            </p>
-            <p className="note">
-              There is no “press the key” control. The key is only ever where the physics puts it —
-              a slider over a computed travel could park it in a position no weight produces, which
-              is the one thing a measuring instrument must not do.
-            </p>
-          </>
+            {t.regulation.keyDip.unit}
+          </label>
+          <button type="button" onClick={regulateTo} disabled={needsNumber.length > 0}>
+            {t.regulation.regulate}
+          </button>
+        </div>
+        {needsNumber.length > 0 && (
+          <p className="needs-number degenerate" data-needs={needsNumber.join(' ')}>
+            {t.regulation.needsNumber(needsNumber)}
+          </p>
         )}
+        {regulation && (
+          <p
+            className={`regulated ${regulation.outcome === 'laid' ? 'note' : 'degenerate'}`}
+            data-outcome={regulation.outcome}
+            data-code={regulation.outcome === 'refused' ? regulation.why.code : undefined}
+            data-limited-by={
+              regulation.outcome === 'refused' && regulation.why.code === 'regulation_infeasible'
+                ? regulation.why.limited_by
+                : undefined
+            }
+            data-shortfall-mm={
+              regulation.outcome === 'refused' && regulation.why.code === 'regulation_infeasible'
+                ? regulation.why.shortfall_mm
+                : undefined
+            }
+          >
+            {t.regulation.outcome(regulation)}
+          </p>
+        )}
+        <p className="note">{t.regulation.layingNote}</p>
+        <p className="note">
+          <Rich text={t.regulation.pileNote} />
+        </p>
+        <PaperStack
+          title={t.papers.balance}
+          papers={s.papers.balance_mm}
+          total={s.papers.balance_total_mm}
+          sizes={s.papers.drawer_mm}
+          onAdd={(mm) => act((b) => b.add_balance_paper(mm))}
+          onRemove={(i) => act((b) => b.remove_balance_paper(i))}
+        />
+        <PaperStack
+          title={t.papers.front}
+          papers={s.papers.front_mm}
+          total={s.papers.front_total_mm}
+          sizes={s.papers.drawer_mm}
+          onAdd={(mm) => act((b) => b.add_front_paper(mm))}
+          onRemove={(i) => act((b) => b.remove_front_paper(i))}
+        />
+        <FrictionControl
+          kf={kf}
+          onChange={(v) => {
+            // A weight the engine refuses leaves the bushings as they were,
+            // and the control goes on showing what they read.
+            const refused = act((b) => setKeyFrictionWeight(b, v)) ?? null
+            setFrictionRefused(refused)
+          }}
+        />
+        {frictionRefused && (
+          <p
+            className="friction-refused degenerate"
+            data-code={frictionRefused.code}
+            data-why={
+              frictionRefused.code === 'protocol_refused' ? frictionRefused.why.code : undefined
+            }
+          >
+            {t.friction.refused(frictionRefused)}
+          </p>
+        )}
+        <p className="note">{t.friction.note}</p>
+
+        <h2>{t.punchings.heading}</h2>
+        <p className="note">{t.punchings.note}</p>
+        <Slider
+          control={t.punchings.balanceFelt}
+          value={s.frame.balance_felt_mm}
+          min={0}
+          max={4}
+          step={0.05}
+          onChange={(v) => act((b) => b.set_balance_felt(v))}
+        />
+        <Slider
+          control={t.punchings.frontFelt}
+          value={s.frame.front_felt_mm}
+          min={0}
+          max={4}
+          step={0.05}
+          onChange={(v) => act((b) => b.set_front_felt(v))}
+        />
+        <Slider
+          control={t.punchings.frontPin}
+          value={s.frame.front_pin_mm}
+          min={5}
+          max={40}
+          step={0.5}
+          onChange={(v) => act((b) => b.set_front_pin_height(v))}
+        />
+        <Slider
+          control={t.punchings.frontMortise}
+          value={s.key.front_mortise_depth_mm}
+          min={5}
+          max={40}
+          step={0.5}
+          onChange={(v) => act((b) => b.set_front_mortise_depth(v))}
+        />
+        <p className="note">
+          <Rich
+            text={t.punchings.stopsAtTheBottom(
+              seats === null ? null : seats.bottom_held_by.includes('front_pin_in_the_mortise'),
+            )}
+          />
+        </p>
+        <Slider
+          control={t.punchings.backCloth}
+          value={s.frame.back_rail_cloth_mm}
+          min={0}
+          max={6}
+          step={0.05}
+          onChange={(v) => act((b) => b.set_back_rail_cloth(v))}
+        />
+
+        <h2>{t.key.heading}</h2>
+        <p className="note">
+          <Rich text={t.key.ratioNote} />
+        </p>
+        <Slider
+          control={t.key.capstan}
+          value={s.key.capstan_behind_mm}
+          min={60}
+          max={200}
+          step={1}
+          onChange={(v) => act((b) => b.set_capstan_behind(v))}
+        />
+        <Slider
+          control={t.key.frontEdge}
+          value={s.key.front_edge_mm}
+          min={150}
+          max={340}
+          step={1}
+          onChange={(v) => act((b) => b.set_front_edge(v))}
+        />
+        <Slider
+          control={t.key.capstanHeight}
+          value={s.key.capstan_height_mm}
+          min={4}
+          max={24}
+          step={0.5}
+          onChange={(v) => act((b) => b.set_capstan_height(v))}
+        />
+
+        <h2>{t.weighing.heading}</h2>
+        <p className="note">{t.weighing.intro}</p>
+        <div className="targets">
+          <label className="field">
+            {t.weighing.mass.label}
+            <input
+              type="number"
+              min={1}
+              step={0.1}
+              value={weighMass}
+              onChange={(e) => setWeighMass(e.target.value)}
+            />
+            {t.weighing.mass.unit}
+          </label>
+          <label className="field">
+            {t.weighing.frontWeight.label}
+            <input
+              type="number"
+              step={0.1}
+              value={weighFront}
+              onChange={(e) => setWeighFront(e.target.value)}
+            />
+            {t.weighing.frontWeight.unit}
+          </label>
+          <label className="field">
+            {t.weighing.readAt.label}
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={weighFrom}
+              onChange={(e) => setWeighFrom(e.target.value)}
+            />
+            {t.weighing.readAt.unit}
+          </label>
+          <button type="button" onClick={weighTheKey} disabled={weighNeeds.length > 0}>
+            {t.weighing.weigh}
+          </button>
+        </div>
+        {weighNeeds.length > 0 && (
+          <p className="weighing-needs degenerate" data-needs={weighNeeds.join(' ')}>
+            {t.weighing.needsNumber(weighNeeds)}
+          </p>
+        )}
+        {weighRefused && (
+          <p className="weigh-refused degenerate" data-code={weighRefused.code}>
+            {t.weighing.refused(weighRefused)}
+          </p>
+        )}
+        <p
+          className="note weighed"
+          data-mass-g={s.key.weighed?.mass_g}
+          data-front-weight-g={s.key.weighed?.front_weight_g}
+          data-from-lip-mm={s.key.weighed?.from_lip_mm}
+        >
+          {s.key.weighed === null
+            ? t.weighing.notWeighed(s.key.mass_g)
+            : t.weighing.weighed(
+                s.key.weighed.mass_g,
+                s.key.weighed.front_weight_g,
+                s.key.weighed.from_lip_mm,
+              )}
+        </p>
+        <p className="note">
+          <Rich text={t.weighing.note} />
+        </p>
+
+        <h2>{t.frame.heading}</h2>
+        <Slider
+          control={t.frame.balanceRail}
+          value={s.frame.balance_rail_mm}
+          min={10}
+          max={60}
+          step={0.1}
+          onChange={(v) => act((b) => b.set_balance_rail_height(v))}
+        />
+        <Slider
+          control={t.frame.frontRail}
+          value={s.frame.front_rail_mm}
+          min={10}
+          max={50}
+          step={0.5}
+          onChange={(v) => act((b) => b.set_front_rail_height(v))}
+        />
+        <Slider
+          control={t.frame.backRail}
+          value={s.frame.back_rail_mm}
+          min={10}
+          max={60}
+          step={0.1}
+          onChange={(v) => act((b) => b.set_back_rail_height(v))}
+        />
+        <p className="note">
+          <Rich text={t.frame.railsNote} />
+        </p>
+        <Slider
+          control={t.frame.frontRailAt}
+          value={s.frame.front_rail_at_mm}
+          min={80}
+          max={320}
+          step={1}
+          onChange={(v) => act((b) => b.set_front_rail_at(v))}
+        />
+        <Slider
+          control={t.frame.backRailAt}
+          value={s.frame.back_rail_behind_mm}
+          min={120}
+          max={280}
+          step={1}
+          onChange={(v) => act((b) => b.set_back_rail_at(v))}
+        />
+        <button
+          type="button"
+          className="replace"
+          onClick={() => act((b) => b.place_the_frame_under_the_key())}
+        >
+          {t.frame.place}
+        </button>
+        <p className="note">
+          <Rich text={t.frame.placeNote} />
+        </p>
+
+        <h2>{t.touch.heading}</h2>
+        <p className="note">
+          <Rich text={t.touch.intro} />
+        </p>
+        <Slider
+          control={t.touch.weight}
+          value={s.weight_on_the_measuring_point_g}
+          min={-60}
+          max={60}
+          step={0.5}
+          resolution={MASS_G}
+          onChange={(v) => act((b) => b.set_finger_weight(v))}
+        />
+        {d.touch && (
+          <div
+            className={`verdict ${d.touch.verdict.code === 'held_by_friction' ? 'verdict-held' : 'verdict-stop'}`}
+            data-verdict={d.touch.verdict.code}
+          >
+            {t.touch.theKeyIs(word(t.touch.verdict, d.touch.verdict.code, d.touch.verdict))}
+            {d.touch.verdict.code === 'held_by_friction' && (
+              <div className="gaps">{t.touch.margin(d.touch.verdict.margin_g)}</div>
+            )}
+            <div className="gaps">{t.touch.gaps(d.touch.gap_front_mm, d.touch.gap_back_mm)}</div>
+            <div className="gaps">
+              {t.touch.bushings(
+                kf?.outcome === 'read' ? t.number(kf.shown, decimals(kf.resolution)) : null,
+              )}
+            </div>
+          </div>
+        )}
+        <p className="note">{t.touch.centreNote(d.edge_overlaps)}</p>
+        <p className="note">{t.touch.noPressNote}</p>
       </aside>
     </div>
   )

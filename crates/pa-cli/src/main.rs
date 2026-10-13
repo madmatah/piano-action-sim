@@ -5,9 +5,14 @@
 //! checked without a browser in the way; `golden` writes the golden sheet,
 //! every reading of the default bench and of the fixture benches in full bits,
 //! which `crates/pa-app/tests/golden.rs` compares the engine against.
+//!
+//! A refusal prints as the code the browser words, with its parameters
+//! (`pa_app::boundary`): the engine builds no sentence, and this tool keeps
+//! no second wording of its own.
 
 use std::path::{Path, PathBuf};
 
+use pa_app::boundary::{json, Refusal, Riding, WeighingRefusal};
 use pa_app::golden;
 use pa_app::key_bench::{KeyBench, KeyMass, ProcedureId, Sheet, Trust, Unit};
 
@@ -96,7 +101,7 @@ fn weigh() {
         println!();
         println!(
             "  the key's weighing is refused: {}",
-            bench.why_not_weighed(&why)
+            json(&WeighingRefusal::of(&bench, why))
         );
         return;
     }
@@ -141,6 +146,7 @@ fn label(p: ProcedureId) -> &'static str {
 }
 
 fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
+    let riding = bench.riding();
     println!("  {title}");
     println!("  {}", "-".repeat(title.len().max(40)));
     for reading in &sheet.readings {
@@ -186,11 +192,17 @@ fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
                     );
                 }
             }
-            Err(why) => println!("  {name:<22}refused: {}", bench.why_refused(why)),
+            Err(why) => println!(
+                "  {name:<22}refused: {}",
+                json(&Refusal::reading(why, riding.map(Riding::from)))
+            ),
         }
     }
-    if let Some(rides) = bench.why_it_rides() {
-        println!("  {rides}");
+    if let Some(riding) = riding {
+        println!(
+            "  the key rides on its stops: {}",
+            json(&Riding::from(riding))
+        );
     }
     match bench.readout() {
         Some(r) => match bench.key_mass() {
@@ -209,7 +221,9 @@ fn print_sheet(title: &str, bench: &KeyBench, sheet: &Sheet) {
         },
         None => println!(
             "  the key cannot be seated: {}",
-            bench.frame_fault().unwrap_or_default()
+            bench
+                .frame_fault()
+                .map_or_else(|| "null".to_owned(), |why| json(&Refusal::seat(&why)))
         ),
     }
 }

@@ -53,11 +53,20 @@
  * re-key `OrbitControls` on the mode instead of animating one camera between
  * them.
  */
+
+import type {
+  ContactState,
+  MarkedContact,
+  Marker,
+  Outline,
+  Pose,
+  Scene,
+  State,
+} from '@pas/wasm/types'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import type { Contact, Marker, Outline, Pose, Scene } from './bench'
 import {
   axisSegments,
   contactStrokes,
@@ -125,7 +134,7 @@ const EDGE = '#5b544a'
  * millimetre still open, and drawn parts overlapping, which a rigid contact
  * should never show and a frame out of fit with its key does.
  */
-export const CONTACT_COLOUR: Record<Contact['state'], string> = {
+export const CONTACT_COLOUR: Record<ContactState, string> = {
   closed: '#1d63a8',
   open: '#8a8a8a',
   overlapping: '#e8590c',
@@ -176,10 +185,10 @@ const CUT_STENCIL = 1
  * Disposes a geometry when it is replaced or unmounted.
  *
  * A geometry handed to a mesh through the `geometry` prop is not an instance
- * in the tree, so react-three-fiber never disposes it. Every edit rebuilds the
- * scene from a fresh `JSON.parse`, so without this a slider drag leaves a
- * thousand orphaned buffers on the GPU — in an application meant to stay open
- * while a technician works.
+ * in the tree, so react-three-fiber never disposes it. Every edit of the
+ * geometry rebuilds the scene from a fresh `JSON.parse`, so without this a
+ * slider drag leaves a thousand orphaned buffers on the GPU — in an
+ * application meant to stay open while a technician works.
  */
 function useDisposal(geometry: THREE.BufferGeometry) {
   useEffect(() => () => geometry.dispose(), [geometry])
@@ -390,7 +399,7 @@ function MeasuringPoint({ at }: { at: [number, number] }) {
  * key's is. Drawn in the keybed's frame, over everything, in both views: the
  * points are where the engine's contact rows put them.
  */
-function Contacts({ contacts }: { contacts: Contact[] }) {
+function Contacts({ contacts }: { contacts: MarkedContact[] }) {
   return (
     <>
       {(['open', 'overlapping'] as const).map((state) => (
@@ -525,7 +534,17 @@ const CAMERA: Record<
   solid: { position: [-190, 115, 430], target: [-30, 20, 0], zoom: 1.75 },
 }
 
-export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) {
+export function SagittalView({
+  scene,
+  state,
+  mode,
+}: {
+  /** What is drawn: every part in its own body's frame. */
+  scene: Scene
+  /** Where each body stands, and the contacts to mark. */
+  state: State
+  mode: ViewMode
+}) {
   const preset = CAMERA[mode]
 
   return (
@@ -550,17 +569,17 @@ export function SagittalView({ scene, mode }: { scene: Scene; mode: ViewMode }) 
           number changes. */}
       <group scale={[-1, 1, 1]}>
         <Keybed />
-        {scene.poses.map((pose, body) => (
+        {state.poses.map((pose, body) => (
           <Body
             key={body}
             body={body}
             pose={pose}
             outlines={scene.outlines.filter((o) => o.body === body)}
             mode={mode}
-            marker={scene.measuring_point.body === body ? scene.measuring_point : undefined}
+            marker={state.measuring_point.body === body ? state.measuring_point : undefined}
           />
         ))}
-        <Contacts contacts={scene.contacts} />
+        <Contacts contacts={state.contacts} />
       </group>
 
       {/* Re-keyed on the mode so the two buttons are two viewpoints, not two

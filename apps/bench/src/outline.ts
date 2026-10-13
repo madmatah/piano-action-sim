@@ -6,8 +6,9 @@
  * here decides where anything is: a pose is applied as the engine gives it,
  * and an outline is drawn through the points it arrives with.
  */
+
+import type { ContactState, MarkedContact, Pose } from '@pas/wasm/types'
 import * as THREE from 'three'
-import type { Contact, Pose } from './bench'
 
 /**
  * The engine's flat `[x0, y0, x1, y1, …]` as a closed, filled shape.
@@ -144,7 +145,7 @@ export function strokes(
  * an open contact, the depth across an overlapping one. A closed contact's
  * two points coincide, and it is marked by its point alone.
  */
-export function contactStrokes(contacts: readonly Contact[], state: Contact['state']): number[] {
+export function contactStrokes(contacts: readonly MarkedContact[], state: ContactState): number[] {
   const out: number[] = []
   for (const c of contacts) {
     if (c.state !== state) continue

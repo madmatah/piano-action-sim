@@ -13,7 +13,9 @@
 //! key's centre of mass, which no scale gives.
 //! Beside them, [`golden`] records every reading of the bench and of a set of
 //! fixture benches in full bits, so that a change to the engine shows every
-//! number it moves.
+//! number it moves; and [`boundary`] turns the bench into the documents an
+//! interface reads, settings, sheet, diagnostics, state and scene apart, in
+//! codes and numbers, whose TypeScript types it generates.
 //!
 //! `pa-wasm` and `pa-cli` are adapters of this crate and do not depend on
 //! `pa-core` directly. Their manifests hold that direction; no check in the
@@ -22,6 +24,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod boundary;
 pub mod composite_key;
 pub mod golden;
 pub mod key_bench;
