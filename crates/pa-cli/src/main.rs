@@ -5,8 +5,8 @@
 //! `weigh [PROFILE]` prints the key weighing sheet of the standard
 //! instrument, or of the shipped profile named, so that the numbers can be
 //! read and checked without a browser in the way; `band [PROFILE]` prints the
-//! band the driven sweep draws, its down and up curves and the down and up
-//! weights read on it beside the walk's; `golden` writes the golden sheet,
+//! band the driven sweep draws, its down and up curves and their extremes in
+//! full beside the walk's down and up weights; `golden` writes the golden sheet,
 //! every reading of the default bench and of the fixture benches in full bits,
 //! which `crates/pa-app/tests/golden.rs` compares the engine against.
 //!
@@ -93,9 +93,15 @@ fn instrument(command: &str, profile: Option<&str>) -> Instrument {
 }
 
 /// Draws the band of the standard bench, or of the shipped profile named:
-/// the down and up weights read on it beside the walk's, where each falls
+/// the down curve's greatest force and the up curve's least, in full and
+/// never as a gram, beside the walk's down and up weights, where each falls
 /// on the stroke, the sweep's solves and how long it took, then both curves
 /// a reading a line, travel and force, for a plot.
+///
+/// The band is a curve, read by no weight: the gram is the walk's, the
+/// trade's protocol with gram weights. The two stand within a few
+/// thousandths of a gram in full, and so may read the gram either side of a
+/// whole one.
 fn band(profile: Option<&str>) {
     let bench = instrument("band", profile);
     let sheet = bench.sheet();
@@ -123,29 +129,24 @@ fn band(profile: Option<&str>) {
     };
     let b = &banded.band;
     let walked = |p: ProcedureId| match sheet.get(p) {
-        Some(Ok(m)) => format!("{:>3} g {:>10.4}", shown(m.shown), m.value),
+        Some(Ok(m)) => format!("{} g from {:.4} g", shown(m.shown), m.value),
         _ => "refused".to_owned(),
     };
-    for (m, walk) in [
-        (&banded.down_weight, ProcedureId::DownWeight),
-        (&banded.up_weight, ProcedureId::UpWeight),
+    for (m, walk, name) in [
+        (&banded.down_weight, ProcedureId::DownWeight, "D"),
+        (&banded.up_weight, ProcedureId::UpWeight, "U"),
     ] {
         let at = m.conditions.sweep.map_or(f64::NAN, |s| s.at * 1000.0);
         println!(
-            "  {:<22}{:>3} g {:>10.4}   at {at:6.2} mm of travel; by the walk {}",
+            "  {:<22}{:>10.4} g   at {at:6.2} mm of travel; the walk's {name} {}",
             label(m.procedure),
-            shown(m.shown),
             m.value,
             walked(walk)
         );
     }
     let (d, u) = (banded.down_weight.value, banded.up_weight.value);
-    println!(
-        "  {:<22}{:>10.4} g   its middle, (D + U) / 2",
-        "",
-        0.5 * (d + u)
-    );
-    println!("  {:<22}{:>10.4} g   its width, D - U", "", d - u);
+    println!("  {:<22}{:>10.4} g   its middle", "", 0.5 * (d + u));
+    println!("  {:<22}{:>10.4} g   its width", "", d - u);
     println!(
         "  window {:.3} mm, a reading every {:.2} mm, {} each way; {} static solves, {} steps, \
          in {:.2} ms",
@@ -197,7 +198,7 @@ fn weigh(profile: Option<&str>) {
     // The key re-weighed as a technician weighs one, whole: the same mass on
     // the scale, its front weight read a gram heavier where the sheet reads
     // it.
-    let mass_g = bench.readout().map(|r| r.key_mass_g);
+    let mass_g = bench.key_mass_g();
     let front_g = match before.get(ProcedureId::FrontWeight) {
         Some(Ok(m)) => Some(m.value),
         _ => None,
@@ -205,6 +206,9 @@ fn weigh(profile: Option<&str>) {
     let (Some(mass_g), Some(front_g)) = (mass_g, front_g) else {
         println!();
         println!("  the key cannot be re-weighed: its mass or its front weight is not read.");
+        if bench.key_mass_g().is_none() {
+            println!("  nobody has weighed it: type its weighing on the bench, or in a profile.");
+        }
         return;
     };
     let reweighed = Action::WeighKey {
@@ -254,8 +258,8 @@ fn label(p: ProcedureId) -> &'static str {
         ProcedureId::FrictionWeight => "friction weight   F",
         ProcedureId::KeyFrictionWeightZeroedOnTheJig => "key friction KF, jig",
         ProcedureId::KeyFrictionWeightZeroedOnTheFrame => "key friction KF, frame",
-        ProcedureId::DownWeightOnTheBand => "down weight, band  D",
-        ProcedureId::UpWeightOnTheBand => "up weight, band    U",
+        ProcedureId::DownWeightOnTheBand => "band, greatest down",
+        ProcedureId::UpWeightOnTheBand => "band, least up",
     }
 }
 
@@ -319,25 +323,30 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
         );
     }
     match bench.readout() {
-        Some(r) => match bench.key_mass() {
-            KeyMass::Estimated => println!(
-                "  {:<22}{:>8.2} g    derived from its volume at an assumed density",
-                "key mass", r.key_mass_g
-            ),
-            KeyMass::Published { centre, .. } => println!(
+        Some(_) => match (bench.key_mass(), bench.key_mass_g()) {
+            (KeyMass::Published { centre, .. }, Some(mass_g)) => println!(
                 "  {:<22}{:>8.2} g    as published, its centre of mass at ({:.1}, {:.1}) mm",
                 "key mass",
-                r.key_mass_g,
+                mass_g,
                 centre.x * 1000.0,
                 centre.y * 1000.0
             ),
-            KeyMass::Weighed { datum, .. } => println!(
+            (KeyMass::Weighed { datum, .. }, Some(mass_g)) => println!(
                 "  {:<22}{:>8.2} g    weighed whole, its front weight {:.2} g read {:.1} mm \
                  back from the lip",
                 "key mass",
-                r.key_mass_g,
+                mass_g,
                 datum.grams,
                 datum.from_lip_m * 1000.0
+            ),
+            _ => println!(
+                "  {:<22}{:>8}      not weighed: {}",
+                "key mass",
+                "refused",
+                json(&Refusal::reading(
+                    &pa_app::instrument::Refused::KeyNotWeighed,
+                    None
+                ))
             ),
         },
         None => println!(

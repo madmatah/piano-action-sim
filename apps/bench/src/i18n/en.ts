@@ -86,7 +86,7 @@ const PART: Named<Part> = {
   key_front: 'key front',
   key_button: 'key button',
   back_check_block: 'back check block',
-  capstan_block: 'capstan block',
+  top_clearance: 'wippen rail clearance',
   key_tail_felt: 'key tail felt',
   capstan: 'capstan',
   front_mortise: 'front mortise',
@@ -131,10 +131,23 @@ const STROKE: Named<Stroke> = {
   up: 'on the way up',
 }
 
+/** Each panel's heading, which a sentence pointing to the panel quotes. */
+const panel: Catalogue['panel'] = {
+  instrument: 'The instrument',
+  sheet: 'Weighing sheet',
+  regulation: 'Regulation',
+  punchings: 'Punchings and cloth',
+  key: 'The key',
+  weighing: 'The key, weighed whole',
+  frame: 'The frame',
+  touch: 'Touch',
+}
+
 /** Why a reading is refused, or why the key cannot be seated. */
 const refusal: Catalogue['refusal'] = {
   geometry_degenerate: () => 'the geometry is degenerate.',
-  key_not_weighed: () => 'nobody has weighed this key: it has no mass in the model.',
+  key_not_weighed: () =>
+    `nobody has weighed this key, so the bench knows no mass for it: weigh it whole and type the weighing under “${panel.weighing}”.`,
   scale_not_in_front_of_the_pivot: () =>
     "the measuring point stands at or behind the balance pin, where the jig's scale cannot hold the key level.",
   cannot_seat: ({ fighting }) =>
@@ -268,7 +281,9 @@ const OVERLAP = (back: Part, front: Part, by: string): string =>
       ? `the ${PART[back]} would stand ${by} mm across the step down to the key's thinned tail, and a block stands on the one or on the other`
       : back === 'keystick' && front === 'keytop'
         ? `the key's thinned tail would run ${by} mm under the keytop, which is glued on the keystick's full height`
-        : `the ${PART[back]} and the ${PART[front]} would overlap by ${by} mm along the key`
+        : front === 'capstan'
+          ? `the ${PART[back]} would run ${by} mm under the capstan's head, which screws into the keystick's full height`
+          : `the ${PART[back]} and the ${PART[front]} would overlap by ${by} mm along the key`
 
 /** A setting's unit, as a value in it is written. */
 const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
@@ -296,15 +311,21 @@ const problem: Worded<Problem> = {
   outline_crosses_itself: ({ back, front, by_mm }) =>
     `${OVERLAP(back, front, fixed(by_mm, 1))}: no key is cut like that.`,
   feature_outside_keystick: ({ part, by_mm }) =>
-    `the ${PART[part]} would stand off the flat of the key's underside, by ${fixed(by_mm, 1)} mm.`,
+    part === 'top_clearance'
+      ? `the ${PART[part]} would run ${fixed(by_mm, 1)} mm back over the key's thinned tail: it is cut in the keystick's full height.`
+      : `the ${PART[part]} would stand off the flat of the key's underside, by ${fixed(by_mm, 1)} mm.`,
   capstan_behind_back_check_block: ({ by_mm }) =>
     `the capstan would stand behind the back check block: its place is between the block and the key button, and it clears the block ${fixed(by_mm, 1)} mm further forward.`,
   capstan_in_block: ({ block, by_mm }) =>
     `the capstan would stand ${fixed(by_mm, 1)} mm into the ${PART[block]}.`,
-  capstan_off_its_block: ({ by_mm }) =>
-    `the capstan would stand ${fixed(by_mm, 1)} mm off the block it is screwed into.`,
+  capstan_off_the_full_height: ({ by_mm }) =>
+    `the capstan would stand over the key's thinned tail, and it screws into the keystick's full height: its head stands wholly over it ${fixed(by_mm, 1)} mm further forward.`,
   capstan_dome_narrower_than_its_head: ({ dome_mm, head_mm }) =>
     `a dome of ${fixed(dome_mm, 2)} mm cannot cap a capstan head of ${fixed(head_mm, 2)} mm radius.`,
+  clearance_not_a_cut: ({ length_mm, depth_mm }) =>
+    `a ${PART.top_clearance} ${fixed(length_mm, 1)} mm long and ${fixed(depth_mm, 1)} mm deep cuts nothing: it is cut below the keystick's full top, its front end in front of its back end.`,
+  clearance_through_keystick: ({ depth_mm, wood_mm }) =>
+    `a ${PART.top_clearance} ${fixed(depth_mm, 1)} mm deep goes through the keystick, which has ${fixed(wood_mm, 1)} mm of wood under it.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `a front mortise ${fixed(depth_mm, 1)} mm deep goes through the ${fixed(wood_mm, 1)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
@@ -417,8 +438,9 @@ export const en: Catalogue = {
   },
 
   profile: {
-    composite: 'a composite key, its section measured, its front and capstan assumed',
     hirschkorn: 'Hirschkorn’s key, Boston GP-178, note 52, on real felts',
+    'measured-section':
+      'the measured key section on the measured key frame, its key front assumed, arriving unweighed',
   },
 
   faults: {
@@ -474,16 +496,7 @@ export const en: Catalogue = {
     select_profile: null,
   },
 
-  panel: {
-    instrument: 'The instrument',
-    sheet: 'Weighing sheet',
-    regulation: 'Regulation',
-    punchings: 'Punchings and cloth',
-    key: 'The key',
-    weighing: 'The key, weighed whole',
-    frame: 'The frame',
-    touch: 'Touch',
-  },
+  panel,
   control,
 
   sheet: {
@@ -506,7 +519,7 @@ export const en: Catalogue = {
     bearsAt: { label: 'bears at', unit: 'mm behind' },
     bearsHow: (how) => `The key is **${how}**.`,
     bearingNote:
-      'A keyboard is set up so the key is **level when it is fully down**, and so slightly nose-up when released — and the chamfer under the tail is cut at that same angle so the tail beds **flat** on its cloth. Both are design goals, not laws: rail heights, punchings and cloth are what reach them, and plenty of keyboards miss. A key that misses bears on an edge instead, which is where it bears from — so the bench reports all three rather than refusing the frame. Nose-down is positive, and so is a rear end digging in.',
+      'A keyboard is set up so the key is **level when it is fully down**, and so slightly nose-up when released — and the chamfer under the tail is cut at that same angle so the tail beds **flat** on its cloth. Both are design goals, not laws: rail heights, punchings and cloth are what reach them, and most keys rest on an **edge** of their cloth instead. For regulating that hardly matters: the papers under the balance punching set the key’s height, and the cloth’s work is to damp the key’s return and give it the same rest every time; bedded flat, the tail only wears its cloth more slowly. So the bench reports all three rather than refusing the frame. Nose-down is positive, and so is a rear end digging in.',
     balanceNote:
       'With no action on the capstan, **BW = −FW**: the equation of balance with its right-hand side removed, but for what the key’s rest attitude adds, read here at its two seats rather than level. A bare front-heavy key falls on its own, which is why these branches are negative.',
   },
@@ -521,14 +534,13 @@ export const en: Catalogue = {
     friction_weight: 'friction weight F',
     key_friction_weight_zeroed_on_the_jig: 'key friction weight KF, zeroed on the jig',
     key_friction_weight_zeroed_on_the_frame: 'key friction weight KF, zeroed on the frame',
-    down_weight_on_the_band: 'down weight D, on the band',
-    up_weight_on_the_band: 'up weight U, on the band',
+    down_weight_on_the_band: 'the band’s greatest force on the way down',
+    up_weight_on_the_band: 'the band’s least force on the way up',
   },
   because: {
-    key_mass:
-      'the key’s mass is derived from its volume at an assumed wood density until you weigh it',
+    key_mass: 'nobody has weighed the key',
     centre_of_mass_height:
-      'the height of the key’s centre of mass is estimated from its volume, which no scale gives',
+      'the height of the key’s centre of mass, which no scale gives, is estimated from its drawn section',
     key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
     geometry: 'some of its dimensions have no record',
   },
@@ -585,13 +597,13 @@ export const en: Catalogue = {
     intro:
       'A key arrives leaded, with leads nobody knows the masses of, so it is weighed whole, its leads in it: type what the scale and the jig give for it.',
     why: weighingWhy,
-    notWeighed: (massG) =>
-      `Not weighed yet: its ${massG === null ? 'mass' : `${to(massG, MASS_G)} g`}, and where its centre of mass stands, are derived from its volume at an assumed wood density.`,
+    notWeighed:
+      'Not weighed yet: this key has no mass in the model, so every reading that needs one is refused. Weigh it whole and type what the scale and the jig give: its mass, its front weight, and how far back from the lip the jig’s roller stood.',
     weighed: (massG, frontWeightG, fromLipMm) =>
       `Weighed: ${to(massG, MASS_G)} g, its front weight ${to(frontWeightG, MASS_G)} g read ${to(fromLipMm, FROM_LIP_MM)} mm back from the lip.`,
     published: (massG) =>
       `As published: ${massG === null ? 'its mass' : `${to(massG, MASS_G)} g`}, and its centre of mass, its height included, as its source gives them.`,
-    note: "The **key mass** is the whole key on a scale, capstan and leads included: the weight gravity pulls at its centre of mass. The **front weight** is the levelled key's weight on the jig's scale, the key turning on its balance pin and the roller under the measuring point; times the arm it was read on, it is the key's static moment about the pin, which places its centre of mass along the key. **Read at** is where the roller stood, back from the covering's lip: the arm it was read on. The bench keeps that static moment, so moving the measuring point afterwards, or changing the key, reads the same moment on another arm, and the front weight on the sheet follows by the lever. The height of the centre of mass, which no scale gives, stays what the key came with: published, where its source gives one, or an estimate from the key's volume, which the sheet marks on every reading it reaches. It acts only through the key's tilt on its frame, a few hundredths of a gram of down weight per millimetre.",
+    note: "The **key mass** is the whole key on a scale, capstan and leads included: the weight gravity pulls at its centre of mass. The **front weight** is the levelled key's weight on the jig's scale, the key turning on its balance pin and the roller under the measuring point; times the arm it was read on, it is the key's static moment about the pin, which places its centre of mass along the key. **Read at** is where the roller stood, back from the covering's lip: the arm it was read on. The bench keeps that static moment, so moving the measuring point afterwards, or changing the key, reads the same moment on another arm, and the front weight on the sheet follows by the lever. The height of the centre of mass, which no scale gives, stays what the key came with: published, where its source gives one, or else estimated from the key's drawn section, which the sheet marks on every reading it reaches. It acts only through the key's tilt on its frame, a few hundredths of a gram of down weight per millimetre.",
   },
 
   frame: {
@@ -604,7 +616,7 @@ export const en: Catalogue = {
   band: {
     title: 'The band',
     caption: (stepMm) =>
-      `The key driven slowly through its stroke, down and back, as a finger driving it would: at every ${stepMm} mm of travel at the measuring point, the force that holds it there. Between the two curves the key stays wherever it is, held by its friction: their distance apart is the friction, their middle the key’s balance. **D** is the most the way down needs anywhere, **U** the least the way up holds, read as gram weights read them.`,
+      `The key driven slowly through its stroke, down and back, as a finger driving it would: at every ${stepMm} mm of travel at the measuring point, the force that holds it there. Between the two curves the key stays wherever it is, held by its friction: their distance apart is the friction, their middle the key’s balance. The most the way down needs anywhere and the least the way up holds are marked in full, to the hundredth of a gram: the curves’ own numbers, which no weight reads. The sheet’s **D** and **U** are the trade’s readings, gram weights walked from the seats and read as the weights give them.`,
     travel: 'travel at the measuring point, below the top seat (mm)',
     force: 'force on the measuring point, pressing down (g)',
     down: 'down curve: what drives the key down',
@@ -614,12 +626,13 @@ export const en: Catalogue = {
     key: 'where it has left the key',
     topSeat: 'top seat',
     bottomSeat: 'bottom seat',
-    downMarker: (shown, exact) => `D ${shown} g (${exact})`,
-    upMarker: (shown, exact) => `U ${shown} g (${exact})`,
+    downMarker: (grams) => `greatest down ${grams} g`,
+    upMarker: (grams) => `least up ${grams} g`,
+    extremeAt: (label, travelMm) => `${label}, ${travelMm} mm below the top seat`,
     weightLine: (grams) => `${grams} g`,
     readout: (travelMm, downG, upG) => `${travelMm} mm · down ${downG} g · up ${upG} g`,
     seatsNote:
-      'At a seat the stop takes whatever the finger leaves, so the curves start a step inside each seat; D and U are read there, a few thousandths of a gram from the sheet’s, which walks gram weights from the seats themselves.',
+      'At a seat the stop takes whatever the finger leaves, so the curves start a step inside each seat and their extremes are read there, within a few thousandths of a gram of the sheet’s D and U in full, which walks gram weights from the seats themselves. Near a whole gram the two can fall either side of it, which is why the band reads no gram: the gram is the sheet’s.',
     stale: 'The key has changed since this band was drawn: choose **band** to draw it again.',
     staleRefusal:
       'The key has changed since the band was refused: choose **band** to try it again.',
@@ -648,6 +661,8 @@ export const en: Catalogue = {
           ? ''
           : `, here ${overlaps.map((o) => `${to(o.overlap_mm, LENGTH_MM)} mm at the ${CONTACT[o.pair]}`).join(' and ')}`
       }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. The contacts marked on the view are where the key bears, and what stands within a millimetre of it.`,
+    notWeighed:
+      'This key is not weighed: what a weight on it does depends on the key’s own balance, which only a weighing gives, so the key is drawn where its back rests on its cloth, as key height is read, whatever weight is typed. Weigh it to try the weights.',
     noPressNote:
       'There is no “press the key” control. The key is only ever where the physics puts it — a slider over a computed travel could park it in a position no weight produces, which is the one thing a measuring instrument must not do.',
   },

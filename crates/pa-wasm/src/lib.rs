@@ -41,8 +41,8 @@ pub struct Bench {
 
 #[wasm_bindgen]
 impl Bench {
-    /// The standard instrument: a middle natural, regulated to the standard
-    /// targets.
+    /// The standard instrument: Hirschkorn's key on his printed frame, as it
+    /// arrives.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {

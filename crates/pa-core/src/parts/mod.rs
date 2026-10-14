@@ -1,27 +1,24 @@
-//! Parametric part definitions, the parts they build, the mass properties
-//! of the composite key, and what is known of a key's mass.
+//! Parametric part definitions, the parts they build, and what is known of
+//! a key's mass.
 //!
-//! # Two things built from one key
+//! # One key, drawn and touched
 //!
-//! [`KeyDesign`] holds the key's dimensions, and two things are built from
-//! them. Its **parts** ([`key`]), one closed outline per piece of material,
-//! are what is drawn, what the faults read and what the key's contacts with
-//! its frame read ([`mounts::key_on_frame`]); [`FrameDesign`] builds the
-//! frame's the same way ([`frame`]). Its **volume model**, the polygon
-//! [`KeyDesign::outline_vertices`] integrated as a uniform prism and the
-//! capstan turned from its profile, is the composite key's mass: an
-//! assumption with no record, drawn by nothing, which the parts tile exactly
-//! (`the_drawn_key_tiles_the_polygon_its_mass_is_integrated_over`).
+//! [`KeyDesign`] holds the key's dimensions, and its **parts** ([`key`]),
+//! one closed outline per piece of material, are built from them: what is
+//! drawn, what the faults read and what the key's contacts with its frame
+//! read ([`mounts::key_on_frame`]); [`FrameDesign`] builds the frame's the
+//! same way ([`frame`]).
 //!
-//! # A key's mass is weighed
+//! # A key's mass is weighed, never integrated
 //!
 //! A key is weighed whole, its leads in it: its mass and its front weight,
 //! which gives its static moment about the balance pin ([`key_mass`]); or a
 //! source publishes it whole, its centre of mass's height included. Until it
-//! is weighed, the volume model's estimate stands for the whole of a
-//! composite key's mass; once it is, for the height of its centre of mass
-//! alone, which no scale gives. The volume model leaves with the composite
-//! key (`docs/FOUNDATIONS.md` §2.3).
+//! is weighed it has no mass, and what reads one is refused. An outline draws
+//! a key and never weighs it: the one number of a weighed key no scale gives,
+//! the height of its centre of mass, is estimated from its drawn section's
+//! area centroid ([`KeyDesign::section_centroid`]), and every reading it
+//! reaches names it (`docs/FOUNDATIONS.md` §2.3).
 //!
 //! # The key's local frame
 //!
@@ -69,222 +66,46 @@ fn count(outline: &[Seg]) -> u16 {
     u16::try_from(outline.len()).expect("an outline holds fewer than 65 536 segments")
 }
 
-/// Mass properties of a planar region extruded across the sagittal plane.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct MassProperties {
-    /// Total mass, kg.
-    pub mass: f64,
-    /// Centre of mass in the part's local frame.
-    pub com: Point,
-    /// Second moment of mass about the local frame's **origin**, kg·m².
-    ///
-    /// About the origin, not about the centre of mass, because the origin is the
-    /// pivot in every frame this project defines. A caller that wants the central
-    /// moment subtracts `mass * |com|²` itself, visibly.
-    pub i_origin: f64,
-}
-
-impl MassProperties {
-    /// The properties of nothing: what two bodies of no mass combine into.
-    pub const ZERO: Self = Self {
-        mass: 0.0,
-        com: Point::new(0.0, 0.0),
-        i_origin: 0.0,
-    };
-
-    /// Combines two bodies rigidly joined in the same frame.
-    pub fn combined(self, other: Self) -> Self {
-        let mass = self.mass + other.mass;
-        if mass <= 0.0 {
-            return Self::ZERO;
-        }
-        Self {
-            mass,
-            com: Point::new(
-                (self.mass * self.com.x + other.mass * other.com.x) / mass,
-                (self.mass * self.com.y + other.mass * other.com.y) / mass,
-            ),
-            // Second moments about a shared origin add directly. No parallel-axis
-            // term is needed precisely because both are already about the origin,
-            // which is why `i_origin` is defined there.
-            i_origin: self.i_origin + other.i_origin,
-        }
-    }
-
-    /// Removes a region from a body: `self` without `other`.
-    ///
-    /// Mass, first moment and second moment all subtract exactly, so a part cut
-    /// out of a larger one needs no boolean geometry — only arithmetic, as when
-    /// a part is cut out of the wood and replaced by the same shape in another
-    /// material. Only the tests call it.
-    ///
-    /// `None` when the result would have non-positive mass, which means the
-    /// caller is removing more than is there.
-    pub fn minus(self, other: Self) -> Option<Self> {
-        let mass = self.mass - other.mass;
-        if mass <= 0.0 {
-            return None;
-        }
-        Some(Self {
-            mass,
-            com: Point::new(
-                (self.mass * self.com.x - other.mass * other.com.x) / mass,
-                (self.mass * self.com.y - other.mass * other.com.y) / mass,
-            ),
-            i_origin: self.i_origin - other.i_origin,
-        })
-    }
-
-    /// A point mass at `at`. Only the tests call it.
-    pub fn point_mass(at: Point, mass: f64) -> Self {
-        Self {
-            mass,
-            com: at,
-            i_origin: mass * (at.x * at.x + at.y * at.y),
-        }
-    }
-
-    /// The **static moment** about the origin, kg·m — the quantity every
-    /// touchweight observable is built from.
-    ///
-    /// Positive when the body overhangs towards positive `x`. Stanwood's "radius
-    /// weight" is this divided by a radius.
-    pub fn static_moment_x(&self) -> f64 {
-        self.mass * self.com.x
-    }
-}
-
-/// Mass properties of a **solid of revolution**, from its half-profile.
-///
-/// # Why a lathe and not an extrusion
-///
-/// Most of this action is prismatic: a key, a rail, a punching are all a
-/// section swept sideways. A screw is not. Extruding a capstan's silhouette
-/// across the width of the key makes a slab several times too heavy, which
-/// reads as a block of wood. Turned parts get turned.
-///
-/// The profile is a list of `(radius, height)` points in order along the axis,
-/// which stands vertical at `x = axis_x`; consecutive points are joined by
-/// straight lines, so a cone, a cove and a cylinder are all expressible.
-/// Between two points the solid is a truncated cone, whose volume and moments
-/// are closed-form, so this is an exact integral and not a discretisation.
-///
-/// Returns `None` for a degenerate profile: fewer than two points, a negative
-/// radius, or no enclosed volume.
-pub fn revolved_mass_properties(
-    profile: &[(f64, f64)],
-    axis_x: f64,
-    density: f64,
-) -> Option<MassProperties> {
-    if profile.len() < 2 || density <= 0.0 || profile.iter().any(|&(r, _)| r < 0.0) {
-        return None;
-    }
-
-    let pi = core::f64::consts::PI;
-    let mut volume = 0.0;
-    let mut moment_y = 0.0;
-    // The planar second moment about the frame origin, `∫ (x² + y²) dV`.
-    let mut i_about_origin = 0.0;
-
-    for w in profile.windows(2) {
-        let ((r0, y0), (r1, y1)) = (w[0], w[1]);
-        let h = y1 - y0;
-        if h.abs() < 1e-15 {
-            continue;
-        }
-        // A truncated cone of radii r0, r1 over height h. With s = y − y0 the
-        // radius is linear in s, so the volume and its first two moments in s
-        // are polynomial integrals of π r(s)², done in closed form. All three
-        // carry the sign of h, as the volume does.
-        let v = pi * h * (r0 * r0 + r0 * r1 + r1 * r1) / 3.0;
-        let s1 = pi * h * h * (r0 * r0 + 2.0 * r0 * r1 + 3.0 * r1 * r1) / 12.0; // ∫ s dV
-        let s2 = pi * h * h * h * (r0 * r0 + 3.0 * r0 * r1 + 6.0 * r1 * r1) / 30.0; // ∫ s² dV
-        volume += v;
-        moment_y += y0 * v + s1;
-
-        // Across the axis a point at radius ρ and azimuth φ sits at
-        // x = axis_x + ρ cos φ, so ∫ x² dV = axis_x² V + ½ ∫ ρ² dV, and
-        // ½ ∫ ρ² dV = π ∫ r(s)⁴ / 4 ds. Along it, ∫ y² dV = y0² V + 2 y0 ∫ s dV
-        // + ∫ s² dV. Each term is exact, so a cylinder and a cone both come out
-        // right, including the spread of mass along the axis.
-        let (a, b, p) = (r0 * r0, r1 * r1, r0 * r1);
-        let radial = pi * h * (a * a + a * p + a * b + p * b + b * b) / 20.0;
-        let along = y0 * y0 * v + 2.0 * y0 * s1 + s2;
-        i_about_origin += axis_x * axis_x * v + radial + along;
-    }
-
-    if volume.abs() < 1e-18 {
-        return None;
-    }
-    let mass = density * volume.abs();
-    Some(MassProperties {
-        mass,
-        com: Point::new(axis_x, moment_y / volume),
-        i_origin: density * i_about_origin.abs(),
-    })
-}
-
-/// Mass properties of a closed polygon extruded by `width`, in a material of
-/// `density`.
-///
-/// The polygon is given as its vertices in order; it is treated as closed, so
-/// the last vertex joins the first. Winding may be either way — the sign of the
-/// area is normalised — because a part outline drawn clockwise is not an error,
-/// it is a draughtsman's habit.
-///
-/// Returns `None` for a degenerate outline: fewer than three vertices, or zero
-/// enclosed area. That is a real possibility, since the user edits the geometry,
-/// and a silent `NaN` here would surface much later, far from its cause.
-pub fn polygon_mass_properties(
-    vertices: &[Point],
-    width: f64,
-    density: f64,
-) -> Option<MassProperties> {
-    if vertices.len() < 3 || width <= 0.0 || density <= 0.0 {
-        return None;
-    }
-
-    let mut a2 = 0.0; // twice the signed area
-    let mut cx = 0.0;
-    let mut cy = 0.0;
-    let mut i_xx = 0.0; // integral of y^2 dA
-    let mut i_yy = 0.0; // integral of x^2 dA
-
+/// The area of the closed polygon through `vertices`, in order, and its
+/// first moments about the two axes, `∫ x dA` and `∫ y dA`: the shoelace
+/// sums, normalized so that the area is positive whichever way the polygon
+/// winds, a draughtsman's habit and not a modelling choice. Zero for a
+/// polygon that encloses nothing.
+pub fn area_and_moments(vertices: &[Point]) -> (f64, Point) {
+    let (mut twice, mut along, mut across) = (0.0, 0.0, 0.0);
     for i in 0..vertices.len() {
         let p = vertices[i];
         let q = vertices[(i + 1) % vertices.len()];
         let cross = p.x * q.y - q.x * p.y;
-        a2 += cross;
-        cx += (p.x + q.x) * cross;
-        cy += (p.y + q.y) * cross;
-        i_xx += (p.y * p.y + p.y * q.y + q.y * q.y) * cross;
-        i_yy += (p.x * p.x + p.x * q.x + q.x * q.x) * cross;
+        twice += cross;
+        along += (p.x + q.x) * cross;
+        across += (p.y + q.y) * cross;
     }
+    let sign = if twice < 0.0 { -1.0 } else { 1.0 };
+    (
+        sign * 0.5 * twice,
+        Point::new(sign * along / 6.0, sign * across / 6.0),
+    )
+}
 
-    let area = 0.5 * a2;
-    if area.abs() < 1e-14 {
+/// The area centroid of the closed polygon through `vertices`, in order,
+/// whichever way it winds; `None` for one that encloses nothing, fewer than
+/// three vertices or all of them on a line, which an edited outline can
+/// reach and which would otherwise surface as a `NaN` far from its cause.
+pub fn area_centroid(vertices: &[Point]) -> Option<Point> {
+    let (area, moments) = area_and_moments(vertices);
+    if vertices.len() < 3 || area.is_nan() || area <= 0.0 {
         return None;
     }
-
-    let mass = density * width * area.abs();
-    let sign = if area >= 0.0 { 1.0 } else { -1.0 };
-    Some(MassProperties {
-        mass,
-        com: Point::new(cx / (3.0 * a2), cy / (3.0 * a2)),
-        // J = Ixx + Iyy is the polar second moment of area about the origin; for
-        // a prism turning about the z-axis through that origin the mass moment is
-        // density * width * J.
-        i_origin: density * width * sign * (i_xx + i_yy) / 12.0,
-    })
+    Some(Point::new(moments.x / area, moments.y / area))
 }
 
 /// The capstan screw standing on the back of the key.
 ///
 /// Part of the key, not of the action above it: it is screwed into the
-/// keystick, it moves with the key, and its brass is heavy enough to matter.
-/// Modelling it as an anchor point leaves it out of the silhouette, out of the
-/// mass and out of the drawing, and a technician looking at the section notices
-/// immediately.
+/// keystick and it moves with the key, its mass in the key's weighing.
+/// Modelling it as an anchor point leaves it out of the silhouette and out of
+/// the drawing, and a technician looking at the section notices immediately.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Capstan {
     /// How far the **top of the head** stands above the keystick, metres.
@@ -301,13 +122,11 @@ pub struct Capstan {
     pub head_height: f64,
     /// Height of the cove that flares the shaft out into the head, metres.
     pub cove_height: f64,
-    /// Length of the threaded shaft below the cove, metres. Part of it is
-    /// buried in the key; all of it counts towards the mass.
+    /// Length of the threaded shaft below the cove, metres, part of it
+    /// buried in the key.
     pub shaft_length: f64,
     /// Length of the conical tip at the bottom of the shaft, metres.
     pub tip_height: f64,
-    /// Density of the capstan's material, kg/m³. Brass unless stated.
-    pub density: f64,
     /// The radius of the dome its head is turned to, metres, where its top
     /// is one: the head's top is then a spherical cap of this radius, its
     /// centre on the axis this far below the top, which bears on the wippen's
@@ -339,8 +158,7 @@ impl Capstan {
     /// ([`Self::dome_radius`]), whose profile runs here as the chord from the
     /// head's side to the top on the axis: the drawn part turns that chord
     /// into the arc ([`KeyDesign::parts`]). The thread itself is not
-    /// modelled — it changes the mass by about a twentieth and nothing else,
-    /// and a helix is not a profile.
+    /// drawn: a helix is not a profile.
     pub fn profile(&self) -> Vec<(f64, f64)> {
         let (r_shaft, r_head) = (0.5 * self.diameter, 0.5 * self.head_diameter);
         let top = self.height;
@@ -351,8 +169,7 @@ impl Capstan {
         };
         let head_bottom = shoulder - self.head_height;
         let cove_bottom = head_bottom - self.cove_height;
-        // The shaft runs down into the key; how far does not matter to the
-        // section, but it does to the mass, so it is the full screw.
+        // The shaft runs down into the key, drawn as the full screw.
         let shaft_bottom = cove_bottom - self.shaft_length;
         vec![
             (0.0, shaft_bottom),
@@ -363,6 +180,31 @@ impl Capstan {
             (0.0, top),
         ]
     }
+}
+
+/// A clearance cut in the keystick's top, where the key has one, so that the
+/// **wippen rail**, which runs across the keyboard over the keys between
+/// their capstans and their back check blocks, cannot rub the key: the top
+/// lowered by its depth between its two ends, the key coming back to its
+/// full height behind it, where the back check block is glued on.
+///
+/// Placed from the balance pin, as the back check block is
+/// ([`KeyDesign::back_check_block_back`]), and for the same reason: it is
+/// there to clear a part of the action, which the action places, and a key
+/// lengthened or shortened at either end keeps it under the rail. Cut across
+/// the key's whole width, as the rail it clears runs, it is a shape of the
+/// keystick's outline, drawn and counted in its section as the thinned tail
+/// is, and not a void of its own as the front mortise is. It stands on the
+/// keystick's full height, between the back check block and the capstan's
+/// head, and leaves wood under it ([`crate::validate`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TopClearance {
+    /// Its back end, metres from the balance pin (negative behind it).
+    pub back: f64,
+    /// Its front end, metres from the balance pin (negative behind it).
+    pub front: f64,
+    /// How deep it is cut below the keystick's full top, metres.
+    pub depth: f64,
 }
 
 /// A block glued on the key's top: where it stands along the key and how
@@ -492,11 +334,10 @@ pub struct KeyDesign {
     /// Length of that block along the key, metres, forward from its back end
     /// ([`Self::back_check_block_back`]).
     pub back_check_block_length: f64,
-    /// The block the capstan stands on, glued on the key between the back
-    /// check block and the key button, where the key has one; none where the
-    /// capstan screws straight into the keystick. The capstan stands wholly
-    /// on it ([`crate::validate`]).
-    pub capstan_block: Option<GluedBlock>,
+    /// The clearance cut in the keystick's top for the wippen rail, between
+    /// the capstan and the back check block, where the key has one; none
+    /// where its top runs on at its full height.
+    pub top_clearance: Option<TopClearance>,
     /// Thickness of the key's thinned tail, metres, above the underside.
     ///
     /// The last stretch of the key is cut down so that the **damper** system
@@ -508,8 +349,9 @@ pub struct KeyDesign {
     ///
     /// Where it carries a felt, it ends at or behind the back check block's
     /// back end, and where it ends behind it, the keystick runs at its full
-    /// height between the two; bare, it may run on under the glued blocks,
-    /// each standing wholly on it or wholly in front of it.
+    /// height between the two; bare, it may run on under the back check
+    /// block, which stands wholly on it or wholly in front of it. The capstan
+    /// and a clearance in the top stand in front of it, on the full height.
     pub tail_length: f64,
     /// Thickness of the felt on the tail, metres, hard felt and not punching
     /// felt; none where the tail is bare.
@@ -550,20 +392,12 @@ pub struct KeyDesign {
     /// point is taken back from ([`Self::lip`]), so this is the distance
     /// between the touchweight datum and the key height and dip datum.
     pub keytop_overhang: f64,
-    /// Width of the keystick across the sagittal plane, metres.
+    /// Width of the keystick across the sagittal plane, metres: what the
+    /// solid view extrudes the key by. Nothing weighs it: a key's mass is
+    /// weighed or published ([`KeyMass`]).
     pub width: f64,
-    /// Density of the keystick wood, kg/m³.
-    pub density: f64,
     /// The capstan screwed into the back of the key.
     pub capstan_screw: Capstan,
-    /// Measured total mass of the bare keystick, kg, when it has been weighed.
-    ///
-    /// When present it scales the derived distribution rather than replacing it:
-    /// the shape still decides *where* the mass is, the scale decides how much.
-    /// A key is not a uniform prism — it is cut away underneath and the covering
-    /// is a different material — so the derived total is the weakest part of the
-    /// derivation and the one worth overriding first.
-    pub measured_stick_mass: Option<f64>,
 }
 
 impl KeyDesign {
@@ -573,8 +407,9 @@ impl KeyDesign {
     /// The key front and the capstan are signed from the balance pin like
     /// every other length here: the front in front of it, the capstan behind
     /// it. Whether they leave the key buildable, the covering clear of the
-    /// key button and the capstan clear of the glued blocks, is
-    /// [`crate::validate`]'s to say, since it reads several at once. The
+    /// key button and the capstan clear of the glued blocks, of the thinned
+    /// tail and of a clearance in the top, is [`crate::validate`]'s to say,
+    /// since it reads several at once. The
     /// capstan turns continuously, a screw having no quantum, within the
     /// 2 to 30 mm above the keystick the bench has always held it to.
     pub const PARAMS: [ParamSpec<Self>; 4] = [
@@ -697,13 +532,12 @@ impl KeyDesign {
         (self.tail_end + self.tail_rise_run, self.front_edge)
     }
 
-    /// The volume model's polygon: the key's whole sagittal section, as an
-    /// ordered list of vertices, the covering and the key front counted as wood.
-    ///
-    /// The composite key's mass properties integrate it, and nothing else
-    /// reads it: the key is drawn from its parts ([`Self::parts`]), which tile
-    /// this polygon exactly.
-    pub fn outline_vertices(&self) -> Vec<Point> {
+    /// The key's whole sagittal section as one polygon, an ordered list of
+    /// vertices, the covering and the key front counted with the wood and the
+    /// front mortise not taken out: what the drawn parts ([`Self::parts`])
+    /// tile exactly, for the tests that hold them to it.
+    #[cfg(test)]
+    pub(crate) fn outline_vertices(&self) -> Vec<Point> {
         let top = self.stick_height;
         let wood_front = self.front_edge - self.front_board;
         let lip = self.lip();
@@ -736,18 +570,29 @@ impl KeyDesign {
             Point::new(keytop_back, top + self.keytop_thickness),
             Point::new(keytop_back, top),
         ];
-        // The glued blocks, front to back, each on the wood under it: the
-        // capsule, the block the balance mortise is cut through; the block
-        // the capstan stands on, where there is one, or else the capstan
-        // screws straight into the wood, with no pad under it to draw; the
-        // block that carries the back check.
+        // What stands on the top or is cut into it, front to back: the
+        // capsule, the block the balance mortise is cut through, on the
+        // keystick's top; the capstan screws straight into the wood, with no
+        // pad under it to draw; the clearance for the wippen rail, where
+        // there is one, a block of negative height on the full top; and the
+        // block that carries the back check, on the wood under it.
         let (capsule_back, capsule_front) = self.key_button_span();
-        let mut blocks = vec![(capsule_back, capsule_front, self.capsule_height)];
-        if let Some(b) = self.capstan_block {
-            blocks.push((b.back, b.front(), b.height));
+        let mut blocks = vec![(
+            capsule_back,
+            capsule_front,
+            self.wood_under(capsule_back, capsule_front),
+            self.capsule_height,
+        )];
+        if let Some(c) = self.top_clearance {
+            blocks.push((c.back, c.front, top, -c.depth));
         }
         let check = self.back_check_block();
-        blocks.push((check.back, check.front(), check.height));
+        blocks.push((
+            check.back,
+            check.front(),
+            self.wood_under(check.back, check.front()),
+            check.height,
+        ));
         let mut stepped = false;
         let step = |outline: &mut Vec<Point>| {
             if outline.last() != Some(&Point::new(tail_front, top)) {
@@ -755,8 +600,7 @@ impl KeyDesign {
             }
             outline.push(Point::new(tail_front, tail_top));
         };
-        for (back, front, height) in blocks {
-            let base = self.wood_under(back, front);
+        for (back, front, base, height) in blocks {
             if !stepped && front <= tail_front {
                 step(&mut outline);
                 stepped = true;
@@ -789,16 +633,13 @@ impl KeyDesign {
         outline
     }
 
-    /// Height of the wood the capstan is screwed into, metres: the top of
-    /// its block, where it stands on one; otherwise the wood itself, the
-    /// capstan driven into a hole bored straight through the keystick, or
-    /// through its thinned tail where it stands over that.
+    /// Height of the wood the capstan is screwed into, metres: the
+    /// keystick's full height, the capstan driven into a hole bored straight
+    /// through it. Nothing is glued under it, and the validation layer
+    /// refuses it on the thinned tail or across the step down to it, and a
+    /// clearance cut under its head ([`crate::validate`]).
     pub fn capstan_seat(&self) -> f64 {
-        match self.capstan_block {
-            Some(b) => self.wood_under(b.back, b.front()) + b.height,
-            None if self.capstan > self.tail_front() => self.stick_height,
-            None => self.tail_height,
-        }
+        self.stick_height
     }
 
     /// The capstan's contact point, in the key's frame: the top of its head,
@@ -817,10 +658,9 @@ impl KeyDesign {
     /// The capstan's half-profile in the key's frame, ready to be turned.
     ///
     /// Separate from the key's own outline because a screw is **not a prism**:
-    /// extruding its silhouette across the 22 mm width of the key makes a slab
-    /// that is several times too heavy and reads, correctly, as a block of
-    /// wood. It is its own body, turned about its own axis, and that is also
-    /// how it is drawn.
+    /// extruding its silhouette across the width of the key makes a slab
+    /// that reads, correctly, as a block of wood. It is turned about its own
+    /// axis, and that is how it is drawn.
     pub fn capstan_profile(&self) -> Vec<(f64, f64)> {
         let seat = self.capstan_seat();
         self.capstan_screw
@@ -830,45 +670,46 @@ impl KeyDesign {
             .collect()
     }
 
-    /// Mass properties of the capstan, turned from its own profile.
-    pub fn capstan_mass_properties(&self) -> Option<MassProperties> {
-        revolved_mass_properties(
-            &self.capstan_profile(),
-            self.capstan,
-            self.capstan_screw.density,
-        )
-    }
-
-    /// Mass properties of the bare keystick, from its outline.
+    /// The area centroid of the key's drawn section, in the key's frame:
+    /// its parts as the sagittal section draws them ([`Self::parts`]), the
+    /// keystick, its top lowered by the clearance for the wippen rail where
+    /// it has one, the covering, the key front, the glued blocks and the
+    /// tail's felt, the front mortise's void taken out, the turned capstan
+    /// left out; `None` for a section that encloses nothing.
     ///
-    /// `None` only for a degenerate design, which the user can reach by editing.
-    pub fn stick_mass_properties(&self) -> Option<MassProperties> {
-        // The keystick is a prism and the capstan is a turned part, so each is
-        // integrated as what it is and the two are combined. Carrying the capstan
-        // inside the key's own polygon and correcting for it afterwards also
-        // works, but it is more code and it forecloses drawing the capstan as a
-        // screw rather than a slab.
-        let derived = polygon_mass_properties(&self.outline_vertices(), self.width, self.density)?
-            .combined(self.capstan_mass_properties()?);
-        match self.measured_stick_mass {
-            None => Some(derived),
-            Some(m) if derived.mass > 0.0 => {
-                let k = m / derived.mass;
-                Some(MassProperties {
-                    mass: m,
-                    com: derived.com,
-                    i_origin: derived.i_origin * k,
-                })
-            }
-            Some(_) => None,
+    /// **What stands in for the height of a weighed key's centre of mass**,
+    /// which no scale gives (`docs/FOUNDATIONS.md` §2.3): where the centre of
+    /// mass of a key of one material and one width across the keyboard
+    /// would stand. A real key is narrower behind its head, its covering and
+    /// its leads denser than its wood, so the height is an estimate, and
+    /// every reading it reaches names it; it acts on the frame through the
+    /// key's tilt alone ([`KeyMass`]). Nothing weighs the outline: a key's
+    /// mass and where it stands along the key are its weighing's.
+    pub fn section_centroid(&self) -> Option<Point> {
+        let mut parts = Vec::new();
+        self.parts(crate::mechanism::BodyId(0), &mut parts);
+        let (mut area, mut along, mut across) = (0.0, 0.0, 0.0);
+        for part in parts
+            .iter()
+            .filter(|p| matches!(p.sweep, crate::contact::Sweep::Extruded { .. }))
+        {
+            // An arc, which no extruded part of a key has today, is read
+            // through its drawn chords.
+            let points: Vec<Point> = part.outline.iter().flat_map(|s| s.drawn(4)).collect();
+            let (a, m) = area_and_moments(&points);
+            let sign = if part.role == crate::contact::Role::Cut {
+                -1.0
+            } else {
+                1.0
+            };
+            area += sign * a;
+            along += sign * m.x;
+            across += sign * m.y;
         }
-    }
-
-    /// Mass properties of the whole key as its volume model gives them: the
-    /// keystick and its capstan, [`Self::stick_mass_properties`]. No lead is
-    /// modelled: a real key's leads are in its weighing ([`KeyMass`]).
-    pub fn mass_properties(&self) -> Option<MassProperties> {
-        self.stick_mass_properties()
+        if area.is_nan() || area <= 0.0 {
+            return None;
+        }
+        Some(Point::new(along / area, across / area))
     }
 }
 
@@ -876,103 +717,157 @@ impl KeyDesign {
 mod tests {
     use super::*;
 
-    /// Level 0: the polygon integrator against a shape whose answer is known.
+    /// Level 0: the shoelace sums against a shape whose answer is known.
     ///
-    /// A 100 × 20 mm rectangle with its lower-left corner at the origin, 22 mm
-    /// wide, in a wood of 430 kg/m³. Mass, centroid and second moment are all
-    /// closed-form, so a sign error or a factor of two cannot hide.
+    /// A 100 × 20 mm rectangle with its lower-left corner at the origin:
+    /// area, first moments and centroid are closed forms, so a sign error or
+    /// a factor of two cannot hide. Every number is a short binary fraction
+    /// of the rectangle's, so the sums are exact but for a few roundings of
+    /// the products, each within half an ulp of the largest term.
     #[test]
-    fn polygon_integrator_matches_a_rectangle_computed_by_hand() {
-        let (l, h, w, rho) = (0.100_f64, 0.020_f64, 0.022_f64, 430.0_f64);
-        let p = polygon_mass_properties(
-            &[
-                Point::new(0.0, 0.0),
-                Point::new(l, 0.0),
-                Point::new(l, h),
-                Point::new(0.0, h),
-            ],
-            w,
-            rho,
-        )
-        .expect("a rectangle is not degenerate");
-
-        assert!((p.mass - rho * w * l * h).abs() < 1e-15, "mass {}", p.mass);
-        assert!((p.com.x - l / 2.0).abs() < 1e-15);
-        assert!((p.com.y - h / 2.0).abs() < 1e-15);
-
-        // About a corner, a rectangular lamina has J = m (l² + h²) / 3.
-        let expected = p.mass * (l * l + h * h) / 3.0;
-        assert!(
-            (p.i_origin - expected).abs() < 1e-18,
-            "i_origin {} vs {expected}",
-            p.i_origin
-        );
+    fn the_shoelace_sums_match_a_rectangle_computed_by_hand() {
+        let (l, h) = (0.100_f64, 0.020_f64);
+        let rectangle = [
+            Point::new(0.0, 0.0),
+            Point::new(l, 0.0),
+            Point::new(l, h),
+            Point::new(0.0, h),
+        ];
+        let (area, moments) = area_and_moments(&rectangle);
+        let bound = 8.0 * f64::EPSILON;
+        assert!((area - l * h).abs() <= bound * l * h, "area {area}");
+        assert!((moments.x - l * h * l / 2.0).abs() <= bound * l * l * h);
+        assert!((moments.y - l * h * h / 2.0).abs() <= bound * l * h * h);
+        let c = area_centroid(&rectangle).expect("a rectangle encloses an area");
+        assert!((c.x - l / 2.0).abs() <= bound * l, "{c:?}");
+        assert!((c.y - h / 2.0).abs() <= bound * h, "{c:?}");
     }
 
-    /// Winding direction is a draughtsman's habit, not a modelling choice.
+    /// Consistency: **winding is a draughtsman's habit, not a modelling
+    /// choice**: the key's section read clockwise has the same area and
+    /// centroid, to the rounding of its sums.
     #[test]
-    fn reversing_the_winding_changes_nothing_physical() {
+    fn reversing_the_winding_changes_nothing() {
         let mut v = crate::test_fixture::key().outline_vertices();
-        let cw = polygon_mass_properties(&v, 0.022, 430.0).unwrap();
+        let ccw = area_centroid(&v).expect("the key's section");
+        let (area, _) = area_and_moments(&v);
         v.reverse();
-        let ccw = polygon_mass_properties(&v, 0.022, 430.0).unwrap();
-
-        assert!((cw.mass - ccw.mass).abs() < 1e-15);
-        assert!((cw.com.x - ccw.com.x).abs() < 1e-15);
-        assert!((cw.com.y - ccw.com.y).abs() < 1e-15);
-        assert!(
-            cw.i_origin > 0.0 && (cw.i_origin - ccw.i_origin).abs() < 1e-18,
-            "a second moment of mass cannot be negative: {} / {}",
-            cw.i_origin,
-            ccw.i_origin
-        );
+        let cw = area_centroid(&v).expect("the key's section, the other way");
+        assert_eq!(area.to_bits(), area_and_moments(&v).0.to_bits());
+        assert!((cw.x - ccw.x).abs() <= 1e-15 && (cw.y - ccw.y).abs() <= 1e-15);
     }
 
-    /// A degenerate outline is an error, not a `NaN`.
+    /// Consistency: **a polygon that encloses nothing has no centroid**,
+    /// rather than a `NaN`: three points on a line, a single point, nothing.
     #[test]
-    fn a_degenerate_outline_is_rejected_rather_than_producing_nan() {
+    fn a_degenerate_outline_has_no_centroid() {
         let line = [
             Point::new(0.0, 0.0),
             Point::new(0.1, 0.0),
             Point::new(0.2, 0.0),
         ];
-        assert!(polygon_mass_properties(&line, 0.022, 430.0).is_none());
-        assert!(polygon_mass_properties(&[Point::new(0.0, 0.0)], 0.022, 430.0).is_none());
+        assert_eq!(area_centroid(&line), None);
+        assert_eq!(area_centroid(&[Point::new(0.0, 0.0)]), None);
+        assert_eq!(area_centroid(&[]), None);
+    }
+
+    /// Consistency: **the drawn section's centroid is the section's, the
+    /// front mortise taken out.** The parts tile the key's section
+    /// (`the_drawn_key_tiles_its_section`), so the centroid read off the
+    /// drawn parts is the section polygon's with the mortise's rectangle,
+    /// its length by its depth, removed by hand; the turned capstan is in
+    /// neither. On every key the fixture has, its centroid stands over the
+    /// key's underside, under its top, and between its tail and its lip.
+    /// The bound is derived: two shoelace sums of under 40 terms each, and
+    /// the removal's few products, each rounding within half an ulp of the
+    /// largest term, the reach to the third power over the area.
+    #[test]
+    fn the_drawn_section_is_the_sections_with_the_mortise_taken_out() {
+        for key in [
+            crate::test_fixture::key(),
+            crate::test_fixture::key_with_every_feature(),
+        ] {
+            let drawn = key.section_centroid().expect("the key encloses wood");
+            let (area, moments) = area_and_moments(&key.outline_vertices());
+            let (back, front) = key.front_mortise_span();
+            let void = (front - back) * key.front_mortise_depth;
+            let left = area - void;
+            let by_hand = Point::new(
+                (moments.x - void * 0.5 * (back + front)) / left,
+                (moments.y - void * 0.5 * key.front_mortise_depth) / left,
+            );
+            let reach = key.lip() - key.tail_end;
+            let bound = 200.0 * f64::EPSILON * reach * reach * reach / left;
+            assert!(
+                (drawn.x - by_hand.x).abs() <= bound && (drawn.y - by_hand.y).abs() <= bound,
+                "drawn {drawn:?}, by hand {by_hand:?}"
+            );
+            assert!(drawn.y > 0.0 && drawn.y < key.stick_height + key.keytop_thickness);
+            assert!(drawn.x > key.tail_end && drawn.x < key.lip());
+        }
+    }
+
+    /// Consistency: **the clearance takes its wood out of the section.**
+    /// The key with every feature read with its clearance and without it:
+    /// the one's drawn centroid is the other's with the clearance's
+    /// rectangle, its length by its depth, taken out by hand, its middle
+    /// halfway along it and half its depth under the full top. The bound is
+    /// the one the section's own takes, the reach to the third power over
+    /// the area.
+    #[test]
+    fn the_clearance_takes_its_wood_out_of_the_section() {
+        let cut = crate::test_fixture::key_with_every_feature();
+        let c = cut.top_clearance.expect("a clearance");
+        let whole = KeyDesign {
+            top_clearance: None,
+            ..cut.clone()
+        };
+        let (area, _) = area_and_moments(&whole.outline_vertices());
+        let (back, front) = whole.front_mortise_span();
+        let area = area - (front - back) * whole.front_mortise_depth;
+        let before = whole.section_centroid().expect("the key encloses wood");
+        let rectangle = (c.front - c.back) * c.depth;
+        let middle = Point::new(0.5 * (c.back + c.front), whole.stick_height - 0.5 * c.depth);
+        let left = area - rectangle;
+        let by_hand = Point::new(
+            (before.x * area - middle.x * rectangle) / left,
+            (before.y * area - middle.y * rectangle) / left,
+        );
+        let drawn = cut.section_centroid().expect("the key encloses wood");
+        let reach = cut.lip() - cut.tail_end;
+        let bound = 200.0 * f64::EPSILON * reach * reach * reach / left;
         assert!(
-            polygon_mass_properties(&crate::test_fixture::key().outline_vertices(), 0.0, 430.0)
-                .is_none(),
-            "zero width is degenerate"
+            (drawn.x - by_hand.x).abs() <= bound && (drawn.y - by_hand.y).abs() <= bound,
+            "drawn {drawn:?}, by hand {by_hand:?}"
+        );
+        assert!(
+            drawn.y < before.y,
+            "wood taken off the top lowers the centroid"
         );
     }
 
-    /// A measured mass rescales the distribution without detaching from the shape.
+    /// Consistency: **the centroid is the key's wood, not its regulation**:
+    /// screwing the capstan up moves its contact point and leaves the
+    /// section's centroid where it was, to the bit, the capstan being no part
+    /// of the section.
     #[test]
-    fn a_measured_mass_overrides_the_total_but_not_the_geometry() {
-        let mut d = crate::test_fixture::key();
-        let derived = d.stick_mass_properties().unwrap();
-
-        d.measured_stick_mass = Some(derived.mass * 1.3);
-        let scaled = d.stick_mass_properties().unwrap();
-
-        assert!((scaled.mass - derived.mass * 1.3).abs() < 1e-15);
-        assert!(
-            (scaled.com.x - derived.com.x).abs() < 1e-15,
-            "weighing a key must not move its centre of gravity"
-        );
-        assert!((scaled.i_origin - derived.i_origin * 1.3).abs() < 1e-18);
+    fn screwing_the_capstan_up_leaves_the_sections_centroid() {
+        let base = crate::test_fixture::key();
+        let mut raised = base.clone();
+        raised.capstan_screw.height += 0.004;
+        assert!(raised.capstan_contact().y > base.capstan_contact().y);
+        assert_eq!(raised.section_centroid(), base.section_centroid());
     }
 }
 
 #[cfg(test)]
 mod capstan_tests {
-    use super::*;
-
     /// The capstan is **not** in the keystick's polygon, and has its own
     /// profile instead.
     ///
-    /// Keeping it out of the polygon needs no post-hoc correction to stop the
-    /// integrator weighing steel as wood, and it is what lets the screw be
-    /// *drawn* as a turned part rather than a slab.
+    /// Keeping it out of the polygon is what lets the screw be *drawn* as a
+    /// turned part rather than a slab, and keeps steel out of the section
+    /// whose centroid estimates the height of the key's centre of mass.
     #[test]
     fn the_capstan_is_its_own_turned_body_and_not_part_of_the_keystick() {
         let d = crate::test_fixture::key();
@@ -996,44 +891,6 @@ mod capstan_tests {
         assert!(
             profile.iter().any(|&(_, y)| (y - cap_top).abs() < 1e-12),
             "and its profile must reach the height the technician set"
-        );
-    }
-
-    /// It is brass and **turned**, not a slab of wood the width of the key.
-    ///
-    /// The silhouette extruded across the 22 mm of the key would be a block
-    /// several times too heavy, sitting 130 mm behind the balance point —
-    /// which is exactly where an error in mass moves the front weight most.
-    /// Turning it from its own profile is both the right mass and the right
-    /// picture.
-    #[test]
-    fn the_capstan_is_turned_from_its_profile_and_not_extruded() {
-        let d = crate::test_fixture::key();
-        let turned = d.capstan_mass_properties().unwrap();
-
-        // The same silhouette extruded across the key, for comparison.
-        let c = d.capstan_screw;
-        let (r, r_head) = (0.5 * c.diameter, 0.5 * c.head_diameter);
-        let slab_area = 2.0 * r * (c.shaft_length + c.tip_height + c.cove_height)
-            + 2.0 * r_head * c.head_height;
-        let slab_mass = c.density * d.width * slab_area;
-
-        assert!(
-            turned.mass < 0.5 * slab_mass,
-            "a turned screw must weigh far less than its extruded silhouette: \
-             {} g against {} g",
-            turned.mass * 1000.0,
-            slab_mass * 1000.0
-        );
-        // A steel capstan of these proportions is about a gram.
-        assert!(
-            (0.0006..0.0020).contains(&turned.mass),
-            "the capstan should weigh about a gram, got {} g",
-            turned.mass * 1000.0
-        );
-        assert!(
-            (turned.com.x - d.capstan).abs() < 1e-15,
-            "and must sit on its own axis"
         );
     }
 
@@ -1065,177 +922,5 @@ mod capstan_tests {
         );
         // And the shaft ends in a point.
         assert!(profile[0].0.abs() < 1e-15, "the shaft must come to a tip");
-    }
-
-    /// The lathe integrator against a shape whose answer is known.
-    ///
-    /// A plain cylinder: two points at the same radius. Volume, centroid and
-    /// the planar second moment are all closed-form, so a factor of two or a
-    /// dropped pi cannot hide.
-    ///
-    /// The moment is about a horizontal line through the origin, across the
-    /// keyboard. Standing on that origin, a cylinder of radius r and height h
-    /// gives `m (r²/4 + h²/3)`: the first term from the mass spread across the
-    /// axis, the second from its spread along it, which a disc taken at the
-    /// centroid height would miss. Moved to `axis_x`, the parallel-axis term
-    /// `m axis_x²` adds on.
-    #[test]
-    fn the_lathe_integrator_matches_a_cylinder_computed_by_hand() {
-        let (r, h, rho) = (0.003_f64, 0.020_f64, 8500.0_f64);
-        let p = revolved_mass_properties(&[(r, 0.0), (r, h)], 0.0, rho)
-            .expect("a cylinder is not degenerate");
-
-        let expected = rho * core::f64::consts::PI * r * r * h;
-        assert!(
-            (p.mass - expected).abs() < 1e-12,
-            "mass {} against {expected}",
-            p.mass
-        );
-        assert!((p.com.y - h / 2.0).abs() < 1e-12, "com.y {}", p.com.y);
-        assert!(p.com.x.abs() < 1e-15);
-
-        let on_the_origin = p.mass * (r * r / 4.0 + h * h / 3.0);
-        assert!(
-            (p.i_origin - on_the_origin).abs() < 1e-12 * on_the_origin,
-            "i_origin {} against {on_the_origin}",
-            p.i_origin
-        );
-
-        let axis_x = -0.1295;
-        let moved = revolved_mass_properties(&[(r, 0.0), (r, h)], axis_x, rho).unwrap();
-        let expected = p.mass * (axis_x * axis_x + r * r / 4.0 + h * h / 3.0);
-        assert!(
-            (moved.i_origin - expected).abs() < 1e-12 * expected,
-            "i_origin {} against {expected} with the axis at {axis_x} m",
-            moved.i_origin
-        );
-    }
-
-    /// A cone is a third of its cylinder, which is the oldest check there is.
-    #[test]
-    fn a_cone_is_a_third_of_its_cylinder() {
-        let (r, h) = (0.003_f64, 0.020_f64);
-        let cone = revolved_mass_properties(&[(0.0, 0.0), (r, h)], 0.0, 8500.0).unwrap();
-        let cylinder = revolved_mass_properties(&[(r, 0.0), (r, h)], 0.0, 8500.0).unwrap();
-
-        assert!(
-            (cone.mass / cylinder.mass - 1.0 / 3.0).abs() < 1e-12,
-            "a cone came out at {} of its cylinder",
-            cone.mass / cylinder.mass
-        );
-        // And its centroid is a quarter of the way up from the base.
-        assert!(
-            (cone.com.y - 0.75 * h).abs() < 1e-12,
-            "com.y {}",
-            cone.com.y
-        );
-        // Its second moment, apex on the origin: `3 m r² / 20` from the spread
-        // across the axis, and `3 m h² / 5` from the spread along it.
-        let expected = cone.mass * (3.0 * r * r / 20.0 + 3.0 * h * h / 5.0);
-        assert!(
-            (cone.i_origin - expected).abs() < 1e-12 * expected,
-            "i_origin {} against {expected}",
-            cone.i_origin
-        );
-    }
-
-    /// A degenerate profile is an error, not a `NaN`.
-    #[test]
-    fn a_degenerate_profile_is_rejected() {
-        assert!(revolved_mass_properties(&[(0.003, 0.0)], 0.0, 8500.0).is_none());
-        assert!(revolved_mass_properties(&[(-0.001, 0.0), (0.003, 0.01)], 0.0, 8500.0).is_none());
-        assert!(
-            revolved_mass_properties(&[(0.003, 0.0), (0.003, 0.0)], 0.0, 8500.0).is_none(),
-            "zero height encloses nothing"
-        );
-    }
-
-    /// **Screwing the capstan up moves it; it does not make it heavier.**
-    ///
-    /// A model that conflates the capstan's *height above the keystick*, which is
-    /// the regulation, with its *length*, which is the part, makes a raised
-    /// capstan weigh more — and passes a test asserting exactly that. They are
-    /// different numbers: turning the screw moves the same piece of steel up and
-    /// down.
-    ///
-    /// What follows from that is worth stating, because it is not obvious:
-    /// raising a capstan does **not** change the key's front weight at all.
-    /// Front weight is a moment about a horizontal distance, the capstan's
-    /// longitudinal position has not moved, and its mass has not changed. It
-    /// raises the centre of gravity and nothing else.
-    #[test]
-    fn screwing_the_capstan_up_moves_it_without_changing_the_balance() {
-        let base = crate::test_fixture::key();
-        let mut raised = base.clone();
-        raised.capstan_screw.height += 0.004;
-
-        let m0 = base.mass_properties().unwrap();
-        let m1 = raised.mass_properties().unwrap();
-
-        assert!(
-            (m1.mass - m0.mass).abs() < 1e-15,
-            "the same screw cannot weigh two different amounts: {} vs {}",
-            m0.mass,
-            m1.mass
-        );
-        assert!(
-            m1.com.y > m0.com.y,
-            "but its centre of gravity must rise: {} -> {}",
-            m0.com.y,
-            m1.com.y
-        );
-        assert!(
-            (m1.static_moment_x() - m0.static_moment_x()).abs() < 1e-15,
-            "and the front weight must not move, because nothing moved \
-             horizontally"
-        );
-    }
-
-    /// Removing a region is exact arithmetic, not an approximation.
-    #[test]
-    fn minus_is_the_inverse_of_combined() {
-        let a = MassProperties {
-            mass: 0.080,
-            com: Point::new(0.030, 0.010),
-            i_origin: 1.2e-4,
-        };
-        let b = MassProperties::point_mass(Point::new(-0.100, 0.015), 0.012);
-        let round_trip = a.combined(b).minus(b).unwrap();
-
-        assert!((round_trip.mass - a.mass).abs() < 1e-15);
-        assert!((round_trip.com.x - a.com.x).abs() < 1e-15);
-        assert!((round_trip.com.y - a.com.y).abs() < 1e-15);
-        assert!((round_trip.i_origin - a.i_origin).abs() < 1e-18);
-    }
-
-    /// Removing more than is there is an error, not a negative body.
-    #[test]
-    fn removing_more_than_is_there_is_refused() {
-        let a = MassProperties::point_mass(Point::new(0.0, 0.0), 0.010);
-        let b = MassProperties::point_mass(Point::new(0.0, 0.0), 0.020);
-        assert!(a.minus(b).is_none());
-    }
-}
-
-#[cfg(test)]
-mod profile_tests {
-    /// Shaping the key must not break its weighing.
-    ///
-    /// However the profile is shaped, the key must weigh what a key weighs and
-    /// balance where a key balances. This is the guard that a prettier picture
-    /// does not quietly become a different instrument.
-    #[test]
-    fn a_shaped_key_still_weighs_like_a_key() {
-        let p = crate::test_fixture::key().mass_properties().unwrap();
-        assert!(
-            (0.045..0.130).contains(&p.mass),
-            "a grand key weighs 45 to 130 g, this one {} g",
-            p.mass * 1000.0
-        );
-        assert!(
-            p.com.x.abs() < 0.080,
-            "and balances near its pin, not {} m away",
-            p.com.x
-        );
     }
 }

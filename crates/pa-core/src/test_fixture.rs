@@ -1,21 +1,27 @@
-//! The composite key, its frame, the drawer and Stanwood's protocol, as a
-//! test fixture.
+//! The owner's measured key section, its frame, the drawer and Stanwood's
+//! protocol, and a test weighing of the key, as a test fixture.
 //!
 //! The engine starts from no number of its own: an instrument is built from
 //! a profile (`data/profiles/`), each value bound to a record in
 //! `data/params/` or to an assumption stated with its reason. The domain's
 //! tests still need a key and a frame to push one way or another, so this
-//! module holds the composite profile's values as Rust literals, compiled for
-//! tests only: `pa-core`'s own, and those of the crates above it that enable
-//! the `fixtures` feature as a dev-dependency. `pa-app`'s
-//! `the_composite_profile_loads_to_the_test_fixture` holds the profile to
-//! these bits, so the fixture the domain is tested on and the instrument the
-//! bench builds cannot drift apart. Where a value comes from, and why it is
-//! what it is, is the profile's to say, not this module's.
+//! module holds the measured section's profile's values as Rust literals,
+//! compiled for tests only: `pa-core`'s own, and those of the crates above
+//! it that enable the `fixtures` feature as a dev-dependency. `pa-app`'s
+//! `the_measured_section_profile_loads_to_the_test_fixture` holds the
+//! profile to these bits, so the fixture the domain is tested on and the
+//! instrument the bench builds cannot drift apart. Where a value comes from,
+//! and why it is what it is, is the profile's to say, not this module's.
+//!
+//! The profile's key arrives unweighed, as nobody has weighed one of its
+//! keys, and a key with no mass has no touchweight. So the fixture adds what
+//! the profile leaves to the bench's user: a weighing ([`weighed`]), a test
+//! weighing and not a measurement, which the same test holds to the bits
+//! the bench takes it in.
 
 use crate::measure::TouchweightProtocol;
 use crate::parts::frame::{Crown, Drawer, FrameSections, PinShape, PunchingStack, RailSection};
-use crate::parts::{Capstan, FrameDesign, GluedBlock, KeyDesign};
+use crate::parts::{Capstan, FrameDesign, KeyDesign, KeyMass, TopClearance};
 use crate::regulation::Targets;
 
 /// The thicknesses the owner's drawer holds, metres, thinnest first: 0.08,
@@ -33,18 +39,48 @@ pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
 /// The load Stanwood's protocol reads the key weight ratio with, grams.
 pub const KEY_RATIO_LOAD_G: f64 = 10.0;
 
-/// The composite bench's targets: 65.0 mm of key height and 10.2 mm of key
+/// The measured section's targets: 65.0 mm of key height and 10.2 mm of key
 /// dip.
 pub const TARGETS: Targets = Targets {
     key_height: 0.0650,
     key_dip: 0.0102,
 };
 
-/// The bushings the composite bench starts on: the torque this many grams
+/// The bushings the measured section starts on: the torque this many grams
 /// overcome at the measuring point with the key level.
 pub const KEY_FRICTION_WEIGHT_LEVEL_G: f64 = 6.0;
 
-/// The composite key's steel capstan.
+/// The test weighing's mass on the scale, grams.
+pub const WEIGHED_MASS_G: f64 = 121.1;
+
+/// The test weighing's front weight, grams, read on the levelled jig
+/// [`WEIGHED_FROM_LIP`] back from the covering's lip.
+pub const WEIGHED_FRONT_WEIGHT_G: f64 = 6.5;
+
+/// Where the test weighing's front weight was read, metres back from the
+/// covering's lip: Stanwood's measuring point.
+pub const WEIGHED_FROM_LIP: f64 = MEASURING_POINT_FROM_LIP;
+
+/// The fixture's key weighed whole, by a test weighing and not a
+/// measurement: [`WEIGHED_MASS_G`] on the scale, and a front weight of
+/// [`WEIGHED_FRONT_WEIGHT_G`] read [`WEIGHED_FROM_LIP`] back from its lip. A
+/// key as heavy as a leaded natural and as light in front as a bare one, its
+/// front weight a fraction of a gram past what its bushings hold: under no
+/// weight it goes down onto its front punching, a pull of a few grams leaves
+/// it there held by its friction, and one of 13 g brings it up onto its
+/// cloth, so the touch weight moves it either way, and each of its two stops
+/// holds it in turn.
+pub fn weighed() -> KeyMass {
+    KeyMass::weighed(
+        &key(),
+        WEIGHED_MASS_G,
+        WEIGHED_FRONT_WEIGHT_G,
+        WEIGHED_FROM_LIP,
+    )
+    .expect("the test weighing is a key's")
+}
+
+/// The measured section's steel capstan.
 pub fn capstan() -> Capstan {
     Capstan {
         height: 0.0090,
@@ -54,19 +90,18 @@ pub fn capstan() -> Capstan {
         cove_height: 0.0008,
         shaft_length: 0.0130,
         tip_height: 0.0015,
-        density: 7850.0,
         dome_radius: None,
     }
 }
 
-/// The composite key: a natural of the middle of the keyboard, its section
-/// measured, its capstan 129.5 mm behind the balance pin and its key front
-/// 258 mm in front of it.
+/// The measured section's key: a natural of the middle of the keyboard, its
+/// section and its capstan, 122 mm behind the balance pin, measured, its key
+/// front assumed 258 mm in front of it.
 pub fn key() -> KeyDesign {
     KeyDesign {
         front_edge: 0.258,
         tail_end: -0.240,
-        capstan: -0.1295,
+        capstan: -0.122,
         front_mortise_from_front_edge: 0.033,
         front_mortise_length: 0.008,
         front_mortise_depth: 0.022,
@@ -77,7 +112,7 @@ pub fn key() -> KeyDesign {
         back_check_block_height: 0.0080,
         back_check_block_back: -0.220,
         back_check_block_length: 0.027,
-        capstan_block: None,
+        top_clearance: None,
         tail_height: 0.0070,
         tail_length: 0.020,
         damper_felt: Some(0.0050),
@@ -88,27 +123,27 @@ pub fn key() -> KeyDesign {
         keytop_overhang: 0.0020,
         keytop_length: 0.155,
         width: 0.022,
-        density: 430.0,
         capstan_screw: capstan(),
-        measured_stick_mass: None,
     }
 }
 
-/// The composite key with every feature a key may have that the composite
-/// key lacks, for the tests of those features: its thinned tail run on bare,
-/// with no felt, 100 mm further forward, under its back check block, which
-/// stands on it; a block glued under the capstan, standing on the tail and
-/// rising 1 mm above the keystick; the capstan's head turned to a dome of
-/// 9.7 mm; its key button 8 mm behind the balance pin.
+/// The measured section's key with every feature a key may have that it
+/// lacks, for the tests of those features: its thinned tail run on bare,
+/// with no felt, 30 mm further forward, under its back check block, which
+/// stands on it, to 190 mm behind the balance pin; a clearance for the
+/// wippen rail cut 3 mm deep in its top, from 175 to 140 mm behind the
+/// balance pin, between the back check block and the capstan, the keystick
+/// at its full height either side of it; the capstan's head turned to a
+/// dome of 9.7 mm; its key button 8 mm behind the balance pin.
 pub fn key_with_every_feature() -> KeyDesign {
     KeyDesign {
-        tail_length: 0.120,
+        tail_length: 0.050,
         tail_height: 0.0170,
         damper_felt: None,
-        capstan_block: Some(GluedBlock {
-            back: -0.140,
-            length: 0.019,
-            height: 0.0085,
+        top_clearance: Some(TopClearance {
+            back: -0.175,
+            front: -0.140,
+            depth: 0.003,
         }),
         capsule_centre: Some(-0.008),
         capstan_screw: Capstan {
@@ -163,8 +198,8 @@ pub fn sections() -> FrameSections {
     }
 }
 
-/// The composite key's frame, its rails placed under it, half a millimetre
-/// of paper on each punching.
+/// The measured section's frame, its rails placed under its key, half a
+/// millimetre of paper on each punching.
 pub fn frame() -> FrameDesign {
     FrameDesign {
         balance_rail_height: 0.0266,

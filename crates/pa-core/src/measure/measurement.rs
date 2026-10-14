@@ -59,10 +59,13 @@ pub enum ProcedureId {
     /// key's balance where it rests on its frame, then the down weight.
     KeyFrictionWeightZeroedOnTheFrame,
     /// Down weight read on the band: the greatest force the driven sweep
-    /// needs on its way down.
+    /// needs on its way down, the walk's in full within a few thousandths
+    /// of a gram. Its gram is the walk's rounding of it, which may read a
+    /// gram from the walk's own where the two stand either side of a whole
+    /// gram: the band is a curve, read in full, and the gram is the walk's.
     DownWeightOnTheBand,
     /// Up weight read on the band: the least force the driven sweep holds on
-    /// its way up.
+    /// its way up, read in full likewise.
     UpWeightOnTheBand,
 }
 
@@ -249,9 +252,8 @@ pub enum Basis {
     Measured,
     /// Read from a published source, with its record.
     Published,
-    /// Derived from other values by a rule: the composite key's mass, from
-    /// its volume at an assumed density, and the height of a weighed key's
-    /// centre of mass, from the same volume.
+    /// Derived from other values by a rule: the height of a weighed key's
+    /// centre of mass, from its drawn section's area centroid.
     Estimated,
     /// Assumed, pending measurement.
     Assumed,
@@ -559,8 +561,8 @@ mod tests {
                 because: vec![Input::CentreOfMassHeight]
             }
         );
-        let composite = Bases {
-            key_mass: Basis::Estimated,
+        let assumed = Bases {
+            key_mass: Basis::Assumed,
             centre_of_mass_height: Basis::Estimated,
             key_friction: Basis::Assumed,
             geometry: Basis::Assumed,
@@ -568,14 +570,14 @@ mod tests {
         assert_eq!(
             Trust::of(
                 ProcedureId::KeyFrictionWeightZeroedOnTheFrame.reads(),
-                &composite
+                &assumed
             ),
             Trust::Indicative {
                 because: vec![Input::KeyFriction, Input::Geometry]
             }
         );
         assert_eq!(
-            Trust::of(ProcedureId::FrontWeight.reads(), &composite),
+            Trust::of(ProcedureId::FrontWeight.reads(), &assumed),
             Trust::Indicative {
                 because: vec![Input::KeyMass, Input::Geometry]
             }

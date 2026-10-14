@@ -94,7 +94,6 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::boundary;
-use crate::composite_key;
 use crate::profile::{Arrival, Profile, Start};
 use crate::registry::{self, Field, Weighing as WeighingField};
 
@@ -103,10 +102,9 @@ use crate::registry::{self, Field, Weighing as WeighingField};
 /// under the touch weight, and the settings the sheet was read with.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BenchReadout {
-    /// The key's mass, grams: as it was weighed ([`Action::WeighKey`]), or
-    /// until it is, the composite key's derived from its volume
-    /// ([`composite_key`]), not a weighing.
-    pub key_mass_g: f64,
+    /// The key's mass, grams: as a source publishes it, or as it was weighed
+    /// ([`Action::WeighKey`]); `None` until it is weighed.
+    pub key_mass_g: Option<f64>,
     /// Gap at the front rail punching where the key stands now, under the
     /// touch weight, millimetres: the felt's drawn top, at its centre, to the
     /// key's underside. Zero when the key is down on it; `None` when the
@@ -129,8 +127,10 @@ pub struct BenchReadout {
     /// Key dip the regulation was asked for, millimetres.
     pub key_dip_target_mm: f64,
     /// What holds the key where the weight on its measuring point has left
-    /// it: a stop, or its friction.
-    pub finger: TouchVerdict,
+    /// it: a stop, or its friction; `None` for a key nobody has weighed,
+    /// where a weight would leave it depending on a balance only a weighing
+    /// gives.
+    pub finger: Option<TouchVerdict>,
     /// How far from level the key stands at the **bottom** of its travel,
     /// seated there, degrees, nose-down positive.
     ///
@@ -491,8 +491,10 @@ pub enum Action {
     /// gives on the arm it was read at, that reading its datum: moving the
     /// measuring point afterwards, or editing the key, reads the same moment
     /// on another arm, and the front weight on the sheet follows by the
-    /// lever. The height of the centre of mass, which no scale gives, stays
-    /// the volume model's estimate.
+    /// lever. The height of the centre of mass, which no scale gives, is
+    /// the one the profile publishes where it publishes one, and otherwise
+    /// estimated from the key's drawn section
+    /// ([`KeyDesign::section_centroid`]).
     WeighKey {
         /// The key's mass, grams.
         mass_g: f64,
@@ -726,8 +728,8 @@ pub struct Instrument {
     profile: &'static Profile,
     /// The key.
     key: KeyDesign,
-    /// What is known of the key's mass: an estimate, the composite key's
-    /// volume model, until it is weighed whole.
+    /// What is known of the key's mass: as a source publishes it, as it was
+    /// weighed whole, or nothing until it is.
     mass: KeyMass,
     /// The frame it sits on, the papers laid on its punchings with it: the
     /// coordinate regulation sets, held there once.
@@ -827,10 +829,17 @@ impl Instrument {
     }
 
     /// The standard instrument: the standard profile's
-    /// ([`crate::profile::STANDARD`]), a middle natural regulated to its
-    /// targets.
+    /// ([`crate::profile::STANDARD`]), Hirschkorn's key on his printed frame,
+    /// as it arrives.
     pub fn standard() -> Self {
-        Self::of(Profile::standard()).expect("the standard instrument must be regulable")
+        Self::of(Profile::standard()).expect("the standard instrument is built")
+    }
+
+    /// The owner's measured section weighed by the tests' weighing
+    /// ([`Profile::weighed_section`]), as it arrives.
+    #[cfg(test)]
+    pub(crate) fn weighed_section() -> Self {
+        Self::of(Profile::weighed_section()).expect("the weighed section is regulable")
     }
 
     /// The profile this instrument was built from: where every number it
@@ -1402,6 +1411,10 @@ impl Instrument {
     /// state either.
     fn initialize(&mut self) {
         self.lifts_off = false;
+        if self.mass_props().is_none() {
+            self.state = self.seated_at_the_top();
+            return;
+        }
         self.state = match self.on_frame() {
             Ok(k) => {
                 let loads = [self.touch_load(&k.mounted)];
@@ -1439,6 +1452,21 @@ impl Instrument {
         };
     }
 
+    /// A key nobody has weighed, where the seated pose puts it at the top of
+    /// its stroke, its back held down on its cloth by the load standing for
+    /// the action, as key height is read: where a weight would leave a key
+    /// nobody has weighed depends on a balance only a weighing gives, so it
+    /// is drawn there whatever the weight on its measuring point. `None` where it
+    /// cannot be seated.
+    fn seated_at_the_top(&self) -> Option<State> {
+        let (k, seats) = self.seated().ok()?;
+        let eq = k
+            .mounted
+            .solve(&mut Statics::new(), &seats.top.q, &[], Friction::Off)
+            .ok()?;
+        Self::state_at(&k.mounted, &eq)
+    }
+
     /// Applies the bench's last action to the key, as one static increment
     /// from where it stands with its friction on: a weight on the measuring
     /// point, a weighing, a paper, any edit of the key or of its frame
@@ -1455,6 +1483,11 @@ impl Instrument {
     /// increment can be solved otherwise, starts it again from the
     /// initialization, and [`Self::reinitialized`] says so.
     fn relax(&mut self) {
+        if self.mass_props().is_none() {
+            self.initialize();
+            self.reinitialized = false;
+            return;
+        }
         // Whether the key's last state, unmoved, still stands clear of its
         // frame, so that it can stay drawn there if no equilibrium is found.
         let mut clear = false;
@@ -1718,24 +1751,24 @@ impl Instrument {
 
     /// The key's mass and centre of mass as the statics take them
     /// ([`KeyMass::props`]): as a source publishes them, whole; as it was
-    /// weighed, the height of its centre of mass the estimate's, which no
-    /// scale gives; until it is weighed, wholly the estimate's. `None` where
-    /// the estimate is needed and the volume model encloses nothing.
+    /// weighed, at the height [`Self::centre_of_mass_height`] gives, which
+    /// no scale does. `None` until the key is weighed, and where the key's
+    /// section encloses nothing.
     fn mass_props(&self) -> Option<MassProps> {
-        match self.mass.whole() {
-            Some(props) => Some(props),
-            None => self.estimate().map(|estimate| self.mass.props(estimate)),
-        }
+        self.mass.props(self.centre_of_mass_height()?)
     }
 
-    /// What stands in for what nobody weighed: the centre of mass the
-    /// profile publishes, where it publishes one, which is what a weighed
-    /// key of that profile takes the height of its centre of mass from; the
-    /// composite key's volume model otherwise ([`composite_key`]).
-    fn estimate(&self) -> Option<MassProps> {
+    /// The height of the key's centre of mass, which no scale gives: the
+    /// one its profile publishes, where it publishes one, which a key of
+    /// that profile weighed again on the bench keeps; otherwise its drawn
+    /// section's area centroid's, an estimate ([`KeyDesign::section_centroid`]).
+    /// `None` where the section encloses nothing.
+    fn centre_of_mass_height(&self) -> Option<f64> {
         match self.profile.start.mass {
-            KeyMass::Published { mass, centre, .. } => Some(MassProps { mass, com: centre }),
-            KeyMass::Estimated | KeyMass::Weighed { .. } => composite_key::mass(&self.key),
+            KeyMass::Published { centre, .. } => Some(centre.y),
+            KeyMass::Unweighed | KeyMass::Weighed { .. } => {
+                self.key.section_centroid().map(|c| c.y)
+            }
         }
     }
 
@@ -1847,9 +1880,9 @@ impl Instrument {
     /// key height and dip from the seated pose, D and U by the breakaway walk
     /// from each seat, balance and friction weight from those two as read,
     /// and the key friction weight both ways, Stanwood's zeroed on the jig
-    /// and its variant zeroed on the frame. The key's mass is its weighing
-    /// ([`Action::WeighKey`]), or the composite key's derivation until it is
-    /// weighed ([`composite_key`]).
+    /// and its variant zeroed on the frame. The key's mass is its source's or
+    /// its weighing ([`Action::WeighKey`]); until it is weighed, every
+    /// reading that reads it is refused ([`Refused::KeyNotWeighed`]).
     ///
     /// The procedures seat the key by rule, so the sheet is the same whatever
     /// the touch weight has done to it.
@@ -1877,17 +1910,19 @@ impl Instrument {
     }
 
     /// What the bench's inputs rest on: the key's mass and static moment as
-    /// a source publishes them, as it was weighed by the bench's user, or
-    /// derived from its volume at an assumed density until it is; the
+    /// a source publishes them or as the bench's user weighed it; the
     /// height of its centre of mass as published where the profile
-    /// publishes one, from that volume otherwise, since no scale gives it;
-    /// its friction the profile's until it is set; its dimensions partly
-    /// without a record, assumptions its profile states (`data/profiles/`).
+    /// publishes one, estimated from its drawn section otherwise, since no
+    /// scale gives it; its friction the profile's until it is set; its
+    /// dimensions partly without a record, assumptions its profile states
+    /// (`data/profiles/`).
     pub fn bases(&self) -> Bases {
         let published = |mass: KeyMass| matches!(mass, KeyMass::Published { .. });
         Bases {
             key_mass: match self.mass {
-                KeyMass::Estimated => Basis::Estimated,
+                // Read by no reading: every reading that reads the key's mass
+                // is refused until it is weighed.
+                KeyMass::Unweighed => Basis::Assumed,
                 KeyMass::Weighed { .. } => Basis::SetByHand,
                 KeyMass::Published { .. } => Basis::Published,
             },
@@ -1909,9 +1944,11 @@ impl Instrument {
     /// `None` where the key cannot be seated ([`Self::frame_fault`] says
     /// why) or has nowhere to stand.
     pub fn readout(&self) -> Option<BenchReadout> {
-        let props = self.mass_props()?;
         let (k, seats) = self.seated().ok()?;
-        let finger = self.finger_verdict()?;
+        let finger = match self.mass_props() {
+            Some(_) => Some(self.finger_verdict()?),
+            None => None,
+        };
         let (gap_front_mm, gap_back_mm) = self.gaps_mm(&k.mounted);
         let report = Self::report_on(&k.mounted, &seats);
         let back = report.back?;
@@ -1928,7 +1965,7 @@ impl Instrument {
             key_height_target_mm: self.targets.key_height * 1000.0,
             key_dip_target_mm: self.targets.key_dip * 1000.0,
             finger,
-            key_mass_g: props.mass * 1000.0,
+            key_mass_g: self.key_mass_g(),
         })
     }
 
@@ -2031,15 +2068,14 @@ impl Instrument {
         })
     }
 
-    /// What is known of the key's mass: estimated, or as it was weighed,
-    /// with the front weight reading it keeps.
+    /// What is known of the key's mass: as a source publishes it, as it was
+    /// weighed, with the front weight reading it keeps, or nothing.
     pub fn key_mass(&self) -> KeyMass {
         self.mass
     }
 
-    /// The key's mass, grams, as the statics take it: as it was weighed, or
-    /// until it is, the composite key's derived from its volume. `None`
-    /// where the volume model encloses nothing.
+    /// The key's mass, grams, as the statics take it: as a source publishes
+    /// it, or as it was weighed. `None` until it is weighed.
     pub fn key_mass_g(&self) -> Option<f64> {
         self.mass_props().map(|props| props.mass * 1000.0)
     }
@@ -2057,10 +2093,12 @@ impl Instrument {
 
     /// What holds the key where the weight on its measuring point has left
     /// it: a stop, its friction, its two stops off its balance punching; or
-    /// that the weight lifts it off its frame. `None` where nothing holds
-    /// it for any other reason: a key that has not been put on its frame,
-    /// with nothing under it.
+    /// that the weight lifts it off its frame. `None` for a key nobody has
+    /// weighed, whose balance only a weighing gives; and where
+    /// nothing holds it for any other reason: a key that has not been put on
+    /// its frame, with nothing under it.
     pub fn finger_verdict(&self) -> Option<TouchVerdict> {
+        self.mass_props()?;
         if self.lifts_off {
             return Some(TouchVerdict::LiftsOffItsFrame);
         }
@@ -2124,14 +2162,15 @@ pub(crate) mod read {
         }
     }
 
-    /// An instrument on the standard profile, built from this key and
-    /// frame and regulated to these targets.
+    /// An instrument on the measured section weighed by the tests'
+    /// weighing, built from this key and frame and regulated to these
+    /// targets.
     pub(crate) fn built(
         key: KeyDesign,
         frame: FrameDesign,
         targets: Targets,
     ) -> Result<Instrument, EditRefusal> {
-        let profile = Profile::standard();
+        let profile = Profile::weighed_section();
         Instrument::new(
             Start {
                 key,
@@ -2141,6 +2180,18 @@ pub(crate) mod read {
             },
             profile,
         )
+    }
+
+    /// The static moment of `b`'s weighed key about its balance pin,
+    /// kilogram-metres: its mass times where its centre of mass stands
+    /// along the key.
+    pub(crate) fn static_moment_kg_m(b: &Instrument) -> f64 {
+        match b.key_mass() {
+            super::KeyMass::Weighed {
+                static_moment_n_m, ..
+            } => static_moment_n_m / G,
+            other => panic!("a weighed key, not {other:?}"),
+        }
     }
 
     /// A reading of `b`'s sheet, which must not be refused.
@@ -2179,9 +2230,9 @@ mod tests {
 
     /// The bench reports the regulation it was asked for.
     #[test]
-    fn a_standard_bench_reports_what_it_achieved_beside_what_it_was_asked_for() {
-        let b = Instrument::standard();
-        let r = b.readout().expect("the standard bench reads");
+    fn a_bench_regulated_on_arrival_reports_what_it_achieved_beside_what_it_was_asked_for() {
+        let b = Instrument::weighed_section();
+        let r = b.readout().expect("the bench reads");
         let (height, dip) = (
             read::mm(&b, ProcedureId::KeyHeight),
             read::mm(&b, ProcedureId::KeyDip),
@@ -2220,12 +2271,9 @@ mod tests {
         );
 
         let ratio = read::value(&b, ProcedureId::KeyWeightRatio);
-        assert!((0.50..=0.60).contains(&ratio), "ratio {ratio}");
-        assert!(
-            r.key_mass_g > 40.0 && r.key_mass_g < 160.0,
-            "mass {} g",
-            r.key_mass_g
-        );
+        assert!((0.3..=1.0).contains(&ratio), "ratio {ratio}");
+        let mass_g = r.key_mass_g.expect("a weighed key");
+        assert!(mass_g > 40.0 && mass_g < 160.0, "mass {mass_g} g");
     }
 
     /// Consistency, the audit's BWA-10: **a weight between the up weight and
@@ -2249,7 +2297,7 @@ mod tests {
     /// "between U and D" and the sheet are one reading.
     #[test]
     fn a_weight_between_up_and_down_weight_leaves_the_key_where_it_is() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let (down, up) = (
             read::value(&b, ProcedureId::DownWeight),
             read::value(&b, ProcedureId::UpWeight),
@@ -2308,13 +2356,13 @@ mod tests {
     }
 
     /// The initialization puts an unweighted key where its own weight takes
-    /// it, friction off: the standard key, front-heavy by about 6.5 g, down on
+    /// it, friction off: the tests' key, front-heavy by 6.5 g, down on
     /// its front punching, and one weighed back-heavy on its cloth. The
     /// friction does not hold either in the air, because the initialization
     /// is solved without it.
     #[test]
     fn an_unweighted_key_starts_where_its_own_weight_puts_it() {
-        let b = Instrument::standard();
+        let b = Instrument::weighed_section();
         assert_eq!(
             b.finger_verdict(),
             Some(TouchVerdict::RestingOn {
@@ -2322,7 +2370,7 @@ mod tests {
             })
         );
         assert!(!b.reinitialized());
-        let mut heavy = Instrument::standard();
+        let mut heavy = Instrument::weighed_section();
         heavy
             .act(Action::WeighKey {
                 mass_g: 151.1,
@@ -2352,7 +2400,7 @@ mod tests {
     /// insisting it is still going down.
     #[test]
     fn a_key_at_the_bottom_of_its_dip_is_held_by_the_punching() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.act(Action::SetFrictionFromKeyFrictionWeight { kf_g: 2.0 })
             .expect("Stanwood's protocol reads 2 g on this key");
         assert_eq!(
@@ -2372,7 +2420,7 @@ mod tests {
     /// The bound is derived from the seats' arms, with the walks' resolution.
     #[test]
     fn more_friction_makes_a_wider_band_around_the_same_centre() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let band = |b: &Instrument| {
             [
                 ProcedureId::DownWeight,
@@ -2416,14 +2464,14 @@ mod tests {
     /// is kept as typed.
     #[test]
     fn a_key_weighed_whole_is_read_as_it_was_weighed() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.act(Action::WeighKey {
             mass_g: 121.5,
             front_weight_g: 7.5,
             from_lip_mm: 1000.0 * 0.013,
         })
         .expect("a key's weighing");
-        let mass = b.readout().expect("the bench reads").key_mass_g;
+        let mass = b.key_mass_g().expect("a weighed key");
         assert!((mass - 121.5).abs() <= f64::EPSILON * 121.5, "{mass}");
         let fw = read::measured(&b, ProcedureId::FrontWeight);
         assert!(
@@ -2464,29 +2512,29 @@ mod tests {
         );
     }
 
-    /// Consistency: **a key weighed at what its volume model gives reads
-    /// what the volume model reads.** Weighed at the readout's mass and the
-    /// sheet's front weight in full, at the measuring point the sheet reads,
-    /// its mass and its static moment are the volume model's to round-off and
-    /// the height of its centre of mass is the same: the front weight and the
-    /// key weight ratio read the same to round-off; key height and dip the
-    /// same seats, closed by the static solve within `GAP_TOLERANCE`, seen at
-    /// the key front through the lever from the cloth, under 2.3 times it,
-    /// and from the front rail, 258 over 225 mm; and every weight walked
-    /// within the two walks' resolutions.
+    /// Consistency: **a key weighed again at what its sheet reads reads the
+    /// same sheet.** Weighed at its own mass and the sheet's front weight in
+    /// full, at the measuring point the sheet reads, its mass and its static
+    /// moment are what they were to round-off and the height of its centre
+    /// of mass is the same: the front weight and the key weight ratio read
+    /// the same to round-off; key height and dip the same seats, closed by
+    /// the static solve within `GAP_TOLERANCE`, seen at the key front
+    /// through the lever from the cloth, under 2.3 times it, and from the
+    /// front rail, 258 over 225 mm; and every weight walked within the two
+    /// walks' resolutions.
     #[test]
-    fn a_key_weighed_as_its_volume_model_gives_it_reads_the_same_sheet() {
-        let estimated = Instrument::standard();
-        let mass_g = estimated.readout().expect("the bench reads").key_mass_g;
+    fn a_key_weighed_again_at_what_its_sheet_reads_reads_the_same_sheet() {
+        let estimated = Instrument::weighed_section();
+        let mass_g = estimated.key_mass_g().expect("a weighed key");
         let front_g = read::value(&estimated, ProcedureId::FrontWeight);
-        let mut weighed = Instrument::standard();
+        let mut weighed = Instrument::weighed_section();
         weighed
             .act(Action::WeighKey {
                 mass_g,
                 front_weight_g: front_g,
                 from_lip_mm: 1000.0 * (estimated.measuring_point_from_lip()),
             })
-            .expect("the volume model's own numbers");
+            .expect("the sheet's own numbers");
         let gap = pa_core::solve::statics::GAP_TOLERANCE;
         for (p, bound) in [
             (
@@ -2512,7 +2560,7 @@ mod tests {
             let (was, is) = (read::value(&estimated, p), read::value(&weighed, p));
             assert!(
                 (is - was).abs() <= bound,
-                "{p:?}: {was} by the volume model, {is} weighed at its numbers"
+                "{p:?}: {was} as weighed, {is} weighed again at its sheet's numbers"
             );
         }
     }
@@ -2531,8 +2579,8 @@ mod tests {
     /// weight.
     #[test]
     fn a_front_weight_one_gram_heavier_moves_balance_weight_not_friction() {
-        let before = Instrument::standard();
-        let mass_g = before.readout().expect("the bench reads").key_mass_g;
+        let before = Instrument::weighed_section();
+        let mass_g = before.key_mass_g().expect("a weighed key");
         let front_g = read::value(&before, ProcedureId::FrontWeight);
         let mut after = before.clone();
         after
@@ -2542,7 +2590,7 @@ mod tests {
                 from_lip_mm: 1000.0 * (before.measuring_point_from_lip()),
             })
             .expect("a gram heavier in front is a key's weighing");
-        let (k, seats) = before.seated().expect("the standard bench seats");
+        let (k, seats) = before.seated().expect("the bench seats");
         let point = before.measuring_point_on_key();
         let edge = |q: &[f64]| {
             let theta = q[k.mounted.angle.0];
@@ -2583,7 +2631,7 @@ mod tests {
     fn a_weighing_no_key_has_is_refused_and_nothing_changes() {
         let everything =
             |b: &Instrument| format!("{:?} {:?} {:?}", b.key_mass(), b.sheet(), b.readout());
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = everything(&b);
         // A weighing typed, grams, grams and metres, and whether a refusal
         // is the one it must be.
@@ -2633,7 +2681,7 @@ mod tests {
     /// jig reads the same moment over the shorter arm, to round-off.
     #[test]
     fn a_weighed_key_keeps_its_static_moment_when_its_front_is_moved() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.act(Action::WeighKey {
             mass_g: 121.5,
             front_weight_g: 7.5,
@@ -2651,6 +2699,37 @@ mod tests {
         );
     }
 
+    /// Consistency: **a front weight read elsewhere than the bench's
+    /// measuring point is moved to it by the lever.** Weighed with the jig's
+    /// roller 20 mm back from the lip while the bench reads at its own 13 mm,
+    /// the key's static moment is the typed grams on the arm they were read
+    /// on, so the jig reads them times that arm over its own, to round-off,
+    /// as when the measuring point is moved after the weighing; read on the
+    /// bench's arm instead, the static moment would be taken about the
+    /// wrong datum, and the jig would read the typed grams back.
+    #[test]
+    fn a_front_weight_read_elsewhere_is_moved_to_the_measuring_point_by_the_lever() {
+        let mut b = Instrument::weighed_section();
+        b.act(Action::WeighKey {
+            mass_g: 121.5,
+            front_weight_g: 7.5,
+            from_lip_mm: 20.0,
+        })
+        .expect("a key's weighing");
+        let read_on = b.key().lip() - 20.0 / 1000.0;
+        let expected = 7.5 * read_on / b.measuring_point();
+        let fw = read::value(&b, ProcedureId::FrontWeight);
+        let bound = 2.0 * 16.0 * f64::EPSILON * 7.5;
+        assert!(
+            (fw - expected).abs() <= bound,
+            "7.5 g read 20 mm back from the lip, the jig reads {fw} g at 13 mm, not {expected} g"
+        );
+        assert!(
+            (expected - 7.5).abs() > 1000.0 * bound,
+            "the two arms must tell the datums apart"
+        );
+    }
+
     /// A weight moves the key between its two seats and no further: a heavy
     /// one presses it down onto the bottom seat, whatever its size, because
     /// past a stop a weight only loads the stop, and a lift raises it onto
@@ -2662,8 +2741,8 @@ mod tests {
     /// least 0.2 m from the bearing to the stop turns into an angle.
     #[test]
     fn a_weight_takes_the_key_to_its_seats_and_no_further() {
-        let mut b = Instrument::standard();
-        let (k, seats) = b.seated().expect("the standard bench seats");
+        let mut b = Instrument::weighed_section();
+        let (k, seats) = b.seated().expect("the bench seats");
         let angle = k.mounted.angle.0;
         let bound = 2.0 * 1e-12 / 0.2;
         for (weights, seat) in [
@@ -2707,8 +2786,8 @@ mod tests {
     /// held.
     #[test]
     fn a_pull_past_what_the_punching_carries_lifts_the_key_off_its_frame() {
-        let mut b = Instrument::standard();
-        let (k, seats) = b.seated().expect("the standard bench seats");
+        let mut b = Instrument::weighed_section();
+        let (k, seats) = b.seated().expect("the bench seats");
         let m = &k.mounted.mechanism;
         let mass = m.body(k.mounted.key).mass.expect("weighed");
         let pose = m.pose(&seats.top.q);
@@ -2750,7 +2829,7 @@ mod tests {
             );
             assert!(!b.reinitialized(), "the key stays where it was");
             let r = b.readout().expect("the sheet still reads");
-            assert_eq!(r.finger, TouchVerdict::LiftsOffItsFrame);
+            assert_eq!(r.finger, Some(TouchVerdict::LiftsOffItsFrame));
             let still = &b.state.as_ref().expect("the last equilibrium").q;
             assert_eq!(
                 still.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
@@ -2771,7 +2850,7 @@ mod tests {
     /// Consistency: **a pull never draws the key above its balance pin.**
     /// The key leaves its pin where its balance hole, the key frame's origin
     /// on the pin's axis, clears the drawn pin's top, 9 mm above its
-    /// punching on the standard bench. Pulled up at its measuring point past
+    /// punching on the tests' bench. Pulled up at its measuring point past
     /// what its punching carries, the key turns up on its cloth off its
     /// punching as far as its friction lets it: under a millimetre at
     /// 62.7 g, 8.5 mm at 62.85 g. A little more and it would turn up past
@@ -2784,7 +2863,7 @@ mod tests {
     /// it.
     #[test]
     fn a_pull_never_draws_the_key_above_its_balance_pin() {
-        let base = Instrument::standard();
+        let base = Instrument::weighed_section();
         let pin_top = base
             .outlines()
             .iter()
@@ -2838,7 +2917,7 @@ mod tests {
     /// from the key put back on its punching, which would carry it down.
     #[test]
     fn a_key_its_friction_holds_off_its_punching_stays_there() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::WEIGHT, -62.7).expect("a weight");
         let lifted = b.finger_verdict();
         let Some(TouchVerdict::LiftsOffBalancePunching {
@@ -2872,7 +2951,7 @@ mod tests {
     /// and the ground's pose is the world's.
     #[test]
     fn pressing_the_key_moves_only_the_key() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::WEIGHT, -60.0).expect("a weight");
         let (at_rest, rest_poses) = (b.outlines(), b.poses());
         let rest_pt = b.key_placement().world(b.measuring_point_on_key());
@@ -2916,7 +2995,7 @@ mod tests {
     /// it stands nose-up.
     #[test]
     fn the_key_stands_on_its_balance_bearing_at_rest() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::WEIGHT, -60.0).expect("a weight");
         let pose = b.key_placement();
         let bearing = b.frame().balance_bearing_height();
@@ -2932,7 +3011,7 @@ mod tests {
     /// the one the jig weighs at, to the bit.
     #[test]
     fn the_marked_measuring_point_is_the_one_the_jig_weighs_at() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         for from_lip in [0.013, 0.0127, 0.030] {
             b.set(path::MEASURING_POINT, 1000.0 * from_lip)
                 .expect("a measuring point");
@@ -2947,7 +3026,7 @@ mod tests {
     /// Adding paper under the balance punching raises the key, as on the bench.
     #[test]
     fn key_levelling_works_through_the_bench() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = read::mm(&b, ProcedureId::KeyHeight);
         let paper = b.frame().balance_punching.paper();
         read::lay(&mut b, Stack::Balance, paper + 0.0005);
@@ -2974,7 +3053,7 @@ mod contact_readout_tests {
     /// would move by the wrong amount.
     #[test]
     fn the_dip_follows_the_contact_and_not_the_target() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = b.readout().unwrap();
         let dip_before = read::mm(&b, ProcedureId::KeyDip);
         let paper = b.frame().front_punching.paper();
@@ -3025,7 +3104,7 @@ mod contact_readout_tests {
     /// errors are independent. Two papers is the bound.
     #[test]
     fn the_default_frame_puts_the_key_level_at_the_bottom_of_its_travel() {
-        let b = Instrument::standard();
+        let b = Instrument::weighed_section();
         let f = &b.frame;
         let out = (f.front_bearing_height() - f.balance_bearing_height()) * 1000.0;
         let two_papers = 2.0 * pa_core::test_fixture::PAPER_THICKNESSES[0] * 1000.0;
@@ -3039,7 +3118,7 @@ mod contact_readout_tests {
 
         // And released, it is nose-up rather than nose-down: the tail is on
         // the cloth and the front hangs clear of its punching by the dip.
-        let r = b.readout().expect("the standard bench reads");
+        let r = b.readout().expect("the bench reads");
         assert!(
             f.back_bearing_height() < f.balance_bearing_height(),
             "the back rail must stand below the balance bearing, or the key \
@@ -3059,7 +3138,7 @@ mod contact_readout_tests {
     /// rides on the pin and its cloth, nothing drawn sunk, the frame seated.
     #[test]
     fn a_pin_a_few_tenths_into_the_wood_draws_the_key_on_it() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let pin = b.frame().sections.front.pin.expect("a pin").length();
         let (_, front_end) = b.key().front_mortise_span();
         b.set(
@@ -3098,13 +3177,13 @@ mod contact_readout_tests {
     /// never on its punching with the rail drawn through it.
     #[test]
     fn a_back_rail_raised_through_the_key_in_one_move_draws_it_riding() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::BACK_RAIL_HEIGHT, 1000.0 * 0.055)
             .expect("a back rail");
         assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
         assert!(b.riding().is_none() && b.frame_fault().is_some());
 
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.frame.sections.balance.pin_height += 0.020;
         b.relax();
         assert!(!b.reinitialized(), "a taller pin moves nothing");
@@ -3159,7 +3238,7 @@ mod contact_readout_tests {
                 .expect("a back rail");
         };
         for edit in [&wedged as &dyn Fn(&mut Instrument), &short] {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             edit(&mut b);
             let ride = b.riding().expect("the key rides on its stops").lift;
             let f = &mut b.frame;
@@ -3200,7 +3279,7 @@ mod contact_readout_tests {
     /// stands open below the key, and not the cloth.
     #[test]
     fn a_key_off_its_punching_is_said_to_touch_what_the_view_marks() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::FRONT_RAIL_HEIGHT, 1000.0 * 0.0417)
             .expect("a front rail");
         let verdict = b.finger_verdict();
@@ -3236,7 +3315,7 @@ mod contact_readout_tests {
     /// punching.
     #[test]
     fn a_pull_that_lifts_the_key_off_its_frame_leaves_it_where_it_stood() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.act(Action::SetFrictionFromKeyFrictionWeight { kf_g: 3.0 })
             .expect("bushings read 3 g");
         let stood = b.key_placement();
@@ -3267,7 +3346,7 @@ mod contact_readout_tests {
     /// for want of a stroke.
     #[test]
     fn a_riding_key_has_no_stroke_however_its_seats_are_rounded() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let front_edge = b.key().front_edge;
         b.set(path::FRONT_EDGE, 1000.0 * (front_edge + 0.0023725))
             .expect("a key front");
@@ -3311,7 +3390,7 @@ mod contact_readout_tests {
     /// key is seated.
     #[test]
     fn a_wedged_frame_is_drawn_riding_on_its_stops_and_says_why_it_cannot_be_weighed() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let level = b.frame().balance_bearing_height();
         let cloth = b.frame().back_rail_cloth;
         b.set(path::BACK_RAIL_HEIGHT, 1000.0 * (level + 0.005 - cloth))
@@ -3505,7 +3584,7 @@ mod contact_readout_tests {
     /// picometre, `1e-9` mm.
     #[test]
     fn the_reported_gaps_agree_with_where_the_key_is_held() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let mut held = Vec::new();
         for weight in [-60.0, 0.0, -6.5, 60.0, -6.5] {
             b.set(path::WEIGHT, weight).expect("a weight");
@@ -3513,8 +3592,8 @@ mod contact_readout_tests {
             let front = r.gap_front_mm.expect("the punching stands under the flat");
             let back = r.gap_back_mm.expect("the cloth meets the underside");
             let on = match r.finger {
-                TouchVerdict::RestingOn { stop } => Some(stop),
-                TouchVerdict::HeldByFriction { touching, .. } => touching,
+                Some(TouchVerdict::RestingOn { stop }) => Some(stop),
+                Some(TouchVerdict::HeldByFriction { touching, .. }) => touching,
                 other => panic!("{weight} g: {other:?}"),
             };
             match on {
@@ -3535,10 +3614,10 @@ mod contact_readout_tests {
         }
         assert!(held
             .iter()
-            .any(|v| matches!(v, TouchVerdict::RestingOn { .. })));
+            .any(|v| matches!(v, Some(TouchVerdict::RestingOn { .. }))));
         assert!(held
             .iter()
-            .any(|v| matches!(v, TouchVerdict::HeldByFriction { .. })));
+            .any(|v| matches!(v, Some(TouchVerdict::HeldByFriction { .. }))));
     }
 
     /// Consistency, and the check of `CLAUDE.md` rule 1: **every contact
@@ -3600,7 +3679,7 @@ mod contact_readout_tests {
     /// level.
     #[test]
     fn the_contacts_the_view_marks_are_where_the_key_touches() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let closed = |b: &Instrument| -> Vec<ContactCode> {
             b.contacts()
                 .iter()
@@ -3701,7 +3780,7 @@ mod contact_readout_tests {
     /// too, and move what Stanwood's protocol reads.
     #[test]
     fn the_key_friction_weight_is_typed_in_grams_and_kept_as_a_torque() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let stanwood =
             |b: &Instrument| read::measured(b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
         for kf in [2.0, 6.0, 13.0] {
@@ -3791,7 +3870,7 @@ mod contact_readout_tests {
                 b.readout()
             )
         };
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = everything(&b);
         let refused = b
             .act(Action::SetFrictionFromKeyFrictionWeight { kf_g: 0.0 })
@@ -3835,7 +3914,7 @@ mod paper_tests {
     /// A stack is a pile of real papers, and only thicknesses that exist.
     #[test]
     fn every_paper_in_a_stack_is_one_a_technician_could_pick_up() {
-        let b = Instrument::standard();
+        let b = Instrument::weighed_section();
         for which in [Stack::Balance, Stack::Front] {
             let stack = b.papers(which);
             assert!(!stack.is_empty(), "{which:?} stack is empty");
@@ -3856,7 +3935,7 @@ mod paper_tests {
     /// the key must move by what was added — not by a rounded version of it.
     #[test]
     fn laying_a_paper_raises_the_key_by_that_paper() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = b.readout().unwrap();
         let height_before = read::mm(&b, ProcedureId::KeyHeight);
         let n = b.papers(Stack::Balance).len();
@@ -3889,7 +3968,7 @@ mod paper_tests {
     /// And taking it back out puts the key back exactly where it was.
     #[test]
     fn taking_the_paper_back_out_is_exactly_reversible() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = read::mm(&b, ProcedureId::KeyDip);
 
         b.act(Action::AddPaper {
@@ -3929,7 +4008,7 @@ mod paper_tests {
         );
         // Which is why the bench reports the achieved dip beside the target:
         // the miss is physical, not numerical.
-        let b = Instrument::standard();
+        let b = Instrument::weighed_section();
         let r = b.readout().unwrap();
         assert!((read::mm(&b, ProcedureId::KeyDip) - r.key_dip_target_mm).abs() < 0.1);
     }
@@ -3959,7 +4038,7 @@ mod regulation_tests {
     /// is moved onto its new stacks from where it stood.
     #[test]
     fn regulating_lays_the_papers_and_the_sheet_reads_what_they_give() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let targets = Targets {
             key_height: 0.0660,
             key_dip: 0.0100,
@@ -3999,7 +4078,7 @@ mod regulation_tests {
     /// stay as they were.
     #[test]
     fn a_dip_the_front_pin_forbids_is_refused_and_nothing_changes() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = everything(&b);
         let targets = Targets {
             key_height: 0.0650,
@@ -4037,7 +4116,7 @@ mod regulation_tests {
     /// A target that is not a number is refused, and changes nothing.
     #[test]
     fn a_target_that_is_not_a_number_changes_nothing() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = everything(&b);
         let refused = b
             .act(Action::Regulate {
@@ -4075,7 +4154,7 @@ mod protocol_roundtrip_tests {
     #[test]
     fn the_bench_measures_its_own_friction_by_the_protocol() {
         for kf in [2.0, 6.0, 9.5, 14.0] {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             b.act(Action::SetFrictionFromKeyFrictionWeight { kf_g: kf })
                 .expect("Stanwood's protocol reads it on this key");
             let stanwood = read::measured(&b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
@@ -4113,12 +4192,12 @@ mod protocol_roundtrip_tests {
     /// tenths of a gram here, under the gram it is read to.
     #[test]
     fn weighing_the_key_heavier_does_not_change_its_measured_friction() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.act(Action::SetFrictionFromKeyFrictionWeight { kf_g: 7.0 })
             .expect("Stanwood's protocol reads 7 g on this key");
         let bare = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         let stanwood = read::value(&b, ProcedureId::KeyFrictionWeightZeroedOnTheJig);
-        let mass_g = b.readout().expect("the bench reads").key_mass_g;
+        let mass_g = b.key_mass_g().expect("a weighed key");
         let front_g = read::value(&b, ProcedureId::FrontWeight);
 
         b.act(Action::WeighKey {
@@ -4148,7 +4227,7 @@ mod protocol_roundtrip_tests {
     /// typed gives them.
     #[test]
     fn a_frictionless_key_measures_nothing() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         read::bushings_holding_g(&mut b, 0.0);
         let m = read::measured(&b, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         assert!(
@@ -4179,7 +4258,7 @@ mod state_tests {
     /// the seats as they were.
     #[test]
     fn the_sheet_reads_the_seats_whatever_the_touch_weight_did() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let seated = |b: &Instrument| {
             let r = b.readout().unwrap();
             [
@@ -4208,7 +4287,7 @@ mod state_tests {
     /// stays on its punching.
     #[test]
     fn an_edit_the_key_can_follow_moves_it_from_where_it_stood() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::WEIGHT, 60.0).expect("a weight");
         let pressed = b.key_placement().world(b.measuring_point_on_key());
         b.act(Action::AddPaper {
@@ -4237,7 +4316,7 @@ mod state_tests {
     /// put back on its frame, on the punching where it now stands.
     #[test]
     fn an_edit_the_key_cannot_follow_starts_it_again() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::WEIGHT, 60.0).expect("a weight");
         let front = b.frame().front_rail_height;
         b.set(path::FRONT_RAIL_HEIGHT, 1000.0 * (front + 0.003))
@@ -4271,9 +4350,9 @@ mod state_tests {
         let weights = [
             -40.0, 23.0, -40.0, 22.0, -40.0, 30.0, -60.0, 60.0, -60.0, 10.0, -60.0, 1.0,
         ];
-        let mut stiff = Instrument::standard();
+        let mut stiff = Instrument::weighed_section();
         read::bushings_holding_g(&mut stiff, 15.0);
-        let mut moved = Instrument::standard();
+        let mut moved = Instrument::weighed_section();
         let front = moved.frame().front_rail;
         let (balance, front_height) = (
             moved.frame().balance_rail_height,
@@ -4307,7 +4386,7 @@ mod state_tests {
     #[test]
     fn the_same_actions_give_the_same_bits() {
         let run = || {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             b.set(path::WEIGHT, -20.0).expect("a weight");
             b.act(Action::WeighKey {
                 mass_g: 131.1,
@@ -4362,10 +4441,10 @@ mod measuring_point_tests {
     /// front rail, 258 over 225 mm.
     #[test]
     fn moving_the_measuring_point_changes_front_weight_exactly_by_the_lever() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let key = b.key().clone();
         let lip = key.front_edge + key.keytop_overhang;
-        let moment_g_m = 1000.0 * key.mass_properties().unwrap().static_moment_x();
+        let moment_g_m = 1000.0 * read::static_moment_kg_m(&b);
 
         // The default: 13 mm back from the covering's lip, which stands 2 mm
         // proud of the key front at 258 mm, so the arm is 247 mm.
@@ -4382,7 +4461,7 @@ mod measuring_point_tests {
         // left at another point would read as another number here.
         assert!(
             (before.key_friction_weight_g - 6.0).abs() < 1e-12,
-            "the standard bench is set to {} g of key friction, not the 6 g it was built with",
+            "the bench is set to {} g of key friction, not the 6 g it was built with",
             before.key_friction_weight_g
         );
         let fw_before = read::value(&b, ProcedureId::FrontWeight);
@@ -4444,7 +4523,7 @@ mod measuring_point_tests {
     /// grams.
     #[test]
     fn every_protocol_reads_the_same_measuring_point() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let key = b.key().clone();
         let lip = key.front_edge + key.keytop_overhang;
         let height = key.stick_height + key.keytop_thickness;
@@ -4459,7 +4538,7 @@ mod measuring_point_tests {
         assert!((b.measuring_point_from_lip() - MEASURING_POINT_HALF_INCH).abs() < 1e-15);
         assert!((b.measuring_point() - arm).abs() < 1e-15);
 
-        let m = key.mass_properties().unwrap().static_moment_x();
+        let m = read::static_moment_kg_m(&b);
         let read_on = [
             (
                 "front weight",
@@ -4510,7 +4589,7 @@ mod measuring_point_tests {
     #[test]
     fn the_drawn_measuring_point_follows_the_setting() {
         for weight in [20.0, -20.0] {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             b.set(path::WEIGHT, weight).expect("a weight");
             let s = b.sin_angle();
             let before = b.key_placement().world(b.measuring_point_on_key());
@@ -4548,7 +4627,7 @@ mod measuring_point_tests {
     /// covering's length beside it, and the instrument stays as it was.
     #[test]
     fn the_measuring_point_stays_on_the_covering() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         let before = b.state_hash();
         for from_lip_mm in [-5.0, 500.0] {
             assert_eq!(
@@ -4581,7 +4660,7 @@ mod measuring_point_tests {
     /// 10.6 g is half a gram clear of either.
     #[test]
     fn moving_the_point_moves_the_weight_on_it_and_the_key_settles_again() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.act(Action::WeighKey {
             mass_g: 151.1,
             front_weight_g: -8.1,
@@ -4676,7 +4755,7 @@ mod edit_tests {
     /// instrument has not, or one an action sets, is named so.
     #[test]
     fn each_problem_is_refused_and_leaves_the_instrument_as_it_was() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         refuses(&mut b, set(path::FRONT_EDGE, 170.0), &|w| {
             matches!(w, EditRefusal::Problem(Problem::OutlineCrossesItself {
                 back: PartCode::KeyButton,
@@ -4777,7 +4856,7 @@ mod edit_tests {
     /// is refused by `set` before its value is read, naming the action.
     #[test]
     fn no_number_that_is_not_finite_reaches_the_core() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             for e in &ENTRIES {
                 let param = e.param();
@@ -4837,11 +4916,11 @@ mod edit_tests {
     /// laid is refused, not the frame.
     #[test]
     fn everything_an_assembled_keyboard_can_be_is_taken() {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::FRONT_PIN_HEIGHT, 40.0)
             .expect("a proud pin is a state");
         assert!(b.finger_verdict().is_some(), "and something holds the key");
-        let mut c = Instrument::standard();
+        let mut c = Instrument::weighed_section();
         c.set(path::FRONT_RAIL_AT, 165.0)
             .expect("a frame placed for another key");
         assert!(!c.faults().is_empty(), "its fault is named");
@@ -4854,7 +4933,7 @@ mod edit_tests {
     /// moved, the frame placed under the key; and an edit refused among
     /// them. Every action is among them, so none goes unlogged unseen.
     fn exercised() -> Instrument {
-        let mut b = Instrument::standard();
+        let mut b = Instrument::weighed_section();
         b.set(path::FRONT_RAIL_HEIGHT, 30.0)
             .expect("a front rail raised");
         b.act(Action::Reset).expect("the bench reset");
@@ -4920,21 +4999,21 @@ mod edit_tests {
         ] {
             assert!(codes.contains(&code), "{code:?} is not logged");
         }
-        let again = Instrument::standard()
+        let again = Instrument::weighed_section()
             .replay(b.log())
             .expect("the log replays");
         assert_eq!(again.state_hash(), b.state_hash());
         assert_eq!(everything(&again), everything(&b));
         let pull = 2;
         assert_eq!(b.log()[pull], set(path::WEIGHT, -60.0));
-        let without_the_pull = Instrument::standard()
+        let without_the_pull = Instrument::weighed_section()
             .replay(&[&b.log()[..pull], &b.log()[pull + 1..]].concat())
             .expect("the log replays");
         assert_ne!(without_the_pull.state_hash(), b.state_hash());
     }
 
     /// Consistency: **the state hash changes with each normative coordinate
-    /// and with the hidden state, and with nothing else.** From the standard
+    /// and with the hidden state, and with nothing else.** From the tests'
     /// instrument, every path set to another value, every action taken,
     /// moves the hash; two instruments built alike hash alike, whatever
     /// their logs, and a refused edit does not move it. Two instruments with
@@ -4943,8 +5022,8 @@ mod edit_tests {
     /// the other was not: the key's place is the hidden state.
     #[test]
     fn the_state_hash_changes_with_every_coordinate_and_the_hidden_state() {
-        let standard = Instrument::standard().state_hash();
-        assert_eq!(Instrument::standard().state_hash(), standard);
+        let standard = Instrument::weighed_section().state_hash();
+        assert_eq!(Instrument::weighed_section().state_hash(), standard);
         let soft = |path: &str| {
             PAGE.iter()
                 .flat_map(|(_, controls)| controls.iter())
@@ -4954,7 +5033,7 @@ mod edit_tests {
                 })
         };
         for e in ENTRIES.iter().filter(|e| e.set_by().is_none()) {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             let now = b.value(e.path).expect("a value");
             // A tenth of what the page offers away from where it stands,
             // forward or else back, whichever a key can be built at.
@@ -4988,19 +5067,19 @@ mod edit_tests {
             },
             Action::SetFrictionFromKeyFrictionWeight { kf_g: 8.0 },
         ] {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             b.act(action.clone()).expect("taken");
             assert_ne!(b.state_hash(), standard, "{action:?}");
         }
-        let mut refused = Instrument::standard();
+        let mut refused = Instrument::weighed_section();
         refused
             .set(path::FRONT_EDGE, 170.0)
             .expect_err("a covering in the key button");
         assert_eq!(refused.state_hash(), standard);
 
-        let mut down = Instrument::standard();
+        let mut down = Instrument::weighed_section();
         down.set(path::WEIGHT, -5.0).expect("a pull");
-        let mut up = Instrument::standard();
+        let mut up = Instrument::weighed_section();
         up.set(path::WEIGHT, -60.0).expect("a pull");
         up.set(path::WEIGHT, -5.0).expect("a pull");
         assert_eq!(
@@ -5034,7 +5113,7 @@ mod edit_tests {
             edit(&mut c);
             assert_ne!(c.state_hash(), b.state_hash(), "{what}");
         };
-        let b = Instrument::standard();
+        let b = Instrument::weighed_section();
         for e in &ENTRIES {
             let what = e.path;
             match e.field {
@@ -5140,10 +5219,10 @@ mod edit_tests {
     /// at the back by 10 mm, its back check block left where the action
     /// puts it, which runs its thinned tail 10 mm under the block. Lengthened
     /// at the back by 30 mm instead, on a frame placed under it, the key is
-    /// built, and regulated to the standard targets.
+    /// built, and regulated to the measured section's targets.
     #[test]
     fn a_design_no_part_could_be_built_as_is_refused_on_load() {
-        let targets = Instrument::standard().targets();
+        let targets = Instrument::weighed_section().targets();
         let mut frame = pa_core::test_fixture::frame();
         frame.balance_punching.felt = -0.001;
         assert!(matches!(
@@ -5186,6 +5265,122 @@ mod edit_tests {
         let built = read::built(key, frame, targets);
         assert!(built.is_ok(), "{:?}", built.err());
     }
+
+    /// Consistency, on Hirschkorn's key: **his capstan slider is refused
+    /// only where the capstan would stand on lowered wood or run into
+    /// another part.** Over the slider's range, by its step, a capstan
+    /// taken stands where it is set, seated on the keystick's full height;
+    /// one refused is refused as its head standing in the key button or the
+    /// back check block, or over the thinned tail, which his key's full
+    /// height ends at 132.45 mm behind the pin, each by how far as the
+    /// parts' places say, and the instrument is left as it was. His capstan's
+    /// head, 3.92 mm in radius, clears the key button from 42.01 mm behind
+    /// the pin and stands over the full height to 128.53 mm, over the tail
+    /// from there, and in the back check block, which ends 186.87 mm behind
+    /// the pin, from 182.95 mm: so the slider, from 60 to 200 mm by the
+    /// millimetre, takes the capstan from 60 to 128 mm, and refuses it over
+    /// the tail from 129 to 182 mm and in the block from 183 mm.
+    #[test]
+    fn his_capstan_slider_is_refused_only_on_lowered_wood_or_in_a_part() {
+        let his = Instrument::standard();
+        let key = his.key().clone();
+        let soft = PAGE
+            .iter()
+            .flat_map(|(_, controls)| controls.iter())
+            .find_map(|c| match *c {
+                Control::Slider { path: p, soft, .. } if p == path::CAPSTAN_BEHIND => Some(soft),
+                _ => None,
+            })
+            .expect("a capstan slider");
+        let (min, max) = (soft.min.expect("bounded"), soft.max.expect("bounded"));
+        let r = 0.5
+            * key
+                .capstan_screw
+                .head_diameter
+                .max(key.capstan_screw.diameter);
+        let (button_back, button_front) = key.key_button_span();
+        let check = key.back_check_block();
+        let step = key.tail_front();
+        let (mut taken, mut on_the_tail, mut in_the_block) = (Vec::new(), Vec::new(), Vec::new());
+        let mut behind_mm = min;
+        while behind_mm <= max {
+            let x = -1e-3 * behind_mm;
+            let (back, front) = (x - r, x + r);
+            let refused = if front > button_back && back < button_front {
+                Some(Problem::CapstanInBlock {
+                    block: PartCode::KeyButton,
+                    by: front - button_back,
+                })
+            } else if back < check.front() {
+                Some(Problem::CapstanInBlock {
+                    block: PartCode::BackCheckBlock,
+                    by: check.front() - back,
+                })
+            } else if back < step {
+                Some(Problem::CapstanOffTheFullHeight { by: step - back })
+            } else {
+                None
+            };
+            let mut b = his.clone();
+            match (b.set(path::CAPSTAN_BEHIND, behind_mm), refused) {
+                (Ok(()), None) => {
+                    assert_eq!(b.key().capstan_seat().to_bits(), key.stick_height.to_bits());
+                    assert!(
+                        (b.key().capstan - x).abs() <= f64::EPSILON * 0.2,
+                        "{behind_mm} mm"
+                    );
+                    taken.push(behind_mm);
+                }
+                (Err(EditRefusal::Problem(got)), Some(want)) => {
+                    let (got_by, want_by) = match (got, want) {
+                        (
+                            Problem::CapstanInBlock { block, by },
+                            Problem::CapstanInBlock {
+                                block: want_block,
+                                by: want_by,
+                            },
+                        ) if block == want_block => {
+                            if block == PartCode::BackCheckBlock {
+                                in_the_block.push(behind_mm);
+                            }
+                            (by, want_by)
+                        }
+                        (
+                            Problem::CapstanOffTheFullHeight { by },
+                            Problem::CapstanOffTheFullHeight { by: want_by },
+                        ) => {
+                            on_the_tail.push(behind_mm);
+                            (by, want_by)
+                        }
+                        (got, want) => panic!("{behind_mm} mm: {got:?}, not {want:?}"),
+                    };
+                    assert!(
+                        (got_by - want_by).abs() < 1e-12,
+                        "{behind_mm} mm: {got_by}, not {want_by}"
+                    );
+                    assert_eq!(b.key(), his.key(), "{behind_mm} mm: refused and changed");
+                    assert_eq!(b.state_hash(), his.state_hash());
+                }
+                (got, want) => panic!("{behind_mm} mm: {got:?}, the parts' places say {want:?}"),
+            }
+            behind_mm += soft.step;
+        }
+        assert!(
+            (button_back - r + 0.042_005).abs() < 1e-9,
+            "{}",
+            button_back - r
+        );
+        assert!((step + r + 0.128_53).abs() < 1e-9, "{}", step + r);
+        assert!(
+            (check.front() + r + 0.182_95).abs() < 1e-9,
+            "{}",
+            check.front() + r
+        );
+        let mm = |from: u32, to: u32| (from..=to).map(f64::from).collect::<Vec<f64>>();
+        assert_eq!(taken, mm(60, 128));
+        assert_eq!(on_the_tail, mm(129, 182));
+        assert_eq!(in_the_block, mm(183, 200));
+    }
 }
 
 /// The band on every instrument a profile ships: its extremes against the
@@ -5196,11 +5391,16 @@ mod band_tests {
     use crate::registry::path;
     use pa_core::measure::sweep::STEP;
 
-    /// Every shipped profile's instrument, as it arrives.
+    /// Every shipped profile's instrument as it arrives, a key nobody has
+    /// weighed weighed by the tests' weighing, since a key with no mass has
+    /// no band.
     fn shipped() -> Vec<(&'static str, Instrument)> {
         Profile::names()
             .map(|name| {
-                let profile = Profile::named(name).expect("a shipped profile");
+                let profile = match name {
+                    crate::profile::SECTION => Profile::weighed_section(),
+                    _ => Profile::named(name).expect("a shipped profile"),
+                };
                 (name, Instrument::of(profile).expect("it builds"))
             })
             .collect()
@@ -5270,15 +5470,55 @@ mod band_tests {
         1.0 - p.y / p.x * theta.tan()
     }
 
-    /// Consistency, the second code path, on both shipped keys: **the
-    /// band's extremes are the sheet's down and up weights.** The greatest
-    /// force of the down curve against the walk's D, the least of the up
-    /// curve against its U, within the walk's resolution and the curve's
-    /// change over the step the sweep reads its extreme from, with rounding;
-    /// both read as the trade reads them.
+    /// The owner's section weighed as he is likeliest to weigh one of its
+    /// keys: whole grams of mass and of front weight, the front weight read
+    /// 13 mm back from the lip. The key bottoms out about level, where its
+    /// balance is its front weight and its bushings hold their 6 g, so its up
+    /// weight, read off the bottom seat, stands within a few ten-thousandths
+    /// of a gram of a whole gram: the walk resolves it to a part in 65 536
+    /// of a gram, the sweep, a step off the seat, to about a thousandth, and
+    /// the two fall either side of that gram.
+    fn weighed_in_whole_grams() -> Vec<(String, Instrument)> {
+        [
+            (130.0, 40.0),
+            (120.0, 25.0),
+            (125.0, 30.0),
+            (135.0, 45.0),
+            (140.0, 35.0),
+        ]
+        .into_iter()
+        .map(|(mass_g, front_weight_g)| {
+            let mut b = Instrument::of(Profile::named(crate::profile::SECTION).unwrap()).unwrap();
+            b.act(Action::WeighKey {
+                mass_g,
+                front_weight_g,
+                from_lip_mm: 13.0,
+            })
+            .expect("a key's weighing");
+            (format!("{mass_g} g, {front_weight_g} g at 13 mm"), b)
+        })
+        .collect()
+    }
+
+    /// Consistency, the second code path, on both shipped keys and on the
+    /// section weighed in whole grams: **the band's extremes are the
+    /// sheet's down and up weights in full.** The greatest force of the
+    /// down curve against the walk's D, the least of the up curve against
+    /// its U, within the walk's resolution and the curve's change over the
+    /// step the sweep reads its extreme from, with rounding. Their grams
+    /// are not compared: a value in full within that bound of a whole gram
+    /// reads the gram on one side or the other, as the section weighed at
+    /// 130 g and 40 g shows, its U read -47 g by the walk from -46.00019 g
+    /// and -46 g on the band from -45.99997 g. The gram is the walk's, the
+    /// trade's protocol with gram weights; the band is a curve, and the page
+    /// labels its extremes in full.
     #[test]
-    fn the_bands_extremes_are_the_sheets_on_every_shipped_profile() {
-        for (name, b) in shipped() {
+    fn the_bands_extremes_are_the_sheets_in_full_on_every_shipped_profile() {
+        let keys = shipped()
+            .into_iter()
+            .map(|(name, b)| (name.to_owned(), b))
+            .chain(weighed_in_whole_grams());
+        for (name, b) in keys {
             let banded = b.band().expect("the band is drawn");
             for (on_band, walked, curve) in [
                 (
@@ -5301,7 +5541,6 @@ mod band_tests {
                     bound < 0.01,
                     "{name}: a step reads under a hundredth of a gram"
                 );
-                assert_eq!(on_band.shown, sheet.shown, "{name}: read alike to the gram");
                 assert_eq!(on_band.trust, sheet.trust, "{name}: trusted alike");
                 assert_eq!(on_band.fingerprint, sheet.fingerprint);
             }
@@ -5481,10 +5720,145 @@ mod band_tests {
     /// after it as before, so a page that draws it has not edited the key.
     #[test]
     fn drawing_the_band_changes_nothing() {
-        let b = Instrument::standard();
+        let b = Instrument::weighed_section();
         let (hash, sheet) = (b.state_hash(), b.sheet());
         let _ = b.band();
         assert_eq!(b.state_hash(), hash);
         assert_eq!(b.sheet(), sheet);
+    }
+}
+
+/// The owner's measured section as it arrives: a key nobody has weighed.
+#[cfg(test)]
+mod section_tests {
+    use super::*;
+    use crate::profile::SECTION;
+    use crate::registry::path;
+
+    /// The measured section as it arrives, regulated and unweighed.
+    fn unweighed() -> Instrument {
+        Instrument::of(Profile::named(SECTION).expect("shipped")).expect("regulated on arrival")
+    }
+
+    /// Consistency, design 5.3: **a key nobody has weighed reads what needs
+    /// no mass and refuses the rest, saying why.** Front weight, the down and
+    /// up weights, Stanwood's key friction weight and the band read the
+    /// key's mass, and are refused: the key is not weighed; the balance and
+    /// friction weights, read from the down and up weights, are refused with
+    /// them. Key height and dip are its seats under the trade's gestures,
+    /// the key weight ratio the jig's tare, and the key friction weight
+    /// zeroed on the frame cancels the key's balance where it rests: they
+    /// are read. The faults are read off the drawing. Its readout carries no
+    /// mass and no touch verdict, where a weight leaves the key depending on
+    /// a balance only a weighing gives, and the key is drawn where its top
+    /// seat puts it, whatever weight stands on it.
+    #[test]
+    fn a_key_nobody_has_weighed_reads_what_needs_no_mass_and_refuses_the_rest() {
+        let mut b = unweighed();
+        assert_eq!(b.key_mass(), KeyMass::Unweighed);
+        let sheet = b.sheet();
+        for p in [
+            ProcedureId::FrontWeight,
+            ProcedureId::DownWeight,
+            ProcedureId::UpWeight,
+            ProcedureId::KeyFrictionWeightZeroedOnTheJig,
+        ] {
+            assert_eq!(sheet.get(p), Some(&Err(Refused::KeyNotWeighed)), "{p:?}");
+        }
+        for p in [ProcedureId::BalanceWeight, ProcedureId::FrictionWeight] {
+            assert!(
+                matches!(sheet.get(p), Some(Err(Refused::From { .. }))),
+                "{p:?}"
+            );
+        }
+        for p in [
+            ProcedureId::KeyWeightRatio,
+            ProcedureId::KeyHeight,
+            ProcedureId::KeyDip,
+            ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
+        ] {
+            assert!(
+                matches!(sheet.get(p), Some(Ok(_))),
+                "{p:?}: {:?}",
+                sheet.get(p)
+            );
+        }
+        assert!(matches!(b.band(), Err(Refused::KeyNotWeighed)));
+        assert!(b.faults().is_empty());
+        let r = b.readout().expect("an unweighed key is seated");
+        assert_eq!((r.key_mass_g, r.finger), (None, None));
+        assert!(b.touch().is_none());
+        let (_, seats) = b.seated().expect("seated");
+        let top = seats.top.q.clone();
+        assert_eq!(b.state.as_ref().map(|s| s.q.clone()), Some(top.clone()));
+        b.set(path::WEIGHT, 30.0).expect("a weight on it");
+        assert_eq!(b.state.as_ref().map(|s| s.q.clone()), Some(top));
+        assert!(b.touch().is_none());
+    }
+
+    /// Consistency: **what reads no mass reads the same weighed or not.**
+    /// Weighed by the tests' weighing, the key reads the key weight ratio of
+    /// the key nobody weighed to round-off, the ratio being a tare; its key
+    /// height and dip the same seats on rigid stops, the load that seats it
+    /// sized to its weight, each closed by the static solve within
+    /// `GAP_TOLERANCE` and seen at the key front through the lever from the
+    /// cloth, under 2.3 times it, and from the front rail, 258 over 225 mm;
+    /// and the key friction weight zeroed on the frame within twice the
+    /// walk's resolution, its temporary weight cancelling the weighed key's
+    /// balance where it rests, as nothing needs cancelling on a key with no
+    /// mass. Weighed, the key is given a touch verdict and a mass.
+    #[test]
+    fn what_reads_no_mass_reads_the_same_weighed_or_not() {
+        let unweighed = unweighed();
+        let mut weighed = unweighed.clone();
+        weighed
+            .act(Action::WeighKey {
+                mass_g: pa_core::test_fixture::WEIGHED_MASS_G,
+                front_weight_g: pa_core::test_fixture::WEIGHED_FRONT_WEIGHT_G,
+                from_lip_mm: 1000.0 * pa_core::test_fixture::WEIGHED_FROM_LIP,
+            })
+            .expect("the tests' weighing");
+        let gap = pa_core::solve::statics::GAP_TOLERANCE;
+        for (p, bound) in [
+            (ProcedureId::KeyWeightRatio, 16.0 * f64::EPSILON),
+            (ProcedureId::KeyHeight, 2.0 * gap * 2.3),
+            (ProcedureId::KeyDip, 2.0 * gap * (2.3 + 258.0 / 225.0)),
+            (
+                ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
+                2.0 * read::resolution(),
+            ),
+        ] {
+            let (was, is) = (read::value(&unweighed, p), read::value(&weighed, p));
+            assert!(
+                (is - was).abs() <= bound,
+                "{p:?}: {was} unweighed, {is} weighed"
+            );
+        }
+        assert_eq!(
+            weighed.key_mass_g().map(f64::to_bits),
+            Some((pa_core::test_fixture::WEIGHED_MASS_G / 1000.0 * 1000.0).to_bits())
+        );
+        assert!(weighed.touch().is_some());
+    }
+
+    /// Consistency: **a weighed key's centre of mass stands at its drawn
+    /// section's centroid's height, and every reading on the tilted key
+    /// says so.** The statics take its mass and its static moment as weighed
+    /// and the height from [`KeyDesign::section_centroid`], to the bit; the
+    /// down weight, read on the key tilted on its frame, is indicative for
+    /// that height among its inputs, and the front weight, read on the
+    /// levelled jig, is not.
+    #[test]
+    fn a_weighed_keys_centre_of_mass_stands_at_its_sections_centroid() {
+        let b = Instrument::weighed_section();
+        let props = b.mass_props().expect("a weighed key");
+        let centroid = b.key().section_centroid().expect("the key encloses wood");
+        assert_eq!(props.com.y.to_bits(), centroid.y.to_bits());
+        let because = |p: ProcedureId| match read::measured(&b, p).trust {
+            Trust::Indicative { because } => because,
+            Trust::Metrological => Vec::new(),
+        };
+        assert!(because(ProcedureId::DownWeight).contains(&Input::CentreOfMassHeight));
+        assert!(!because(ProcedureId::FrontWeight).contains(&Input::CentreOfMassHeight));
     }
 }

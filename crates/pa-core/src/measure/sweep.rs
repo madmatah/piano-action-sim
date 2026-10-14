@@ -82,7 +82,8 @@ use super::walk::Stroke;
 /// A key's dip at its measuring point is about ten millimetres, two hundred
 /// steps each way, and the curves change by a few thousandths of a gram over
 /// one step on the shipped keys: the extremes the sweep reads one step off a
-/// seat stand that far from the walk's, under the gram both are read to.
+/// seat stand that far from the walk's in full, far under the gram the walk
+/// reads them to, though not always on the same side of a whole gram.
 pub const STEP: f64 = 0.000_05;
 
 /// One reading of a curve.
@@ -530,11 +531,11 @@ mod tests {
     /// times the friction, with none, and weighed back-heavy.
     fn keys() -> Vec<(&'static str, Key)> {
         let a = regulated();
-        let mass = mass_of(&a.key).expect("the composite key encloses wood");
-        let estimate = mass;
+        let mass = mass_of(&a.key).expect("the test key encloses wood");
         let back_heavy = KeyMass::weighed(&a.key, 151.1, -8.1, 0.013)
             .expect("a key's weighing")
-            .props(estimate);
+            .props(mass.com.y)
+            .expect("a weighed key has a mass");
         vec![
             (
                 "the regulated bench",

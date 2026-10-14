@@ -404,7 +404,7 @@ export function App() {
               resolution={LENGTH_MM}
               why={seatWhy}
             />
-            <p className="note">
+            <p className="note" data-back-bearing={seats?.back_bearing}>
               <Rich
                 text={
                   seats === null
@@ -468,7 +468,7 @@ export function App() {
               {s.key.weighing === null
                 ? s.key.mass_known === 'published'
                   ? t.weighing.published(s.key.mass_g)
-                  : t.weighing.notWeighed(s.key.mass_g)
+                  : t.weighing.notWeighed
                 : t.weighing.weighed(
                     s.key.weighing.mass_g,
                     s.key.weighing.front_weight_g,
@@ -523,6 +523,9 @@ export function App() {
                   )}
                 </div>
               </div>
+            )}
+            {s.key.mass_known === 'unweighed' && (
+              <p className="note not-weighed">{t.touch.notWeighed}</p>
             )}
             <p className="note">{t.touch.centreNote(d.edge_overlaps)}</p>
             <p className="note">{t.touch.noPressNote}</p>

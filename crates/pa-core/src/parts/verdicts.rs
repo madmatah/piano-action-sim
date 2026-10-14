@@ -36,7 +36,7 @@
 //! A punching read at its centre is a rigid stand-in for a felt that spreads
 //! its load. A key standing out of level on it overlaps the drawn felt's edge
 //! by what the felt would compress, half the washer's width times the tilt:
-//! about a quarter of a millimetre under the composite key at rest on its
+//! about a quarter of a millimetre under the test key at rest on its
 //! balance punching. [`edge_overlaps`] says how much, so that the
 //! idealization does not pass for a drawing error.
 
@@ -255,7 +255,7 @@ mod tests {
     use crate::solve::{Friction, Statics};
     use crate::G;
 
-    /// The bushings' friction of the composite bench, a 6 g band half-width
+    /// The bushings' friction of the test bench, a 6 g band half-width
     /// read at the measuring point, as a torque on the key's angle.
     fn bench() -> (OnFrame, f64) {
         let a = regulated();
@@ -288,8 +288,8 @@ mod tests {
     /// and the down weight leaves the key where it is, and friction is what
     /// holds it there**, on its punching or on its cloth alike.
     ///
-    /// The composite key alone is front-heavy, its front weight about 6.5 g
-    /// against a 6 g band, so its down weight is about −0.5 g and its up
+    /// The test key is weighed front-heavy, its front weight 6.5 g against
+    /// a 6 g band, so its down weight is about −0.2 g and its up
     /// weight about −12.5 g: unweighted it goes down onto its front
     /// punching, a 13 g pull brings it up onto its cloth, and a 5 g pull,
     /// inside the band, holds it wherever it was. Each weight is an
@@ -513,7 +513,7 @@ mod tests {
     /// Consistency: **the balance punching's drawn edge overlaps a key at
     /// rest on it by half its width times the tilt**, what a felt would
     /// compress and the rigid centre bearing leaves aside, about a quarter of
-    /// a millimetre on the composite key; the front punching, which a key at
+    /// a millimetre on the test key; the front punching, which a key at
     /// rest does not bear on, is not named. Down on its front punching, the
     /// key stands level to a few thousandths of a degree, and that punching's
     /// edge overlaps it by its own half width times that tilt.

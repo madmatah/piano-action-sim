@@ -187,7 +187,7 @@ mod tests {
         assert_eq!(
             faults_of(&key, &frame),
             Vec::new(),
-            "the composite keyboard must be one that could be built"
+            "the test keyboard must be one that could be built"
         );
     }
 

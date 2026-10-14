@@ -24,8 +24,8 @@ serde_json = { version = "1", features = ["float_roundtrip"] }
 # test fails when the committed files differ: a field renamed here and not
 # there is a failing test rather than a page reading what nobody sends. A
 # dev-dependency, so nothing shipped links it. `pa-core`'s `fixtures`
-# compiles its test fixture for this crate's tests, which hold the composite
-# profile to its bits; nothing shipped enables it.
+# compiles its test fixture for this crate's tests, which hold the measured
+# section's profile to its bits; nothing shipped enables it.
 [dev-dependencies]
 pa-core = { workspace = true, features = ["fixtures"] }
 ts-rs = "12"

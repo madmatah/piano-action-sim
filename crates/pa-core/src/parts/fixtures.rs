@@ -9,8 +9,7 @@ use crate::measure::seat::{Seating, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::MassProps;
 use crate::regulation::{Regulating, TargetOutcome};
-/// The composite bench's targets: 65.0 mm of key height and 10.2 mm of key
-/// dip.
+/// The fixture's targets: 65.0 mm of key height and 10.2 mm of key dip.
 pub use crate::test_fixture::TARGETS;
 
 /// A key, its frame and the protocol it is weighed by: what a test sets up
@@ -32,23 +31,23 @@ impl Setup {
     }
 }
 
-/// The key's mass, as the bench weighs it: the volume model's.
+/// The key's mass, as the bench weighs it: the fixture's test weighing
+/// ([`crate::test_fixture::weighed`]), its static moment taken on the
+/// fixture's key, the height of its centre of mass `key`'s drawn section's
+/// centroid; `None` for a key whose section encloses nothing.
 pub fn mass_of(key: &KeyDesign) -> Option<MassProps> {
-    key.mass_properties().map(|p| MassProps {
-        mass: p.mass,
-        com: p.com,
-    })
+    crate::test_fixture::weighed().props(key.section_centroid()?.y)
 }
 
-/// The composite key regulated on the composite frame, as the bench builds it:
+/// The test key regulated on its frame, as the bench builds it:
 /// each felt kept, and on it the papers the regulation solve lays from the
 /// drawer for [`TARGETS`]. Solved once, the first time a test asks.
 pub fn regulated() -> Setup {
     static REGULATED: std::sync::OnceLock<Setup> = std::sync::OnceLock::new();
-    REGULATED.get_or_init(regulate_the_composite).clone()
+    REGULATED.get_or_init(regulate_the_fixture).clone()
 }
 
-fn regulate_the_composite() -> Setup {
+fn regulate_the_fixture() -> Setup {
     let key = crate::test_fixture::key();
     let mut frame = crate::test_fixture::frame();
     let protocol = crate::test_fixture::protocol();
@@ -61,7 +60,7 @@ fn regulate_the_composite() -> Setup {
     }
     .solve(TARGETS);
     let Ok(TargetOutcome::Met { stacks, .. }) = outcome else {
-        panic!("the composite targets are reachable on the composite frame: {outcome:?}");
+        panic!("the fixture's targets are reachable on its frame: {outcome:?}");
     };
     frame.balance_punching.papers = stacks.balance.papers;
     frame.front_punching.papers = stacks.front.papers;
@@ -103,7 +102,7 @@ impl OnFrame {
 
 /// `a`'s key on its frame, free to lift off its balance punching as the
 /// bench mounts it, of `kind`, its bushings' friction bounded by `friction`
-/// newton-metres, its mass the volume model's, or none for `weighed: false`;
+/// newton-metres, its mass the test weighing's, or none for `weighed: false`;
 /// the papers its punchings hold drawn on them.
 pub fn on_frame(a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFrame {
     mounted_as(KeyMount::OnPunching, a, kind, friction, weighed)

@@ -47,8 +47,9 @@ trade's own protocols, and come back with the expected values.**
 3. **The simulator measures itself with the trade's protocols** run on the
    model, never a parameter read back; each reading carries its value in
    full, what the trade reads it as, its conditions, its trust and the
-   solver's fingerprint; where a displayed value is still an input, as the
-   composite key's mass, FOUNDATIONS §2.2 says so. The readings' closed
+   solver's fingerprint; where a displayed value is still an input, as a
+   key's mass, published or weighed, and the estimated height of its centre
+   of mass, FOUNDATIONS §2.2 says so. The readings' closed
    forms are test oracles, compiled for `pa-core`'s tests only. Check:
    `the_bench_measures_its_own_friction_by_the_protocol`,
    `down_and_up_are_the_band_at_the_seats_attitudes`; `grep -rn oracle
@@ -64,7 +65,7 @@ trade's own protocols, and come back with the expected values.**
    `tools/derivations/`, as every `[E]` does; a source in `private/` counts,
    a lost one does not. Check:
    `every_default_has_a_record_or_a_stated_assumption`,
-   `the_composite_profile_loads_to_the_test_fixture`.
+   `the_measured_section_profile_loads_to_the_test_fixture`.
 6. **No general-purpose physics engine in the core** (FOUNDATIONS §3.9); MuJoCo
    only ever as an optional oracle. Check: `cargo tree`, the `package.json`s.
 7. **`pa-core` has no I/O and no web dependency, and justifies each

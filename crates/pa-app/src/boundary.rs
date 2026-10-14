@@ -149,7 +149,7 @@ pub enum Part {
     KeyFront,
     KeyButton,
     BackCheckBlock,
-    CapstanBlock,
+    TopClearance,
     KeyTailFelt,
     Capstan,
     FrontMortise,
@@ -172,7 +172,7 @@ impl From<PartCode> for Part {
             PartCode::KeyFront => Self::KeyFront,
             PartCode::KeyButton => Self::KeyButton,
             PartCode::BackCheckBlock => Self::BackCheckBlock,
-            PartCode::CapstanBlock => Self::CapstanBlock,
+            PartCode::TopClearance => Self::TopClearance,
             PartCode::KeyTailFelt => Self::KeyTailFelt,
             PartCode::Capstan => Self::Capstan,
             PartCode::FrontMortise => Self::FrontMortise,
@@ -216,9 +216,12 @@ pub enum Procedure {
     /// Key friction weight zeroed where the key rests on its frame.
     KeyFrictionWeightZeroedOnTheFrame,
     /// Down weight read on the band: the greatest force of the driven
-    /// sweep's down curve.
+    /// sweep's down curve, the walk's in full within a few thousandths of a
+    /// gram. Shown in full and never as a gram: within that of a whole gram
+    /// the two read the gram either side of it, and the gram is the walk's.
     DownWeightOnTheBand,
-    /// Up weight read on the band: the least force of its up curve.
+    /// Up weight read on the band: the least force of its up curve, shown
+    /// in full likewise.
     UpWeightOnTheBand,
 }
 
@@ -547,13 +550,12 @@ pub struct KeySettings {
     pub front_mortise: MortiseSettings,
     /// Its bushings.
     pub friction: FrictionSettings,
-    /// Its weighing as it was typed; `null` while its mass is derived from
-    /// its volume or published.
+    /// Its weighing as it was typed; `null` while it is published or not
+    /// weighed.
     pub weighing: Option<Weighed>,
-    /// Its mass as the statics take it, grams: as published, as weighed, or
-    /// derived from its volume until it is; `null` where the volume model
-    /// encloses nothing. Not a setting: what the weighing, the source or the
-    /// estimate gives.
+    /// Its mass as the statics take it, grams: as published or as weighed;
+    /// `null` until it is weighed. Not a setting: what the weighing or the
+    /// source gives.
     pub mass_g: Option<f64>,
     /// How its mass is known.
     pub mass_known: MassKnown,
@@ -564,9 +566,9 @@ pub struct KeySettings {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum MassKnown {
-    /// Derived from its volume at an assumed density: nobody has weighed
-    /// it.
-    Estimated,
+    /// Nobody has weighed it: it has no mass in the model, and every reading
+    /// that needs one is refused until it is weighed.
+    Unweighed,
     /// Weighed whole on the bench, as typed.
     Weighed,
     /// Weighed and located by a published source, whole, its centre of
@@ -718,7 +720,7 @@ impl Settings {
                     torque_gmm: at(path::FRICTION_TORQUE),
                 },
                 weighing: match instrument.key_mass() {
-                    KeyMass::Estimated | KeyMass::Published { .. } => None,
+                    KeyMass::Unweighed | KeyMass::Published { .. } => None,
                     KeyMass::Weighed { .. } => Some(Weighed {
                         mass_g: at(path::WEIGHED_MASS),
                         front_weight_g: at(path::WEIGHED_FRONT_WEIGHT),
@@ -727,7 +729,7 @@ impl Settings {
                 },
                 mass_g: instrument.key_mass_g(),
                 mass_known: match instrument.key_mass() {
-                    KeyMass::Estimated => MassKnown::Estimated,
+                    KeyMass::Unweighed => MassKnown::Unweighed,
                     KeyMass::Weighed { .. } => MassKnown::Weighed,
                     KeyMass::Published { .. } => MassKnown::Published,
                 },
@@ -2501,9 +2503,10 @@ pub enum Problem {
         /// The mass typed, grams.
         mass_g: f64,
     },
-    /// Two parts on the key's top overlap, its thinned tail runs on under
-    /// its back check block, or its chamfer runs past its front: the outline
-    /// crosses itself.
+    /// Two parts on the key's top overlap, the clearance cut in it runs into
+    /// one of them or under the capstan's head, its thinned tail runs on
+    /// under its back check block, or its chamfer runs past its front: the
+    /// outline crosses itself.
     OutlineCrossesItself {
         /// The part behind.
         back: Part,
@@ -2527,10 +2530,11 @@ pub enum Problem {
         /// along the key.
         by_mm: f64,
     },
-    /// The capstan stands off the block it is screwed into.
-    CapstanOffItsBlock {
-        /// How far past the block's end its head reaches, millimetres along
-        /// the key.
+    /// The capstan stands on the thinned tail, or across the step down to
+    /// it, and not on the keystick's full height.
+    CapstanOffTheFullHeight {
+        /// How far forward it must come for its head to stand wholly over
+        /// the full height, millimetres along the key.
         by_mm: f64,
     },
     /// The capstan's dome is narrower than its head.
@@ -2545,6 +2549,25 @@ pub enum Problem {
         /// The block.
         block: Part,
         /// How far its head stands into it, millimetres along the key.
+        by_mm: f64,
+    },
+    /// The clearance in the keystick's top is no cut: its front end not in
+    /// front of its back end, or its depth nothing or less.
+    ClearanceNotACut {
+        /// Its front end less its back end, millimetres along the key.
+        length_mm: f64,
+        /// Its depth below the keystick's full top, millimetres.
+        depth_mm: f64,
+    },
+    /// The clearance in the keystick's top is cut through it.
+    ClearanceThroughKeystick {
+        /// Its depth below the keystick's full top, millimetres.
+        depth_mm: f64,
+        /// The wood under its back end, where the keystick is thinnest under
+        /// it: its full height, less the chamfer's rise where that runs
+        /// under it, millimetres.
+        wood_mm: f64,
+        /// How far it reaches past the keystick's underside, millimetres.
         by_mm: f64,
     },
     /// The front mortise is cut through the top of the keystick.
@@ -2637,7 +2660,9 @@ impl Problem {
             CoreProblem::CapstanBehindBackCheckBlock { by } => {
                 Self::CapstanBehindBackCheckBlock { by_mm: mm(by) }
             }
-            CoreProblem::CapstanOffItsBlock { by } => Self::CapstanOffItsBlock { by_mm: mm(by) },
+            CoreProblem::CapstanOffTheFullHeight { by } => {
+                Self::CapstanOffTheFullHeight { by_mm: mm(by) }
+            }
             CoreProblem::CapstanDomeNarrowerThanItsHead { dome, head } => {
                 Self::CapstanDomeNarrowerThanItsHead {
                     dome_mm: mm(dome),
@@ -2648,6 +2673,17 @@ impl Problem {
                 block: block.into(),
                 by_mm: mm(by),
             },
+            CoreProblem::ClearanceNotACut { length, depth } => Self::ClearanceNotACut {
+                length_mm: mm(length),
+                depth_mm: mm(depth),
+            },
+            CoreProblem::ClearanceThroughKeystick { depth, wood } => {
+                Self::ClearanceThroughKeystick {
+                    depth_mm: mm(depth),
+                    wood_mm: mm(wood),
+                    by_mm: mm(depth - wood),
+                }
+            }
             CoreProblem::MortiseThroughKeyTop { depth, wood } => Self::MortiseThroughKeyTop {
                 depth_mm: mm(depth),
                 wood_mm: mm(wood),
@@ -2994,7 +3030,7 @@ mod tests {
     /// tail 5 mm above the balance bearing: its stops fight, and the key
     /// rides on them.
     fn wedged() -> Instrument {
-        let mut bench = Instrument::standard();
+        let mut bench = Instrument::weighed_section();
         let frame = bench.frame();
         let height = frame.balance_bearing_height() + 0.005 - frame.back_rail_cloth;
         bench
@@ -3046,6 +3082,7 @@ mod tests {
             PartCode::KeyFront,
             PartCode::KeyButton,
             PartCode::BackCheckBlock,
+            PartCode::TopClearance,
             PartCode::KeyTailFelt,
             PartCode::Capstan,
             PartCode::FrontMortise,
@@ -3167,7 +3204,7 @@ mod tests {
     /// the key under the weight on it is said as it stands now.
     #[test]
     fn a_frame_that_cannot_be_seated_sends_every_setting_and_every_reading() {
-        let mut bench = Instrument::standard();
+        let mut bench = Instrument::weighed_section();
         bench
             .set(path::FRONT_RAIL_HEIGHT, 50.0)
             .expect("a front rail raised");
@@ -3212,7 +3249,7 @@ mod tests {
     /// frame every reading that needs a stroke is refused as `no_travel`,
     /// carrying how the key rides: on its front punching, lifted by the
     /// seats' own lift to the bit; the diagnostics say the same and refuse
-    /// no seat. On the standard bench nothing rides.
+    /// no seat. On the tests' bench nothing rides.
     #[test]
     fn a_key_with_no_stroke_is_told_why() {
         let bench = wedged();
@@ -3242,7 +3279,7 @@ mod tests {
         assert_eq!(diagnostics.riding, Some(crossed));
         assert_eq!(diagnostics.seat_refused, None);
 
-        let standard = Instrument::standard();
+        let standard = Instrument::weighed_section();
         assert_eq!(Diagnostics::of(&standard).riding, None);
         assert!(Sheet::of(&standard)
             .readings
@@ -3261,7 +3298,7 @@ mod tests {
     /// allows is laid, and says what it was asked as it was asked.
     #[test]
     fn a_refused_edit_answers_in_codes_and_changes_nothing() {
-        let mut bench = Instrument::standard();
+        let mut bench = Instrument::weighed_section();
         let documents =
             |b: &Instrument| json(&(Settings::of(b), Sheet::of(b), State::of(b), b.state_hash()));
         let before = documents(&bench);
@@ -3427,7 +3464,7 @@ mod tests {
                 })
         };
         for entry in &registry::ENTRIES {
-            let mut bench = Instrument::standard();
+            let mut bench = Instrument::weighed_section();
             if let Some(action) = entry.set_by() {
                 assert_eq!(
                     bench.set(entry.path, 1.0),
@@ -3463,7 +3500,7 @@ mod tests {
             );
         }
         // The lists and the weighing, set by their actions, read back too.
-        let mut bench = Instrument::standard();
+        let mut bench = Instrument::weighed_section();
         bench
             .act(Action::WeighKey {
                 mass_g: 125.5,
@@ -3620,9 +3657,9 @@ mod tests {
     /// the chamfer is published, his key front traced, the key button's
     /// height traced, his front punching's felt assumed, and the pins and
     /// punchings his profile reads of the owner's key frame borrowed, which
-    /// the composite's are measured; no stretch of his is drawn as measured
-    /// but a paper's, the drawer's stock being no instrument's, and none of
-    /// the composite's as borrowed. A key front set on the bench is no
+    /// the measured section's are measured; no stretch of his is drawn as
+    /// measured but a paper's, the drawer's stock being no instrument's, and
+    /// none of the measured section's as borrowed. A key front set on the bench is no
     /// longer the profile's: the stretches it places say so, and nothing
     /// else does.
     #[test]
@@ -3661,7 +3698,7 @@ mod tests {
             How::Assumed
         );
         assert_eq!(how(&his, Part::Capstan, "capstan.height"), How::Published);
-        let composite = Instrument::standard();
+        let section = Instrument::of(Profile::named(crate::profile::SECTION).unwrap()).unwrap();
         for (part, number) in [
             (Part::FrontRailPin, "front_rail.pin.length"),
             (Part::FrontRailPin, "front_rail.pin_height"),
@@ -3675,7 +3712,7 @@ mod tests {
             ),
         ] {
             assert_eq!(how(&his, part, number), How::Borrowed, "{number}");
-            assert_eq!(how(&composite, part, number), How::Measured, "{number}");
+            assert_eq!(how(&section, part, number), How::Measured, "{number}");
         }
         let drawn = |b: &Instrument| -> Vec<(Part, How)> {
             Scene::of(b)
@@ -3687,9 +3724,7 @@ mod tests {
         assert!(drawn(&his)
             .iter()
             .all(|&(part, how)| how != How::Measured || part == Part::PaperPunching));
-        assert!(drawn(&composite)
-            .iter()
-            .all(|&(_, how)| how != How::Borrowed));
+        assert!(drawn(&section).iter().all(|&(_, how)| how != How::Borrowed));
         let mut set = his.clone();
         set.set(path::FRONT_EDGE, 236.0).expect("a shorter key");
         assert_eq!(how(&set, Part::KeyFront, "front_edge"), How::SetOnTheBench);
@@ -3698,13 +3733,13 @@ mod tests {
 
     /// Consistency, the boundary's half of the contacts the view shows: **a
     /// contact crosses with its row's normal and the force it carries.** On
-    /// the standard bench at rest, the key's weight down on its front
+    /// the tests' bench at rest, the key's weight down on its front
     /// punching and its balance punching, the rows closed there push it up,
     /// along unit normals; the forces of the closed rows carry the key's
     /// weight, read on its balance, within the rounding of the crossing.
     #[test]
     fn a_contact_crosses_with_its_normal_and_its_force() {
-        let bench = Instrument::standard();
+        let bench = Instrument::weighed_section();
         let state = State::of(&bench);
         let closed: Vec<_> = state
             .contacts
@@ -3736,7 +3771,7 @@ mod tests {
     /// holds it, with its friction.
     #[test]
     fn what_holds_the_key_crosses_as_its_code() {
-        let mut bench = Instrument::standard();
+        let mut bench = Instrument::weighed_section();
         bench
             .set(path::FRONT_RAIL_HEIGHT, 41.7)
             .expect("a front rail raised");
@@ -3756,7 +3791,7 @@ mod tests {
         assert!(!needs_friction);
         assert!(lift_mm > 0.0);
 
-        let mut bench = Instrument::standard();
+        let mut bench = Instrument::weighed_section();
         bench.set(path::WEIGHT, -62.7).expect("a pull");
         let touch = Diagnostics::of(&bench).touch.expect("a verdict");
         let Verdict::LiftsOffBalancePunching {
@@ -3783,7 +3818,7 @@ mod tests {
     /// within a millionth of a millimetre.
     #[test]
     fn the_band_crosses_as_codes_and_numbers() {
-        let bench = Instrument::standard();
+        let bench = Instrument::weighed_section();
         let band = Band::of(&bench);
         let curves = band.curves.as_ref().expect("the band is drawn");
         let procedures: Vec<Procedure> = band
@@ -3838,15 +3873,15 @@ mod tests {
         }
 
         let travel = |weight_g: f64| {
-            let mut b = Instrument::standard();
+            let mut b = Instrument::weighed_section();
             b.set(path::WEIGHT, weight_g).expect("a weight");
             Diagnostics::of(&b)
                 .touch
                 .and_then(|t| t.travel_mm)
                 .expect("seated")
         };
-        // The composite key goes down on its own, D being under nothing; a
-        // pull past U brings it back up to its top seat.
+        // The tests' key goes down on its own, D being under nothing; a pull
+        // past U brings it back up to its top seat.
         let (bottom, top) = (travel(0.0), travel(-15.0));
         assert!(
             (bottom - curves.window_mm).abs() < 1e-6,
@@ -3862,7 +3897,7 @@ mod tests {
     /// Consistency: the targets crossing are the targets regulated to.
     #[test]
     fn the_settings_hold_the_targets_regulated_to() {
-        let bench = Instrument::standard();
+        let bench = Instrument::weighed_section();
         let CoreTargets {
             key_height,
             key_dip,

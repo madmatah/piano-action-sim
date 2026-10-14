@@ -3,37 +3,32 @@
  * there, the way down and the way back, as the engine's driven sweep reads it
  * (`pa_core::measure::sweep`).
  *
- * A technician reads D and U on it as he reads them on his scale: each is
- * marked where it falls, at the band's extremes over the stroke, with what
- * the trade reads it as, the gram, and its value in full beside it. Between
- * the two curves the key stays wherever it is, held by its friction; their
- * distance apart is the friction, their middle the key's balance. The weight
- * the page puts on the measuring point is drawn across the band, and where it
- * has left the key is a dot on that line: above the down curve the key goes
+ * The band's extremes over the stroke, the most the way down needs and the
+ * least the way up holds, are each marked where they fall, labelled in full
+ * to the hundredth of a gram: the band is a curve, read by no weight, and
+ * its extremes are not the sheet's D and U, which the walk reads with gram
+ * weights and the trade rounds to the gram (`band.ts`). Between the two
+ * curves the key stays wherever it is, held by its friction; their distance
+ * apart is the friction, their middle the key's balance. The weight the page
+ * puts on the measuring point is drawn across the band, and where it has
+ * left the key is a dot on that line: above the down curve the key goes
  * down, below the up curve it rises, between them it stays.
  *
- * Every number drawn is the engine's: the curves, the two readings, the
+ * Every number drawn is the engine's: the curves, the two extremes, the
  * window, the weight and where the key is. This file only places them, and
  * picks round values for the grid. The pointer finds the reading nearest it
- * and shows both curves' forces there; a table carries every step for a
- * reader without the chart.
+ * and shows both curves' forces there; for a reader without the chart, the
+ * extremes are written out and a table carries every step, each force in
+ * full on its cell for whatever reads the page.
  */
-import type { Band, BandPoint, Reading } from '@pas/wasm/types'
+import type { Band, BandPoint } from '@pas/wasm/types'
 import { useLayoutEffect, useState } from 'react'
 import { nearest, niceStep, padded, ticks } from './axis'
+import { extremeAt, extremeLabel, FORCE_DECIMALS, type Read, TRAVEL_DECIMALS } from './band'
 import { decimals, MASS_G } from './format'
 import { t, word } from './i18n'
 import { BAND_COLOUR } from './palette'
 import { Rich } from './Rich'
-
-/** A reading read, as the band carries it. */
-type Read = Extract<Reading, { outcome: 'read' }>
-
-/** The decimals a force at a step is shown to: the hundredth of a gram, the
- * value in full shown small beside a reading. */
-const FORCE_DECIMALS = 2
-/** The decimals a travel is shown to: the hundredth of a millimetre. */
-const TRAVEL_DECIMALS = 2
 
 /** The room round the plot, pixels: for the force's ticks and title on the
  * left, the travel's ticks, the seats' names and the axis title below. */
@@ -173,19 +168,15 @@ export function BandView({
   const back = curves.up[curves.up.length - 1 - hovered]
   const n = (v: number, d: number) => t.number(v, d)
 
-  /** A reading marked where it falls on its curve, its label beside it,
-   * towards the middle of the window and away from the band; into the band
-   * instead where the weight's line runs where it would stand. */
-  const marker = (
-    m: Read | undefined,
-    label: (shown: string, exact: string) => string,
-    above: boolean,
-  ) => {
+  /** A curve's extreme marked where it falls, its label beside it, in
+   * full, towards the middle of the window and away from the band; into the
+   * band instead where the weight's line runs where it would stand. */
+  const marker = (m: Read | undefined, above: boolean) => {
     if (!m) return null
     const atMm = m.conditions.sweep?.at_mm ?? 0
     const [mx, my] = [x(atMm), y(m.value)]
     const left = atMm < curves.window_mm / 2
-    const text = label(n(m.shown, decimals(m.resolution)), n(m.value, FORCE_DECIMALS))
+    const text = extremeLabel(m)
     // The label's baseline away from the band, or into it where the weight's
     // line would cross it: a line of text stands about 12 px tall.
     const outside = my + (above ? -10 : 20)
@@ -196,7 +187,6 @@ export function BandView({
       <g
         className="band-reading"
         data-procedure={m.procedure}
-        data-shown={m.shown}
         data-exact={m.value}
         data-at-mm={atMm}
       >
@@ -390,8 +380,8 @@ export function BandView({
               )}
             </g>
 
-            {marker(down, t.band.downMarker, true)}
-            {marker(up, t.band.upMarker, false)}
+            {marker(down, true)}
+            {marker(up, false)}
 
             {there && back && (
               <g className="band-crosshair" pointerEvents="none">
@@ -431,6 +421,9 @@ export function BandView({
           height whatever it is given, and would lengthen the page by every
           step of the sweep. */}
       <div className="visually-hidden">
+        <ul className="band-extremes">
+          {[down, up].map((m) => m && <li key={m.procedure}>{extremeAt(m)}</li>)}
+        </ul>
         <table>
           <caption>{t.band.table}</caption>
           <thead>
@@ -441,15 +434,20 @@ export function BandView({
             </tr>
           </thead>
           <tbody>
-            {curves.down.map((p, i) => (
-              <tr key={p.travel_mm}>
-                <td>{n(p.travel_mm, TRAVEL_DECIMALS)}</td>
-                <td>{n(p.force_g, FORCE_DECIMALS)}</td>
-                <td>
-                  {n(curves.up[curves.up.length - 1 - i]?.force_g ?? Number.NaN, FORCE_DECIMALS)}
-                </td>
-              </tr>
-            ))}
+            {curves.down.map((p, i) => {
+              const rising = curves.up[curves.up.length - 1 - i]
+              return (
+                <tr key={p.travel_mm}>
+                  <td>{n(p.travel_mm, TRAVEL_DECIMALS)}</td>
+                  <td data-curve="down" data-force-g={p.force_g}>
+                    {n(p.force_g, FORCE_DECIMALS)}
+                  </td>
+                  <td data-curve="up" data-force-g={rising?.force_g}>
+                    {n(rising?.force_g ?? Number.NaN, FORCE_DECIMALS)}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

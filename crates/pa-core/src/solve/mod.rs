@@ -31,8 +31,9 @@ pub use statics::{Equilibrium, Friction, Holder, Refusal, Statics, Support};
 /// saved number re-solved by it must not pass for the same reading. So the
 /// frozen numbers are hashed by a test,
 /// `the_fingerprint_names_the_frozen_numbers`, which fails when one changes
-/// and the fingerprint does not.
-pub const SOLVER_FINGERPRINT: &str = "statics/1";
+/// and the fingerprint does not. One name, one hash: a name is never given
+/// back to other frozen numbers.
+pub const SOLVER_FINGERPRINT: &str = "statics/2";
 
 #[cfg(test)]
 mod tests {
@@ -138,7 +139,7 @@ mod tests {
         let hash = fnv1a(&frozen());
         assert_eq!(
             (SOLVER_FINGERPRINT, hash),
-            ("statics/1", 0x0891_4d79_7b51_9fb7),
+            ("statics/2", 0x0891_4d79_7b51_9fb7),
             "a frozen number changed: the hash is now {hash:#018x}. Give the solver a new \
              fingerprint and record the hash beside it."
         );

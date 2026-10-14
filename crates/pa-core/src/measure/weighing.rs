@@ -30,7 +30,7 @@
 //! by its height above the pin times the tilt. So the bench reads it both
 //! ways, labelled: Stanwood's, and the temporary weight chosen instead to
 //! cancel the key's balance where it rests, which reads the bushings alone.
-//! The two differ by those tilt terms, a few tenths of a gram on the default
+//! The two differ by those tilt terms, a few tenths of a gram on either shipped
 //! key, under the gram the protocol reads to.
 //!
 //! The temporary weight stands on the key's top at one station: 100 mm behind
@@ -855,11 +855,10 @@ mod tests {
     use crate::solve::statics::RESIDUAL_TOLERANCE;
     use crate::test_fixture::MEASURING_POINT_HALF_INCH;
 
-    /// The composite bench's inputs: its mass and the height of its centre
-    /// of mass derived from its volume, its friction and its dimensions
-    /// assumed.
-    const COMPOSITE: Bases = Bases {
-        key_mass: Basis::Estimated,
+    /// The test bench's inputs: its mass weighed by hand, the height of its
+    /// centre of mass estimated, its friction and its dimensions assumed.
+    const TEST: Bases = Bases {
+        key_mass: Basis::SetByHand,
         centre_of_mass_height: Basis::Estimated,
         key_friction: Basis::Assumed,
         geometry: Basis::Assumed,
@@ -900,18 +899,22 @@ mod tests {
         }
     }
 
-    /// `a`'s key weighed by its volume model.
+    /// `a`'s key weighed by the fixture's test weighing.
     fn bench(a: &Setup, kf_g: f64) -> Bench {
         bench_with(a, kf_g, mass_of(&a.key))
     }
 
     /// `a`'s key weighed whole, back-heavy: 151.1 g, and a front weight of
     /// −8.1 g read 13 mm back from its lip; the height of its centre of mass
-    /// its volume model's.
+    /// its drawn section's centroid.
     fn back_heavy(a: &Setup) -> Option<MassProps> {
-        let estimate = mass_of(&a.key).expect("a key that is not degenerate");
+        let height = a
+            .key
+            .section_centroid()
+            .expect("a key that is not degenerate")
+            .y;
         let weighed = KeyMass::weighed(&a.key, 151.1, -8.1, 0.013).expect("a key's weighing");
-        Some(weighed.props(estimate))
+        weighed.props(height)
     }
 
     impl Bench {
@@ -922,7 +925,7 @@ mod tests {
                 measuring_point: self.a.protocol.measuring_point_on_key(&self.a.key),
                 measuring_point_from_lip_m: self.a.protocol.measuring_point_from_lip,
                 thinnest_paper_m: self.a.frame.drawer.thinnest(),
-                bases: COMPOSITE,
+                bases: TEST,
             }
         }
 
@@ -1444,7 +1447,7 @@ mod tests {
             let m = r.result.as_ref().unwrap();
             assert_eq!(m.procedure, p);
             assert_eq!(m.fingerprint, crate::solve::SOLVER_FINGERPRINT);
-            assert_eq!(m.trust, Trust::of(p.reads(), &COMPOSITE));
+            assert_eq!(m.trust, Trust::of(p.reads(), &TEST));
             assert!(matches!(m.trust, Trust::Indicative { .. }), "{p:?}");
         }
         let cloth = vec![ContactCode::BackRailCloth];
@@ -1522,7 +1525,7 @@ mod tests {
         let kf = read(&sheet, ProcedureId::KeyFrictionWeightZeroedOnTheFrame);
         assert!(kf.conditions.temporary_weight.is_none());
         assert_eq!(
-            Trust::of(kf.procedure.reads(), &COMPOSITE),
+            Trust::of(kf.procedure.reads(), &TEST),
             Trust::Indicative {
                 because: vec![Input::KeyFriction, Input::Geometry]
             }

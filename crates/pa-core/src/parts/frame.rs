@@ -1586,10 +1586,10 @@ mod part_tests {
         }
     }
 
-    /// The composite frame is the one the rule builds for the composite key.
+    /// The test frame is the one the rule builds for the test key.
     ///
     /// Two expressions of the same frame, and they have to agree: the
-    /// coordinates are stated in the composite profile, as the fixture
+    /// coordinates are stated in the measured section's profile, as the fixture
     /// repeats them, so a reader can see them, and derived in `placed_under`
     /// so a changed key can be given a frame. If they drifted, the bench
     /// would open on a keyboard its own rule calls wrong.
@@ -1615,13 +1615,13 @@ mod part_tests {
     /// Placing a frame under a key puts the front rail pin in its mortise and
     /// the back rail cloth inside the chamfer — whatever the key's length.
     ///
-    /// The rule is tested on keys the default was not built for, because a
+    /// The rule is tested on keys the test frame was not built for, because a
     /// relation that only holds at the value it was derived from is not a
     /// relation. A 300 mm key is a long natural; a 180 mm one is shorter than
     /// anything in a piano, and the rule still has to produce a frame that
     /// goes together. A key 40 mm shorter at the back is built for an action
     /// whose back check block stands right in front of its tail, as the
-    /// composite key's does; a longer one keeps the default's block.
+    /// test key's does; a longer one keeps the test key's block.
     #[test]
     fn placing_the_frame_follows_the_key_it_is_built_for() {
         for front_edge in [0.180_f64, 0.220, 0.258, 0.300] {

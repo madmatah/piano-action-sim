@@ -1,6 +1,6 @@
 {
  "id": "hirschkorn-key-outline",
- "what": "Hirschkorn's key (Boston GP-178, note 52) where his tables give no number for its shape: the key front and the covering's lip, the covering, the key button, the capstan block, the back check block, the thinned tail and its end, the capstan's head and shank. Traced from his Figure A.1, the only drawing of the key in the thesis, as positions in pixels of the page rendered at 600 dpi; tools/derivations/11-hirschkorn-key-outline.py carries them into his key's frame by a similarity fitted on three markers whose coordinates are printed, prints the residuals at the others as the trace's uncertainty, and derives the numbers below from them.",
+ "what": "Hirschkorn's key (Boston GP-178, note 52) where his tables give no number for its shape: the key front and the covering's lip, the covering, the key button, where the keystick's full height ends behind the capstan, the back check block, the thinned tail and its end, the capstan's head and shank. Traced from his Figure A.1, the only drawing of the key in the thesis, as positions in pixels of the page rendered at 600 dpi; tools/derivations/11-hirschkorn-key-outline.py carries them into his key's frame by a similarity fitted on three markers whose coordinates are printed, prints the residuals at the others as the trace's uncertainty, and derives the numbers below from them.",
  "source": {
   "author": "Martin C. Hirschkorn",
   "title": "Dynamic Model of a Piano Action Mechanism",
@@ -154,7 +154,7 @@
    ],
    "what": "The key button over the balance point: its back foot on the keystick, the two ends of its flat top, its front foot. Its ends are drawn rounded."
   },
-  "capstan_block": {
+  "full_height_end": {
    "px": [
     [
      1606.45,
@@ -173,9 +173,9 @@
      4449.32
     ]
    ],
-   "what": "The block the capstan stands on: its back foot on the thinned tail, where its back cove reaches its top, its top's front end, and where its front face meets the keystick's top. Its back is drawn as a cove."
+   "what": "Where the keystick's full height ends, behind the capstan, its top lowered from there to the key's end: the foot of the cove the figure draws it with, on the lowered top; where the cove reaches the full height's top; that top's front end, over the line drawn down the wood (line_down_the_full_height); and where that line meets the keystick's top in front of it. The full height's top behind the line is drawn 0.75 mm above the keystick's full height (stick_height), within the trace's uncertainty: one height, the keystick's. The capstan screws into it, nothing glued under it."
   },
-  "step": {
+  "line_down_the_full_height": {
    "px": [
     [
      1820.38,
@@ -186,7 +186,7 @@
      4499.77
     ]
    ],
-   "what": "Where the keystick steps down to its thinned tail, top then foot: the capstan block's front face runs down it."
+   "what": "A line the figure draws down the full height's wood, 29.65 mm in front of where the full height ends, top then foot, its foot as low as the lowered top: the wood stands at the full height on either side of it, so it is no step down to the thinned tail."
   },
   "back_check_block": {
    "px": [
@@ -207,7 +207,7 @@
      4517.35
     ]
    ],
-   "what": "The back check block: its back foot and back top on the thinned tail, its top's front end, its front foot. Its front is drawn as a cove."
+   "what": "The back check block: its back foot and back top on the lowered top, the thinned tail, its top's front end, its front foot. Its front is drawn as a cove."
   },
   "tail_end": {
    "px": [
@@ -275,7 +275,7 @@
      4412.92
     ]
    ],
-   "what": "The capstan's shank between its head and the block: the top and bottom of its back side, then the bottom and top of its front side."
+   "what": "The capstan's shank between its head and the keystick: the top and bottom of its back side, then the bottom and top of its front side."
   }
  },
  "records": [
@@ -325,7 +325,7 @@
    "unit": "mm",
    "reliability": "E",
    "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The keystick's height in front of its step: Pk2's printed height less the covering, so that the covering's top passes through Pk2, the printed point on it. The keystick as drawn is 23.74 mm high, 0.28 mm less: within the trace's uncertainty."
+   "what": "The keystick's full height, from the key front to where it ends behind the capstan: Pk2's printed height less the covering, so that the covering's top passes through Pk2, the printed point on it. The keystick as drawn is 23.74 mm high, 0.28 mm less: within the trace's uncertainty."
   },
   {
    "name": "capsule_length",
@@ -352,28 +352,12 @@
    "what": "The key button's height above the keystick."
   },
   {
-   "name": "capstan_block_back",
+   "name": "full_height_back",
    "value": -132.45,
    "unit": "mm",
    "reliability": "E",
    "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The capstan block's back end, behind the balance point: drawn square, its back drawn as a cove."
-  },
-  {
-   "name": "capstan_block_length",
-   "value": 29.65,
-   "unit": "mm",
-   "reliability": "E",
-   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The capstan block's length, from its back end to its front face, which runs down the keystick's step."
-  },
-  {
-   "name": "capstan_block_height",
-   "value": 7.97,
-   "unit": "mm",
-   "reliability": "E",
-   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The capstan block's height above the thinned tail it stands on: its top stands 0.74 mm above the keystick's in front of it."
+   "what": "Where the keystick's full height ends, behind the capstan and the balance point: from here to the key's end its top is lowered, the back check block glued on the lowered part. Drawn as a cove, taken square at its foot."
   },
   {
    "name": "back_check_block_back",
@@ -397,7 +381,7 @@
    "unit": "mm",
    "reliability": "E",
    "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The back check block's height above the thinned tail it stands on."
+   "what": "The back check block's height above the lowered top, the thinned tail, it stands on."
   },
   {
    "name": "tail_end",
@@ -408,20 +392,12 @@
    "what": "The key's end, behind the balance point."
   },
   {
-   "name": "tail_length",
-   "value": 130.73,
-   "unit": "mm",
-   "reliability": "E",
-   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The thinned tail's length, from the key's end forward to the keystick's step: the capstan block and the back check block both stand on it."
-  },
-  {
    "name": "tail_height",
    "value": 16.79,
    "unit": "mm",
    "reliability": "E",
    "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The thinned tail's height above the underside's flat."
+   "what": "The lowered top's height above the underside's flat, behind the full height: the thinned tail's, read at the key's end and at the foot of the cove where the full height ends."
   },
   {
    "name": "capstan_diameter",
@@ -429,7 +405,7 @@
    "unit": "mm",
    "reliability": "E",
    "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The capstan's shank, between its head and the block."
+   "what": "The capstan's shank, between its head and the keystick."
   },
   {
    "name": "capstan_head_diameter",

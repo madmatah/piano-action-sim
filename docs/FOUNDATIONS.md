@@ -105,6 +105,23 @@ bedded frame* beside the settings it teaches (planned).
 
 ## 2. What is built: stage 1a, the key on its frame
 
+The bench opens on **Hirschkorn's key, note 52 of a Boston GP-178, on his
+printed frame** (§5.2 b): a key whose mass, centre of mass, inertia,
+contact points and bushings' friction were all measured and published on one
+action. His printed points, lines and circles are read as printed; what his
+tables give no number for, the key's front, covering and blocks, is traced
+from his Figure A.1; his frame bears where his model bears, on real felts; his
+keybed, rails, papers, pins and the key's width are borrowed from the owner's
+measured section, or assumed there. Beside it, chosen on the bench, stands
+**the owner's measured section**: his key section and capstan as he measured
+them on his keys, on the key frame he measured, regulated on arrival, its key
+front assumed where his balance pin stands along the key is not measured, and
+**not weighed**: until one of its keys is weighed whole on the bench, every
+reading that needs the key's mass is refused, saying so, and the others are
+read (§2.2). Each is a profile (`data/profiles/`), every number of which is a
+record or a stated assumption (§3.8), and every drawn line can be marked by how
+its number is known (§7.3).
+
 ### 2.1 Parts and statics
 
 **The key**, `KeyDesign`, is a natural: a keystick of one wood thickness with
@@ -115,19 +132,37 @@ that lets the tail bed flat on its cloth) [V, `data/params/key-section.json`].
 The back check block stands where the action puts the hammer's tail, so it is
 placed from the balance pin and not from the key's end: a key lengthened at the
 back keeps its block in place, the keystick running at its full height between
-the block and the thinned tail. On the default key its back end stands 220 mm
-behind the pin, where the measured tail ends, a place derived and not measured
-(stated with its rule in `data/profiles/composite.json`). The capstan is a turned steel part, integrated as a
-solid of revolution. A key may carry what the composite key lacks, each a
-feature its description holds only where the key has it: a block glued under
-the capstan, the capstan standing wholly on it; a bare thinned tail, no felt
-on it, running on under the glued blocks, each standing wholly on the tail or
-wholly on the keystick's full height; a capstan head turned to a dome, whose
-top bears as a circle does; a capsule standing off the pin. The validation
-layer refuses a block across the step down to the tail, a felted tail under a
-block, a capstan off its block and a dome narrower than its head (§7.3).
-Hirschkorn's key has every one of them (§5.2 b). No lead is modelled: a key's leads are in its weighing
-(below). Each piece is a part of its own, with its own material, on the key's
+the block and the thinned tail. On the measured section its back end stands
+220 mm behind the pin, where the measured tail ends, a place derived and not
+measured (stated with its rule in `data/profiles/measured-section.json`). The
+capstan is a turned part, drawn as a solid of revolution, screwed into the
+keystick's full height between the key button and the back check block,
+nothing glued under it. A key may carry what the measured section lacks, each
+a feature its description holds only where the key has it: a bare thinned
+tail, no felt on it, running on under the back check block, which stands
+wholly on the tail or wholly on the keystick's full height; a capstan head
+turned to a dome, whose top bears as a circle does; a capsule standing off
+the pin; and a clearance cut in the keystick's top between the capstan and
+the back check block, not right behind the capstan, so that the wippen rail,
+which runs across the keyboard over the keys, cannot rub the key, the key
+coming back to its full height behind it. Fairly standard on a grand key,
+though not on every one, the clearance is built as a feature any key may
+have, placed by its two ends from the balance pin, as the back check block is
+and for the same reason, the action placing the rail it clears, and by its
+depth below the full top; it is a shape of the keystick's outline, drawn in
+the section and in the solid and taken out of the drawn section whose
+centroid estimates a weighed key's centre-of-mass height (§2.3). Neither
+shipped key has one drawn: the
+measured section's waits on the owner's measurement of its place and depth,
+and Hirschkorn's figure draws his key's top lowered from just behind the
+capstan to the key's end instead, kept as drawn. The validation layer refuses
+a block across the step down to the tail, a felted tail under a block, a
+capstan over the thinned tail or across the step down to it, a dome narrower
+than its head, and a clearance run into the capstan's seat, into a block or
+back over the thinned tail, cut through the keystick, whose wood under it the
+chamfer under the tail thins where it runs on under it, or no cut (§7.3),
+each by how far. Hirschkorn's key has all of them but the clearance (§5.2 b). No
+lead is modelled: a key's leads are in its weighing (below). Each piece is a part of its own, with its own material, on the key's
 body: the covering and the key front are of their own materials, the capsule and
 the back check block of one wood that is not the keystick's, and the front
 mortise is a cut, a void in the keystick open at its underside.
@@ -141,18 +176,24 @@ read on, with that reading as its datum, as it keeps a friction as a torque with
 the radius it was read at (§2.2): moving the measuring point afterwards, or
 editing the key, reads the same moment on another arm, and the front weight the
 jig reads follows by the lever. The moment over the key's weight stands its
-centre of mass along the key. Its height, which no scale gives, is the volume
-model's estimate (§2.3), and every reading it reaches names it (§2.2): it acts
-only through the key's tilt on its frame, about 0.02 g of down weight per
-millimetre on the default key, 2.3° nose-up at its top seat. Until the key is
-weighed, the volume model's estimate stands for its whole mass. A weighing no
-key could have is refused with its reason, the bench left as it was: a mass of
-nothing, a front weight read off the covering, a centre of mass the two readings
-put off the key. What one more lead would do somewhere along the key is not
-computed. A key a source weighed and located whole, as Hirschkorn's Table A.1
-gives his key's mass, its centre of mass in the key's frame and its inertia,
-is read as published, the height of its centre of mass included, and nothing
-of it is estimated; weighed again on the bench, it keeps that published height.
+centre of mass along the key. Its height, which no scale gives, is estimated
+from the key's drawn section: the area centroid of its parts as the section
+draws them, the front mortise and the clearance in the top, where the key has
+one, taken out and the turned capstan left out, where
+the centre of mass of a key of one material and one width would stand (§2.3).
+Every reading it reaches names it (§2.2): it acts only through the key's tilt
+on its frame, about 0.02 g of down weight per millimetre on a key of 120 g
+standing 2.3° nose-up at its top seat, as the measured section does. A key
+nobody has weighed has no mass in the model at all: no volume and no density
+stands in for one, and what reads the key's mass is refused until it is
+weighed. A weighing no key could have is refused with its reason, the bench
+left as it was: a mass of nothing, a front weight read off the covering, a
+centre of mass the two readings put off the key. What one more lead would do
+somewhere along the key is not computed. A key a source weighed and located
+whole, as Hirschkorn's Table A.1 gives his key's mass, its centre of mass in
+the key's frame and its inertia, is read as published, the height of its centre
+of mass included, and nothing of it is estimated; weighed again on the bench,
+it keeps that published height.
 
 **The frame**, `FrameDesign`, is three different rails: the balance rail with
 its crown and round pin, the front rail with its oblong pin, the back rail with
@@ -173,7 +214,7 @@ it higher than its punching does rides on them, lifted off the punching, on the
 parts as drawn; a pull the punching cannot answer lifts the key off it. The
 slide's range ends where the key leaves its balance pin: where its balance
 hole, at the key frame's origin on the pin's axis, clears the pin's drawn top,
-read off the drawn pin, 9 mm above the punching on the default frame. A pull or
+read off the drawn pin, 9 mm above the punching on both shipped frames. A pull or
 stops that would take the key past it lift it off its pin and its frame, where
 the model has no equilibrium to give, and so does a punching stacked above the
 pin's top, which has the key off its pin wherever it stands on it. Everything
@@ -195,10 +236,10 @@ point for any coordinate, by the lever-arm identity of §6.2 extended to every
 ancestor joint; gravity at each body's centre of mass and forces fixed in the
 world, with their potential and generalized forces; and coordinates prescribed
 for one procedure, with the reaction that holds each. The mechanism never
-computes a body's mass; it is handed one: the key's as a source publishes it,
-as it was weighed, or, until it is, as one adapter in `pa-app`, the composite
-key's derivation, derives it from its volume model (§2.3), which also gives a
-weighed composite key the height of its centre of mass. Its first client is the jig (§2.2). Each coordinate carries its
+computes a body's mass; it is handed one, the key's as a source publishes it or
+as it was weighed, the height of a weighed key's centre of mass estimated from
+its drawn section; a key nobody has weighed is handed none, and the procedures
+that need its weight refuse. Its first client is the jig (§2.2). Each coordinate carries its
 limits, an interval it cannot leave, and its joint's dry friction, a torque
 bound that holds it still against any generalized force inside it; the static
 solve below finds the coordinates a procedure leaves free. The key on its frame
@@ -302,7 +343,7 @@ since a key sunk right through a felt thicker than itself leaves the punching's
 centre, which is all its pair reads, clear. A key turning on a closed stop moves
 its farthest point a row margin a step at most, and a key pulled off its
 punching turns up on its cloth until it leaves its balance pin, some 20 mm at
-its front on the default frame; a key riding on a front pin standing in its
+its front on the measured section's frame; a key riding on a front pin standing in its
 wood, solved from where it stands level on its punching, takes three quarters of
 a cap to come to rest with every row that carries it closed. So the key free to
 lift is solved in up to four pieces of the cap, each going on from where the
@@ -390,7 +431,8 @@ rail, or by the pin where more paper would raise the punching past the pin's top
 before it reached the key. A key off its pin with no paper at all has no seat at
 any stack. A closed form taking the key top as level would miss by the key top's
 height times the square of the attitude, about 0.02 mm of key height and dip on
-the default bench, a quarter of the thinnest paper, and would not see the pin.
+the measured section, a quarter of the thinnest paper, and would not see the
+pin.
 
 **The touch weight** is one static increment from where the key stands, friction
 on. Loading the bench puts the key on its frame from its nominal pose under the
@@ -424,7 +466,11 @@ with its friction where they cannot: its front punching and its front pin
 against the wall of its slot, alone, where a front rail raised under it has
 tipped it forward off its punching; its cloth and its friction where a pull has
 turned it up on it, the cloth pushing at one place and the pull turning the key
-about it.
+about it. Where a weight leaves a key depends on the key's own balance, which only a
+weighing gives, so a key nobody has weighed gets no verdict for a weight on
+it: it is drawn where its top seat puts it, its back held
+down on its cloth by the load standing for the action, as key height is read,
+whatever weight stands on it, and the bench gives no verdict.
 
 ### 2.2 The protocols, as they are
 
@@ -480,21 +526,22 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   stops the key breaks away at its seat and runs on, so D and U are the edges
   of the band at the two seats' attitudes, `(±b − M(θ)) / (g a(θ))`, the
   key's balance `M` and the measuring point's arm `a` taken at the attitude,
-  matched by hand to the walk's resolution, a part in 65 536 of a gram. On the
-  default key D is −0.22 g, which the closed form taken with the key level
-  gives as −0.48 g: at the top seat the key stands 2.3° nose-up, its centre of
-  mass 13 mm above the pin, and the measuring point's arm is half a percent
-  shorter there. A key riding on its stops has no stroke: D and U and both
+  matched by hand to the walk's resolution, a part in 65 536 of a gram. On
+  Hirschkorn's key D is −21.61 g, which the closed form taken with the key
+  level gives as −21.78 g: at the top seat the key stands 1.63° nose-up, its
+  centre of mass 15.8 mm above the pin, and the measuring point's arm is
+  0.4 % shorter there. A key riding on its stops has no stroke: D and U and both
   key friction weights are refused, the bench naming the stops it rides on and
   how far above its balance punching, and BW and F with them. A weight that
   would lift the key off its frame refuses the walk that put it there.
 - **BW and F** are `(D + U) / 2` and `(D − U) / 2`, shown from D and U as the
   trade reads them, so to the half gram, their values from D and U in full.
   With no action on the capstan, BW is minus the front weight but for what the
-  two seats' attitudes add, 0.13 g on the default key; F is the bushings'
-  friction read through the two seats' arms, with what the key's balance does
-  between them: 6.13 g on the default bushings, which hold 6 g at the
-  measuring point with the key level.
+  two seats' attitudes add, 0.06 g on Hirschkorn's key, −27.22 g against his
+  front weight's 27.28 g; F is the bushings' friction read through the two
+  seats' arms, with what the key's balance does between them: 5.61 g on his
+  bushings, Table A.9's 0.0122 N·m, which hold 5.50 g at the measuring point
+  with the key level.
 - **The band** is the driven sweep, a second procedure for D and U and the
   force curve the bench draws: the static form of driving in position and
   comparing forces (§5.1). The key is seated at the top and at the bottom of
@@ -509,8 +556,15 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   the bushings' friction at its bound against the motion, the down curve on
   the way down and the up curve on the way back; between the two the key
   stays where it is, their distance apart its friction and their middle its
-  balance. D is the greatest force of the down curve and U the least of the
-  up curve, read to the gram as the walk's are. A torque on the angle and a
+  balance. Its extremes, the greatest force of the down curve and the least
+  of the up curve, stand within a few thousandths of a gram of the walk's D
+  and U in full, and are shown in full, to the hundredth of a gram, never as
+  a gram and never as the sheet's D and U. Within that of a whole gram the
+  two fall either side of it: the measured section weighed at 130 g with a
+  front weight of 40 g at 13 mm reads its U −46.00019 g by the walk, −47 g
+  on the sheet, and its up curve's least force is −45.99997 g. The gram is
+  the walk's, the trade's protocol with gram weights; the band is a curve
+  that no weight reads. A torque on the angle and a
   force at the measuring point turn the key alike and do not press it on its
   punching alike, so at every step the punching's load under the finger's
   force is checked, and a sweep under which it would carry nothing, a pull
@@ -518,9 +572,10 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   stop takes whatever the finger leaves, so the curves start a step inside
   each seat, and where an extreme lies at a seat, as on both shipped keys,
   the band reads it within the curve's change over that step of the walk's:
-  on the default key D −0.2199 g against the walk's −0.2185 g a step off the
-  top seat, U −12.4809 g against −12.4814 g half a step off the bottom one,
-  195 readings each way. Every step is the band by hand at the
+  on Hirschkorn's key the greatest down force −21.6099 g against the walk's
+  D −21.6085 g a step off the top seat, the least up force −32.8309 g
+  against its U −32.8319 g within a step of the bottom one, 184 readings
+  each way. Every step is the band by hand at the
   attitude it holds, `(±b − M(θ)) / (g a(θ))`, to rounding. The step is one
   of the solver's frozen numbers (§4.4). The sweep runs when the band is
   shown, never with the sheet; `pa-cli band` prints it.
@@ -530,7 +585,8 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   gram weights reads a down weight whose threshold is 46.3 g as 47 g, since
   46 g does not move the key; rounded to the nearest gram, a down weight would
   read a gram light about half the time, a weight that does not make the key
-  go down. On the default key D reads 0 g: the key goes down on its own. A
+  go down. On Hirschkorn's key D reads −21 g: the bare key, leaded for its
+  action, goes down on its own, and a pull of 21 g does not hold it up. A
   threshold within the walk's last bracket of a whole gram, a part in 65 536
   of it, reads as that gram, up or down: the walk reads a threshold to half a
   bracket, and what it cannot tell from a whole gram is not rounded into the
@@ -546,11 +602,11 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   The weight stands 100 mm behind the pin on a key heavy in front and 150 mm
   in front of it, on the covering, on one heavy behind, its mass the one that
   zeroes, exactly, the reading being linear in it: a technician slides a
-  weight he has, the bench sizes one where it stands. On the default
-  bushings, 6 g at the measuring point with the key level, the two read
-  6.35 g and 6.03 g, both 7 g: the tilt at rest leaves Stanwood's a little of
-  the key's and the weight's balance, 0.32 g with no friction at all, and
-  shortens the arm both read through.
+  weight he has, the bench sizes one where it stands. On Hirschkorn's
+  bushings, which hold 5.50 g at the measuring point with the key level, the
+  two read 5.94 g and 5.52 g, both 6 g: the tilt at rest leaves Stanwood's a
+  little of the key's and the weight's balance, 0.43 g with no friction at
+  all, and shortens the arm both read through.
 - **Key friction is typed as the trade measures it**, a key friction weight in
   grams at the measuring point by Stanwood's protocol, and stored as a torque
   with the measuring point it was typed at. The torque is the one at which
@@ -560,13 +616,15 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   one of the last two whose reading stands nearer kept. So the sheet reads a
   typed key friction weight back to the walk's resolution, and shows it as
   typed: 6 g typed reads 6 g. Turned into a torque on the level arm instead,
-  6 g typed would read back 6.35 g, shown 7 g. A weight no bushings read is
+  the grams typed would read back heavier by the key's tilt at rest, as his
+  bushings, 5.50 g on the level arm, read 5.94 g. A weight no bushings read is
   refused with its reason, the bushings left as they were: under what the
   protocol reads with no friction at all, past the search, or on a key and
   frame the protocol cannot read. Afterwards moving the measuring point or
   editing the key changes the grams every protocol reads, and not the
-  bushings. The default bushings are not typed: an assumed torque, 6 g at
-  the measuring point with the key level.
+  bushings. The shipped bushings are not typed: Hirschkorn's are Table A.9's
+  torque, the measured section's an assumed one, 6 g at the measuring point
+  with the key level.
 - **Trust.** Each procedure declares what it reads, the key's mass and static
   moment, the height of its centre of mass, its friction, the dimensions of key
   and frame, and a reading resting on an estimated or assumed input is
@@ -575,18 +633,22 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   read the key tilted on its frame, and that height with it. Key height, dip
   and the key weight ratio read no mass, nor does the key friction weight
   zeroed on the frame, whose temporary weight cancels the key's balance where
-  it rests. On the composite default every reading is indicative: its mass and
-  centre of mass are derived from its volume at an assumed density, its
-  friction is assumed until it is set, and several of its dimensions have no
-  record (§2.3, §3.8). The key's mass on the sheet is that derivation, an input
-  and not a weighing, until the key is weighed (§2.1): its mass and static
-  moment are then set by hand, and the height of its centre of mass is still
-  the estimate, which D, U, BW, F and Stanwood's key friction weight name.
+  it rests: on a key nobody has weighed these are read, and front weight, D,
+  U, BW, F, Stanwood's key friction weight and the band are refused, the key
+  not weighed. On Hirschkorn's key every reading is indicative for its
+  geometry alone, his mass, centre of mass and bushings being published and
+  his keybed, rails, felts and papers borrowed or assumed (§2.3, §3.8). On the
+  measured section a key weighed on the bench has its mass and static moment
+  set by hand, and the height of its centre of mass is the estimate from its
+  drawn section, which D, U, BW, F and Stanwood's key friction weight name;
+  its friction is assumed until it is set, and its key front has no record.
 - **Datums.** Key height and dip are read at the key front, the face of the
-  plate over the end grain, 258 mm in front of the balance pin on the default
-  key. Every touchweight is read at the measuring point, 13 mm by default (§3.1)
-  back from the covering's lip, the front edge of the keytop, which stands 2 mm
-  proud of the key front: 247 mm in front of the balance pin. The distance is
+  plate over the end grain, 237.80 mm in front of the balance pin on
+  Hirschkorn's key and 258 mm, assumed, on the measured section. Every
+  touchweight is read at the measuring point, 13 mm by default (§3.1) back
+  from the covering's lip, the front edge of the keytop, which stands 1.48 mm
+  proud of the key front on his key and 2 mm on the measured section: 226.28
+  and 247 mm in front of the balance pin. The distance is
   one setting, `TouchweightProtocol`, held beside the key and its frame, set on
   the bench from 5 to 30 mm, and every touchweight reads it there: front weight
   and the key weight ratio on the jig, D, U, BW and F, both key friction
@@ -596,39 +658,60 @@ Their closed forms are test oracles, compiled for the domain's tests only.
 
 ### 2.3 Named simplifications
 
-- **The key's mass model cannot predict front weight.** The keystick is a
-  uniform 22 mm prism over its whole length, of an assumed 430 kg/m³ [S], when a
-  grand keystick is far narrower behind its head; the covering counts as wood;
-  the hollow behind the capstan is absent: several grams of doubt on a front
-  weight read to the gram, and a measured stick mass rescales the total without
-  moving the centre of mass. So a key's mass is weighed, per key, by the trade's
-  protocol, never derived from a wood volume, each key being cut to its own plan
-  shape: built, its mass and its front weight, which gives its static moment
-  about the balance pin (§2.1); planned, for the dynamics, its inertia. The
-  three are independent: a key carrying 16 g of front weight in leads alone has
-  8,000, 5,700 or 2,920 g·cm² about its balance point depending on where the
-  leads sit [V, Nakamura, *Practical application of moment of inertia*, Part 2,
-  Fig. 9]. The trade computes inertia from a traced template and wood densities
-  [V, Nakamura, Part 1] or rates it from static weights [V, Stanwood, SNAP,
-  2023], and measures it nowhere; Hirschkorn swung each part as a pendulum on a
-  string, I = m·g·l·(T/2π)² [V, Hirschkorn 2004 §A.1], which a string between
-  support and part biases unless the part hangs from a knife edge. Inertia is
+- **A key's mass is weighed, never derived from its outline.** A volume model
+  cannot predict a front weight read to the gram: a grand keystick is far
+  narrower behind its head than in front, its covering is not wood, its
+  hollows and leads are where its plan puts them, several grams of doubt in
+  all. So a key's mass is weighed, per key, by the trade's protocol, each key
+  being cut to its own plan shape: built, its mass and its front weight, which
+  give its static moment about the balance pin (§2.1); planned, for the
+  dynamics, its inertia. The three are independent: a key carrying 16 g of
+  front weight in leads alone has 8,000, 5,700 or 2,920 g·cm² about its
+  balance point depending on where the leads sit [V, Nakamura, *Practical
+  application of moment of inertia*, Part 2, Fig. 9]. The trade computes
+  inertia from a traced template and wood densities [V, Nakamura, Part 1] or
+  rates it from static weights [V, Stanwood, SNAP, 2023], and measures it
+  nowhere; Hirschkorn swung each part as a pendulum on a string,
+  I = m·g·l·(T/2π)² [V, Hirschkorn 2004 §A.1], which a string between support
+  and part biases unless the part hangs from a knife edge. Inertia is
   therefore neither measured nor shown: it is an internal parameter of the
-  dynamics, each part's taken from Hirschkorn's published action and the key's
-  estimated from its outline matched to its mass and front weight, marked
-  estimated (planned). Until a key is weighed, the volume model stands for its
-  whole mass, and once it is, for the height of its centre of mass, which no
-  scale gives; planned: that height estimated from the drawn section's area
-  centroid, and the volume model gone, the outline drawing a key and never
-  weighing it. No lead is modelled: a key arrives leaded, with lead masses
-  nobody knows, and is weighed whole.
-- **The default key is a composite**: the owner's measured key section, a
-  capstan 129.5 mm behind the balance pin that no source gives, and a key front
-  258 mm out, which puts the measuring point at 247 mm. Built beside it, and
-  chosen on the bench: Hirschkorn's key on his printed frame (§5.2 b), whose
-  mass, centre of gravity, inertia and contact points were measured and
-  published on one action. Planned, with the quasi-static core: his key the
-  default, and the owner's measured section a second profile.
+  dynamics, each part's taken from Hirschkorn's published action and the
+  key's estimated from its outline matched to its mass and front weight,
+  marked estimated (planned). The one number of a weighed key no scale gives,
+  the height of its centre of mass, is estimated from the area centroid of
+  its drawn section, the front mortise and any clearance in its top taken
+  out (built), which treats the key
+  as one material of one width: a covering denser than the wood raises the
+  true centre, and leads set low in the keystick lower it, each millimetre
+  moving D by about 0.02 g on a key of 120 g (§2.1). No lead is modelled:
+  a key arrives leaded, with lead masses nobody knows, and is weighed whole.
+- **The default key is Hirschkorn's**, note 52 of a Boston GP-178, on his
+  printed frame (§5.2 b). Published, with their tables: his key's printed
+  points, lines and circles, its mass, centre of mass and inertia (Table
+  A.1), its bushings' friction (Table A.9), his frame's bearings and his dip
+  target. Traced from his Figure A.1 [E, 11]: the key front, 237.80 mm in
+  front of the balance pin, the covering's lip 1.48 mm proud of it, the key
+  button, where the keystick's full height ends behind the capstan, the back
+  check block, the tail's end. Borrowed
+  from the owner's measured section, measured there or assumed there: his
+  keybed, which no source gives, so that his key height is an indication;
+  his rails, felts, cloth, papers and pins, and the front mortise, placed
+  over his front bearing. Assumed: the key's width, which only the solid view
+  reads. His felts' tops stand where his rounds' tops stand, each placed by a
+  rule from his frame stated in his profile. Beside it, chosen on the bench,
+  **the owner's measured section**: his key section, his front mortise's
+  depth and his capstan, 122 mm behind the balance pin, as he measured them
+  on his keys [V, `data/params/key-section.json`], on the key frame he
+  measured [V, `data/params/key-frame-sections.json`], its rails placed under
+  the key by the rule a frame is built to and their heights assumed, its
+  felts, cloth, capstan proportions, bushings and targets assumed, its key
+  front assumed 258 mm in front of the pin and its tail following from its
+  measured length of 500 mm, and its mass unknown until one of its keys is
+  weighed: what would replace each assumption is stated beside it in
+  `data/profiles/measured-section.json`. With his capstan and the assumed key
+  front its key weight ratio is 0.494, a hundredth under the 0.50 to 0.60
+  published for a natural: where his key front stands is the measurement that
+  settles it.
 - **The balance punching bears at its centre, on the pin's axis.** The key
   bears on a felt washer whose pressure centre moves with attitude and load;
   the model reads it rigidly, at the centre of the washer's drawn top. Moving
@@ -644,7 +727,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   a key landing level over its whole face. A key standing out of level on one
   overlaps the drawn felt's edge by what a real felt compresses, half the
   washer's width times the tilt: about a quarter of a millimetre under the
-  default key at rest on its balance punching. The bench reports it beside the
+  measured section's key at its top seat on its balance punching. The bench reports it beside the
   contacts, so that the idealization does not pass for a drawing error.
 - **The key lifts without friction.** The bushings' friction against the key
   sliding along its balance pin is not modelled: it would act only while the
@@ -652,7 +735,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   never weighs. The bushings' friction acts on the key's turning alone, as the
   key friction weight reads it. Where the key leaves its pin is read off the
   drawn pin, whose height, 11.2 mm above its rail, is assumed until the balance
-  mortise is measured (`data/profiles/composite.json`).
+  mortise is measured (`data/profiles/measured-section.json`).
 - **A front pin's sides carry no contact.** The pin declares its top and the
   corners of its top, which are all a pin standing in its slot can meet. One
   a few tenths of a millimetre into the wood behind its slot meets the wood's
@@ -665,7 +748,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   overlap only by the key's nominal pose, where a solve starts. A key riding
   nose-up by 2.7° or more on a front rail raised with its punching meets the
   rail's back edge, 62 mm behind the punching and a stack's height below it on
-  the default frame, which the model does not see; so does a key turned far
+  the measured section's frame, which the model does not see; so does a key turned far
   nose-up on its balance punching, as a strong pull turns a key on a raised
   balance rail or a lowered cloth, its underside meeting the top of the
   balance rail behind the pin.
@@ -679,8 +762,9 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   traced to its feet [E, 11]; its back check, wire and head, belongs to the
   action and is not drawn, though Table A.1's mass includes it. His front
   mortise is the owner's, placed over his front bearing. Placing the frame
-  under his key follows the composite's rule, the back rail 40 mm in from the
-  tail [S], which stands his back rail in front of his 37 mm chamfer.
+  under his key follows the rule the measured section's frame is built by, the
+  back rail 40 mm in from the tail [S], which stands his back rail in front of
+  his 37 mm chamfer.
 - **Drawing**: one row of pins; flat-topped pins; a flat balance crown only.
   The balance mortise is not drawn, none of its dimensions being measured, so
   the balance pin stands hidden in the key's wood; the front mortise's place
@@ -698,7 +782,9 @@ Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimetre still open, and drawn
 parts that overlap. Colours follow each part's material: the covering and the
 key front white, the capsule and the back check block in a wood other than the
-keystick's. Its panels: the weighing sheet, with the measuring point's distance
+keystick's. It opens on Hirschkorn's key; its first panel chooses the
+instrument on the bench among those shipped, each offered by its whole name.
+Its panels: the weighing sheet, with the measuring point's distance
 back from the front lip of the key, each reading as the trade reads it with its
 value in full small beside it, both key friction weights labelled, a note naming
 what makes the readings indicative, and why any is refused, a frame whose stops
@@ -714,15 +800,20 @@ protocol cannot be read); punchings and cloth (felts, front rail pin and mortise
 back rail cloth); the key, and the key weighed whole (its mass and its front
 weight typed in grams, with the distance back from the lip the front weight was
 read at in millimetres, what each is for said beside them, and refused with why
-where no key could weigh so); the frame (rails, placing the frame); touch (a
+where no key could weigh so; on a key nobody has weighed, the line under them
+says so, the fields of the mass and the front weight open empty and the
+weighing waits for them, the key mass on the sheet is refused, and every
+reading that needs it is refused, saying the key is not weighed); the frame
+(rails, placing the frame); touch (a
 weight on the measuring point; what holds the key: a stop or its friction with
 how far the weight stands from moving it, its two stops where they fight with how
 far above its balance punching it rides, the stops it touches where it stands
 lifted off its punching otherwise and its friction where they need it, or
 nothing, a key off its pin and its frame; the gaps at the front punching and the
 back rail cloth; the bushings' friction, named once, as the key friction weight
-Stanwood's protocol reads; and how far the punchings' drawn edges overlap the
-key). The panels and their controls are the ones the engine's registry
+Stanwood's protocol reads; how far the punchings' drawn edges overlap the key;
+and, on a key nobody has weighed, why a weight on it does nothing). The panels
+and their controls are the ones the engine's registry
 describes, in its order, each control's range, step and unit the engine's
 (§7.2); the page adds the readings and the notes around them. Every slider
 shows the value the engine holds, the key friction weight's as the sheet reads
@@ -734,21 +825,24 @@ is typed until it is sent.
 In place of the section and the solid the view draws the band (§2.2): force
 on the measuring point in grams against the key's travel there in
 millimetres, the down curve and the up curve, the two seats at the window's
-ends, D and U marked where they fall with what the trade reads them as and
-their values in full, the weight on the measuring point drawn across it and a
-dot where that weight has left the key; the pointer reads both curves at the
-travel nearest it, and a table carries every step for a reader without the
-chart. The engine sweeps the key when the band is chosen and not with each
-edit: an edit of the key, its frame, its bushings or the protocol leaves the
-band drawn faded and saying so until it is chosen again, and the weight on the
+ends, the down curve's greatest force and the up curve's least marked where
+they fall and labelled in full, to the hundredth of a gram, never as the
+sheet's D and U, which read the gram (§2.2), the weight on the measuring
+point drawn across it and a dot where that weight has left the key; the
+pointer reads both curves at the travel nearest it, and for a reader without
+the chart the two extremes are written out and a table carries every step.
+The engine sweeps the key when the band is chosen and not with each edit:
+an edit of the key, its frame, its bushings or the protocol leaves the band
+drawn faded and saying so until it is chosen again, and the weight on the
 measuring point, which the band does not read, moves only its line and dot. A
-key with no stroke has no band, and the view says why.
+key with no stroke, or no mass, has no band, and the view says why.
 Faults are listed in millimetres, every number on the page is computed in
 Rust, and every sentence is the English catalogue's, composed from the codes the
 engine sends (§3.12).
-`pa-cli weigh` prints every reading with its procedure, its trust and the static
-solves it took; `pa-cli band` prints the band, its D and U beside the walk's,
-and both curves step by step.
+`pa-cli weigh` prints every reading of Hirschkorn's key, or of the shipped
+profile named, with its procedure, its trust and the static solves it took;
+`pa-cli band` prints the band, its two extremes in full beside the walk's D
+and U, and both curves step by step.
 
 ## 3. Decisions that stand
 
@@ -774,11 +868,12 @@ BW = (D + U) / 2        F = (D − U) / 2
 ```
 
 **The lip is the covering's**: the front edge of the keytop, which overhangs
-the key front by 2 mm on the default key. The glossary does not say which lip
+the key front by 1.48 mm on Hirschkorn's key and 2 mm on the owner's measured
+section. The glossary does not say which lip
 it means, and this one is the owner's choice; the 1996 paper's "front vertical
 edge of the key" goes with the protocols the 2000 ones supersede. Measured from
-the key front, the point would stand 2 mm further back and every touchweight
-would be read on an arm 0.8 % shorter. **The distance is a setting**, 13 mm by
+the key front, the point would stand 2 mm further back on the measured section
+and every touchweight would be read on an arm 0.8 % shorter. **The distance is a setting**, 13 mm by
 default and the glossary's 1/2 inch as its alternative
 [`data/params/touchweight-protocol.json`], held in one place because every
 touchweight protocol reads it, so no two can be taken at different points
@@ -919,8 +1014,8 @@ of its key, frame, drawer, protocol and bushings, its targets and the weight on
 it, to a record by a JSON pointer, its unit checked against the number's
 quantity and converted to SI rounding once, or to an assumption marked `S`, or
 `E` with its rule, and its reason. The engine has no default of its own: the
-standard instrument is the composite profile, whose values without a record
-are stated there. `every_default_has_a_record_or_a_stated_assumption` fails on
+standard instrument is Hirschkorn's profile, and every value without a record
+is stated in the profile that uses it. `every_default_has_a_record_or_a_stated_assumption` fails on
 a number of a shipped profile that is neither, the numbers taken from the
 validation layer's walk of every field, which the compiler holds exhaustive.
 Hirschkorn's profile reads his record and the outline traced from his
@@ -1176,7 +1271,8 @@ property corpus a keyboard could be built from, and of every frame whose stops
 fight, to a quarter of the step cap, and the walks' increments to half of it: a
 trial a hair past breakaway starts the key with a step of a femtometre, each
 accepted step three times the last. A fingerprint names the solver with its
-frozen numbers and travels with every reading; a test hashes the caps,
+frozen numbers and travels with every reading, one name for one hash, never
+given back to other numbers (`statics/2`); a test hashes the caps,
 tolerances, margins and counts, the free key's pieces, the temporary weight's
 stations and the searches' reaches, and fails when one changes and the
 fingerprint does not; where the key leaves its balance pin is read off the
@@ -1240,7 +1336,12 @@ the force that holds it there.
 **(a) One real key, measured by the owner** (planned). Its mass and its front
 weight by the trade's protocol are inputs (§2.3); its key weight ratio on the
 jig and its down and up weights on its frame are outputs, the bench's measuring
-point set to where he weighs before anything is weighed (§3.1). It is a modest
+point set to where he weighs before anything is weighed (§3.1). Its entry
+point is built: the owner's measured section (§2.3), which arrives unweighed,
+takes the three numbers of one of its keys weighed whole, its mass, its front
+weight by Stanwood's protocol and how far back from the covering's lip the
+weight was centred, and reads the rest; with the distance from the balance
+pin to its key front, which its profile assumes, measured on the same key. It is a modest
 validation: the ratio is close to a lever identity, and a bare key's balance
 weight differs from minus its front weight only by what the bearing point and
 the rest attitude add. But it is the first comparison of computed readings with
@@ -1266,38 +1367,58 @@ is also the engine's reference action: the base profile the engine is built and
 checked on before any other action is compared with it (planned), its values
 transcribed with their locators in `data/params/`.
 
-Built: his key on his printed frame, a profile chosen on the bench
+Built: his key on his printed frame, the bench's standard instrument
 (`data/profiles/hirschkorn.json`). Its printed points, lines and circles are
 read as printed: the underside through Pk4, the chamfer along Pk5's line,
 meeting the flat at −196.43 mm, the capstan's dome Pk3's circle of 9.7 mm, the
 bearings at Pg1, Pg4 and Pg5. What his tables give no number for, the key
-front, the covering and its lip, the key button, the capstan's block standing
-on a bare thinned tail with the back check block, the tail's end and the
-capstan's head, is traced from his Figure A.1 [E, 11]: a similarity fitted on
-Pg1, Pk2 and Pk5 leaves 0.27 mm at Pg1, and puts the key front 237.80 mm and
-the covering's lip 239.28 mm in front of the pin, 10.0 mm ahead of Pk2. The
+front, the covering and its lip, the key button, the keystick at its full
+height to 132.45 mm behind the pin and lowered from there into a bare thinned
+tail the back check block stands on, the tail's end and the capstan's head,
+is traced from his Figure A.1 [E, 11]: a
+similarity fitted on Pg1, Pk2 and Pk5 leaves 0.27 mm at Pg1, and puts the key
+front 237.80 mm and the covering's lip 239.28 mm in front of the pin, 10.0 mm
+ahead of Pk2. The figure draws the full height's top over its last 29.65 mm,
+behind a line drawn down the wood, 0.75 mm above the keystick's: within the
+trace's uncertainty, it is read as the keystick's one height, and his capstan
+screws into it, its top Pk3's whatever its seat. Moved along the key, his
+capstan stands anywhere from 42.01 mm behind the pin, where its head clears
+the key button, to 128.53 mm, where it reaches the thinned tail; the slider,
+from 60 mm by the millimetre, takes it to 128 mm. The
 figure's centre-of-mass marker stands 13.7 mm behind Table A.1's centre, about
 7 g of front weight: Table A.1 governs the mass. His bushings are Table A.9's
 0.0122 N·m, read at no published radius; his dip target 10.0 mm; no key
 height is published, so the key height he is regulated to is the one his key
-stands at. His frame bears on **real felts**, a flat front punching washer and
-a flat back rail cloth strip, each with its top where his round of 5 mm has
-its, since what is drawn is what is touched; its keybed, rails, papers, pins
-and the key's width are the composite's, so his key height is an indication.
-The felts reproduce his printed dip to a tenth of a millimetre and no closer:
-at Pk2 his rounds let the key fall 9.306 mm and the felts 9.202 mm, 0.105 mm
-less, because the key, nose-up at rest, bears with its chamfer's kink on the
-cloth's face where his round met its chamfer 7.3 mm further back; the front
-punching, read at its centre, changes the bottom by 2 µrad [E, 11]. A
-cross-implementation test closes that difference from his printed points
-alone, never from the bench's frame, and holds the bench to it, against the
-rigid closure of script 10 to its last printed digit and the dynamics
-prototype's compliant contacts within their compression
-(`the_bench_differs_from_his_rounds_by_the_felts_alone`), so a rail read a
-micrometre off fails it; and its front weight to Table A.1's static moment:
-consistency, not validation, every input being his. On his frame as printed the bench reads FW 27.3 g, KR 0.52, a dip of
-9.61 mm at the key front, D −21.6 g, U −32.8 g and KF 6 g: the bare key is
-leaded for its action, and falls on its own. Nothing on the key validates
+stands at. His frame bears on **real felts**, a flat front punching washer over
+Pg4 and a flat back rail cloth strip, each with its top where his round of 5 mm
+has its, since what is drawn is what is touched; its keybed, rails, papers,
+pins and the key's width are those of the owner's measured section, so his
+key height is an indication. The borrowed 24 mm cloth lies wholly under his chamfer, its
+rounded front edge over Pg5, so the key, nose-up at rest, bears on that edge,
+0.06 mm from where his round meets his chamfer, as most grand keys rest on an
+edge of their cloth: it is the papers under the balance punching that set a
+key's height, and the cloth's work is to damp the key's return and give it
+the same rest every time; a key bedded flat on its cloth would only wear it
+more slowly. The felts reproduce his printed dip to two micrometres: at Pk2
+his rounds let the key fall 9.306 mm and the felts 9.308 mm, 1.7 µm more,
+because a line resting on a round passes over its centre above its top, by
+0.39 µm on his rounds of 5 mm, the chamfer and the flat standing 0.7 degrees
+from level, by 0.04 µm on the cloth's edge of 0.5 mm, and not at all on the
+punching read at its centre; and because script 10 reads Pk5's normal as
+printed, 0.99984 long, which stands the chamfer 0.8 µm further off his round
+[E, 11]. A cross-implementation test closes that difference from his printed
+points and the cloth's edge radius alone, never from the bench's frame, and
+holds the bench to it, against the rigid closure of script 10 to its last
+printed digit and the dynamics prototype's compliant contacts within their
+compression (`the_bench_differs_from_his_rounds_by_the_felts_alone`), so a
+rail read a micrometre off, in height or along the key, fails it; and its
+front weight to Table A.1's static moment: consistency, not validation, every
+input being his. On his frame as printed the bench reads FW 27.3 g, KR 0.52,
+a key height of 61.66 mm, indicative, and a dip of 9.72 mm at the key front,
+D −21 g (−21.61), U −33 g (−32.83), BW −27.0 g, F 6.0 g (5.61) and both key
+friction weights 6 g: the bare key is leaded for its action, rests nose-down on
+its front punching under no weight, and falls on its own. His dip of 10.0 mm
+is one regulation away. Nothing on the key validates
 until his action's own readings are compared (stage 2).
 
 **(c) Thorin's Renner demonstrator** (planned): the only published key force
@@ -1316,7 +1437,7 @@ traps (§6.3).
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
 | 3 | published data, §5.2 (b) and (c) | validation | planned |
-| 4 | the trade's protocols run on the model: the jig, reading a key weighed whole back where its front weight was read and by the lever elsewhere, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, the driven sweep that draws the band, every step against the band by hand at the attitude it holds and its extremes against the walk's D and U within the walk's resolution and the curve's change over one step, a step half as long within the same, on both shipped keys, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
+| 4 | the trade's protocols run on the model: the jig, reading a key weighed whole back where its front weight was read and by the lever elsewhere, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, the driven sweep that draws the band, every step against the band by hand at the attitude it holds and its extremes against the walk's D and U in full within the walk's resolution and the curve's change over one step, a step half as long within the same, on both shipped keys, the measured section weighed by a test weighing and in whole grams, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
 | 4 | let-off, drop, checking, aftertouch and blow distance as the trade measures them; §5.2 (a) | consistency, and validation where the measurement is independent | planned |
 | 5 | sensitivities by finite differences: what moves when a setting changes | consistency | planned |
 
@@ -1575,10 +1696,13 @@ Clippy with warnings as errors, the tests and the WebAssembly build for Rust,
 and Biome, the type-check, the build, the tests and the smoke test for the web;
 `scripts/verify.sh` runs the same gates locally.
 
-**The golden sheet** records every reading of the default bench and of four
-fixture benches (a frame whose stops fight, a back-heavy key, a dip stopped by
-the front pin in its mortise, a key shortened under its frame) in full bits, in
-`crates/pa-app/tests/golden/`: each reading of the weighing sheet, its value in
+**The golden sheet** records every reading of the default bench, Hirschkorn's
+key as it arrives, and of six fixture benches in full bits, in
+`crates/pa-app/tests/golden/`: on his key, a frame whose stops fight, a dip
+stopped by the front pin in its mortise and a key shortened under its frame;
+the owner's measured section as it arrives, every reading that needs the
+key's mass refused, the same weighed by a stated typical weighing, and weighed
+back-heavy. For each, each reading of the weighing sheet, its value in
 full and as the trade reads it, its trust, the walk's start and the temporary
 weight, or why it is refused; then what holds the key, how it rides where its
 stops fight, the faults, the papers and the pose; last, D and U read on the
@@ -1617,8 +1741,9 @@ drawn range, so the invariant holds by structure; and
 `every_contact_lies_on_its_drawn_outline` holds every row's two points on the
 drawn outlines wherever the key stands, seated, riding, lifted off its
 punching or turned across its stroke, by a sampling of the drawing that shares
-no code with the rows. The composite key's mass is integrated over a third
-polygon, its volume model's, which the drawn parts tile exactly. Planned: each
+no code with the rows. No outline is weighed: the drawn parts tile one polygon
+through the key's fields, and their area centroid, the front mortise taken
+out, stands in for the height of a weighed key's centre of mass. Planned: each
 part's inertia derived from its outline or measured, by an explicit choice, a
 key's always measured (§2.3).
 
@@ -1664,7 +1789,8 @@ parameters in the trade's units, each unit in its parameter's name
 (`{"code":"pin_outside_mortise","by_mm":16.5}`); they mirror the domain's
 enums through matches with no catch-all arm, so a refusal added in `pa-core`
 and not mapped is a compile error. The page words them from its catalogue
-(§3.12) and writes each reading to its protocol's resolution.
+(§3.12), writes each reading of the sheet to its protocol's resolution, and
+the band's two in full: the band is a curve, which no weight reads.
 
 The page changes the bench by two calls. `set(path, value)` sets a setting in
 the unit its path names; `act(action)` runs an operation: laying a paper from
@@ -1734,11 +1860,13 @@ built as, naming the limiting dimension and the shortfall: a value that is not a
 number or an infinity, anywhere in the design; a value outside its setting's
 range; a paper no drawer holds; a key weighed at no mass; an outline crossing
 itself, a glued part run into the next along the key's top (a key front brought
-back until its covering runs into the key button), a felted thinned tail run on
+back until its covering runs into the key button), a clearance cut in the top
+run into a block or under the capstan's head, a felted thinned tail run on
 under a glued block, a block standing across the step down to a bare one, or
-the chamfer past the key front; the capstan in a glued block, off its own
-block, or wholly behind the back check block, or its dome narrower than its
-head; the front mortise off the flat of
+the chamfer past the key front; a clearance run back over the thinned tail,
+cut through the keystick, or no cut; the capstan in a glued block, wholly
+behind the back check block or over the thinned tail, or its dome narrower
+than its head; the front mortise off the flat of
 the underside, or cut through the top of the keystick; the measuring point off
 the covering. A refused edit leaves the instrument as it was, to the bit of its
 state hash, and the diagnostics keep it. Everything an assembled keyboard can
@@ -1792,8 +1920,9 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
   Hirschkorn's action (§5.2 b). Built: a profile (`data/profiles/`) may name
   a base and bind only what differs, each binding and each choice (the key's
   row, how its mass is known, whether it arrives regulated) replacing the
-  base's; the two shipped, the composite and Hirschkorn's key on his printed
-  frame, have none, and Hirschkorn's action becomes the base (planned). All layers but one are
+  base's; the two shipped, Hirschkorn's key on his printed frame and the
+  owner's measured section, have none, and Hirschkorn's action as the base
+  every other profile is a difference from is planned. All layers but one are
   measurable with a calliper and the trade's gauges; the material set needs a
   compression bench, so it is inherited, and anything computed from an
   inherited layer says so and shows as indicative.
@@ -1842,7 +1971,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), and the profiles that bind every number it starts from to a record or a stated assumption (§3.8), Hirschkorn's key on his printed frame among them, chosen on the bench, every drawn line marked by how its number is known (§5.2 b, §7.3), and the band, drawn by the driven sweep that reads D and U a second way (§2.2, §2.4), built; the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), and the profiles that bind every number it starts from to a record or a stated assumption (§3.8), Hirschkorn's key on his printed frame the default and the owner's measured section beside it, unweighed until he weighs one of its keys, chosen on the bench, every drawn line marked by how its number is known (§2, §5.2 b, §7.3), a key's mass weighed or published and never derived from its outline (§2.3), and the band, drawn by the driven sweep that reads D and U a second way (§2.2, §2.4), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

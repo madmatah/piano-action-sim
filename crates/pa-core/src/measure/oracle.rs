@@ -183,7 +183,7 @@ fn nearest(roots: [Option<f64>; 2], near: f64) -> Option<f64> {
 ///
 /// It takes the key top as level at both seats, dropping its height times
 /// one less the cosine of the attitude, and so misses the targets by that
-/// term, about 0.02 mm on the composite bench; it reads the front punching
+/// term, about 0.02 mm on the test bench; it reads the front punching
 /// alone, not the pin in its mortise. `back_bears` is where the key bears on
 /// its cloth, in its own frame, as the seated pose finds it, for the arm
 /// the rest turns about.

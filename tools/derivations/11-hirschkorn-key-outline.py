@@ -8,10 +8,11 @@ to A.3, A.9 and his regulation) from data/params/hirschkorn-boston-gp178-
 note52.json, whose frame convention puts every point in its body's frame, the
 key's origin at its pivot Pg1 on its underside. The bench's measuring point,
 13 mm back from the covering's lip, from data/params/touchweight-protocol.json;
-the length of the back rail cloth his profile lays at Pg5, and the borrowed
-balance bearing, felts, cloth and papers his profile's rules stand on, from
-data/profiles/hirschkorn.json. Each is read with json by a path relative to this
-file: no value of his, no pixel and no number of the profile is typed here.
+the length of the back rail cloth his profile lays behind Pg5 and the radius
+its edges are rounded to, and the borrowed balance bearing, felts, cloth and
+papers his profile's rules stand on, from data/profiles/hirschkorn.json. Each is
+read with json by a path relative to this file: no value of his, no pixel and no
+number of the profile is typed here.
 
 Prints:
   1. the similarity that carries the figure's pixels into his key's frame,
@@ -33,13 +34,19 @@ Prints:
      friction weight the bushings hold with the key level;
   6. his printed frame between its two stops, on his rounds of 5 mm and on
      the flat felts his profile draws with their tops where the rounds' tops
-     stand: the attitudes, the dip at Pk2 and at the key front, and what the
-     real felts change;
-  7. the numbers his profile states by a rule from his frame, each beside the
-     profile's: the front rail's and the back rail's heights, which put the
-     felts' tops where his rounds' tops stand on the borrowed balance
-     bearing, and the front mortise's place over Pg4; and the capstan's
-     height above its seat, which the bench computes as it builds his key.
+     stand, the washer read at its centre over Pg4 and the cloth lying wholly
+     under the chamfer, its rounded front edge over Pg5: the attitudes, the
+     dip at Pk2 and at the key front, where the key bears at the back on
+     each, and what the real felts change, and why;
+  7. the numbers his profile states by a rule from his frame or from the
+     trace, each beside the profile's: the front rail's and the back rail's
+     heights, which put the felts' tops where his rounds' tops stand on the
+     borrowed balance bearing, the back rail's place, which puts the cloth's
+     front edge over Pg5, the front mortise's place over Pg4, and the
+     thinned tail's length, from the key's end to where the keystick's full
+     height ends behind the capstan; and the capstan's height above its
+     seat, the keystick's full height, which the bench computes as it builds
+     his key.
 
 Heights are read from the drawn underside, a line through the chamfer's kink
 and the key's front, so that the fit's small turn against the drawn key
@@ -178,27 +185,28 @@ def derived():
     lip = mean_x(f["lip"])
     lip_top, lip_bottom = f["lip"]
     keytop_thickness = height(lip_top) - height(lip_bottom)
-    step = mean_x(f["step"])
-    step_top, step_foot = f["step"]
+    # The full height ends behind the capstan, at the foot of the cove it is
+    # drawn with; the line drawn down it further forward is no step, and its
+    # top is a point of the keystick's top.
+    line = mean_x(f["line_down_the_full_height"])
+    line_top = f["line_down_the_full_height"][0]
+    end = f["full_height_end"]
+    full_height_back, cove_foot = end[0][0], end[0]
+    raised_top = (height(end[1]) + height(end[2])) / 2
     wood_top = f["keystick_front"][1]
     tail_top = f["tail_end"][0]
     tail_end = mean_x(f["tail_end"])
-    tail_height = (height(tail_top) + height(step_foot)) / 2
+    tail_height = (height(tail_top) + height(cove_foot)) / 2
     button = f["key_button"]
     button_back, button_front = button[0][0], button[3][0]
     button_centre = (button_back + button_front) / 2
     button_height = (height(button[1]) + height(button[2])) / 2 - line_height(
-        wood_top, step_top, button_centre
-    )
-    block = f["capstan_block"]
-    block_back, block_front = block[0][0], block[2][0]
-    block_height = (height(block[1]) + height(block[2])) / 2 - line_height(
-        tail_top, step_foot, (block_back + block_front) / 2
+        wood_top, line_top, button_centre
     )
     check = f["back_check_block"]
     check_back, check_front = check[0][0], check[3][0]
     check_height = (height(check[1]) + height(check[2])) / 2 - line_height(
-        tail_top, step_foot, (check_back + check_front) / 2
+        tail_top, cove_foot, (check_back + check_front) / 2
     )
     head = f["capstan_head"]
     head_diameter = ((head[2][0] - head[1][0]) + (head[3][0] - head[0][0])) / 2
@@ -209,6 +217,7 @@ def derived():
     # radius, and it meets the head's side its sagitta lower.
     sagitta = dome - math.sqrt(dome * dome - (head_diameter / 2) ** 2)
     head_height = pk3[1] + dome - sagitta - head_bottom
+    stick_height = pk2[1] - keytop_thickness
     return {
         "front_edge": front_edge,
         "front_board": front_edge - keystick_front,
@@ -216,18 +225,15 @@ def derived():
         "keytop_thickness": keytop_thickness,
         "keytop_length": lip - f["covering_back"][0][0],
         # The covering's top passes through Pk2, a printed point on it.
-        "stick_height": pk2[1] - keytop_thickness,
+        "stick_height": stick_height,
         "capsule_length": button_front - button_back,
         "capsule_centre": button_centre,
         "capsule_height": button_height,
-        "capstan_block_back": block_back,
-        "capstan_block_length": block_front - block_back,
-        "capstan_block_height": block_height,
+        "full_height_back": full_height_back,
         "back_check_block_back": check_back,
         "back_check_block_length": check_front - check_back,
         "back_check_block_height": check_height,
         "tail_end": tail_end,
-        "tail_length": step - tail_end,
         "tail_height": tail_height,
         "capstan_diameter": shank_diameter,
         "capstan_head_diameter": head_diameter,
@@ -235,12 +241,14 @@ def derived():
     }, {
         "keystick front (the wood under the key front)": keystick_front,
         "covering's lip": lip,
-        "step from the keystick down to the thinned tail": step,
+        "line drawn down the full height, no step": line,
         "keystick's height as drawn, at its front": height(wood_top),
-        "keystick's height as drawn, at the step": height(step_top),
-        "covering's top as drawn, at Pk2": line_height(wood_top, step_top, pk2[0]) + keytop_thickness,
-        "capstan block's front": block_front,
-        "capstan's seat, the block's top": tail_height + block_height,
+        "keystick's height as drawn, at that line": height(line_top),
+        "covering's top as drawn, at Pk2": line_height(wood_top, line_top, pk2[0]) + keytop_thickness,
+        "full height's top as drawn behind that line": raised_top,
+        "  above the keystick's full height, dropped": raised_top - stick_height,
+        "  its length, from where the full height ends": line - full_height_back,
+        "capstan's seat, the keystick's full height": stick_height,
         "capstan's head, its bottom": head_bottom,
         "capstan's dome, its top (Pk3's height plus its radius)": pk3[1] + dome,
         "chamfer's kink as drawn": KINK[0],
@@ -275,9 +283,18 @@ def line_to_round(t, through, n, centre, r):
     return dot(sub(centre, p), m) - r
 
 
-def stops(back_half_length):
-    """Rest and bottom attitudes, radians nose-up, on his rounds and on flat
-    felts with their tops at the rounds' tops."""
+def stops(edge_radius):
+    """Rest and bottom attitudes, radians nose-up, on his rounds and on the
+    real felts, with where the key bears at the back at rest on each.
+
+    The felts have their tops at the rounds' tops. The front punching is read
+    at its centre, over Pg4, where the bench reads every punching. The cloth
+    lies wholly under the chamfer, behind Pg5's x, its front edge rounded to
+    edge_radius about a centre over Pg5's x: the chamfer, which at rest rises
+    towards the tail, bears on that edge, as a line on a round of
+    edge_radius. The chamfer is the line the bench draws, through the kink
+    with Pk5's normal made unit; his rounds keep the normal as printed, as
+    script 10 and the prototype take it."""
     pk4, n4 = point("key", "Pk4"), normal("key", "Pk4")
     pk5, n5 = point("key", "Pk5"), normal("key", "Pk5")
     pg4, r4 = point("ground", "Pg4"), radius("ground", "Pg4")
@@ -289,14 +306,22 @@ def stops(back_half_length):
     # The chamfer meets the flat where Pk5's line crosses y = 0.
     kink = pk5[0] + n5[1] * pk5[1] / n5[0]
     back_top, front_top = pg5[1] + r5, pg4[1] + r4
-    # The front punching is read at its centre, where the bench reads every
-    # punching; the cloth's face is flat, and the key, nose-up, is lowest
-    # over it at its kink where the strip reaches in front of the kink.
-    strip_front = pg5[0] + back_half_length
-    if strip_front < kink:
-        raise SystemExit("the strip falls within the chamfer: the key bears on its edge, not on its kink")
-    flats = (math.asin(back_top / kink), math.atan2(front_top, pg4[0]))
-    return rounds, flats, kink, strip_front
+    edge = (pg5[0], back_top - edge_radius)
+    if edge[0] + edge_radius >= kink:
+        raise SystemExit("the cloth reaches the chamfer's kink: the key bears on its kink, not on the cloth's edge")
+    chamfer = unit(n5)
+    rest = bisect(lambda t: line_to_round(t, (kink, 0.0), chamfer, edge, edge_radius), 0.0, 0.1)
+    # Where each bears: on the round's or the edge's circle, against the
+    # chamfer's normal turned to the attitude. On the edge, between its
+    # front and its top: the chamfer rises towards the tail at rest.
+    def bearing(t, centre, r):
+        m = rot(t, chamfer)
+        return (centre[0] - r * m[0], centre[1] - r * m[1])
+    at_edge = bearing(rest, edge, edge_radius)
+    if not (edge[0] <= at_edge[0] <= edge[0] + edge_radius and at_edge[1] >= edge[1]):
+        raise SystemExit("the chamfer does not bear on the cloth's front edge")
+    felts = (rest, math.atan2(front_top, pg4[0]))
+    return rounds, felts, kink, edge, bearing(rounds[0], pg5, r5), at_edge
 
 
 def pg_top(name):
@@ -387,8 +412,9 @@ def main():
           f" {friction / (G * arm / 1000.0) * 1000.0:.4f} g")
 
     print("\n=== 6. His printed frame between its stops: his rounds, and the flat felts his profile draws ===")
-    half = mm(next(v for v in PROFILE["values"] if v["param"] == "back_rail.half_length"))
-    (rest_r, bottom_r), (rest_f, bottom_f), kink, strip_front = stops(half)
+    bound = {v["param"]: v for v in PROFILE["values"]}
+    half, edge_radius = mm(bound["back_rail.half_length"]), mm(bound["back_rail.cloth_edge_radius"])
+    (rest_r, bottom_r), (rest_f, bottom_f), kink, edge, on_round, on_edge = stops(edge_radius)
     pk2 = point("key", "Pk2")
     key_front = (rec["front_edge"], rec["stick_height"] + rec["keytop_thickness"])
 
@@ -399,12 +425,31 @@ def main():
         print(f"  {label:24s} rest {math.degrees(rest):+.6f} deg ({rest:+.9f} rad),"
               f" bottom {math.degrees(bottom):+.6f} deg ({bottom:+.9f} rad),"
               f" dip at Pk2 {dip(rest, bottom, pk2):.4f} mm, at the key front {dip(rest, bottom, key_front):.4f} mm")
-    print(f"  the cloth strip, {2 * half:.1f} mm long on Pg5, reaches {strip_front - kink:.2f} mm in front of the"
-          f" chamfer's kink at {kink:.3f} mm, so the key rests on its kink;"
+    print(f"  the cloth strip, {2 * half:.1f} mm long, its face from {edge[0] - 2 * half:.2f} to {edge[0]:.2f} mm and"
+          f" its edges rounded to {edge_radius:.1f} mm, lies wholly under the chamfer, its front"
+          f" {kink - edge[0] - edge_radius:.2f} mm behind the chamfer's kink at {kink:.3f} mm;"
           f" the front punching is read at its centre, over Pg4")
-    print(f"  the real felts change the rest by {math.degrees(rest_f - rest_r):+.6f} deg, the bottom by"
-          f" {math.degrees(bottom_f - bottom_r):+.6f} deg, and the dip at Pk2 by"
-          f" {dip(rest_f, bottom_f, pk2) - dip(rest_r, bottom_r, pk2):+.4f} mm")
+    print(f"  at rest the key bears on his round at ({on_round[0]:.4f}, {on_round[1]:.4f}) mm and on the cloth's"
+          f" rounded front edge at ({on_edge[0]:.4f}, {on_edge[1]:.4f}) mm,"
+          f" {on_round[0] - on_edge[0]:.4f} mm further back along the chamfer")
+    print(f"  the real felts change the rest by {math.degrees(rest_f - rest_r):+.9f} deg, the bottom by"
+          f" {math.degrees(bottom_f - bottom_r):+.9f} deg, and the dip at Pk2 by"
+          f" {dip(rest_f, bottom_f, pk2) - dip(rest_r, bottom_r, pk2):+.6f} mm")
+    # Why: a line resting on a round passes over the round's centre above its
+    # top by r (1/cos a - 1), a its slope from level; and script 10 closes
+    # the chamfer on its round with Pk5's normal as printed, not unit.
+    n5, r5, r4 = normal("key", "Pk5"), radius("ground", "Pg5"), radius("ground", "Pg4")
+    chamfer = math.atan(n5[0] / n5[1])
+
+    def above(r, a):
+        return r * (1.0 / math.cos(a) - 1.0) * 1000.0
+
+    print(f"  why, um over each support's centre: his back round {above(r5, chamfer - rest_r):.3f}"
+          f" (the chamfer {math.degrees(chamfer - rest_r):.3f} deg from level),"
+          f" the cloth's edge {above(edge_radius, chamfer - rest_f):.3f};"
+          f" his front round {above(r4, -bottom_r):.3f} (the flat {math.degrees(-bottom_r):.3f} deg),"
+          f" the washer read at its centre 0; Pk5's normal as printed, {math.hypot(*n5):.5f} long,"
+          f" stands the chamfer {r5 * (1.0 / math.hypot(*n5) - 1.0) * 1000.0:.3f} further off his back round")
 
     print("\n=== 7. The numbers his profile derives from his frame by a rule, and states ===")
     stated = {v["param"]: v for v in PROFILE["values"]}
@@ -420,7 +465,9 @@ def main():
     rules = {
         "front_rail.height": bearing + front_top - value_of("front_punching.felt") - value_of("front_punching.papers"),
         "back_rail.height": bearing + back_top - value_of("back_rail.cloth"),
+        "back_rail.x": point("ground", "Pg5")[0] - value_of("back_rail.half_length"),
         "front_mortise.from_front_edge": rec["front_edge"] - point("ground", "Pg4")[0],
+        "tail_length": rec["full_height_back"] - rec["tail_end"],
     }
     print(f"  the balance bearing, borrowed: {bearing:.2f} mm above the keybed; his rounds' tops"
           f" {front_top:+.2f} mm (Pg4) and {back_top:+.2f} mm (Pg5) from it")
@@ -429,7 +476,7 @@ def main():
         same = f"{x:.2f}" == f"{recorded:.2f}"
         ok &= same
         print(f"    {param:30s} {x:8.2f}   profile {recorded:8.2f}{'' if same else '   DIFFERS'}")
-    seat = rec["tail_height"] + rec["capstan_block_height"]
+    seat = rec["stick_height"]
     print(f"  the capstan's height above its seat, which the bench computes as it builds his key:"
           f" Pk3's {pk3[1]:.1f} + {dome:.1f} - {seat:.2f} = {pk3[1] + dome - seat:.2f} mm")
     if not ok:

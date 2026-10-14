@@ -474,8 +474,8 @@ pub enum Control {
 pub const PROFILE: &str = "profile";
 
 /// The key's mass as the statics take it, grams, in the settings document:
-/// as weighed, or derived from its volume until it is. Not a path: what the
-/// weighing, or the estimate, gives.
+/// as published or as weighed, none until it is weighed. Not a path: what
+/// the weighing, or the source, gives.
 pub const KEY_MASS: &str = "key.mass_g";
 /// The engine's total of the papers under the balance punching, in the
 /// settings document.

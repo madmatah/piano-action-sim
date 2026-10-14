@@ -1,5 +1,5 @@
 //! What is known of a key's mass: weighed whole, as the trade weighs a key,
-//! or estimated where nobody has weighed it.
+//! published whole by a source, or nothing, where nobody has weighed it.
 //!
 //! # Weighed whole
 //!
@@ -28,14 +28,23 @@
 //! of his action. The statics read its mass and its centre of mass as
 //! published; nothing is estimated.
 //!
+//! # Not weighed
+//!
+//! A key nobody has weighed has no mass in the model ([`KeyMass::Unweighed`]):
+//! no volume and no density stands in for one, since an outline draws a key
+//! and never weighs it. What reads the key's mass is refused until it is
+//! weighed; what reads none, its key height and dip, its key weight ratio,
+//! the key friction weight zeroed on the frame, is read all the same.
+//!
 //! # What a scale does not give
 //!
 //! The height of the centre of mass. On the levelled jig it moves no reading;
 //! on the frame it enters through the key's tilt alone, each millimetre of it
 //! moving a reading taken on the tilted key by the key's mass times the sine
 //! of the tilt over the measuring arm: about 0.02 g of down weight per
-//! millimetre on the composite key, 2.3° nose-up at the top of its stroke. So a
-//! weighed key takes it from an estimate of the key's ([`KeyMass::props`]),
+//! millimetre on a key of 120 g, 2.3° nose-up at the top of its stroke. So a
+//! weighed key takes it from an estimate, its drawn section's area centroid
+//! ([`super::KeyDesign::section_centroid`]), handed to [`KeyMass::props`],
 //! and the readings the tilt reaches name it as estimated
 //! ([`crate::measure::measurement::Input::CentreOfMassHeight`]).
 
@@ -73,11 +82,10 @@ pub enum KeyMass {
         /// dynamics, read by nothing in the statics, shown nowhere.
         inertia: f64,
     },
-    /// Nobody has weighed the key: an estimate of its mass and centre of
-    /// mass stands in for the whole, which the bench derives for the
-    /// composite key from its volume at an assumed density
+    /// Nobody has weighed the key: it has no mass in the model, and every
+    /// reading that needs one is refused until it is weighed
     /// (`docs/FOUNDATIONS.md` §2.3).
-    Estimated,
+    Unweighed,
     /// Weighed whole, its leads in it.
     Weighed {
         /// Its mass, kilograms.
@@ -145,16 +153,6 @@ impl KeyMass {
         })
     }
 
-    /// The mass and centre of mass the statics take where they need no
-    /// estimate: a published key's, as published; `None` for a key whose
-    /// statics stand partly or wholly on an estimate ([`Self::props`]).
-    pub fn whole(&self) -> Option<MassProps> {
-        match *self {
-            Self::Published { mass, centre, .. } => Some(MassProps { mass, com: centre }),
-            Self::Estimated | Self::Weighed { .. } => None,
-        }
-    }
-
     /// `key` weighed whole: `mass_g` grams on a scale, and a front weight of
     /// `front_weight_g` grams read on the levelled jig, its roller
     /// `from_lip_m` metres back from the covering's lip; or why those numbers
@@ -200,23 +198,24 @@ impl KeyMass {
         })
     }
 
-    /// The mass and centre of mass the statics take, `estimate` standing in
-    /// for what is not weighed: the whole of an estimated key's; a weighed
-    /// key's own mass, its centre of mass along the key where its static
-    /// moment over its weight puts it, at the height of the estimate's, which
-    /// no scale gives; a published key's as published, the estimate unread.
-    pub fn props(&self, estimate: MassProps) -> MassProps {
+    /// The mass and centre of mass the statics take, `centre_height` metres
+    /// above the key's underside standing in for what no scale gives: a
+    /// weighed key's own mass, its centre of mass along the key where its
+    /// static moment over its weight puts it, at `centre_height`; a
+    /// published key's as published, `centre_height` unread; none for a key
+    /// nobody has weighed.
+    pub fn props(&self, centre_height: f64) -> Option<MassProps> {
         match *self {
-            Self::Estimated => estimate,
-            Self::Published { mass, centre, .. } => MassProps { mass, com: centre },
+            Self::Unweighed => None,
+            Self::Published { mass, centre, .. } => Some(MassProps { mass, com: centre }),
             Self::Weighed {
                 mass,
                 static_moment_n_m,
                 ..
-            } => MassProps {
+            } => Some(MassProps {
                 mass,
-                com: Point::new(static_moment_n_m / (mass * G), estimate.com.y),
-            },
+                com: Point::new(static_moment_n_m / (mass * G), centre_height),
+            }),
         }
     }
 }
@@ -226,7 +225,6 @@ mod tests {
     use super::*;
     use crate::measure::jig::KeyJig;
     use crate::measure::TouchweightProtocol;
-    use crate::parts::fixtures::mass_of;
     use crate::test_fixture::MEASURING_POINT_HALF_INCH;
 
     /// The protocol whose measuring point stands `from_lip` back from the
@@ -238,9 +236,9 @@ mod tests {
         }
     }
 
-    /// Weighings of the composite key that exercise every sign: heavy in
-    /// front, heavy behind, balanced on its pin, each read at another
-    /// measuring point, as grams, grams and metres from the lip.
+    /// Weighings of the test key that exercise every sign: heavy in front,
+    /// heavy behind, balanced on its pin, each read at another measuring
+    /// point, as grams, grams and metres from the lip.
     const WEIGHINGS: [(f64, f64, f64); 4] = [
         (121.1, 6.5, 0.013),
         (151.1, -8.1, 0.013),
@@ -259,10 +257,13 @@ mod tests {
     #[test]
     fn a_weighed_key_reads_its_front_weight_back_where_it_was_read() {
         let key = crate::test_fixture::key();
-        let estimate = mass_of(&key).expect("the composite key has a volume");
+        let height = key
+            .section_centroid()
+            .expect("the test key encloses wood")
+            .y;
         for (mass_g, grams, from_lip) in WEIGHINGS {
             let weighed = KeyMass::weighed(&key, mass_g, grams, from_lip).expect("a weighing");
-            let props = weighed.props(estimate);
+            let props = weighed.props(height).expect("a weighed key has a mass");
             let read = |from: f64| {
                 KeyJig::new(&key, &at(from), Some(props))
                     .expect("a key on the jig")
@@ -300,40 +301,39 @@ mod tests {
 
     /// Consistency: **what no scale gives comes from the estimate, and
     /// nothing else does.** A weighed key's centre of mass stands at the
-    /// estimate's height to the bit, its mass is its own; an estimated key's
-    /// mass and centre of mass are the estimate's to the bit.
+    /// height it is handed to the bit, its mass is its own; a key nobody has
+    /// weighed has no mass at all.
     #[test]
     fn the_height_no_scale_gives_is_the_estimates() {
         let key = crate::test_fixture::key();
-        let estimate = mass_of(&key).expect("the composite key has a volume");
-        let same = KeyMass::Estimated.props(estimate);
-        assert_eq!(same.mass.to_bits(), estimate.mass.to_bits());
-        assert_eq!(same.com.x.to_bits(), estimate.com.x.to_bits());
-        assert_eq!(same.com.y.to_bits(), estimate.com.y.to_bits());
+        let height = key
+            .section_centroid()
+            .expect("the test key encloses wood")
+            .y;
+        assert_eq!(KeyMass::Unweighed.props(height), None);
         for (mass_g, grams, from_lip) in WEIGHINGS {
             let props = KeyMass::weighed(&key, mass_g, grams, from_lip)
                 .expect("a weighing")
-                .props(estimate);
-            assert_eq!(props.com.y.to_bits(), estimate.com.y.to_bits());
+                .props(height)
+                .expect("a weighed key has a mass");
+            assert_eq!(props.com.y.to_bits(), height.to_bits());
             assert_eq!(props.mass.to_bits(), (mass_g / 1000.0).to_bits());
         }
     }
 
     /// Consistency: **a key published whole is read as published**: its
-    /// mass and centre of mass to the bit, the estimate unread, and nothing
-    /// asked of an estimate; a mass of nothing or a centre of mass off the
-    /// key is no key's.
+    /// mass and centre of mass to the bit, the height it is handed unread; a
+    /// mass of nothing or a centre of mass off the key is no key's.
     #[test]
     fn a_key_published_whole_is_read_as_published() {
         let key = crate::test_fixture::key();
         let centre = Point::new(0.0514, 0.0158);
         let published = KeyMass::published(&key, 0.12008, centre, 0.00275).expect("a key");
-        let estimate = mass_of(&key).expect("the composite key has a volume");
-        for props in [published.props(estimate), published.whole().expect("whole")] {
+        for height in [0.0, 0.0125, f64::NAN] {
+            let props = published.props(height).expect("a published key has a mass");
             assert_eq!(props.mass.to_bits(), 0.12008_f64.to_bits());
             assert_eq!(props.com, centre);
         }
-        assert_eq!(KeyMass::Estimated.whole(), None);
         assert_eq!(
             KeyMass::published(&key, 0.0, centre, 0.00275),
             Err(NotAWeighing::MassNotPositive)

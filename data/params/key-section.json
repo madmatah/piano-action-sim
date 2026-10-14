@@ -68,7 +68,7 @@
       "unit": "mm",
       "reliability": "V",
       "what_for": "Something for the back check wire to be driven into, where the hammer's tail arrives.",
-      "note": "Its length is measured; its place along the key is not. The engine places the block from the balance pin, because the action fixes where the hammer's tail falls and the key's length does not: a key lengthened at the back keeps its block where it stands. The composite key's block has its back end 220 mm behind the balance pin, where the tail measured on this key ends (the tail beginning immediately behind the block, tail_length below): 500 mm from the key's end to the covering's lip, the lip 260 mm in front of the pin, put the key's end 240 mm behind it, and 20 mm of tail end 220 mm behind it. Derived, not measured, and the 260 mm rests on the composite key front of 258 mm, which has no record: data/profiles/composite.json states it as an assumption."
+      "note": "Its length is measured; its place along the key is not. The engine places the block from the balance pin, because the action fixes where the hammer's tail falls and the key's length does not: a key lengthened at the back keeps its block where it stands. The measured section's block has its back end 220 mm behind the balance pin, where the tail measured on this key ends (the tail beginning immediately behind the block, tail_length below): 500 mm from the key's end to the covering's lip, the lip 260 mm in front of the pin, put the key's end 240 mm behind it, and 20 mm of tail end 220 mm behind it. Derived, not measured, and the 260 mm rests on a key front of 258 mm, which has no record: data/profiles/measured-section.json states it as an assumption."
     },
     {
       "name": "back_check_block_height",
@@ -83,7 +83,7 @@
       "unit": "mm",
       "reliability": "V",
       "what_for": "The tail is cut down to set the height the damper system bears at. It begins immediately behind the back check block.",
-      "note": "Immediately behind the block is what this key shows, and the composite key keeps it. It is not a rule of the engine: a key whose tail ends further back carries the keystick's full height between the tail and the block, and a tail running on under the block is refused."
+      "note": "Immediately behind the block is what this key shows, and the measured section keeps it. It is not a rule of the engine: a key whose tail ends further back carries the keystick's full height between the tail and the block, and a tail running on under the block is refused."
     },
     {
       "name": "tail_thickness",
@@ -117,14 +117,14 @@
       "value": 0.0,
       "unit": "mm",
       "reliability": "V",
-      "what_for": "There is none. The capstan screws into a hole bored straight through the keystick; the pad the model used to carry does not exist."
+      "what_for": "There is none: the capstan screws into a hole bored straight through the keystick, with no pad glued under it."
     },
     {
       "name": "capstan_behind_balance_owner",
       "value": 122.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "Measured on the owner's key, and recorded rather than used: a design parameter that varies by maker and by note. The bench keeps 129.5 mm, which sets its key ratio and which no source gives: Thorin gives 128.7 mm (his thesis, §4.5.2) and 129 mm (his Table 2.1)."
+      "note": "Measured on the owner's key: a design parameter that varies by maker and by note, and with the key front's place the one that sets the key weight ratio. The measured section's profile places its capstan here, read as a position behind the balance pin. For comparison, Thorin gives 128.7 mm (his thesis, §4.5.2) and 129 mm (his Table 2.1)."
     },
     {
       "name": "front_mortise_from_front_edge",
@@ -141,6 +141,15 @@
       "reliability": "S",
       "what_for": "The slot's length ALONG the key. Longer than the 5 mm pin standing in it, because the key swings about its balance pin and the mortise travels through a small arc past a pin that does not move. The clearance is also what lets a frame be a few tenths out of place without the key knowing, so it is the tolerance a frame design is judged against.",
       "note": "Not measured, and not the lateral fit: across the keyboard the mortise is bushed and close on the pin's wide faces, which is what holds the key straight and is not a dimension in the sagittal plane. 8 mm is 3 mm of total slack on a 5 mm pin."
+    },
+    {
+      "name": "front_mortise_depth",
+      "value": 22.0,
+      "unit": "mm",
+      "reliability": "V",
+      "confirmed": "2026-10-14",
+      "what_for": "How far the front mortise reaches up into the key, from its underside: 3 mm of recess, then 19 mm of mortise above it. It is the mortise stop: how far the front rail pin may rise into the key at the bottom of its stroke (key-frame-sections.json, the_pin_must_stay_in_its_mortise).",
+      "note": "Measured by the owner on these keys. The engine draws the mortise as one slot of this depth, open at the underside; the recess and the mortise are not told apart."
     }
   ],
   "materials": {
@@ -150,15 +159,17 @@
     "what_for": "Each piece of the key is drawn as its own part with its own material, so that a reader tells the pieces apart as on a real key. A colour is the view's choice from the material; the material is the model's."
   },
   "deliberately_absent": [
-    "The hollow in the top of the key behind the capstan, which clears a rail. Left out until the rail it clears is modelled - the owner's call, and the right one: a hollow with no reason to be where it is would be shaped from a photograph again.",
-    "The balance mortise. None of its dimensions is measured, and the balance pin's height waits on the same measurement (key-frame-sections.json), so it is not drawn and the balance pin stands hidden in the key's wood, rather than in a hole shaped from a guess. The front mortise is drawn: its depth is measured, and its place and length are the two S records above."
+    "The balance mortise. None of its dimensions is measured, and the balance pin's height waits on the same measurement (key-frame-sections.json), so it is not drawn and the balance pin stands hidden in the key's wood, rather than in a hole shaped from a guess. The front mortise is drawn: its depth is measured (front_mortise_depth), and its place and length are the two S records above it."
   ],
   "still_to_measure": [
     "Where the capsule sits along the key. It depends on whether the key is a natural or a sharp, and belongs with the balance rail rather than here.",
-    "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. This is now the measurement worth taking, and the one to ask for first. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the composite key beds flat, and the composite key holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
-    "The front mortise: how far back from the key's front end it is cut, and how long the slot is along the key. Both are [E] above, and the second is the tolerance a frame design is judged against.",
-    "Where the back check block stands along the key, as a distance from the balance pin to its back end. The composite key's 220 mm is where the measured tail ends, derived and not measured.",
+    "One of these keys weighed whole, as a key that arrives leaded is weighed: its mass on a scale, its front weight on Stanwood's jig, and how far back from the covering's lip the weight was centred. Until then the measured section has no mass and refuses every reading that needs one. It is the entry point of the first validation (docs/FOUNDATIONS.md §5.2 a), and the measurement to ask for first.",
+    "Where the key stands along its balance pin: the distance from the centre of the balance hole to the key front, or to the covering's lip. The measured section assumes its key front 258 mm in front of the pin and lays its measured 500 mm back from the lip for its tail; with the capstan measured at 122 mm, that front gives a key weight ratio of 0.494, under the 0.50 to 0.60 published for a natural, so the distance decides the ratio.",
+    "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the measured section beds flat, and it holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
+    "The front mortise: how far back from the key's front end it is cut, and how long the slot is along the key. Both are S above, and the second is the tolerance a frame design is judged against.",
+    "Where the back check block stands along the key, as a distance from the balance pin to its back end. The measured section's 220 mm is where the measured tail ends, derived and not measured.",
+    "The clearance cut in the top of the key between the capstan and the back check block, not right behind the capstan: it is there so that the wippen rail, which runs across the keyboard over the keys, cannot rub the key, and behind it the key comes back to its full height, the back check block glued on that. Where its two ends stand, as distances behind the balance pin, and how deep it is cut below the full top. The engine draws such a clearance, placed from the balance pin as the back check block is, since the action places the rail it clears; the measured section's profile states it absent until it is measured.",
     "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm the key bears at and meets the targets on each, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.049 degrees and leaves key height and dip on their targets, within the paper the drawer lays them in: a back rail's position is forgiving. The bound is real and the number is not critical."
   ],
-  "not_weighed_on_purpose": "A single key's mass would not transfer: the owner notes that keys differ across the keyboard in shape and in how much wood they carry. So the model's mass follows from the profile, and the profile is still missing the hollow - which makes the figure an over-estimate by exactly the wood not yet taken out."
+  "not_weighed_here": "No mass is recorded in this file: a key's mass is not a property of its section. The owner notes that keys differ across the keyboard in shape and in how much wood and lead they carry, so each key is weighed whole, on the bench, and an outline never weighs one."
 }

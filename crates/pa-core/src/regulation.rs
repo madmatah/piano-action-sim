@@ -12,7 +12,7 @@
 //! cloth's edge or on its own corner, the front pin bottoming in its mortise,
 //! the pin meeting the wood beside its slot. A closed form taking the key top
 //! as level would miss by the key top's height times the square of the
-//! attitude, about 0.02 mm of key height and dip on the composite bench, a
+//! attitude, about 0.02 mm of key height and dip on the test bench, a
 //! quarter of the thinnest paper.
 //!
 //! # Sequential bisection, in the trade's order

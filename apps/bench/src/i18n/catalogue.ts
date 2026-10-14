@@ -211,8 +211,9 @@ export interface Catalogue {
   readonly weighing: {
     readonly intro: string
     readonly why: Worded<WeighingRefusal>
-    /** The key's mass as the bench holds it: derived from its volume. */
-    notWeighed(massG: number | null): string
+    /** A key nobody has weighed: it has no mass, and what needs one is
+     * refused until it is weighed. */
+    readonly notWeighed: string
     /** The key's weighing as it was typed. */
     weighed(massG: number, frontWeightG: number, fromLipMm: number): string
     /** The key's mass as its profile's source publishes it, whole. */
@@ -229,8 +230,8 @@ export interface Catalogue {
    * stroke, down and back. */
   readonly band: {
     readonly title: string
-    /** What the band is, and how D and U are read on it, given the step
-     * it is swept by. */
+    /** What the band is, how its extremes are marked and how they differ
+     * from the sheet's D and U, given the step it is swept by. */
     caption(stepMm: string): string
     /** The horizontal axis, its unit named. */
     readonly travel: string
@@ -249,16 +250,20 @@ export interface Catalogue {
     /** The ends of the window, under the axis. */
     readonly topSeat: string
     readonly bottomSeat: string
-    /** The down weight marked on the band: what the trade reads it as, and
-     * its value in full. */
-    downMarker(shown: string, exact: string): string
-    /** The up weight marked on the band. */
-    upMarker(shown: string, exact: string): string
+    /** The down curve's greatest force, marked where it falls: in full, to
+     * the hundredth of a gram, never as a gram weight reads it. */
+    downMarker(grams: string): string
+    /** The up curve's least force, marked where it falls, likewise. */
+    upMarker(grams: string): string
+    /** An extreme's label and how far below the top seat it falls, for a
+     * reader without the chart. */
+    extremeAt(label: string, travelMm: string): string
     /** The weight on the measuring point, beside its line. */
     weightLine(grams: string): string
     /** The two forces at one travel, where the pointer is. */
     readout(travelMm: string, downG: string, upG: string): string
-    /** Why D and U on the band stand a step inside each seat. */
+    /** Why the band's extremes stand a step inside each seat, and so a
+     * few thousandths of a gram from the sheet's D and U in full. */
     readonly seatsNote: string
     /** The band drawn before the last edit that changed it. */
     readonly stale: string
@@ -282,6 +287,8 @@ export interface Catalogue {
     gaps(frontMm: number | null, backMm: number | null): string
     /** The bushings' friction, named by Stanwood's reading of it. */
     bushings(keyFrictionWeight: string | null): string
+    /** Why a key nobody has weighed has no touch verdict. */
+    readonly notWeighed: string
     /** The note on centre bearings, with the edges overlapping the key. */
     centreNote(overlaps: readonly { pair: Contact; overlap_mm: number }[]): string
     readonly noPressNote: string

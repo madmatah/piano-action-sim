@@ -165,8 +165,8 @@ impl Touchweight {
 /// saying which lip; the 1996 paper's *"front vertical edge of the key"* is
 /// superseded with the rest of its protocols. The bench takes the
 /// **covering's** lip, the owner's choice: the front edge of the keytop, which
-/// overhangs the key front ([`KeyDesign::lip`]) — by 2 mm on the composite
-/// key, so the measuring point stands 2 mm further forward than one measured
+/// overhangs the key front ([`KeyDesign::lip`]) — by 2 mm on the measured
+/// key section, so the measuring point stands 2 mm further forward than one measured
 /// from the key front, and every touchweight is read on a 0.8 % longer arm.
 /// Key height and key dip keep their own datum, the key front.
 ///

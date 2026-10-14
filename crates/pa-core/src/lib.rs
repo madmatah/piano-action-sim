@@ -12,7 +12,7 @@
 //! | [`mechanism`] | bodies in a tree: poses, Jacobian columns, loads, coordinate limits and friction, prescribed coordinates and their reactions, the parts the bodies carry and the contacts declared between them |
 //! | [`contact`] | parts on bodies, the ranges of their outlines a contact may read, contact pairs and their rows over every coordinate, how deep drawn parts stand in one another, and how a key bears on a stop |
 //! | [`solve`] | the static solve: one load increment, its box problem and the dense algebra under it |
-//! | [`parts`] | the key and its frame as parametric designs, the parts they build, the composite key's mass, and what is known of a key's mass, weighed whole or estimated |
+//! | [`parts`] | the key and its frame as parametric designs, the parts they build, and what is known of a key's mass, weighed whole, published or not at all |
 //! | [`parts::faults`] | what about a key and its frame no keyboard could be built from, read off the drawn parts |
 //! | [`parts::mounts`] | the mechanisms a key is put in to be read, the jig and the key on its frame, free to lift off its balance punching or turning on a pivot, the key's contacts with its frame, the solve that lets it lift, and its nominal pose there |
 //! | [`parts::verdicts`] | what holds a key where it stands, from determinate quantities |
@@ -26,7 +26,7 @@
 //! | [`regulation`] | the regulation solve: key height and dip targets to the papers laid on the two punchings, by the seated pose itself |
 //! | [`registry`] | what each setting of a part admits, declared beside the part's fields: its quantity, hard range, step, layer and kind |
 //! | [`validate`] | the validation layer: what no part could be built as, refused with the limiting dimension and the shortfall before any solve |
-//! | `test_fixture` | the composite key, its frame, the drawer and Stanwood's protocol as Rust literals, for tests only: the engine starts from no number of its own |
+//! | `test_fixture` | the owner's measured key section, its frame, the drawer, Stanwood's protocol and a test weighing as Rust literals, for tests only: the engine starts from no number of its own |
 //!
 //! # What holds today, and what holds it
 //!

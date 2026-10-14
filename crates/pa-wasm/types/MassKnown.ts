@@ -3,4 +3,4 @@
 /**
  * How the key's mass is known.
  */
-export type MassKnown = "estimated" | "weighed" | "published";
+export type MassKnown = "unweighed" | "weighed" | "published";

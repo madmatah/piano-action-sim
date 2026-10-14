@@ -1,6 +1,6 @@
 {
-  "profile": "composite",
-  "what": "The bench's composite key: the owner's measured key section, with a capstan and a key front no source gives, on the owner's measured key frame with its rails placed under the key, weighed by Stanwood's protocols. Not a model of any instrument: a plausible grand natural, each value either recorded or assumed here with its reason.",
+  "profile": "measured-section",
+  "what": "The owner's measured key section: a natural of the middle of a grand keyboard, its keystick, covering, key front, glued blocks, thinned tail and its felt, chamfer, front mortise and capstan's place as he measured them on his keys, on the key frame he measured, its rails placed under the key by the rule a frame is built to, regulated on arrival. Not weighed: nobody has weighed one of these keys whole, so the key has no mass until the bench's user weighs one, and every reading that needs its mass is refused until then: front weight, down and up weight, balance and friction weight, Stanwood's key friction weight and the band. Key height, dip, the key weight ratio, the key friction weight zeroed on the frame and the faults read no mass, and are read. Where the key stands along its balance pin is not measured: its key front is assumed 258 mm in front of the pin, and its tail follows from its measured length.",
   "instruments": [
     "natural keys from a grand piano keyboard",
     "a grand piano key frame"
@@ -10,8 +10,8 @@
     "why": "A natural of the middle of the keyboard: it stands on the row of pins in front, which is the row the owner's frame was measured on."
   },
   "key_mass": {
-    "is": "volume_model",
-    "why": "Not weighed. The keystick is integrated as a uniform prism of an assumed width and density and the steel capstan turned from its profile; that estimate stands for the key's whole mass until the key is weighed, and afterwards for the height of its centre of mass, which no scale gives. It cannot predict a real key's front weight, which makes every touchweight of this profile an indication."
+    "is": "unweighed",
+    "why": "Nobody has weighed one of these keys. An outline draws a key and never weighs it, and another key's mass on these arms would describe no key, so the key has no mass until it is weighed whole on the bench, as a key that arrives leaded is weighed: its mass on a scale, and its front weight on Stanwood's jig with how far back from the covering's lip the weight was centred. What would replace this: one of these keys weighed so, the three numbers typed in the bench's weighing; the height of its centre of mass, which no scale gives, is then estimated from the drawn section's area centroid."
   },
   "arrival": {
     "is": "regulated",
@@ -23,7 +23,7 @@
       "value": 258.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "No record. 13 mm ahead of Thorin's 245 mm key arm (Thorin 2013, Table 2.1): with the capstan below it gives a key weight ratio of 0.524, inside the 0.50 to 0.60 published for a natural. Key height and dip are read here, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, at 247 mm."
+      "why": "Not measured: where the key front stands in front of the balance pin, which the owner's measurement of the distance from the centre of the balance hole to the key front, or to the covering's lip, would replace. Assumed 13 mm ahead of Thorin's 245 mm key arm (Thorin 2013, Table 2.1). Key height and dip are read here, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, at 247 mm: with the capstan measured 122 mm behind the pin, a key weight ratio of 0.494, a hundredth under the 0.50 to 0.60 published for a natural."
     },
     {
       "param": "tail_end",
@@ -31,14 +31,13 @@
       "unit": "mm",
       "reliability": "E",
       "rule": "The key's measured overall length, 500 mm from its end to the covering's lip (key-section.json, key_length_overall), laid back from the lip at 258 + 2 = 260 mm: 260 - 500 = -240 mm.",
-      "why": "The measured length placed on the assumed key front, so it rests on that assumption too."
+      "why": "The measured length placed on the assumed key front, so it rests on that assumption and moves with it until the balance pin's place along the key is measured."
     },
     {
       "param": "capstan.x",
-      "value": -129.5,
-      "unit": "mm",
-      "reliability": "S",
-      "why": "No source gives it: Thorin gives 128.7 mm (his thesis, section 4.5.2) and 129 mm (his Table 2.1). It sets the key weight ratio. The owner's measured 122 mm is recorded in key-section.json and belongs to his key's own profile, not to this composite."
+      "record": "key-section.json",
+      "pointer": "/records/capstan_behind_balance_owner",
+      "derive": "behind"
     },
     {
       "param": "front_mortise.from_front_edge",
@@ -52,11 +51,8 @@
     },
     {
       "param": "front_mortise.depth",
-      "value": 22.0,
-      "unit": "mm",
-      "reliability": "E",
-      "rule": "3 mm of recess and 19 mm of mortise above it: 3 + 19 = 22 mm, measured from the key's underside.",
-      "why": "Read on the key of the owner's measured frame and written in a note of key-frame-sections.json (the_pin_must_stay_in_its_mortise), not as a record of its own. It is the mortise stop: how far the front pin may rise into the key at the bottom of its stroke."
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_depth"
     },
     {
       "param": "stick_height",
@@ -89,7 +85,7 @@
       "unit": "mm",
       "reliability": "E",
       "rule": "Where the measured thinned tail ends on this key, the tail beginning right behind the block as measured: the key's end at -240 mm plus the tail's 20 mm (key-section.json, tail_length) = -220 mm.",
-      "why": "Derived, not measured: the block's own place along the key is not measured. Placed from the balance pin, as the action places it, so a key lengthened at the back keeps it. It bounds how far back the capstan and the thinned tail may reach, and through the volume model it moves the key's estimated mass and centre of mass."
+      "why": "Derived, not measured: the block's own place along the key is not measured. Placed from the balance pin, as the action places it, so a key lengthened at the back keeps it. It bounds how far back the capstan and the thinned tail may reach."
     },
     {
       "param": "back_check_block_length",
@@ -97,9 +93,9 @@
       "pointer": "/records/back_check_block_length"
     },
     {
-      "param": "capstan_block",
+      "param": "top_clearance",
       "none": true,
-      "why": "The capstan screws straight into the keystick, with no block glued under it (key-section.json, capstan_seat)."
+      "why": "The owner's keys have a clearance cut in their top between the capstan and the back check block, so that the wippen rail cannot rub them, the key coming back to its full height behind it. Its two ends and its depth are not measured (key-section.json, still_to_measure): until they are, the top is drawn at its full height, and the drawn section, whose centroid estimates the height of a weighed key's centre of mass, keeps the wood the clearance takes out. Nothing touches the top there."
     },
     {
       "param": "tail_height",
@@ -151,14 +147,7 @@
       "value": 22.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Assumed. The volume model integrates the key as a uniform prism this wide over its whole length, although behind the head a grand keystick is much narrower, so it sets the estimated mass; the solid view extrudes the key by it."
-    },
-    {
-      "param": "density",
-      "value": 430.0,
-      "unit": "kg/m³",
-      "reliability": "S",
-      "why": "Assumed: the keystick's wood, which with the width sets the volume model's mass."
+      "why": "Assumed: the key's width across the keyboard, which the solid view extrudes it by and nothing else reads."
     },
     {
       "param": "capstan.height",
@@ -172,7 +161,7 @@
       "value": 3.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "The threaded shaft, scaled from the owner's close photograph of a capstan on a grand key, not measured with callipers. The thread itself is not modelled: it changes the mass by about a twentieth and nothing else."
+      "why": "The threaded shaft, scaled from the owner's close photograph of a capstan on a grand key, not measured with callipers. The thread itself is not drawn."
     },
     {
       "param": "capstan.head_diameter",
@@ -200,7 +189,7 @@
       "value": 13.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "The threaded shaft below the cove, part of it buried in the key, all of it counted in the mass; scaled from the owner's photograph."
+      "why": "The threaded shaft below the cove, part of it buried in the key; scaled from the owner's photograph."
     },
     {
       "param": "capstan.tip_height",
@@ -210,21 +199,9 @@
       "why": "The shaft's pointed tip, scaled from the owner's photograph."
     },
     {
-      "param": "capstan.density",
-      "value": 7850.0,
-      "unit": "kg/m³",
-      "reliability": "S",
-      "why": "Steel: the owner's photograph shows a bright chromed or nickelled screw, common on modern grands. Brass capstans exist and are about 8 % heavier, which is why the material is a value and not a constant."
-    },
-    {
       "param": "capstan.dome_radius",
       "none": true,
       "why": "The head's top is flat, as the owner's photograph shows it: it bears on the wippen's heel with its flat, and the key weight ratio's load is centred on it."
-    },
-    {
-      "param": "measured_stick_mass",
-      "none": true,
-      "why": "The bare keystick has not been weighed, so nothing rescales the volume model's mass."
     },
     {
       "param": "balance_rail.height",

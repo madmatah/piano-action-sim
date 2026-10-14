@@ -170,7 +170,7 @@ const GOLDEN: f64 = 0.618_033_988_749_894_9;
 /// step at most, every step bounded by the stop's margin, and a key lifting
 /// off its punching under a pull turns up on its cloth until it leaves its
 /// balance pin ([`Mounted::leaves_its_pin`]): some 20 mm at its front on
-/// the composite frame. A key riding on a front pin standing in its wood,
+/// the test frame. A key riding on a front pin standing in its wood,
 /// solved from where it stands level on its punching, takes three quarters
 /// of a cap to come to rest with every row that carries it closed
 /// (`a_load_on_a_row_standing_open_is_no_rest`). Four caps hold either
@@ -1068,8 +1068,7 @@ mod tests {
     use crate::parts::frame::KeyKind;
     use crate::solve::Statics;
 
-    /// The composite key regulated on the composite frame, as the bench builds
-    /// it.
+    /// The test key regulated on its frame, as the bench builds it.
     fn regulated() -> Setup {
         crate::parts::fixtures::regulated()
     }
@@ -1251,7 +1250,7 @@ mod tests {
         let mut benches = assemblies();
         benches.push(("a frame whose stops fight", wedged()));
         benches.push((
-            "a key with every feature the composite lacks",
+            "a key with every feature the test key lacks",
             Setup {
                 key: crate::test_fixture::key_with_every_feature(),
                 ..regulated()

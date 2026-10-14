@@ -1,6 +1,6 @@
 {
   "profile": "hirschkorn",
-  "what": "Hirschkorn's key, note 52 of a Boston GP-178 grand, on his printed frame (Hirschkorn 2004, Appendix A): his key's printed points and lines, its outline traced from his Figure A.1 where his tables give no number, its mass, centre of mass and inertia from Table A.1, its bushings from Table A.9, and his dip target. His frame bears on the key where his model does, at Pg4 and Pg5, but on real felts: a flat front punching washer and a flat back rail cloth strip, each with its top where his round of 5 mm has its, since what is drawn is what is touched. His printed frame on his rounds lets the key fall 9.306 mm at Pk2, where his finger presses; on the real felts 9.202 mm, 0.105 mm less, because the key, nose-up at rest, bears with its chamfer's kink, at -196.43 mm, on the cloth's face, where his round met the chamfer 7.3 mm further back (tools/derivations/11-hirschkorn-key-outline.py). His keybed, rails, papers, pins and the key's width are not published: they are the composite's, so his key height is an indication. It arrives as his frame is printed, not regulated: his dip of 10.0 mm is one regulation away.",
+  "what": "Hirschkorn's key, note 52 of a Boston GP-178 grand, on his printed frame (Hirschkorn 2004, Appendix A): his key's printed points and lines, its outline traced from his Figure A.1 where his tables give no number, its mass, centre of mass and inertia from Table A.1, its bushings from Table A.9, and his dip target. His frame bears on the key where his model does, at Pg4 and Pg5, but on real felts: a flat front punching washer over Pg4, and a flat back rail cloth strip lying wholly under the tail's chamfer, its rounded front edge over Pg5, each with its top where his round of 5 mm has its, since what is drawn is what is touched. The key, nose-up at rest, bears on the cloth's front edge, 0.06 mm from where it bears on his round. His printed frame on his rounds lets the key fall 9.306 mm at Pk2, where his finger presses; on the real felts 9.308 mm, 1.7 µm more, from the curvature of his rounds and the printed length of Pk5's normal (tools/derivations/11-hirschkorn-key-outline.py). His keybed, rails, papers, pins and the key's width are not published: they are those of the owner's measured section (data/profiles/measured-section.json), so his key height is an indication. It arrives as his frame is printed, not regulated: his dip of 10.0 mm is one regulation away.",
   "instruments": ["Boston GP-178 grand piano, note 52"],
   "key_kind": {
     "is": "natural",
@@ -66,7 +66,7 @@
       "unit": "mm",
       "reliability": "E",
       "rule": "Over his front bearing, where the front rail pin stands: the key front's 237.80 mm less Pg4's 217.2 mm = 20.6 mm.",
-      "why": "His tables give no front mortise. Borrowed from the owner's key as a slot sized not to bind on his geometry: placed over his front bearing, the owner's length and depth."
+      "why": "His tables give no front mortise. Borrowed from the owner's key as a slot sized not to bind on his geometry: placed over his front bearing, the owner's length and depth, its top about 0.9 mm above the borrowed front rail pin at the bottom of the stroke, so that the pin never stops the key."
     },
     {
       "param": "front_mortise.length",
@@ -75,11 +75,8 @@
     },
     {
       "param": "front_mortise.depth",
-      "value": 22.0,
-      "unit": "mm",
-      "reliability": "E",
-      "rule": "3 mm of recess and 19 mm of mortise above it, as on the owner's key: 3 + 19 = 22 mm, measured from the key's underside.",
-      "why": "His tables give no front mortise. Borrowed from the owner's key (key-frame-sections.json, the_pin_must_stay_in_its_mortise): at the bottom of the stroke it stands about 0.9 mm above the borrowed front rail pin, which so never stops the key."
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_depth"
     },
     {
       "param": "stick_height",
@@ -117,19 +114,9 @@
       "pointer": "/records/back_check_block_length"
     },
     {
-      "param": "capstan_block.back",
-      "record": "hirschkorn-key-outline.json",
-      "pointer": "/records/capstan_block_back"
-    },
-    {
-      "param": "capstan_block.length",
-      "record": "hirschkorn-key-outline.json",
-      "pointer": "/records/capstan_block_length"
-    },
-    {
-      "param": "capstan_block.height",
-      "record": "hirschkorn-key-outline.json",
-      "pointer": "/records/capstan_block_height"
+      "param": "top_clearance",
+      "none": true,
+      "why": "His Figure A.1 draws no clearance for the wippen rail between the capstan and the back check block, the key coming back to its full height behind it: it draws the key's top lowered from just behind the capstan all the way to the key's end, and his key is kept as he drew it (tail_length)."
     },
     {
       "param": "tail_height",
@@ -138,8 +125,11 @@
     },
     {
       "param": "tail_length",
-      "record": "hirschkorn-key-outline.json",
-      "pointer": "/records/tail_length"
+      "value": 101.07,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "From the key's end to where the keystick's full height ends behind the capstan, both traced (hirschkorn-key-outline.json): full_height_back's -132.45 mm less tail_end's -233.52 mm = 101.07 mm.",
+      "why": "His Figure A.1 draws the keystick at its full height from the key front to just behind the capstan, and its top lowered from there to the key's end, the back check block glued on the lowered part: that lowered part is the thinned tail, and the capstan screws into the full height. The full height's top over its last 29.65 mm, behind a line the figure draws down the wood 102.79 mm behind the pin, is drawn 0.75 mm above the keystick's full height (stick_height): within the trace's uncertainty, up to 1.62 mm at its markers, so it is dropped, and the full height is the keystick's one height. Nothing touches that stretch of the top, and the capstan's top is Pk3's, printed, whatever its seat."
     },
     {
       "param": "damper_felt",
@@ -171,14 +161,7 @@
       "value": 22.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite key: the solid view extrudes the key by it, and nothing else reads it on a key whose mass is published."
-    },
-    {
-      "param": "density",
-      "value": 430.0,
-      "unit": "kg/m³",
-      "reliability": "S",
-      "why": "Not published, and read by nothing on this key: Table A.1 gives its mass and centre of mass whole, so no volume is weighed. Borrowed from the composite key because the key's description has the field."
+      "why": "Not published. Borrowed from the owner's measured section, where it is assumed: the solid view extrudes the key by it, and nothing else reads it."
     },
     {
       "param": "capstan.diameter",
@@ -207,26 +190,14 @@
       "value": 13.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "The shank below the head, the part buried in the block included, which no figure shows: borrowed from the composite key's capstan."
+      "why": "The shank below the head, the part buried in the keystick included, which no figure shows: borrowed from the capstan of the owner's measured section."
     },
     {
       "param": "capstan.tip_height",
       "value": 1.5,
       "unit": "mm",
       "reliability": "S",
-      "why": "The shank's buried point, which no figure shows: borrowed from the composite key's capstan."
-    },
-    {
-      "param": "capstan.density",
-      "value": 7850.0,
-      "unit": "kg/m³",
-      "reliability": "S",
-      "why": "Read by nothing on this key, whose mass Table A.1 gives whole. Borrowed from the composite key's capstan because the capstan's description has the field."
-    },
-    {
-      "param": "measured_stick_mass",
-      "none": true,
-      "why": "The key is weighed whole, by Table A.1: there is no bare keystick to weigh."
+      "why": "The shank's buried point, which no figure shows: borrowed from the capstan of the owner's measured section."
     },
     {
       "param": "published.mass",
@@ -253,21 +224,21 @@
       "value": 26.6,
       "unit": "mm",
       "reliability": "S",
-      "why": "His keybed is not published: his model's frame begins at the balance bearing, Pg1. Borrowed from the composite's frame, whose balance bearing, rail, felt and the papers its regulation lays, stands 28.8 mm above the keybed; his key height is read on it, an indication."
+      "why": "His keybed is not published: his model's frame begins at the balance bearing, Pg1. Borrowed from the frame of the owner's measured section, whose balance bearing, rail, felt and the papers its regulation lays, stands 28.8 mm above the keybed; his key height is read on it, an indication."
     },
     {
       "param": "balance_punching.felt",
       "value": 1.5,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame."
+      "why": "Not published. Borrowed from the frame of the owner's measured section."
     },
     {
       "param": "balance_punching.papers",
       "values": [0.5, 0.2],
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame, the papers its regulation lays under its balance punching: the balance bearing stands where the composite's does."
+      "why": "Not published. Borrowed from the frame of the owner's measured section, the papers its regulation lays under its balance punching: the balance bearing stands where that frame's does."
     },
     {
       "param": "front_rail.height",
@@ -282,14 +253,14 @@
       "value": 2.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame: a flat washer, the real felt his round stands for."
+      "why": "Not published. Borrowed from the frame of the owner's measured section: a flat washer, the real felt his round stands for."
     },
     {
       "param": "front_punching.papers",
       "values": [0.4, 0.4, 0.08],
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame, the papers its regulation lays on its front punching, so that regulating his dip has paper to lift as well as to lay."
+      "why": "Not published. Borrowed from the frame of the owner's measured section, the papers its regulation lays on its front punching, so that regulating his dip has paper to lift as well as to lay."
     },
     {
       "param": "back_rail.height",
@@ -304,14 +275,14 @@
       "value": 3.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame: a flat cloth strip, the real cloth his round stands for."
+      "why": "Not published. Borrowed from the frame of the owner's measured section: a flat cloth strip, the real cloth his round stands for."
     },
     {
       "param": "back_rail.cloth_edge_radius",
       "value": 0.5,
       "unit": "mm",
       "reliability": "S",
-      "why": "Borrowed from the composite's frame: a shape, not a setting. The key bears on its own kink on the cloth's face, away from either edge."
+      "why": "Borrowed from the frame of the owner's measured section: a shape, not a setting. The key rests on the cloth's front edge, which this radius rounds about a centre over Pg5's x: the chamfer, 0.72 degrees from the cloth's face at rest, passes over that centre the radius times (1/cos 0.72 degrees - 1) above the face, 0.04 µm, so that doubling the radius moves the rest by a fifth of a microradian."
     },
     {
       "param": "front_rail.x",
@@ -320,8 +291,11 @@
     },
     {
       "param": "back_rail.x",
-      "record": "hirschkorn-boston-gp178-note52.json",
-      "pointer": "/geometry/ground/points/Pg5/x"
+      "value": -215.7,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "The cloth's front edge over Pg5's x, where his back round bears, the strip lying behind it: Pg5's -203.7 mm less the cloth's half-length of 12.0 mm = -215.7 mm.",
+      "why": "His back bearing is printed as a round, which a flat cloth strip replaces with its top where the round's top is. The borrowed 24 mm strip lies wholly under the tail's chamfer, its front edge where his round bears, so that the key, nose-up at rest, rests on that edge where his model rests. The owner's account: most grand keys rest on an edge like this one, and it hardly matters for regulating, which sets the key's height with papers under the balance punching; what matters is that the cloth damps the key's return and that the key comes back to the same rest. A key bedded flat on its cloth wears it more slowly than one resting on an edge."
     },
     {
       "param": "back_rail.from_the_tail",
@@ -345,7 +319,7 @@
       "value": 6.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame. Drawn, and read by nothing else."
+      "why": "Not published. Borrowed from the frame of the owner's measured section. Drawn, and read by nothing else."
     },
     {
       "param": "balance_rail.pin.diameter",
@@ -357,7 +331,7 @@
       "value": 11.2,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame: drawn, and where the key leaves its pin, 9 mm above the balance punching."
+      "why": "Not published. Borrowed from the frame of the owner's measured section: drawn, and where the key leaves its pin, 9 mm above the balance punching."
     },
     {
       "param": "balance_rail.punching_radius",
@@ -424,7 +398,7 @@
       "value": 12.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the composite's frame: a strip 24 mm long, which on his key reaches 4.73 mm in front of the chamfer's kink, so the key rests on its kink and the bench reports the cloth in front of the chamfer."
+      "why": "Not published. Borrowed from the frame of the owner's measured section: a strip 24 mm long, which lies wholly under his chamfer, behind Pg5's x (back_rail.x), 6.8 mm behind the chamfer's kink and clear of the key's end."
     },
     {
       "param": "back_rail.crown",

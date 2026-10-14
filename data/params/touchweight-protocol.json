@@ -17,7 +17,7 @@
       "quote": "The datum point on the top of the key 13mm or 1/2\" back from the front lip of the key. Weights are centered on this point when measuring Up Weight and Down Weight. When measuring Front Weight (FW) the key rests on a roller bearing on the scale pan. The point at which the front of the key rests on the bearing is directly below the Measuring Point.",
       "what_for": "The arm every touchweight is read on: front weight and the key weight ratio on the jig, down, up, balance and friction weight, and key friction weight.",
       "which_lip": "The covering's: the front edge of the keytop, which overhangs the key front (keytop_overhang in key-section.json, 2 mm). The glossary does not say which lip it means; this one is the owner's choice. Key height and key dip keep the key front as their datum.",
-      "engine": "TouchweightProtocol::measuring_point_from_lip, which the bench can set; data/profiles/composite.json binds the composite bench's to this record."
+      "engine": "TouchweightProtocol::measuring_point_from_lip, which the bench can set; both shipped profiles, data/profiles/hirschkorn.json and data/profiles/measured-section.json, bind theirs to this record."
     },
     {
       "name": "measuring_point_from_lip_imperial",
@@ -37,7 +37,7 @@
       "locator": { "page": 22, "column": 1 },
       "quote": "With the scale set to zero, a 10-gram weight is placed on the back of the key, centered on a vertical axis which passes through the capstan/heel contact point. This gives results accurate to two decimal places. For instance, if the scale reads -5.5 the Key Weight Ratio (KR) would be 0.55.",
       "what_for": "The key weight ratio, read on the front weight jig with the scale tared: the reading over the load.",
-      "engine": "TouchweightProtocol::key_ratio_load_g; data/profiles/composite.json binds the composite bench's to this record."
+      "engine": "TouchweightProtocol::key_ratio_load_g; both shipped profiles, data/profiles/hirschkorn.json and data/profiles/measured-section.json, bind theirs to this record."
     }
   ]
 }

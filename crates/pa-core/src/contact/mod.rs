@@ -96,9 +96,10 @@ pub enum PartCode {
     KeyButton,
     /// The block glued on the keystick for the back check wire.
     BackCheckBlock,
-    /// The block glued on the key that the capstan stands on, where the key
-    /// has one.
-    CapstanBlock,
+    /// The clearance cut in the keystick's top for the wippen rail, where the
+    /// key has one: a shape of the keystick's outline, named on its own where
+    /// a refusal places it.
+    TopClearance,
     /// The hard felt on the key's thinned tail, where the damper bears.
     KeyTailFelt,
     /// The capstan screwed into the keystick.
@@ -134,7 +135,7 @@ impl PartCode {
             Self::KeyFront => "key_front",
             Self::KeyButton => "key_button",
             Self::BackCheckBlock => "back_check_block",
-            Self::CapstanBlock => "capstan_block",
+            Self::TopClearance => "top_clearance",
             Self::KeyTailFelt => "key_tail_felt",
             Self::Capstan => "capstan",
             Self::FrontMortise => "front_mortise",

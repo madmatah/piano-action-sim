@@ -226,6 +226,7 @@ const KEY_DIP = 'regulation.key_dip_mm'
 const MEASURING_POINT = 'protocol.measuring_point_from_lip_mm'
 const WEIGHT = 'experiment.weight_g'
 const BALANCE_RAIL = 'frame.balance_rail.height_mm'
+const CAPSTAN = 'key.capstan.behind_mm'
 const FRONT_EDGE = 'key.front_edge_mm'
 
 function fail(message) {
@@ -269,10 +270,255 @@ console.log('bench interaction smoke test')
 
 // The page shows "starting the engine…" until the wasm has booted, and only
 // then the weighing sheet.
-const start = await waitFor('the engine to boot and fill the weighing sheet', async () => {
+await waitFor('the engine to boot and fill the weighing sheet', async () => {
   const s = await sheet()
   return Object.keys(s).length > 0 ? s : undefined
 })
+
+// What is on the bench is one of the profiles the engine ships, chosen by the
+// action that puts it there, as it arrives. The page opens on Hirschkorn's
+// key on his printed frame. His key comes with its mass published whole, so
+// its front weight is Table A.1's static moment over the measuring arm,
+// 120.08 g at 51.4 mm over the traced lip's 239.28 mm less 13 mm, 27.28 g,
+// read to the tenth as 27.3 g; his key mass is Table A.1's; and his frame
+// goes with his key, the borrowed 24 mm cloth strip lying wholly under his
+// chamfer, so the page lists no fault.
+const choose = (profile) =>
+  evaluate(`
+    (() => {
+      const radio = document.querySelector(
+        '[data-action="select_profile"] input[value=${JSON.stringify(profile)}]')
+      if (!radio) return 'no profile choice'
+      radio.click()
+      return 'ok'
+    })()
+  `)
+const onTheBench = () =>
+  evaluate(`document.querySelector('[data-action="select_profile"]')?.dataset.profile ?? null`)
+if ((await onTheBench()) !== 'hirschkorn') {
+  fail(`the page does not open on Hirschkorn's key: ${await onTheBench()}`)
+}
+const bootRead = await measured()
+const tableA1 = (120.08 * 51.4) / (239.28 - 13)
+if (
+  bootRead.front_weight?.shown !== 27.3 ||
+  !(Math.abs(bootRead.front_weight.exact - tableA1) < 0.001)
+) {
+  fail(
+    `his front weight is not Table A.1's: ${JSON.stringify(bootRead.front_weight)} against ${tableA1}`,
+  )
+}
+const hisMass = (await sheet()).key_mass
+if (!(Math.abs(Number(hisMass) - 120.08) < 1e-9))
+  fail(`his key mass is not Table A.1's: ${hisMass}`)
+const hisFaults = await evaluate(
+  `[...document.querySelectorAll('.faults li')].map((li) => li.dataset.code)`,
+)
+if (!Array.isArray(hisFaults) || hisFaults.length !== 0)
+  fail(`his frame does not go with his key: ${JSON.stringify(hisFaults)}`)
+// At its top seat his key rests on the cloth's rounded front edge, which
+// stands over Pg5, 203.7 mm behind the balance pin, where his printed round
+// bears: a chamfer resting on an edge of 0.5 mm radius touches it within that
+// radius of the edge's centre, along the key.
+const PG5_BEHIND_MM = 203.7
+const CLOTH_EDGE_RADIUS_MM = 0.5
+const hisBack = await evaluate(`
+  (() => ({
+    how: document.querySelector('[data-back-bearing]')?.dataset.backBearing ?? null,
+    at: Number(document.querySelector('.row[data-quantity="bears_at_the_back_mm"]')?.dataset.value),
+  }))()
+`)
+if (
+  hisBack?.how !== 'on_the_cloth_edge' ||
+  !(Math.abs(hisBack.at - PG5_BEHIND_MM) <= CLOTH_EDGE_RADIUS_MM)
+) {
+  fail(`his key does not rest on the cloth's edge over Pg5: ${JSON.stringify(hisBack)}`)
+}
+console.log(
+  `  ok  the page opens on Hirschkorn's key: FW ${bootRead.front_weight.exact} g, ${hisMass} g, no fault, resting on the cloth's edge ${hisBack.at} mm behind the pin`,
+)
+
+/** The friction control: the key friction weight Stanwood's protocol reads,
+ * as shown, or why it is not, and whether it can be moved. */
+const frictionControl = () =>
+  evaluate(`
+    (() => {
+      const l = document.querySelector('label[data-action="${KF}"]')
+      if (!l) return null
+      const number = (v) => (v === undefined ? null : Number(v))
+      return {
+        shown: number(l.dataset.shown),
+        exact: number(l.dataset.exact),
+        refusal: l.dataset.refusal ?? null,
+        disabled: l.querySelector('input').disabled,
+        text: l.querySelector('span')?.textContent ?? '',
+      }
+    })()
+  `)
+
+// The owner's measured section arrives unweighed: nobody has weighed one of
+// its keys, so it has no mass, and every reading that needs one is refused,
+// saying so: front weight, down and up weight, Stanwood's key friction weight,
+// and balance and friction weight with them. Key height, dip, the key weight
+// ratio and the key friction weight zeroed on the frame read no mass, and are
+// read. The friction control, which shows Stanwood's reading, shows none and
+// says why; the key mass is refused; the weighing's line says the key is not
+// weighed, its mass and front weight fields wait for a number, and the
+// weighing waits for them; the touch panel says why a weight on the key does
+// nothing.
+const MASS_NEEDED = [
+  'front_weight',
+  'down_weight',
+  'up_weight',
+  'key_friction_weight_zeroed_on_the_jig',
+]
+const NO_MASS_READ = [
+  'key_weight_ratio',
+  'key_height',
+  'key_dip',
+  'key_friction_weight_zeroed_on_the_frame',
+]
+if ((await choose('measured-section')) !== 'ok') fail('no measured section to choose')
+await settle()
+const unweighed = await evaluate(`
+  JSON.stringify(Object.fromEntries([...document.querySelectorAll('.row[data-procedure]')].map(
+    (r) => [r.dataset.procedure, r.classList.contains('refused') ? (r.dataset.refusal ?? 'refused') : 'read'])))
+`).then(JSON.parse)
+for (const p of MASS_NEEDED) {
+  if (unweighed[p] !== 'key_not_weighed') {
+    fail(`${p} on the unweighed key: ${unweighed[p]}, not refused as not weighed`)
+  }
+}
+for (const p of ['balance_weight', 'friction_weight']) {
+  if (unweighed[p] === 'read') fail(`${p} is read on a key nobody has weighed`)
+}
+for (const p of NO_MASS_READ) {
+  if (unweighed[p] !== 'read') fail(`${p} needs no mass, and is not read: ${unweighed[p]}`)
+}
+const unweighedFriction = await frictionControl()
+if (
+  unweighedFriction?.shown !== null ||
+  unweighedFriction.refusal !== 'key_not_weighed' ||
+  !unweighedFriction.disabled
+) {
+  fail(`the friction control on an unweighed key: ${JSON.stringify(unweighedFriction)}`)
+}
+const invited = await evaluate(`
+  (() => {
+    const line = document.querySelector('.note.weighed')
+    const needs = document.querySelector('.needs-number[data-for-action="weigh_key"]')
+    return {
+      line: line ? { weighed: line.dataset.massG !== undefined, text: line.textContent } : null,
+      needs: needs?.dataset.needs ?? null,
+      waits: document.querySelector('button[data-action="weigh_key"]')?.disabled ?? null,
+      mass: document.querySelector('.row[data-quantity="key_mass"]')?.classList.contains('refused') ?? null,
+      touch: document.querySelector('.note.not-weighed')?.textContent ?? null,
+      verdict: document.querySelector('.verdict') !== null,
+    }
+  })()
+`)
+if (
+  !invited?.line ||
+  invited.line.weighed ||
+  !invited.line.text ||
+  invited.needs !== 'mass_g front_weight_g' ||
+  invited.waits !== true ||
+  invited.mass !== true ||
+  !invited.touch ||
+  invited.verdict
+) {
+  fail(`the unweighed key does not invite its weighing: ${JSON.stringify(invited)}`)
+}
+console.log(`  ok  the measured section, unweighed: ${invited.line.text}`)
+
+// What a weight does to a key depends on the key's own balance, which only a
+// weighing gives: the unweighed key stays drawn at its top seat, its back on
+// its cloth, whatever weight stands on its measuring point, with no verdict;
+// and it has no band, which says why by the sheet's own refusal.
+const drawnAs = () =>
+  evaluate(`
+    (() => ({
+      touching: document.querySelector('.view')?.dataset.touching ?? null,
+      verdict: document.querySelector('.verdict') !== null,
+    }))()
+  `)
+const atRest = await drawnAs()
+if (!atRest?.touching?.split(' ').includes('back_rail_cloth') || atRest.verdict) {
+  fail(`the unweighed key is not drawn at its top seat: ${JSON.stringify(atRest)}`)
+}
+for (const weight of [40, -40, 0]) {
+  if ((await moveSlider(WEIGHT, weight)) !== 'ok') fail('no weight slider')
+  await settle()
+  const drawn = await drawnAs()
+  if (JSON.stringify(drawn) !== JSON.stringify(atRest)) {
+    fail(`${weight} g moves a key nobody has weighed: ${JSON.stringify(drawn)}`)
+  }
+}
+console.log(`  ok  the unweighed key stays at its top seat under ±40 g: ${atRest.touching}`)
+if ((await showView('band')) !== 'ok') fail('no band button')
+await settle()
+const unweighedBand = await evaluate(`
+  (() => {
+    const b = document.querySelector('.band')
+    return b ? { band: b.dataset.band, refusal: b.dataset.refusal ?? null, text: b.textContent } : null
+  })()
+`)
+if (
+  unweighedBand?.band !== 'refused' ||
+  unweighedBand.refusal !== 'key_not_weighed' ||
+  !unweighedBand.text
+) {
+  fail(`the unweighed key draws a band: ${JSON.stringify(unweighedBand)}`)
+}
+console.log(`  ok  no band on the unweighed key: ${unweighedBand.text}`)
+if ((await showView('solid')) !== 'ok') fail('no solid button')
+await settle()
+
+// Weighed through the page by the engine's tests' weighing, 121.1 g with
+// 6.5 g of front weight read 13 mm back from the lip, it reads every reading,
+// the front weight the one typed; the rest of this test runs on that key.
+for (const [path, value] of [
+  [MASS, 121.1],
+  [FRONT_WEIGHT, 6.5],
+  [FROM_LIP, 13],
+]) {
+  if ((await setField(path, value)) !== 'ok') fail(`no ${path} field`)
+}
+await settle()
+if ((await clickAction('weigh_key')) !== 'ok') fail('no button to weigh the key')
+await settle()
+const start = await sheet()
+if (Object.values(start).includes('refused')) {
+  fail(`the weighed section still refuses: ${JSON.stringify(start)}`)
+}
+const weighedAs = await evaluate(`
+  (() => {
+    const line = document.querySelector('.note.weighed')
+    return {
+      mass: Number(line?.dataset.massG),
+      front: Number(line?.dataset.frontWeightG),
+      fromLip: Number(line?.dataset.fromLipMm),
+      sheetMass: Number(document.querySelector('.row[data-quantity="key_mass"]')?.dataset.value),
+      sheetFront: Number(document.querySelector('.row[data-procedure="front_weight"]')?.dataset.exact),
+      touchNote: document.querySelector('.note.not-weighed') !== null,
+    }
+  })()
+`)
+// Read 13 mm back from the lip, where the sheet reads it, the front weight
+// typed comes back on the same arm, to round-off.
+const near = (a, b) => Math.abs(a - b) <= 1e-9
+if (
+  !weighedAs ||
+  !near(weighedAs.mass, 121.1) ||
+  !near(weighedAs.front, 6.5) ||
+  !near(weighedAs.fromLip, 13) ||
+  !near(weighedAs.sheetMass, 121.1) ||
+  !near(weighedAs.sheetFront, 6.5) ||
+  weighedAs.touchNote
+) {
+  fail(`the weighing typed is not the key the sheet reads: ${JSON.stringify(weighedAs)}`)
+}
+console.log(`  ok  the section weighed through the page: ${JSON.stringify(weighedAs)}`)
 
 // Every weight is read the way gram weights give it: the down weight and the
 // key friction weights as the least whole gram that does it, the up weight as
@@ -310,21 +556,6 @@ for (const procedure of [
 // there the sheet does not read is a setting the model does not hold. Where
 // the protocol cannot be read it shows no number, says why by the refusal's
 // code, and cannot be moved.
-const frictionControl = () =>
-  evaluate(`
-    (() => {
-      const l = document.querySelector('label[data-action="${KF}"]')
-      if (!l) return null
-      const number = (v) => (v === undefined ? null : Number(v))
-      return {
-        shown: number(l.dataset.shown),
-        exact: number(l.dataset.exact),
-        refusal: l.dataset.refusal ?? null,
-        disabled: l.querySelector('input').disabled,
-        text: l.querySelector('span')?.textContent ?? '',
-      }
-    })()
-  `)
 const expectFrictionShown = async (what, reading) => {
   const c = await frictionControl()
   if (
@@ -340,7 +571,7 @@ const expectFrictionShown = async (what, reading) => {
   }
   console.log(`  ok  the friction control shows the sheet's reading, ${what}: ${c.text}`)
 }
-await expectFrictionShown('at boot', startRead.key_friction_weight_zeroed_on_the_jig)
+await expectFrictionShown('once weighed', startRead.key_friction_weight_zeroed_on_the_jig)
 
 // The non-confusion test, run through the whole chain rather than in a unit
 // test: more friction must widen the band and leave its centre alone. D is
@@ -867,30 +1098,12 @@ if ((await refusalShown('.edit-refused')) !== null) {
 }
 console.log('  ok  the next edit taken clears it')
 
-// What is on the bench is one of the profiles the engine ships, chosen by the
-// action that puts it there, as it arrives, each offered by its whole name,
-// which says where its numbers come from. Hirschkorn's key comes with its
-// mass published whole, so its front weight is Table A.1's static moment over
-// the measuring arm, 120.08 g at 51.4 mm over the traced lip's 239.28 mm less
-// 13 mm, 27.28 g, read to the tenth as 27.3 g; his key mass is Table A.1's;
-// and the bench says that the borrowed 24 mm cloth strip reaches in front of
-// his key's chamfer. Every line drawn can be marked by how the number that
-// places it is known, and what his profile reads of the owner's key frame,
-// its pins and punchings, is marked borrowed, which nothing on the composite
-// is. The composite chosen again is the instrument the page booted on: the
-// same sheet, to the last bit.
-const choose = (profile) =>
-  evaluate(`
-    (() => {
-      const radio = document.querySelector(
-        '[data-action="select_profile"] input[value=${JSON.stringify(profile)}]')
-      if (!radio) return 'no profile choice'
-      radio.click()
-      return 'ok'
-    })()
-  `)
-const onTheBench = () =>
-  evaluate(`document.querySelector('[data-action="select_profile"]')?.dataset.profile ?? null`)
+// Each profile is offered by its whole name, which says where its numbers
+// come from. Hirschkorn's key chosen again is the instrument the page booted
+// on: the same sheet, to the last bit. Every line drawn can be marked by how
+// the number that places it is known, and what his profile reads of the
+// owner's key frame and keys, its pins and punchings and the front mortise's
+// depth, is marked borrowed, which nothing on the measured section is.
 /** Each profile's name as the page lays it out: wholly inside the panel, and
  * nothing of it cut, as a drop-down list cuts a long name at its edge. */
 const namesCut = await evaluate(`
@@ -917,23 +1130,12 @@ if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
 await settle()
 if ((await onTheBench()) !== 'hirschkorn')
   fail(`Hirschkorn's key not on the bench: ${await onTheBench()}`)
-const his = await measured()
-const tableA1 = (120.08 * 51.4) / (239.28 - 13)
-if (his.front_weight?.shown !== 27.3 || !(Math.abs(his.front_weight.exact - tableA1) < 0.001)) {
+if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
   fail(
-    `his front weight is not Table A.1's: ${JSON.stringify(his.front_weight)} against ${tableA1}`,
+    `his key chosen again is not the one the page booted on: ${JSON.stringify(await measured())}`,
   )
 }
-const hisMass = (await sheet()).key_mass
-if (!(Math.abs(Number(hisMass) - 120.08) < 1e-9))
-  fail(`his key mass is not Table A.1's: ${hisMass}`)
-const clothFault = await evaluate(
-  `document.querySelector('.faults li[data-code="cloth_in_front_of_chamfer"]')?.textContent ?? null`,
-)
-if (!clothFault) fail('the cloth in front of his chamfer is not said')
-console.log(
-  `  ok  Hirschkorn's key on the bench: FW ${his.front_weight.exact} g, ${hisMass} g, ${clothFault}`,
-)
+console.log("  ok  Hirschkorn's key chosen again reads the sheet the page booted on")
 // The marks are lines the view paints, in the section and on the solid's faces
 // alike, two drawings apart: a toggle whose attribute and legend change while
 // the lines stay as they were reaches nothing. So each view is captured below
@@ -1014,14 +1216,6 @@ for (const v of ['section', 'solid']) {
   console.log(`  ok  the ${v} drawn marked, and unmarked as it was before`)
 }
 console.log(`  ok  every line marked by how its number is known: ${marked.legend.join(', ')}`)
-if ((await choose('composite')) !== 'ok') fail('no profile choice')
-await settle()
-if (JSON.stringify(await measured()) !== JSON.stringify(startRead)) {
-  fail(
-    `the composite chosen again is not the one the page booted on: ${JSON.stringify(await measured())}`,
-  )
-}
-console.log('  ok  the composite chosen again reads the sheet the page booted on')
 
 // The section draws every part flat, each in its own body's frame, a cut as a
 // void in the key's wood. It is a different drawing from the solid's, and a
@@ -1035,8 +1229,8 @@ console.log('  ok  both views drawn')
 // What a profile reads of another instrument than the one it describes is
 // marked borrowed, in a colour of its own: his pins and punchings, read from
 // the owner's key frame, which the section draws as it draws every turned
-// part; on the composite, which describes that frame, they are measured and
-// nothing is borrowed. Counted on the section opened by its link, which
+// part; on the measured section, which describes that frame, they are
+// measured and nothing is borrowed. Counted on the section opened by its link, which
 // faces it. Where the marked drawing differs from the unmarked one, a line is
 // drawn in a mark's colour where the edge colour was, over the same fill and
 // covering as much of the pixel, so the difference is the mark's colour less
@@ -1098,47 +1292,200 @@ const paintedOn = async (profile) => {
   `).then(JSON.parse)
 }
 const onHis = await paintedOn('hirschkorn')
-const onOwn = await paintedOn('composite')
+const onOwn = await paintedOn('measured-section')
 if (!(onHis.borrowed > 0)) {
   fail(`what his profile borrows is not marked borrowed: ${JSON.stringify(onHis)}`)
 }
 if (onOwn.borrowed !== 0 || !(onOwn.measured > 0)) {
-  fail(`the composite is marked ${JSON.stringify(onOwn)}`)
+  fail(`the measured section is marked ${JSON.stringify(onOwn)}`)
 }
 console.log(`  ok  his key's section marked ${JSON.stringify(onHis)}`)
-console.log(`  ok  the composite's section marked ${JSON.stringify(onOwn)}`)
+console.log(`  ok  the measured section's section marked ${JSON.stringify(onOwn)}`)
+
+// The capstan screws into the keystick's full height. On Hirschkorn's key the
+// full height ends 132.45 mm behind the pin, the top lowered from there to the
+// key's end, and the back check block glued on the lowered part ends 186.87 mm
+// behind it; the capstan's head is 3.92 mm in radius. The slider takes the
+// capstan 128 mm behind the pin, its head over the full height, and the sheet
+// follows; 129 mm is refused, its head standing 0.47 mm over the thinned tail,
+// and 190 mm, its head 7.05 mm into the back check block; each refusal said
+// beside the slider, which stays where the capstan stands.
+if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
+await settle()
+const capstanBefore = await measured()
+if ((await moveSlider(CAPSTAN, 128)) !== 'ok') fail('capstan slider missing')
+await settle()
+const capstanMoved = await slider(CAPSTAN)
+if ((await refusalShown('.edit-refused')) !== null || Number(capstanMoved?.holds) !== 128) {
+  fail(`the capstan 128 mm behind the pin is refused: ${JSON.stringify(capstanMoved)}`)
+}
+if ((await measured()).key_weight_ratio?.exact === capstanBefore.key_weight_ratio?.exact) {
+  fail('the capstan moved and its key weight ratio did not')
+}
+console.log(`  ok  the capstan taken 128 mm behind the pin, over the full height`)
+for (const [behindMm, code, byMm] of [
+  [129, 'capstan_off_the_full_height', 0.47],
+  [190, 'capstan_in_block', 7.05],
+]) {
+  if ((await moveSlider(CAPSTAN, behindMm)) !== 'ok') fail('capstan slider missing')
+  await settle()
+  const refused = await refusalShown(`.edit-refused[data-for-path="${CAPSTAN}"]`)
+  if (
+    refused?.code !== code ||
+    !(Math.abs(refused.byMm - byMm) < 0.005) ||
+    refused.after !== CAPSTAN ||
+    !refused.text ||
+    Number((await slider(CAPSTAN))?.holds) !== 128
+  ) {
+    fail(`the capstan ${behindMm} mm behind the pin: ${JSON.stringify(refused)}`)
+  }
+  console.log(`  ok  the capstan ${behindMm} mm behind the pin refused: ${refused.text}`)
+}
 
 // The band, drawn when it is chosen and never with an edit: the key driven
 // through its stroke at the measuring point, down and back, the force that
-// drives it there at every step, D the greatest of the way down and U the
-// least of the way up. On both profiles it is drawn, its two curves inside
-// the window the seats leave, and a technician reads D and U on it as on his
-// scale: the same grams as the sheet's walks, and in full within a hundredth
-// of a gram, the curve's change over the step the sweep reads them from,
-// which the engine's tests derive and hold under that hundredth on both
-// keys. D falls on the first step off the top seat and U within a step of
-// the bottom one. The weight on the measuring point is drawn across it, the
-// page's own weight.
+// drives it there at every step. It is drawn on both profiles, the measured
+// section weighed, since a key with no mass has none, its two curves inside
+// the window the seats leave. The band is a curve, read by no weight: it
+// marks the greatest force of the way down and the least of the way up in
+// full, and carries no gram reading of either. The gram is the sheet's, the
+// walk's with gram weights; the band's extremes are the walk's D and U in
+// full within the bound the engine's tests derive, in
+// crates/pa-core/src/measure/sweep.rs,
+// `the_bands_extremes_are_the_walks_down_and_up_weights`: the walk's
+// resolution, the curve's change over the step the sweep reads its extreme
+// from and twice its bend over one, and rounding. Each is computed here from
+// the curve the page carries in full, step by step, in its table, and held
+// under a hundredth of a gram. Within that bound of a whole gram the two
+// read the gram either side of it, as the section weighed at 130 g with a
+// front weight of 40 g does, the likeliest weighing its owner types: its U is
+// -47 g on the sheet from -46.00019 g, and the up curve's least force
+// -45.99997 g. D falls on the first step off the top seat and U within a step
+// of the bottom one. The weight on the measuring point is drawn across the
+// band, the page's own.
 const bandShown = () =>
   evaluate(`
     JSON.stringify((() => {
       const band = document.querySelector('.band')
       if (!band) return null
+      const forces = (curve) =>
+        [...band.querySelectorAll(\`td[data-curve="\${curve}"]\`)].map((td) => Number(td.dataset.forceG))
       return {
         band: { ...band.dataset },
         readings: Object.fromEntries([...band.querySelectorAll('.band-reading')].map((g) => [
           g.dataset.procedure,
-          { shown: Number(g.dataset.shown), exact: Number(g.dataset.exact), atMm: Number(g.dataset.atMm) },
+          {
+            exact: Number(g.dataset.exact),
+            atMm: Number(g.dataset.atMm),
+            gram: g.dataset.shown ?? null,
+            label: g.querySelector('text')?.textContent ?? null,
+          },
         ])),
+        written: [...band.querySelectorAll('.band-extremes li')].map((li) => li.textContent),
         curves: [...band.querySelectorAll('path[data-curve]')].map((p) => p.dataset.curve),
+        forces: { down: forces('down'), up: forces('up') },
         touch: { ...(band.querySelector('.band-touch')?.dataset ?? {}) },
       }
     })())
   `).then(JSON.parse)
-const BAND_READS = { down_weight_on_the_band: 'down_weight', up_weight_on_the_band: 'up_weight' }
+const BAND_READS = {
+  down_weight_on_the_band: ['down_weight', 'down'],
+  up_weight_on_the_band: ['up_weight', 'up'],
+}
+/**
+ * How far an extreme the band reads on `curve`, its forces in full, may
+ * stand from the walk's reading in full, grams, as the engine's tests derive
+ * it: the walk's resolution, half the bracket its sixteen halvings leave of
+ * a gram (walk.rs, STEP_G and HALVINGS) and what the static solve may leave
+ * out of balance where it decides, its residual's tolerance of 1e-12 of a
+ * load scale under two newtons, over a reach under 0.3 m, read at a
+ * measuring arm of at least 0.2 m (statics.rs, RESIDUAL_TOLERANCE); the
+ * curve's greatest change over one step and twice its greatest change of
+ * slope over one; and rounding, 64 units in the last place of a key under a
+ * kilogram at an arm under 0.3 m with bushings under a newton-metre, over
+ * the measuring arm.
+ */
+const bandBound = (curve) => {
+  const resolution = (0.5 * 1) / 2 ** 16 + (1000 * 1e-12 * 2 * 0.3) / (9.80665 * 0.2)
+  let step = 0
+  let bend = 0
+  for (let i = 1; i < curve.length; i++) step = Math.max(step, Math.abs(curve[i] - curve[i - 1]))
+  for (let i = 2; i < curve.length; i++) {
+    bend = Math.max(bend, Math.abs(curve[i - 2] - 2 * curve[i - 1] + curve[i]))
+  }
+  const rounding = (64 * Number.EPSILON * 1000 * (1 * 9.80665 * 0.3 + 1)) / (9.80665 * 0.2)
+  return resolution + step + 2 * bend + rounding
+}
+/** A value as the page writes it to `digits` decimals, no negative zero. */
+const toDecimals = (x, digits) => {
+  const s = x.toFixed(digits)
+  return Number(s) === 0 ? (0).toFixed(digits) : s
+}
+/** The numbers a text writes, as written. */
+const numbersIn = (text) => text?.match(/-?\d+(?:\.\d+)?/g) ?? []
+/** The band's two extremes against the sheet's walks, each within its
+ * bound, the band reading no gram; their bounds, by procedure. What the page
+ * writes beside each extreme, on the chart and for a reader without it, is
+ * read as a technician reads it: its one force is the extreme's in full, to
+ * the hundredth of a gram, the written one adding only where it falls, and
+ * neither names it D or U, which are the sheet's. */
+const bandAgainstSheet = async (what, b) => {
+  const read = await measured()
+  const bounds = {}
+  for (const [i, [onBand, [walked, curve]]] of Object.entries(BAND_READS).entries()) {
+    const [m, w] = [b.readings[onBand], read[walked]]
+    const forces = b.forces[curve]
+    const bound = bandBound(forces)
+    if (!m || !w || !(forces.length > 100) || !forces.every(Number.isFinite)) {
+      fail(`${onBand} on ${what}'s band, or its curve, is not read: ${JSON.stringify([m, w])}`)
+    }
+    if (m.gram !== null) fail(`${onBand} on ${what}'s band shows a gram reading: ${m.gram}`)
+    const written = b.written[i]
+    const inFull = toDecimals(m.exact, 2)
+    if (
+      JSON.stringify(numbersIn(m.label)) !== JSON.stringify([inFull]) ||
+      JSON.stringify(numbersIn(written)) !== JSON.stringify([inFull, toDecimals(m.atMm, 2)]) ||
+      [m.label, written].some((text) => /\b[DU]\b/.test(text))
+    ) {
+      fail(
+        `${onBand} on ${what}'s band is not written in full, ${inFull} g, or is named as the sheet's: ${JSON.stringify([m.label, written])}`,
+      )
+    }
+    if (!(bound < 0.01) || !(Math.abs(m.exact - w.exact) <= bound)) {
+      fail(
+        `${onBand} on ${what}'s band is not the sheet's in full: ${m.exact} g against ${w.exact} g, the bound ${bound} g`,
+      )
+    }
+    console.log(
+      `  ok  ${what}: ${onBand} ${m.exact} g at ${m.atMm.toFixed(2)} mm, written "${m.label}"; the sheet's ${w.exact} g read ${w.shown} g, within ${bound.toExponential(2)} g`,
+    )
+    bounds[onBand] = bound
+  }
+  return bounds
+}
 let bandOn = null
-for (const profile of ['composite', 'hirschkorn']) {
-  if ((await choose(profile)) !== 'ok') fail('no profile choice')
+/** The measured section put on the bench and weighed through the page, by
+ * the tests' weighing unless another is given. */
+const weighedSection = async (massG = 121.1, frontWeightG = 6.5) => {
+  if ((await choose('measured-section')) !== 'ok') fail('no profile choice')
+  await settle()
+  for (const [path, value] of [
+    [MASS, massG],
+    [FRONT_WEIGHT, frontWeightG],
+    [FROM_LIP, 13],
+  ]) {
+    if ((await setField(path, value)) !== 'ok') fail(`no ${path} field`)
+  }
+  await settle()
+  if ((await clickAction('weigh_key')) !== 'ok') fail('no button to weigh the key')
+  await settle()
+}
+for (const [what, put] of [
+  ['the measured section', () => weighedSection()],
+  ['the measured section at 130 g and 40 g', () => weighedSection(130, 40)],
+  ['hirschkorn', () => choose('hirschkorn')],
+]) {
+  if ((await put()) === 'no profile choice') fail('no profile choice')
   await settle()
   if ((await showView('band')) !== 'ok') fail('no band button')
   await settle()
@@ -1151,18 +1498,9 @@ for (const profile of ['composite', 'hirschkorn']) {
     !(Number(b.band.samples) > 100) ||
     JSON.stringify(b.curves) !== JSON.stringify(['down', 'up'])
   ) {
-    fail(`the band is not drawn on ${profile}: ${JSON.stringify(b)}`)
+    fail(`the band is not drawn on ${what}: ${JSON.stringify(b)}`)
   }
-  const read = await measured()
-  for (const [onBand, walked] of Object.entries(BAND_READS)) {
-    const [m, w] = [b.readings[onBand], read[walked]]
-    if (!m || m.shown !== w?.shown || !(Math.abs(m.exact - w.exact) <= 0.01)) {
-      fail(`${onBand} on ${profile}'s band is not the sheet's: ${JSON.stringify([m, w])}`)
-    }
-    console.log(
-      `  ok  ${profile}: ${onBand} ${m.shown} g (${m.exact}) at ${m.atMm.toFixed(2)} mm, the sheet's ${w.shown} g (${w.exact})`,
-    )
-  }
+  await bandAgainstSheet(what, b)
   const [d, u] = [b.readings.down_weight_on_the_band, b.readings.up_weight_on_the_band]
   if (!(Math.abs(d.atMm - step) < 1e-9) || !(windowMm - u.atMm <= step)) {
     fail(`the extremes do not fall a step off each seat: ${JSON.stringify([d, u, windowMm])}`)
@@ -1178,7 +1516,7 @@ for (const profile of ['composite', 'hirschkorn']) {
       return page.scrollHeight > page.clientHeight ? [page.scrollHeight, page.clientHeight] : null
     })()
   `)
-  if (grown) fail(`the band lengthens the page on ${profile}: ${JSON.stringify(grown)}`)
+  if (grown) fail(`the band lengthens the page on ${what}: ${JSON.stringify(grown)}`)
   bandOn = b
 }
 
@@ -1229,12 +1567,15 @@ console.log(
 
 // The other half of the pair: the key weighed a gram heavier at the front
 // moves the band's middle as it moves the sheet's balance weight, and not its
-// width. D and U on the band each stand within the hundredth of a gram held
-// above of the walk's, so the middle moves as the sheet's balance weight in
-// full does to within twice that, 0.02 g. The width is D − U, which the gram
-// moves by under 1 g × 1 %, the two seats' arms apart, and each of its four
-// readings stands within 0.01 g of the walk's: under 0.05 g in all.
+// width. Each of the band's extremes stands within its bound of the walk's in
+// full, before the gram and after it, and the sheet's balance weight in full
+// is the middle of the walk's D and U, so the band's middle moves as the
+// balance weight does to within half the four bounds added up. The width is
+// D − U, which the gram moves by under 1 g × 1 %, the two seats' arms apart,
+// and each of its four extremes stands within its bound of the walk's: under
+// 0.01 g and the four bounds in all.
 const sheetBefore = await measured()
+const boundsBefore = await bandAgainstSheet('his key, its bushings tighter', tighter)
 const frontBefore = Number(await fieldValue(FRONT_WEIGHT))
 if ((await setField(FRONT_WEIGHT, frontBefore + 1)) !== 'ok') fail('no front weight field')
 await settle()
@@ -1245,26 +1586,30 @@ if ((await showView('band')) !== 'ok') fail('no band button')
 await settle()
 const heavier = await bandShown()
 const sheetAfter = await measured()
+const boundsAfter = await bandAgainstSheet('his key, a gram heavier in front', heavier)
+const fourBounds = [...Object.values(boundsBefore), ...Object.values(boundsAfter)].reduce(
+  (sum, bound) => sum + bound,
+  0,
+)
 const middleMoved = bandMiddle(heavier.readings) - bandMiddle(tighter.readings)
 const balanceMoved = sheetAfter.balance_weight.exact - sheetBefore.balance_weight.exact
 const widthMoved = bandWidth(heavier.readings) - bandWidth(tighter.readings)
-if (!(Math.abs(middleMoved) > 0.5) || !(Math.abs(middleMoved - balanceMoved) <= 0.02)) {
+if (!(Math.abs(middleMoved) > 0.5) || !(Math.abs(middleMoved - balanceMoved) <= fourBounds / 2)) {
   fail(
     `a gram at the front moved the band's middle by ${middleMoved} g, the sheet's balance weight by ${balanceMoved} g`,
   )
 }
-if (!(Math.abs(widthMoved) <= 0.05)) {
+if (!(Math.abs(widthMoved) <= 0.01 + fourBounds)) {
   fail(`a gram at the front moved the band's width by ${widthMoved} g`)
 }
 console.log(
   `  ok  a gram at the front moves the band's middle ${middleMoved.toFixed(3)} g (the sheet's BW ${balanceMoved.toFixed(3)} g), its width ${widthMoved.toFixed(4)} g`,
 )
 
-// A key with no stroke has no band: on the composite frame with its balance
-// rail 6.6 mm low its stops fight, it rides on them, and the band says why
-// with the sheet's own refusal.
-if ((await choose('composite')) !== 'ok') fail('no profile choice')
-await settle()
+// A key with no stroke has no band: on the measured section's frame, the key
+// weighed, its balance rail 6.6 mm low, its stops fight, it rides on them,
+// and the band says why with the sheet's own refusal.
+await weighedSection()
 if ((await moveSlider(BALANCE_RAIL, 20)) !== 'ok') fail('balance rail slider missing')
 await settle()
 if ((await showView('band')) !== 'ok') fail('no band button')

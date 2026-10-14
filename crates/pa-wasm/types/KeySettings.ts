@@ -26,15 +26,14 @@ front_mortise: MortiseSettings,
  */
 friction: FrictionSettings, 
 /**
- * Its weighing as it was typed; `null` while its mass is derived from
- * its volume or published.
+ * Its weighing as it was typed; `null` while it is published or not
+ * weighed.
  */
 weighing: Weighed | null, 
 /**
- * Its mass as the statics take it, grams: as published, as weighed, or
- * derived from its volume until it is; `null` where the volume model
- * encloses nothing. Not a setting: what the weighing, the source or the
- * estimate gives.
+ * Its mass as the statics take it, grams: as published or as weighed;
+ * `null` until it is weighed. Not a setting: what the weighing or the
+ * source gives.
  */
 mass_g: number | null, 
 /**

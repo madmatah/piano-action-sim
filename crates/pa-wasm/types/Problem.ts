@@ -68,10 +68,10 @@ by_mm: number, } | { "code": "capstan_behind_back_check_block",
  * How far forward it must come to clear the block, millimetres
  * along the key.
  */
-by_mm: number, } | { "code": "capstan_off_its_block", 
+by_mm: number, } | { "code": "capstan_off_the_full_height", 
 /**
- * How far past the block's end its head reaches, millimetres along
- * the key.
+ * How far forward it must come for its head to stand wholly over
+ * the full height, millimetres along the key.
  */
 by_mm: number, } | { "code": "capstan_dome_narrower_than_its_head", 
 /**
@@ -88,6 +88,28 @@ head_mm: number, } | { "code": "capstan_in_block",
 block: Part, 
 /**
  * How far its head stands into it, millimetres along the key.
+ */
+by_mm: number, } | { "code": "clearance_not_a_cut", 
+/**
+ * Its front end less its back end, millimetres along the key.
+ */
+length_mm: number, 
+/**
+ * Its depth below the keystick's full top, millimetres.
+ */
+depth_mm: number, } | { "code": "clearance_through_keystick", 
+/**
+ * Its depth below the keystick's full top, millimetres.
+ */
+depth_mm: number, 
+/**
+ * The wood under its back end, where the keystick is thinnest under
+ * it: its full height, less the chamfer's rise where that runs
+ * under it, millimetres.
+ */
+wood_mm: number, 
+/**
+ * How far it reaches past the keystick's underside, millimetres.
  */
 by_mm: number, } | { "code": "mortise_through_key_top", 
 /**

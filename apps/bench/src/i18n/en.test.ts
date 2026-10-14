@@ -214,16 +214,69 @@ describe('a problem', () => {
     expect(
       word(t.editRefusal, 'outline_crosses_itself', {
         code: 'outline_crosses_itself',
-        back: 'capstan_block',
+        back: 'back_check_block',
         front: 'keystick',
         by_mm: 1,
       }),
     ).toBe(
-      "the capstan block would stand 1.0 mm across the step down to the key's thinned tail, and a block stands on the one or on the other: no key is cut like that.",
+      "the back check block would stand 1.0 mm across the step down to the key's thinned tail, and a block stands on the one or on the other: no key is cut like that.",
     )
     expect(
-      word(t.editRefusal, 'capstan_off_its_block', { code: 'capstan_off_its_block', by_mm: 1.25 }),
-    ).toBe('the capstan would stand 1.3 mm off the block it is screwed into.')
+      word(t.editRefusal, 'outline_crosses_itself', {
+        code: 'outline_crosses_itself',
+        back: 'top_clearance',
+        front: 'capstan',
+        by_mm: 2,
+      }),
+    ).toBe(
+      "the wippen rail clearance would run 2.0 mm under the capstan's head, which screws into the keystick's full height: no key is cut like that.",
+    )
+    expect(
+      word(t.editRefusal, 'outline_crosses_itself', {
+        code: 'outline_crosses_itself',
+        back: 'back_check_block',
+        front: 'top_clearance',
+        by_mm: 1,
+      }),
+    ).toBe(
+      'the back check block and the wippen rail clearance would overlap by 1.0 mm along the key: no key is cut like that.',
+    )
+    expect(
+      word(t.editRefusal, 'feature_outside_keystick', {
+        code: 'feature_outside_keystick',
+        part: 'top_clearance',
+        by_mm: 3,
+      }),
+    ).toBe(
+      "the wippen rail clearance would run 3.0 mm back over the key's thinned tail: it is cut in the keystick's full height.",
+    )
+    expect(
+      word(t.editRefusal, 'capstan_off_the_full_height', {
+        code: 'capstan_off_the_full_height',
+        by_mm: 0.47,
+      }),
+    ).toBe(
+      "the capstan would stand over the key's thinned tail, and it screws into the keystick's full height: its head stands wholly over it 0.5 mm further forward.",
+    )
+    expect(
+      word(t.editRefusal, 'clearance_not_a_cut', {
+        code: 'clearance_not_a_cut',
+        length_mm: -5,
+        depth_mm: 3,
+      }),
+    ).toBe(
+      "a wippen rail clearance -5.0 mm long and 3.0 mm deep cuts nothing: it is cut below the keystick's full top, its front end in front of its back end.",
+    )
+    expect(
+      word(t.editRefusal, 'clearance_through_keystick', {
+        code: 'clearance_through_keystick',
+        depth_mm: 25,
+        wood_mm: 24.5,
+        by_mm: 0.5,
+      }),
+    ).toBe(
+      'a wippen rail clearance 25.0 mm deep goes through the keystick, which has 24.5 mm of wood under it.',
+    )
     expect(
       word(t.editRefusal, 'capstan_dome_narrower_than_its_head', {
         code: 'capstan_dome_narrower_than_its_head',
@@ -319,8 +372,11 @@ describe('a form', () => {
     expect(t.weighing.weighed(130, 10, 30)).toBe(
       'Weighed: 130.00 g, its front weight 10.00 g read 30.0 mm back from the lip.',
     )
-    expect(t.weighing.notWeighed(121.123)).toBe(
-      'Not weighed yet: its 121.12 g, and where its centre of mass stands, are derived from its volume at an assumed wood density.',
+    expect(t.weighing.notWeighed).toMatch(/^Not weighed yet: this key has no mass in the model/)
+    // A reading refused for want of a weighing sends the reader to the panel
+    // that takes one, by the heading that panel shows.
+    expect(t.refusal.key_not_weighed({ code: 'key_not_weighed' })).toContain(
+      `“${t.panel.weighing}”`,
     )
     expect(t.weighing.published(120.08)).toBe(
       'As published: 120.08 g, and its centre of mass, its height included, as its source gives them.',
@@ -328,7 +384,7 @@ describe('a form', () => {
   })
 
   it('names every profile the bench ships, and every way a line is known', () => {
-    expect(Object.keys(t.profile)).toEqual(['composite', 'hirschkorn'])
+    expect(Object.keys(t.profile)).toEqual(['hirschkorn', 'measured-section'])
     expect(t.view.how.traced).toBe('traced from a figure')
   })
 

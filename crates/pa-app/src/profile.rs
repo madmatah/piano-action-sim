@@ -21,7 +21,7 @@
 //! # Units, converted once
 //!
 //! A record carries its unit, which is checked against the quantity the
-//! number is (a length, a mass, grams, a density, a torque) and converted to
+//! number is (a length, a mass, grams, a torque) and converted to
 //! the domain's SI by moving the decimal point of the recorded text, then
 //! reading it once: 0.12 mm becomes the double nearest 0.00012 m, the bits
 //! the Rust literal `0.00012` has, where dividing the double nearest 0.12 by
@@ -54,8 +54,8 @@
 //! A profile names the instruments it describes, each as its records'
 //! sources name it, and a number it reads from a record of any other
 //! instrument is **borrowed** ([`Known::Borrowed`]): what the owner measured
-//! on his key frame is measured on the composite, which describes that
-//! frame, and borrowed on Hirschkorn's key, which does not. An assumption
+//! on his key frame is measured on his measured section, which describes
+//! that frame, and borrowed on Hirschkorn's key, which does not. An assumption
 //! stays one wherever it was made, and a record of no instrument, a protocol
 //! or a drawer's stock of papers, is borrowed by none.
 //!
@@ -76,7 +76,7 @@ use pa_core::parts::frame::{
     Crown, Drawer, FrameSections, KeyKind, NotADrawer, PinShape, PunchingStack, RailSection, PAPER,
 };
 use pa_core::parts::mounts::{on_its_frame, KeyMount};
-use pa_core::parts::{Capstan, FrameDesign, GluedBlock, KeyDesign, KeyMass, NotAWeighing};
+use pa_core::parts::{Capstan, FrameDesign, KeyDesign, KeyMass, NotAWeighing, TopClearance};
 use pa_core::regulation::Targets;
 use pa_core::solve::Statics;
 use pa_core::validate::DRAWER;
@@ -114,21 +114,32 @@ const RECORDS: [(&str, &str); 6] = [
     ),
 ];
 
-/// The profiles shipped, by name, as compiled in: `data/profiles/<name>.json`.
+/// The profiles shipped, by name, as compiled in: `data/profiles/<name>.json`,
+/// the standard one first.
 const SHIPPED: [(&str, &str); 2] = [
-    (
-        "composite",
-        include_str!("../../../data/profiles/composite.json"),
-    ),
     (
         "hirschkorn",
         include_str!("../../../data/profiles/hirschkorn.json"),
     ),
+    (
+        "measured-section",
+        include_str!("../../../data/profiles/measured-section.json"),
+    ),
 ];
 
+/// The name of the owner's measured section's profile.
+pub const SECTION: &str = "measured-section";
+
+/// The name of the measured section weighed by the tests' weighing, a
+/// profile the tests build on [`SECTION`].
+#[cfg(test)]
+pub(crate) const WEIGHED_SECTION: &str = "weighed-section";
+
 /// The name of the profile [`crate::instrument::Instrument::standard`]
-/// builds.
-pub const STANDARD: &str = "composite";
+/// builds: Hirschkorn's key on his printed frame, whose mass, centre of mass,
+/// inertia, contact points and bushings were measured and published on one
+/// action.
+pub const STANDARD: &str = "hirschkorn";
 
 // ---- what a profile describes ----------------------------------------------
 
@@ -171,9 +182,8 @@ pub enum Source {
         /// Whether the file's source is a measurement of the owner's, not
         /// a published document.
         measured: bool,
-        /// Whether the number is half the recorded one: a radius from a
-        /// diameter, a half-length from a length, exactly.
-        halved: bool,
+        /// How the number is taken from the recorded one, exactly.
+        derive: Derive,
         /// Whether the file's source is a figure the record was traced from.
         traced: bool,
         /// The instrument the file's numbers were measured or read on, as
@@ -201,6 +211,19 @@ pub enum Source {
         /// is known as well as that centre is.
         from: Option<&'static str>,
     },
+}
+
+/// How a number is taken from the record it is bound to, each exactly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Derive {
+    /// As recorded.
+    Whole,
+    /// Half the recorded value: a radius from a diameter, a half-length
+    /// from a length (`"derive": "half"`).
+    Half,
+    /// The recorded distance behind the balance pin as the position the
+    /// key's frame signs, negative behind the pin (`"derive": "behind"`).
+    Behind,
 }
 
 /// How a number an instrument starts from is known, by the provenance its
@@ -505,7 +528,7 @@ enum How {
     Record {
         file: &'static str,
         pointer: String,
-        halved: bool,
+        derive: Derive,
     },
     Stated {
         values: Vec<f64>,
@@ -545,20 +568,25 @@ impl BindingFile {
                 let file = Records::get()
                     .file(file)
                     .ok_or_else(|| LoadError::UnknownRecord(file.to_owned()))?;
-                let halved = match self.derive.as_deref() {
-                    None => false,
-                    Some("half") => true,
-                    Some(_) => return Err(malformed("a record is taken whole or halved")),
+                let derive = match self.derive.as_deref() {
+                    None => Derive::Whole,
+                    Some("half") => Derive::Half,
+                    Some("behind") => Derive::Behind,
+                    Some(_) => {
+                        return Err(malformed(
+                            "a record is taken whole, halved or as a distance behind the pin",
+                        ))
+                    }
                 };
                 How::Record {
                     file,
                     pointer,
-                    halved,
+                    derive,
                 }
             }
             (false, true, false) => {
                 if self.derive.is_some() {
-                    return Err(malformed("only a record is halved"));
+                    return Err(malformed("only a record's value is derived from"));
                 }
                 let (values, list) = match (self.value, self.values.clone()) {
                     (Some(v), None) => (vec![v], false),
@@ -753,8 +781,6 @@ enum Quantity {
     Mass,
     /// A weight or a mass in grams, as its name says.
     Grams,
-    /// A density, kilograms per cubic metre.
-    Density,
     /// A torque, newton-metres.
     Torque,
     /// A pure number, as a unit vector's components are.
@@ -773,7 +799,6 @@ impl Quantity {
             (Self::Length, "m")
             | (Self::Mass, "kg")
             | (Self::Grams, "g")
-            | (Self::Density, "kg/m³")
             | (Self::Torque, "N·m")
             | (Self::Ratio, "dimensionless")
             | (Self::Inertia, "kg·m²") => Some(0),
@@ -887,7 +912,7 @@ impl Bindings {
             How::Record {
                 file,
                 pointer,
-                halved,
+                derive,
             } => {
                 let records = Records::get();
                 let at = records.at(file, pointer)?;
@@ -911,13 +936,17 @@ impl Bindings {
                         let (value, unit, reliability) = record_of(item, file, &pointer)?;
                         let si = convert(value, unit)?;
                         Ok((
-                            if *halved { 0.5 * si } else { si },
+                            match derive {
+                                Derive::Whole => si,
+                                Derive::Half => 0.5 * si,
+                                Derive::Behind => -si,
+                            },
                             Source::Record {
                                 file,
                                 pointer,
                                 reliability,
                                 measured: records.measured(file),
-                                halved: *halved,
+                                derive: *derive,
                                 traced: records.traced(file),
                                 instrument: records.instrument(file),
                             },
@@ -1147,7 +1176,7 @@ fn choose<T: Copy>(
 /// How a key's mass is described.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MassModel {
-    VolumeModel,
+    Unweighed,
     Weighed,
     Published,
 }
@@ -1188,21 +1217,20 @@ fn chamfer_of(b: &mut Bindings, tail_end: f64) -> Result<(f64, f64), LoadError> 
     Ok((rise, run))
 }
 
-/// A glued block, by its three numbers under `prefix`; or none, where the
-/// profile states that the key has none.
-fn glued_block(
-    b: &mut Bindings,
-    prefix: &'static str,
-    names: [&'static str; 3],
-) -> Result<Option<GluedBlock>, LoadError> {
-    if b.has(names[0]) {
-        Ok(Some(GluedBlock {
-            back: b.length(names[0])?,
-            length: b.length(names[1])?,
-            height: b.length(names[2])?,
+/// The clearance cut in the keystick's top for the wippen rail, by its two
+/// ends, signed from the balance pin, and its depth below the full top; or
+/// none, where the profile states that the key has none.
+fn top_clearance(b: &mut Bindings) -> Result<Option<TopClearance>, LoadError> {
+    const BACK: &str = "top_clearance.back";
+    if b.has(BACK) {
+        Ok(Some(TopClearance {
+            back: b.length(BACK)?,
+            front: b.length("top_clearance.front")?,
+            depth: b.length("top_clearance.depth")?,
         }))
     } else {
-        b.absent(prefix).map_err(|_| LoadError::Unbound(names[0]))?;
+        b.absent("top_clearance")
+            .map_err(|_| LoadError::Unbound(BACK))?;
         Ok(None)
     }
 }
@@ -1214,10 +1242,10 @@ fn glued_block(
 /// stands at.
 fn standing_key_height(start: &Start) -> Result<f64, LoadError> {
     let not_read = |why: SeatRefusal| LoadError::KeyHeightNotRead(why);
-    let mass = match start.mass.whole() {
-        Some(props) => Some(props),
-        None => crate::composite_key::mass(&start.key).map(|e| start.mass.props(e)),
-    };
+    let mass = start
+        .key
+        .section_centroid()
+        .and_then(|c| start.mass.props(c.y));
     let k = on_its_frame(
         KeyMount::OnPunching,
         &start.key,
@@ -1266,7 +1294,6 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         cove_height: b.length("capstan.cove_height")?,
         shaft_length: b.length("capstan.shaft_length")?,
         tip_height: b.length("capstan.tip_height")?,
-        density: b.number("capstan.density", Quantity::Density)?,
         dome_radius: b.optional("capstan.dome_radius", Quantity::Length)?,
     };
     let tail_end = b.length("tail_end")?;
@@ -1292,15 +1319,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         back_check_block_height: b.length("back_check_block_height")?,
         back_check_block_back: b.length("back_check_block_back")?,
         back_check_block_length: b.length("back_check_block_length")?,
-        capstan_block: glued_block(
-            b,
-            "capstan_block",
-            [
-                "capstan_block.back",
-                "capstan_block.length",
-                "capstan_block.height",
-            ],
-        )?,
+        top_clearance: top_clearance(b)?,
         tail_height: b.length("tail_height")?,
         tail_length: b.length("tail_length")?,
         damper_felt: b.optional("damper_felt", Quantity::Length)?,
@@ -1311,9 +1330,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         front_board: b.length("front_board")?,
         keytop_overhang: b.length("keytop_overhang")?,
         width: b.length("width")?,
-        density: b.number("density", Quantity::Density)?,
         capstan_screw,
-        measured_stick_mass: b.optional("measured_stick_mass", Quantity::Mass)?,
     };
     if let Some(centre) = dome_centre {
         let Some(radius) = key.capstan_screw.dome_radius else {
@@ -1345,12 +1362,12 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         "key_mass",
         file.key_mass.as_ref(),
         &[
-            ("volume_model", MassModel::VolumeModel),
+            ("unweighed", MassModel::Unweighed),
             ("weighed", MassModel::Weighed),
             ("published", MassModel::Published),
         ],
     )? {
-        MassModel::VolumeModel => KeyMass::Estimated,
+        MassModel::Unweighed => KeyMass::Unweighed,
         MassModel::Published => {
             let mass = b.number("published.mass", Quantity::Mass)?;
             let centre = Point::new(
@@ -1668,6 +1685,40 @@ impl Profile {
         Self::named(STANDARD).expect("the standard profile is shipped")
     }
 
+    /// The owner's measured section weighed by the test fixture's weighing
+    /// ([`pa_core::test_fixture::weighed`]), a profile on the shipped one:
+    /// the key the domain's tests push, as an instrument, for the tests of
+    /// what needs a key the touch weight moves either way: front-heavy by a
+    /// fraction of a gram past its bushings, on its front punching under no
+    /// weight, up onto its cloth under a pull of 13 g.
+    #[cfg(test)]
+    pub(crate) fn weighed_section() -> &'static Self {
+        use pa_core::test_fixture as fixture;
+        static WEIGHED: OnceLock<Profile> = OnceLock::new();
+        WEIGHED.get_or_init(|| {
+            let text = format!(
+                r#"{{
+                "profile": "{WEIGHED_SECTION}",
+                "what": "the owner's measured section, weighed by the tests' weighing",
+                "base": "{SECTION}",
+                "key_mass": {{ "is": "weighed", "why": "the tests' weighing, not a measurement" }},
+                "values": [
+                    {{ "param": "weighing.mass_g", "value": {}, "unit": "g",
+                      "reliability": "S", "why": "the tests' weighing" }},
+                    {{ "param": "weighing.front_weight_g", "value": {}, "unit": "g",
+                      "reliability": "S", "why": "the tests' weighing" }},
+                    {{ "param": "weighing.from_lip", "value": {}, "unit": "mm",
+                      "reliability": "S", "why": "the tests' weighing" }}
+                ]
+            }}"#,
+                fixture::WEIGHED_MASS_G,
+                fixture::WEIGHED_FRONT_WEIGHT_G,
+                fixture::WEIGHED_FROM_LIP * 1000.0,
+            );
+            Self::load(WEIGHED_SECTION, &text).expect("the measured section, weighed")
+        })
+    }
+
     /// The colour the drawer's paper of this thickness is supplied in, if
     /// the drawer holds one.
     pub fn paper_colour(&self, thickness: f64) -> Option<PaperColour> {
@@ -1833,7 +1884,7 @@ mod tests {
     /// does not load**, naming it.
     #[test]
     fn a_profile_missing_a_number_or_binding_a_stray_one_does_not_load() {
-        let text = shipped_text(STANDARD).unwrap();
+        let text = shipped_text(SECTION).unwrap();
         let mut file: Value = serde_json::from_str(text).unwrap();
         let values = file["values"].as_array_mut().unwrap();
         let i = values
@@ -1843,7 +1894,7 @@ mod tests {
         let removed = values.remove(i);
         let missing = serde_json::to_string(&file).unwrap();
         assert_eq!(
-            Profile::load(STANDARD, &missing),
+            Profile::load(SECTION, &missing),
             Err(LoadError::Unbound("tail_rise_run"))
         );
         let mut stray = removed.clone();
@@ -1852,7 +1903,7 @@ mod tests {
         values.push(removed);
         values.push(stray);
         assert_eq!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
             Err(LoadError::Unused("tail_rise_runn".to_owned()))
         );
     }
@@ -1863,7 +1914,7 @@ mod tests {
     /// stated with a blank one.
     #[test]
     fn a_unit_that_is_not_the_quantitys_does_not_load() {
-        let text = shipped_text(STANDARD).unwrap();
+        let text = shipped_text(SECTION).unwrap();
         let mut file: Value = serde_json::from_str(text).unwrap();
         for v in file["values"].as_array_mut().unwrap() {
             if v["param"] == "stick_height" {
@@ -1872,7 +1923,7 @@ mod tests {
             }
         }
         assert_eq!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
             Err(LoadError::WrongUnit {
                 param: "stick_height",
                 unit: "g".to_owned()
@@ -1885,18 +1936,18 @@ mod tests {
             }
         }
         assert_eq!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
             Err(LoadError::Unexplained("front_edge".to_owned()))
         );
         let mut file: Value = serde_json::from_str(text).unwrap();
         for v in file["values"].as_array_mut().unwrap() {
-            if v["param"] == "capstan_block" {
+            if v["param"] == "top_clearance" {
                 v["why"] = Value::from("  ");
             }
         }
         assert_eq!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
-            Err(LoadError::Unexplained("capstan_block".to_owned())),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
+            Err(LoadError::Unexplained("top_clearance".to_owned())),
             "an absence stated with a blank reason"
         );
     }
@@ -1939,16 +1990,16 @@ mod tests {
     }
 
     /// Consistency: **a profile names a base and binds what differs**: a
-    /// profile on the composite with its capstan moved and its key weighed
-    /// loads with the composite's every other number, its own two with the
-    /// profile's provenance, and the weighing's derived numbers computed
+    /// profile on the measured section with its capstan moved and its key
+    /// weighed loads with the section's every other number, its own two with
+    /// the profile's provenance, and the weighing's derived numbers computed
     /// as a weighing computes them.
     #[test]
     fn a_profile_on_a_base_binds_only_what_differs() {
         let text = r#"{
             "profile": "moved",
-            "what": "the composite with its capstan 2 mm further back, weighed",
-            "base": "composite",
+            "what": "the measured section with its capstan 2 mm further back, weighed",
+            "base": "measured-section",
             "key_mass": { "is": "weighed", "why": "weighed on a scale and on the jig" },
             "values": [
                 { "param": "capstan.x", "value": -131.5, "unit": "mm",
@@ -1962,7 +2013,7 @@ mod tests {
             ]
         }"#;
         let moved = Profile::load("moved", text).expect("a profile on a base");
-        let base = Profile::standard();
+        let base = Profile::named(SECTION).expect("shipped");
         assert_eq!(moved.start.key.capstan.to_bits(), (-0.1315_f64).to_bits());
         let mut key = base.start.key.clone();
         key.capstan = moved.start.key.capstan;
@@ -1990,18 +2041,22 @@ mod tests {
         .is_err());
     }
 
-    /// Consistency: **the composite profile loads to the test fixture's
-    /// bits**, so the key and frame `pa-core`'s tests are run on and the
-    /// instrument the bench builds cannot drift apart: every number of the
-    /// design in the same order to the bit, the papers aside, which arrive
-    /// laid by the regulation; the kind, the mass, the bushings, the targets
-    /// and the weight; and the two instruments built, regulated alike, hash
-    /// alike. The fixture's half inch is the record's too.
+    /// Consistency: **the measured section's profile loads to the test
+    /// fixture's bits**, so the key and frame `pa-core`'s tests are run on
+    /// and the instrument the bench builds cannot drift apart: every number
+    /// of the design in the same order to the bit, the papers aside, which
+    /// arrive laid by the regulation; the kind, the mass, which none of its
+    /// keys has until one is weighed, the bushings, the targets and the
+    /// weight; and the two instruments built, regulated alike, hash alike.
+    /// The fixture's test weighing is the one the tests' weighed section
+    /// takes, to the bit of its static moment, and so is the instrument it
+    /// builds. The fixture's half inch is the record's too.
     #[test]
-    fn the_composite_profile_loads_to_the_test_fixture() {
+    fn the_measured_section_profile_loads_to_the_test_fixture() {
+        use crate::instrument::Instrument;
         use pa_core::test_fixture as fixture;
-        let profile = Profile::standard();
-        assert_eq!(profile.name, "composite");
+        let profile = Profile::named(SECTION).expect("shipped");
+        assert_eq!(profile.name, "measured-section");
         let start = &profile.start;
         let mut frame = fixture::frame();
         frame.balance_punching.papers.clear();
@@ -2012,7 +2067,7 @@ mod tests {
         let fixed = Start {
             key: fixture::key(),
             kind: KeyKind::Natural,
-            mass: KeyMass::Estimated,
+            mass: KeyMass::Unweighed,
             frame,
             protocol: fixture::protocol(),
             bushings,
@@ -2033,17 +2088,37 @@ mod tests {
         assert_eq!(bits(start), bits(&fixed));
         assert_eq!(*start, fixed);
 
-        let built = crate::instrument::Instrument::new(
+        let built = Instrument::new(
             Start {
                 frame: fixture::frame(),
-                ..fixed
+                ..fixed.clone()
             },
             profile,
         )
         .expect("the fixture is regulable");
         assert_eq!(
             built.state_hash(),
-            crate::instrument::Instrument::standard().state_hash()
+            Instrument::of(profile).expect("regulable").state_hash()
+        );
+
+        let weighed = Profile::weighed_section();
+        let with_weighing = Start {
+            mass: fixture::weighed(),
+            ..fixed
+        };
+        assert_eq!(bits(&weighed.start), bits(&with_weighing));
+        assert_eq!(weighed.start, with_weighing);
+        let built = Instrument::new(
+            Start {
+                frame: fixture::frame(),
+                ..with_weighing
+            },
+            weighed,
+        )
+        .expect("the fixture is regulable");
+        assert_eq!(
+            built.state_hash(),
+            Instrument::weighed_section().state_hash()
         );
 
         let imperial = Records::get()
@@ -2070,8 +2145,8 @@ mod tests {
         use crate::registry::path;
         let text = r#"{
             "profile": "moved",
-            "what": "the composite with its capstan 2 mm further back",
-            "base": "composite",
+            "what": "the measured section with its capstan 2 mm further back",
+            "base": "measured-section",
             "values": [
                 { "param": "capstan.x", "value": -131.5, "unit": "mm",
                   "reliability": "S", "why": "a test" }
@@ -2092,7 +2167,7 @@ mod tests {
     }
 
     /// Consistency: **a profile that arrives as recorded keeps its papers**:
-    /// the composite with half a millimetre of paper on each punching, as
+    /// the measured section with half a millimetre of paper on each punching, as
     /// recorded, is built with those papers and no regulation, the papers'
     /// provenance under the name the design's numbers give a paper; and one
     /// recording a paper no drawer holds does not load.
@@ -2103,8 +2178,8 @@ mod tests {
             format!(
                 r#"{{
                 "profile": "recorded",
-                "what": "the composite with its papers as recorded",
-                "base": "composite",
+                "what": "the measured section with its papers as recorded",
+                "base": "measured-section",
                 "arrival": {{ "is": "as_recorded", "why": "a test" }},
                 "values": [
                     {{ "param": "balance_punching.papers", "values": [{paper_mm}],
@@ -2136,6 +2211,35 @@ mod tests {
         );
     }
 
+    /// Consistency: **a distance recorded behind the balance pin is the
+    /// position the key's frame signs**: the measured section's capstan,
+    /// recorded as 122 mm behind the pin, stands at −122 mm, exactly, the
+    /// record's own provenance kept; and a derivation no loader knows does
+    /// not load.
+    #[test]
+    fn a_distance_behind_the_pin_is_read_as_a_position() {
+        let section = Profile::named(SECTION).expect("shipped");
+        assert_eq!(section.start.key.capstan.to_bits(), (-0.122_f64).to_bits());
+        assert!(matches!(
+            &section.provenance("capstan.x").expect("bound").source,
+            Source::Record {
+                file: "key-section.json",
+                derive: Derive::Behind,
+                ..
+            }
+        ));
+        let mut file: Value = serde_json::from_str(shipped_text(SECTION).unwrap()).unwrap();
+        for v in file["values"].as_array_mut().unwrap() {
+            if v["param"] == "capstan.x" {
+                v["derive"] = Value::from("ahead");
+            }
+        }
+        assert!(matches!(
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
+            Err(LoadError::Malformed { param, .. }) if param == "capstan.x"
+        ));
+    }
+
     /// Consistency: **the drawer is the record's, each paper with its
     /// colour**, thinnest first.
     #[test]
@@ -2147,6 +2251,115 @@ mod tests {
         assert_eq!(p.paper_colour(0.00008), Some(PaperColour::White));
         assert_eq!(p.paper_colour(0.00125), Some(PaperColour::Card));
         assert_eq!(p.paper_colour(0.0003), None);
+    }
+
+    /// Consistency: **his keystick stands at its full height to where his
+    /// figure lowers its top, and his capstan screws into it.** The thinned
+    /// tail's front, his key's end plus the length his profile derives by
+    /// the rule stated beside it, is where the trace records the full height
+    /// ending, -132.45 mm, within a rounding of each; the capstan's seat is
+    /// the keystick's full height, and its top is Pk3's height plus its
+    /// radius to the bit, the seat subtracted and added back exactly, the
+    /// two within a factor of two of each other; his top has no clearance
+    /// cut in it.
+    #[test]
+    fn his_keystick_stands_at_full_height_to_where_his_figure_lowers_it() {
+        let p = Profile::named("hirschkorn").expect("shipped");
+        let key = &p.start.key;
+        let file = "hirschkorn-key-outline.json";
+        let pointer = "/records/full_height_back";
+        let at = Records::get().at(file, pointer).expect("a record");
+        let (value, unit, _) = record_of(at, file, pointer).expect("a record");
+        assert_eq!(unit, "mm");
+        let full_height_back = shifted(value, -3).expect("a length");
+        assert!(
+            (key.tail_front() - full_height_back).abs() <= 2.0 * f64::EPSILON * 0.25,
+            "the tail's front at {} m, the full height's end at {full_height_back} m",
+            key.tail_front()
+        );
+        assert_eq!(p.known("tail_length").map(|(k, _)| k), Some(Known::Derived));
+        assert_eq!(key.top_clearance, None);
+        assert_eq!(key.capstan_seat().to_bits(), key.stick_height.to_bits());
+        let printed = |pointer: &str| -> f64 {
+            Records::get()
+                .at("hirschkorn-boston-gp178-note52.json", pointer)
+                .expect(pointer)["value"]
+                .as_f64()
+                .expect("a value")
+        };
+        let top =
+            printed("/geometry/key/points/Pk3/y") + printed("/geometry/key/points/Pk3/radius");
+        assert_eq!(key.capstan_contact().y.to_bits(), top.to_bits());
+        assert!(key.capstan - 0.5 * key.capstan_screw.head_diameter > key.tail_front());
+    }
+
+    /// Consistency: **a clearance a profile binds is loaded as bound, from
+    /// the balance pin, and drawn known as it is stated.** The measured
+    /// section with its stated absence of a clearance replaced by one from
+    /// 175 to 140 mm behind the pin, 3 mm deep, each number stated with its
+    /// reason: the key reads those numbers in metres as the Rust literals
+    /// read them, to the bit; the instrument builds on it, and its keystick
+    /// draws the clearance's front wall, floor and back wall, each placed by
+    /// its own number and known as assumed, from the profile that states it.
+    /// Bound without its front end, the profile does not load, naming it.
+    #[test]
+    fn a_clearance_a_profile_binds_is_loaded_and_drawn_as_bound() {
+        use crate::boundary::{How, Part, Scene};
+        use crate::instrument::Instrument;
+        let text = shipped_text(SECTION).unwrap();
+        let mut file: Value = serde_json::from_str(text).unwrap();
+        let values = file["values"].as_array_mut().unwrap();
+        let i = values
+            .iter()
+            .position(|v| v["param"] == "top_clearance")
+            .unwrap();
+        values.remove(i);
+        for (param, value) in [
+            ("top_clearance.back", -175.0),
+            ("top_clearance.front", -140.0),
+            ("top_clearance.depth", 3.0),
+        ] {
+            values.push(serde_json::json!({
+                "param": param, "value": value, "unit": "mm",
+                "reliability": "S", "why": "a test's clearance"
+            }));
+        }
+        let p: &'static Profile = Box::leak(Box::new(
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()).expect("it loads"),
+        ));
+        let c = p.start.key.top_clearance.expect("a clearance");
+        for (got, want) in [(c.back, -0.175_f64), (c.front, -0.140), (c.depth, 0.003)] {
+            assert_eq!(got.to_bits(), want.to_bits(), "{got} m, not {want} m");
+        }
+        let b = Instrument::of(p).expect("the instrument builds");
+        let stick = Scene::of(&b)
+            .outlines
+            .into_iter()
+            .find(|o| o.code == Part::Keystick)
+            .expect("a keystick");
+        for number in [
+            "top_clearance.front",
+            "top_clearance.depth",
+            "top_clearance.back",
+        ] {
+            let source = stick
+                .sources
+                .iter()
+                .find(|s| s.number == number)
+                .unwrap_or_else(|| panic!("no stretch placed by {number}"));
+            assert_eq!(source.how, How::Assumed, "{number}");
+            assert_eq!(
+                source.at.as_deref(),
+                Some("data/profiles/measured-section.json")
+            );
+        }
+
+        let values = file["values"].as_array_mut().unwrap();
+        values.retain(|v| v["param"] != "top_clearance.front");
+        assert_eq!(
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
+            Err(LoadError::Unbound("top_clearance.front"))
+        );
     }
 
     /// Consistency: **his profile reads his printed lines and circles as
@@ -2236,44 +2449,42 @@ mod tests {
         ] {
             assert_eq!(p.known(param).map(|(k, _)| k), Some(known), "{param}");
         }
-        let composite = Profile::standard();
+        let section = Profile::named(SECTION).expect("shipped");
         for (param, known) in [
             ("stick_height", Known::Measured),
+            ("capstan.x", Known::Measured),
             ("front_edge", Known::Assumed),
             ("tail_end", Known::Derived),
             ("drawer", Known::Measured),
         ] {
-            assert_eq!(
-                composite.known(param).map(|(k, _)| k),
-                Some(known),
-                "{param}"
-            );
+            assert_eq!(section.known(param).map(|(k, _)| k), Some(known), "{param}");
         }
     }
 
     /// Consistency: **each record his profile reads is the one its number
-    /// names, and what it borrows is the composite's.** A pointer to
-    /// another record of the same file and unit loads, and nothing on his
-    /// sheet need read the number back: his key button's height bound to
-    /// its length, or his front pin's length to its thickness, moves no
-    /// reading a test pins. So a number traced from his Figure A.1 is bound
-    /// to the trace's record of its own name; one read from the owner's
-    /// records or Stanwood's, as the composite's frame and protocol are, is
-    /// bound to the very record the composite binds it to; and what his
-    /// profile states as borrowed from the composite, his balance rail and
-    /// felts, his cloth, his balance pin, his capstan's buried shank, his
-    /// key's width and density and the papers the composite's regulation
-    /// lays, is the composite's to the bit. What he reads of the owner's
-    /// instruments is known as borrowed, an assumption there as one; what
-    /// he reads of no instrument, Stanwood's protocol and the drawer's
-    /// papers, as the composite knows it. His printed points are read
-    /// back by pointer against his record elsewhere
-    /// (`his_profile_reads_his_printed_lines_and_circles`, C11).
+    /// names, and what he borrows of the owner's measured section is the
+    /// section's.** A pointer to another record of the same file and unit
+    /// loads, and nothing on his sheet need read the number back: his key
+    /// button's height bound to its length, or his front pin's length to its
+    /// thickness, moves no reading a test pins. So a number traced from his
+    /// Figure A.1 is bound to the trace's record of its own name; one read
+    /// from the owner's records or Stanwood's is bound to the very record
+    /// the measured section binds it to, with the same bits. What his
+    /// profile states as borrowed from the section, his balance rail and
+    /// felts, his cloth, his balance pin, his capstan's buried shank and his
+    /// key's width, the section states as its own assumption, to the bit;
+    /// and his papers, as recorded, are those the section's regulation lays
+    /// on arrival, so that his balance bearing stands where the section's
+    /// does. What he reads of the owner's instruments is known as borrowed,
+    /// an assumption there as one; what he reads of no instrument,
+    /// Stanwood's protocol and the drawer's papers, as the section knows
+    /// it. His printed points are read back by pointer against his record
+    /// elsewhere (`his_profile_reads_his_printed_lines_and_circles`, C11).
     #[test]
     fn each_record_his_profile_reads_is_the_one_its_number_names() {
         use crate::instrument::{Instrument, Stack};
         let his = Profile::named("hirschkorn").expect("shipped");
-        let composite = Profile::standard();
+        let section = Profile::named(SECTION).expect("shipped");
         let (mut traced, mut borrowed) = (0, 0);
         for p in &his.provenance {
             match &p.source {
@@ -2303,15 +2514,15 @@ mod tests {
                 } => {
                     borrowed += 1;
                     assert!(
-                        composite.provenance.iter().any(|c| c.param == p.param
+                        section.provenance.iter().any(|c| c.param == p.param
                             && c.source == p.source
                             && c.value.to_bits() == p.value.to_bits()),
-                        "{} reads {:?}, which the composite does not bind it to",
+                        "{} reads {:?}, which the measured section does not bind it to",
                         p.param,
                         p.source
                     );
                     let (his_known, _) = his.known_from(&p.source);
-                    let (its_known, _) = composite.known_from(&p.source);
+                    let (its_known, _) = section.known_from(&p.source);
                     let expected = match (instrument, reliability) {
                         (Some(_), Reliability::Assumed) => Known::Assumed,
                         (Some(_), _) => Known::Borrowed,
@@ -2324,11 +2535,8 @@ mod tests {
         assert!(traced > 0 && borrowed > 0);
         for param in [
             "width",
-            "density",
             "capstan.shaft_length",
             "capstan.tip_height",
-            "capstan.density",
-            "front_mortise.depth",
             "balance_rail.height",
             "balance_punching.felt",
             "front_punching.felt",
@@ -2338,28 +2546,36 @@ mod tests {
             "balance_rail.pin_height",
             "back_rail.half_length",
         ] {
-            let value = |p: &Profile| p.provenance(param).expect(param).value.to_bits();
-            assert!(
-                matches!(
-                    his.provenance(param).map(|p| &p.source),
-                    Some(Source::Stated { .. })
-                ),
-                "{param} is stated as borrowed"
-            );
+            let stated = |p: &Profile| {
+                let v = p.provenance(param).expect(param);
+                let Source::Stated {
+                    profile,
+                    reliability,
+                    ..
+                } = &v.source
+                else {
+                    panic!("{param} is stated on {}", p.name)
+                };
+                (v.value.to_bits(), profile.clone(), *reliability)
+            };
+            let (his_bits, his_profile, his_marker) = stated(his);
+            let (its_bits, its_profile, its_marker) = stated(section);
+            assert_eq!(his_bits, its_bits, "{param} is not the section's");
+            assert_eq!(his_marker, its_marker, "{param} is known otherwise");
             assert_eq!(
-                value(his),
-                value(composite),
-                "{param} is not the composite's"
+                (his_profile.as_str(), its_profile.as_str()),
+                ("hirschkorn", SECTION),
+                "{param}"
             );
         }
-        let standard = Instrument::standard();
+        let regulated = Instrument::of(section).expect("the section arrives regulated");
         let mut laid = his.provenance.iter().filter(|p| p.param == PAPER.name);
         for stack in [Stack::Balance, Stack::Front] {
-            for &paper in standard.papers(stack) {
+            for &paper in regulated.papers(stack) {
                 assert_eq!(
                     laid.next().map(|p| p.value.to_bits()),
                     Some(paper.to_bits()),
-                    "his papers are not those the composite's regulation lays"
+                    "his papers are not those the section's regulation lays"
                 );
             }
         }
@@ -2373,11 +2589,11 @@ mod tests {
     /// own instrument, an assumption excepted, which stays one; a record of
     /// no instrument, as Stanwood's protocol and the drawer's stock of
     /// papers are, is borrowed by none. So on Hirschkorn's key the pins and
-    /// punchings the owner measured on his key frame are borrowed, not
-    /// measured, and the only numbers of his known as measured are the
-    /// drawer's papers;
-    /// on the composite, built on the owner's records, they are measured,
-    /// and nothing is borrowed.
+    /// punchings the owner measured on his key frame, and the depth of the
+    /// front mortise he measured on his keys, are borrowed, not measured,
+    /// and the only numbers of his known as measured are the drawer's
+    /// papers; on the section, built on the owner's records, they are
+    /// measured, and nothing is borrowed.
     #[test]
     fn what_a_profile_reads_of_another_instrument_is_borrowed() {
         for name in Profile::names() {
@@ -2402,7 +2618,7 @@ mod tests {
             }
         }
         let his = Profile::named("hirschkorn").unwrap();
-        let composite = Profile::standard();
+        let section = Profile::named(SECTION).expect("shipped");
         let known = |p: &Profile, param: &str| p.known(param).map(|(k, _)| k);
         for param in [
             "front_rail.pin.length",
@@ -2413,9 +2629,10 @@ mod tests {
             "balance_rail.pin.diameter",
             "balance_rail.punching_radius",
             "balance_rail.punching_hole_radius",
+            "front_mortise.depth",
         ] {
             assert_eq!(known(his, param), Some(Known::Borrowed), "{param}");
-            assert_eq!(known(composite, param), Some(Known::Measured), "{param}");
+            assert_eq!(known(section, param), Some(Known::Measured), "{param}");
         }
         for (param, how) in [
             ("balance_rail.half_length", Known::Assumed),
@@ -2432,23 +2649,23 @@ mod tests {
                 v.param
             );
         }
-        assert!(composite
+        assert!(section
             .provenance
             .iter()
-            .all(|v| !composite.borrows(&v.source)));
+            .all(|v| !section.borrows(&v.source)));
     }
 
     /// Consistency: **a profile names the instruments it describes**, each
-    /// one a record names: the composite stripped of them, or naming one no
+    /// one a record names: the measured section stripped of them, or naming one no
     /// record is of, does not load, so a misspelt name cannot make every
     /// record it reads borrowed.
     #[test]
     fn a_profile_names_the_instruments_it_describes() {
-        let text = shipped_text(STANDARD).unwrap();
+        let text = shipped_text(SECTION).unwrap();
         let mut file: Value = serde_json::from_str(text).unwrap();
         file.as_object_mut().unwrap().remove("instruments");
         assert!(matches!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
             Err(LoadError::Choice {
                 what: "instruments",
                 ..
@@ -2456,7 +2673,7 @@ mod tests {
         ));
         file["instruments"] = serde_json::json!(["a grand piano key fram"]);
         assert_eq!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
             Err(LoadError::UnknownInstrument(
                 "a grand piano key fram".to_owned()
             ))
@@ -2469,7 +2686,7 @@ mod tests {
     /// instruments, so no list of profiles, files or numbers can stand in
     /// for the records' sources. Hirschkorn's profile naming the owner's key
     /// frame among its own reads that frame's pins and punchings as
-    /// measured; the composite naming only its key frame borrows its key
+    /// measured; the measured section naming only its key frame borrows its key
     /// section's keystick and keeps its frame's pins measured, and naming
     /// only its key section the reverse; an assumption stays one whichever
     /// it names; and a record of any file is borrowed exactly when it is of
@@ -2488,8 +2705,8 @@ mod tests {
             "natural keys from a grand piano keyboard",
         );
         let his_and_frame = naming("hirschkorn", &[his_own, frame]);
-        let frame_only = naming(STANDARD, &[frame]);
-        let keys_only = naming(STANDARD, &[keys]);
+        let frame_only = naming(SECTION, &[frame]);
+        let keys_only = naming(SECTION, &[keys]);
         for param in [
             "front_rail.pin.length",
             "front_rail.punching_radius",
@@ -2516,12 +2733,12 @@ mod tests {
             pointer: "/records/0".to_owned(),
             reliability: Reliability::Verified,
             measured: true,
-            halved: false,
+            derive: Derive::Whole,
             traced: false,
             instrument,
         };
         for (p, own) in [
-            (Profile::standard(), frame),
+            (Profile::named(SECTION).expect("shipped"), frame),
             (&frame_only, frame),
             (&keys_only, keys),
         ] {
@@ -2538,11 +2755,11 @@ mod tests {
 
     /// Consistency: **a key regulated on arrival is given its key height**:
     /// the height a key stands at is read only on a frame that arrives as
-    /// recorded, so the composite, regulated on arrival, stating no key
+    /// recorded, so the section, regulated on arrival, stating no key
     /// height, does not load.
     #[test]
     fn a_key_regulated_on_arrival_is_given_its_key_height() {
-        let text = shipped_text(STANDARD).unwrap();
+        let text = shipped_text(SECTION).unwrap();
         let mut file: Value = serde_json::from_str(text).unwrap();
         for v in file["values"].as_array_mut().unwrap() {
             if v["param"] == "key_height" {
@@ -2552,7 +2769,7 @@ mod tests {
             }
         }
         assert!(matches!(
-            Profile::load(STANDARD, &serde_json::to_string(&file).unwrap()),
+            Profile::load(SECTION, &serde_json::to_string(&file).unwrap()),
             Err(LoadError::Malformed { param, .. }) if param == "key_height"
         ));
     }

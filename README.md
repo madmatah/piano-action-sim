@@ -13,11 +13,16 @@ expected values.
 ## What is built
 
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
-front, capsule, back check block, thinned tail and chamfer, a turned capstan)
+front, capsule, back check block, thinned tail and chamfer, a clearance cut in
+its top for the wippen rail where it has one, a turned capstan)
 stands on a parametric frame (balance, front and back rails, their pins, and
 punchings laid from a drawer of real papers). A key is weighed whole, its leads
 in it: its mass and its front weight are typed, and the bench keeps the static
-moment the front weight gives on the arm it was read at. The key turns on its
+moment the front weight gives on the arm it was read at; the height of its
+centre of mass, which no scale gives, is estimated from its drawn section. An
+outline never weighs a key: a key nobody has weighed has no mass, and every
+reading that needs one is refused, saying so, while key height, dip, the key
+weight ratio and the key friction weight zeroed on the frame are read. The key turns on its
 balance pin against contacts read off the drawn parts, with set-valued friction
 at the balance: a static solve puts it where its weight and the weight on it
 leave it, a weight between the up weight and the down weight moves nothing, and
@@ -33,7 +38,8 @@ stroke until it goes all the way, and balance and friction weight are read from
 those two; the band is drawn by driving the key through its stroke at the
 measuring point, down and back, the force that holds it there read at every
 step, and D and U read on it a second way, its extremes, within a few
-thousandths of a gram of the walk's; the key friction weight is read by
+thousandths of a gram of the walk's and shown in full, the gram being the
+walk's; the key friction weight is read by
 Stanwood's protocol, zeroed on the levelled jig, and by its variant zeroed
 where the key rests on its frame. A key
 friction weight is typed as Stanwood's protocol reads it, and the bushings are
@@ -60,19 +66,21 @@ range, step and unit from the engine, and its label from the page's
 catalogue. An edit that describes a key no part could be built as is refused
 before any solve, with the limiting dimension and the shortfall, and the bench
 is left as it was: a key front brought back until its covering runs into the
-key button, a capstan in a glued block, a front mortise cut through the key
-top, a measuring point off the covering, a mass of nothing, a value that is
-not a number. Everything an assembled keyboard can be, however badly
+key button, a capstan in a glued block or over the thinned tail, a front
+mortise cut through the key top, a measuring point off the covering, a mass
+of nothing, a value that is not a number. Everything an assembled keyboard can be, however badly
 regulated, is computed and reported. Every edit taken is logged, and the log
 replayed gives the same state, which a hash names. The bench starts from no
 number of its own: an instrument is built from a profile (`data/profiles/`),
 which binds every number it starts from to a record in `data/params/` or to an
 assumption stated with its reason, and a test fails on one that is neither.
-The standard bench is the composite profile; resetting returns an instrument to
-its own profile. The page chooses between the two profiles shipped: the
-composite key, and Hirschkorn's published Boston GP-178 key, note 52, on his
+The bench opens on Hirschkorn's published Boston GP-178 key, note 52, on his
 printed frame with real felts, its outline traced from his drawing where his
-tables give no number, its mass, centre of mass and bushings his. Every line of
+tables give no number, its mass, centre of mass and bushings his; resetting
+returns an instrument to its own profile. The page chooses between the two
+profiles shipped: his key, and the owner's measured key section on the key
+frame he measured, its key front assumed and its key unweighed until one is
+weighed on the bench. Every line of
 the section, and the outlines of the extruded parts in the solid, can be
 marked by how the number that draws it is known: measured, published, traced,
 derived by a rule, borrowed from another instrument, assumed, or set on the
@@ -80,16 +88,16 @@ bench.
 
 Every reading on the weighing sheet is a procedure run on the model; their
 closed forms are the tests' oracles. What the stage simplifies is listed in
-[`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §2.3, first among them a mass
-model that cannot predict front weight, which makes every reading on the
-default bench an indication rather than a measurement.
+[`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §2.3; on Hirschkorn's key every
+reading is an indication of its geometry, his keybed, rails, felts and papers
+being borrowed or assumed.
 
 | Part | What it is |
 |---|---|
 | `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
 | `crates/pa-app` | the single-key bench as an instrument, built from a profile, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
 | `data/profiles` | what each instrument starts from, every number bound to a record or a stated assumption |
-| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `band [PROFILE]`: the band, its D and U beside the walk's and both curves step by step; `golden`: rewrites the golden sheet |
+| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `band [PROFILE]`: the band, its extremes in full beside the walk's D and U, and both curves step by step; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section, in solid and as the band, force against travel, drawn when it is chosen (React, react-three-fiber), from the same Rust compiled to WebAssembly |
 
 ## What is planned
@@ -97,14 +105,14 @@ default bench an indication rather than a measurement.
 In this order, each stage with its engine and its view
 ([`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §8):
 
-- a general quasi-static core with the key as its first client, on
-  Hirschkorn's published Boston GP-178 key as the default profile, and an
+- a general quasi-static core with the key as its first client and an
   interface in English and French (its first parts, the mechanism, the
   contacts over all coordinates, the static solve, every reading of the sheet
   by procedure, a boundary that sends codes and numbers which the page words
   in English, the registry and the validation layer, the profiles that load
-  `data/params/`, Hirschkorn's key as a profile chosen on the bench, the band
-  drawn by the driven sweep, are built);
+  `data/params/`, Hirschkorn's key the default and the owner's measured
+  section beside it, the band drawn by the driven sweep, are built; the French
+  interface is planned);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;
@@ -128,7 +136,8 @@ pnpm verify                                # CI's gates, its install aside: Rust
                                            # format, clippy, tests, wasm build;
                                            # Biome, type-check, build, tests,
                                            # browser smoke test
-cargo run -p pa-cli -- weigh               # the weighing sheet, no browser
+cargo run -p pa-cli -- weigh               # Hirschkorn's weighing sheet, no browser
+cargo run -p pa-cli -- weigh measured-section  # the owner's section, unweighed
 cargo run -p pa-cli -- band                # the band, step by step
 PATH="$HOME/.cargo/bin:$PATH" pnpm build   # the wasm through wasm-pack, then the bench
 pnpm --filter @pas/app-bench dev           # the bench; ?view=section or ?view=band

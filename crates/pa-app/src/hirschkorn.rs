@@ -9,11 +9,12 @@
 //! his frame, and `tests/fixtures/hirschkorn-between-its-stops.json` keeps
 //! what they print, with the command that prints it. The bench differs from
 //! them by one deliberate choice, and only by it: its frame bears on real
-//! felts, a flat front punching washer and a flat back rail cloth strip,
-//! each with its top where his round of 5 mm has its, where his model bears
-//! on the rounds. That difference is derived here in closed form, from his
-//! printed points and the felts the bench draws, and the bench is held to
-//! it.
+//! felts, a flat front punching washer over Pg4 and a flat back rail cloth
+//! strip lying wholly under the key's chamfer, its rounded front edge over
+//! Pg5, each with its top where his round of 5 mm has its, where his model
+//! bears on the rounds. That difference is derived here in closed form, from
+//! his printed points and the radius his profile rounds the cloth's edges
+//! to, and the bench is held to it.
 
 use pa_core::geometry::Point;
 use pa_core::measure::measurement::ProcedureId;
@@ -52,6 +53,19 @@ fn point(record: &Value, body: &str, name: &str) -> Point {
         si(record, &format!("{at}/x")),
         si(record, &format!("{at}/y")),
     )
+}
+
+/// A length his profile states, in SI: `param`'s stated value, in
+/// millimetres there.
+fn stated(profile: &Value, param: &str) -> f64 {
+    let v = profile["values"]
+        .as_array()
+        .expect("its values")
+        .iter()
+        .find(|v| v["param"] == param)
+        .unwrap_or_else(|| panic!("{param} bound"));
+    assert_eq!(v["unit"], "mm", "{param} in millimetres");
+    v["value"].as_f64().expect("a stated value") / 1000.0
 }
 
 /// A printed line's normal, as printed.
@@ -114,20 +128,23 @@ fn fall(p: Point, rest: f64, bottom: f64) -> f64 {
 /// - **His rounds, closed again here** from the printed points as script 10
 ///   closes them, reproduce what script 10 prints, to its last digit: this
 ///   test reads his frame as script 10 does.
-/// - **The felts, in closed form** from his printed points alone, never
-///   from the bench's frame: each felt's top where his round's top is, the
-///   cloth centred under Pg5 and the washer under Pg4, as the bench's must
-///   be; at rest the key, nose-up, bears with its chamfer's kink, where
-///   Pk5's line meets Pk4's flat, on the cloth's flat face; at the bottom it
-///   bears on the front punching read at its centre, as the bench reads
-///   every punching. The felts' difference from his rounds, these less
-///   those, is the bound: the bench's seats stand
-///   where script 10's do, moved by that difference, to within what script
-///   10 prints them to and what the static solve closes a contact to (a
-///   picometre over arms of a fifth of a metre); and where the prototype's
-///   do, moved by it, to within what the prototype's compliant contacts
-///   compress under the key at rest, over the arm of the contact
-///   compressed.
+/// - **The felts, in closed form** from his printed points and the radius
+///   his profile rounds the cloth's edges to, never from the bench's frame:
+///   each felt's top where his round's top is, the washer over Pg4 and the
+///   cloth wholly under the chamfer, its front edge, an arc of that radius,
+///   centred over Pg5, as the bench's must be; at rest the key, nose-up,
+///   bears with its chamfer, Pk5's line, which rises towards the tail, on
+///   that edge, as a line touches a round; at the bottom it bears on the
+///   front punching read at its centre, as the bench reads every punching.
+///   The felts' difference from his rounds, these less those, is the bound:
+///   the bench's seats stand where script 10's do, moved by that
+///   difference, to within what script 10 prints them to and what the
+///   static solve closes a contact to (a picometre over arms of a fifth of
+///   a metre); and where the prototype's do, moved by it, to within what
+///   the prototype's compliant contacts compress under the key at rest, over
+///   the arm of the contact compressed. The bench's washer and the cloth's
+///   front edge are held to Pg4 and Pg5 where it draws them, which names a
+///   felt laid elsewhere along the key before the seats show it.
 /// - **Table A.1's static moment** over the measuring arm is the front
 ///   weight the jig reads, to round-off; and the key weight ratio is the
 ///   capstan's arm over the measuring arm. These see what the attitudes
@@ -182,19 +199,40 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
         }
     }
 
-    // The felts, in closed form from his printed points alone, as the owner
-    // chose them: a flat cloth strip and a flat washer, each with its top
-    // where his round has its, the washer read at its centre over Pg4; the
-    // key, nose-up at rest, bearing with its chamfer's kink, where Pk5's
-    // line meets Pk4's flat, on the cloth's face. Nothing here reads the
-    // bench's frame, so a frame read in another convention moves the
-    // bench's seats and not these, by however little.
+    // The felts, in closed form from his printed points, as the owner chose
+    // them: a flat washer and a flat cloth strip, each with its top where
+    // his round has its, the washer read at its centre over Pg4; the cloth
+    // lying wholly under the chamfer, its front edge, rounded to the radius
+    // his profile states, centred over Pg5; the key, nose-up at rest,
+    // bearing with its chamfer on that edge. The chamfer is the line the
+    // bench draws, through the kink where Pk5's line meets Pk4's flat, its
+    // normal made unit; his rounds keep it as printed, as script 10 does.
+    // Nothing here reads the bench's frame, so a frame read in another
+    // convention moves the bench's seats and not these, by however little.
+    let profile: Value = serde_json::from_str(PROFILE).expect("his profile");
     let n5 = normal(&record, "Pk5");
     if pk4.y != 0.0 || normal(&record, "Pk4") != Point::new(0.0, -1.0) {
         return Err("his underside is no longer the flat y = 0 the felts are closed on".to_owned());
     }
     let kink = pk5.x + n5.y * pk5.y / n5.x;
-    let felt_rest = ((pg5.y + r5) / kink).asin();
+    let rho = stated(&profile, "back_rail.cloth_edge_radius");
+    let edge = Point::new(pg5.x, pg5.y + r5 - rho);
+    if edge.x + rho >= kink {
+        return Err(format!(
+            "the cloth reaches {} m, the chamfer's kink stands at {kink} m",
+            edge.x + rho
+        ));
+    }
+    let length = (n5.x * n5.x + n5.y * n5.y).sqrt();
+    let chamfer = Point::new(n5.x / length, n5.y / length);
+    let felt_rest = on_a_round(Point::new(kink, 0.0), chamfer, edge, rho, 0.0, 0.1);
+    let m = turned(felt_rest, chamfer);
+    let bears = Point::new(edge.x - rho * m.x, edge.y - rho * m.y);
+    if bears.x < edge.x || bears.x > edge.x + rho || bears.y < edge.y {
+        return Err(format!(
+            "the chamfer meets the cloth's front edge at {bears:?}, off the arc about {edge:?}"
+        ));
+    }
     let felt_bottom = ((pg4.y + r4) / pg4.x).atan();
     let key = b.key();
     let frame = b.frame();
@@ -202,10 +240,14 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
         .sections
         .front
         .pin_x(frame.front_rail, KeyKind::Natural);
-    let back_x = frame.sections.back.centre_x(frame.back_rail);
-    if front_x != pg4.x || back_x != pg5.x {
+    let back = &frame.sections.back;
+    let edge_x = back.centre_x(frame.back_rail) + back.half_length;
+    // The cloth's front edge is drawn where its centre and half-length put
+    // it, one addition, held to Pg5 within that addition's rounding.
+    if front_x != pg4.x || (edge_x - pg5.x).abs() > f64::EPSILON * pg5.x.abs() {
         return Err(format!(
-            "the bench's felts stand at {front_x} and {back_x} m, his rounds at {} and {} m",
+            "the bench's washer and cloth's front edge stand at {front_x} and {edge_x} m, his \
+             rounds at {} and {} m",
             pg4.x, pg5.x
         ));
     }
@@ -339,28 +381,39 @@ mod tests {
 
     /// Consistency across implementations, not validation: **the bench
     /// differs from his rounds by the felts alone** ([`c11`]). On real felts
-    /// his key falls 9.2016 mm at Pk2, where script 10's rounds let it fall
-    /// 9.3064 mm: 0.105 mm less, because at rest it bears with its chamfer's
-    /// kink on the cloth's face, where his round met its chamfer 7.3 mm
-    /// further back.
+    /// his key falls 9.3080 mm at Pk2, where script 10's rounds let it fall
+    /// 9.3064 mm: 1.7 µm more. At rest it bears on the cloth's front edge,
+    /// over Pg5, where his round meets its chamfer 0.06 mm further forward.
+    /// The difference is his rounds' own. A line resting on a round passes
+    /// over the round's centre above its top, by the radius times (1/cos of
+    /// its slope - 1): on his rounds of 5 mm, 0.39 µm at the back, the
+    /// chamfer standing 0.72 degrees from level at rest, and 0.39 µm at the
+    /// front, the flat 0.71 degrees at the bottom; on the cloth's edge of
+    /// 0.5 mm 0.04 µm, and on the washer read at its centre nothing. And
+    /// script 10 reads Pk5's normal as printed, 0.99984 long, which stands
+    /// the chamfer 0.8 µm further off its round.
     #[test]
     fn the_bench_differs_from_his_rounds_by_the_felts_alone() {
         let (rounds, bench) = c11(&his()).unwrap_or_else(|why| panic!("{why}"));
-        let less = rounds.dip_at_pk2 - bench.dip_at_pk2;
+        let more = bench.dip_at_pk2 - rounds.dip_at_pk2;
         assert!(
-            (0.000_10..0.000_11).contains(&less),
-            "the real felts take {less} m off his dip at Pk2"
+            (0.000_001_65..0.000_001_75).contains(&more),
+            "the real felts add {more} m to his dip at Pk2"
         );
     }
 
     /// Consistency: **the cross-check catches a frame read in another
-    /// convention.** Table A.1's centre of mass read from the key's front
-    /// rather than from its pivot moves no stop, and the front weight shows
-    /// it; Pg5's height read upside down, its round's top 5.5 mm above the
-    /// balance bearing rather than below, puts the key's tail where no seat
-    /// is, or another one; and a rail's height a micrometre off, which moves
-    /// the dip at Pk2 by about a micrometre, well inside "about 0.1 mm",
-    /// moves the bench's seats off the felts his printed points place.
+    /// convention, or a micrometre off.** Table A.1's centre of mass read
+    /// from the key's front rather than from its pivot moves no stop, and
+    /// the front weight shows it; Pg5's height read upside down, its round's
+    /// top 5.5 mm above the balance bearing rather than below, puts the key's
+    /// tail where no seat is, or another one; the back rail placed by its
+    /// centre at Pg5's x, as a rail under a round would be, rather than by
+    /// its cloth's front edge, puts the cloth's face under the chamfer's
+    /// kink; and a rail a micrometre off, in height at the front or at the
+    /// back, or along the key at the back, moves the bench's seats off the
+    /// felts his printed points place by more than script 10 prints them to,
+    /// or the cloth's front edge off Pg5.
     #[test]
     fn the_cross_check_catches_a_frame_read_in_another_convention() {
         for (param, binding) in [
@@ -375,9 +428,24 @@ mod tests {
                      "rule": "planted: 28.8 + 5.5 - 3.0", "why": "planted: Pg5's height read upside down" }"#,
             ),
             (
+                "back_rail.x",
+                r#"{ "param": "back_rail.x", "record": "hirschkorn-boston-gp178-note52.json",
+                     "pointer": "/geometry/ground/points/Pg5/x" }"#,
+            ),
+            (
                 "front_rail.height",
                 r#"{ "param": "front_rail.height", "value": 23.221, "unit": "mm", "reliability": "E",
                      "rule": "planted: 23.22 + 0.001", "why": "planted: a micrometre off" }"#,
+            ),
+            (
+                "back_rail.height",
+                r#"{ "param": "back_rail.height", "value": 20.301, "unit": "mm", "reliability": "E",
+                     "rule": "planted: 20.3 + 0.001", "why": "planted: a micrometre off" }"#,
+            ),
+            (
+                "back_rail.x",
+                r#"{ "param": "back_rail.x", "value": -215.699, "unit": "mm", "reliability": "E",
+                     "rule": "planted: -215.7 + 0.001", "why": "planted: a micrometre off" }"#,
             ),
         ] {
             let caught = built(&planted(param, binding)).and_then(|b| c11(&b).map(|_| ()));
@@ -432,7 +500,12 @@ mod tests {
     /// was.
     #[test]
     fn selecting_a_profile_puts_its_instrument_on_the_bench() {
-        let mut b = Instrument::standard();
+        let section = || {
+            Instrument::of(Profile::named(crate::profile::SECTION).expect("shipped"))
+                .expect("the measured section")
+        };
+        assert_eq!(Instrument::standard().state_hash(), his().state_hash());
+        let mut b = section();
         b.set(path::WEIGHT, 20.0).expect("a weight");
         b.act(Action::SelectProfile {
             profile: "hirschkorn".to_owned(),
@@ -450,10 +523,10 @@ mod tests {
             .is_err());
         assert_eq!(b.state_hash(), hash);
         b.act(Action::SelectProfile {
-            profile: "composite".to_owned(),
+            profile: crate::profile::SECTION.to_owned(),
         })
-        .expect("the composite");
-        assert_eq!(b.state_hash(), Instrument::standard().state_hash());
+        .expect("the measured section");
+        assert_eq!(b.state_hash(), section().state_hash());
         assert_eq!(b.log().len(), 5, "the log kept through every selection");
     }
 }

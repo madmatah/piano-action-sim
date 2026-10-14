@@ -37,21 +37,25 @@
 //!
 //! # The fixtures
 //!
-//! The default bench, and four benches that each exercise a part of the
-//! statics the default does not: a frame whose stops fight, its key riding
-//! on them off its balance punching; a back-heavy key; a dip stopped by the
-//! pin in its mortise; and a key shortened under a frame left where it was,
-//! whose front pin then stands under its wood and carries it. Each is built
-//! as an interface builds it, through the instrument's own calls, a path
-//! set or an action taken: the value a fixture sets is the one it computes
-//! in metres, sent in the path's millimetres, which turn back into the same
-//! metres to the bit.
+//! The default bench, Hirschkorn's key on his printed frame as it arrives,
+//! and benches that each exercise a part of the statics the default does
+//! not. On his key: a frame whose stops fight, its key riding on them off
+//! its balance punching; a dip stopped by the pin in its mortise; and a key
+//! shortened under a frame left where it was, whose front pin then stands
+//! under its wood and carries it. On the owner's measured section: the key
+//! as it arrives, unweighed, every reading that needs its mass refused; the
+//! same key weighed by a stated typical weighing; and weighed back-heavy.
+//! Each is built as an interface builds it, through the instrument's own
+//! calls, a path set or an action taken: the value a fixture sets is the
+//! one it computes in metres, sent in the path's millimetres, which turn
+//! back into the same metres to the bit.
 
 use std::fmt::Write as _;
 
 use crate::instrument::{
     Action, BenchReadout, Fault, Instrument, Measurement, Riding, Stack, TouchVerdict, Trust,
 };
+use crate::profile::SECTION;
 use crate::registry::path;
 
 /// One bench whose readings the golden sheet records.
@@ -73,11 +77,11 @@ impl Fixture {
 }
 
 /// Every bench the golden sheet records, in the order the sheets are written.
-pub const FIXTURES: [Fixture; 5] = [
+pub const FIXTURES: [Fixture; 7] = [
     Fixture {
         name: "default",
-        what: "the standard bench: a middle natural on its frame, regulated to 65.0 mm of \
-               key height and 10.2 mm of key dip",
+        what: "the standard bench: Hirschkorn's key, Boston GP-178 note 52, on his printed \
+               frame with real felts, as it arrives",
         build: Instrument::standard,
     },
     Fixture {
@@ -87,14 +91,8 @@ pub const FIXTURES: [Fixture; 5] = [
         build: wedged_frame,
     },
     Fixture {
-        name: "back-heavy-key",
-        what: "the standard bench with its key weighed back-heavy: 151.12 g, and a front \
-               weight of -8.09 g read 13 mm back from its lip",
-        build: back_heavy_key,
-    },
-    Fixture {
         name: "mortise-limited-dip",
-        what: "the standard bench with the front rail pin 1 mm prouder: the pin bottoms in \
+        what: "the standard bench with the front rail pin 2 mm prouder: the pin bottoms in \
                its mortise before the key reaches its front punching",
         build: mortise_limited_dip,
     },
@@ -104,6 +102,25 @@ pub const FIXTURES: [Fixture; 5] = [
                where it was: the front pin stands outside its mortise, under the key, and the \
                key rides on it and its cloth",
         build: shortened_key,
+    },
+    Fixture {
+        name: "measured-section",
+        what: "the owner's measured key section on his measured frame, regulated to 65.0 mm \
+               of key height and 10.2 mm of key dip, as it arrives: not weighed, so every \
+               reading that needs the key's mass is refused",
+        build: measured_section,
+    },
+    Fixture {
+        name: "measured-section-weighed",
+        what: "the owner's measured key section weighed by a typical weighing, not a \
+               measurement: 118.0 g, and a front weight of 25.4 g read 13 mm back from its lip",
+        build: measured_section_weighed,
+    },
+    Fixture {
+        name: "back-heavy-key",
+        what: "the owner's measured key section weighed back-heavy: 151.1 g, and a front \
+               weight of -8.1 g read 13 mm back from its lip",
+        build: back_heavy_key,
     },
 ];
 
@@ -117,28 +134,12 @@ fn wedged_frame() -> Instrument {
     bench
 }
 
-/// The key weighed whole and back-heavy, typed in full: the mass and the
-/// front weight at 13 mm of the composite key with 30 g more, 120 mm behind
-/// its balance pin, so the same mass and static moment, the height of its
-/// centre of mass the volume model's.
-fn back_heavy_key() -> Instrument {
-    let mut bench = Instrument::standard();
-    bench
-        .act(Action::WeighKey {
-            mass_g: 151.116_689_639_242_2,
-            front_weight_g: -8.093_919_058_496_057,
-            from_lip_mm: 13.0,
-        })
-        .expect("a back-heavy key is weighed");
-    bench
-}
-
 fn mortise_limited_dip() -> Instrument {
     let mut bench = Instrument::standard();
     let pin = bench.frame().sections.front.pin_height;
     bench
-        .set(path::FRONT_PIN_HEIGHT, (pin + 0.001) * 1000.0)
-        .expect("a front pin a millimetre prouder");
+        .set(path::FRONT_PIN_HEIGHT, (pin + 0.002) * 1000.0)
+        .expect("a front pin two millimetres prouder");
     bench
 }
 
@@ -148,6 +149,46 @@ fn shortened_key() -> Instrument {
     bench
         .set(path::FRONT_EDGE, (front_edge - 0.018) * 1000.0)
         .expect("a key front brought back");
+    bench
+}
+
+/// The owner's measured section put on the bench, as the page puts it there.
+fn measured_section() -> Instrument {
+    let mut bench = Instrument::standard();
+    bench
+        .act(Action::SelectProfile {
+            profile: SECTION.to_owned(),
+        })
+        .expect("the measured section is shipped");
+    bench
+}
+
+/// The measured section weighed by a typical weighing, not a measurement:
+/// 118.0 g on the scale and a front weight of 25.4 g read 13 mm back from
+/// its lip, the order of a leaded natural of the middle of a grand keyboard,
+/// under Stanwood's front weight ceiling of 28.1 g at note 45. The height of
+/// its centre of mass is its drawn section's centroid, estimated.
+fn measured_section_weighed() -> Instrument {
+    weighed(118.0, 25.4)
+}
+
+/// The measured section weighed back-heavy: 151.1 g, and a front weight of
+/// −8.1 g read 13 mm back from its lip.
+fn back_heavy_key() -> Instrument {
+    weighed(151.1, -8.1)
+}
+
+/// The measured section weighed whole: `mass_g` grams, its front weight
+/// `front_weight_g` read 13 mm back from its lip.
+fn weighed(mass_g: f64, front_weight_g: f64) -> Instrument {
+    let mut bench = measured_section();
+    bench
+        .act(Action::WeighKey {
+            mass_g,
+            front_weight_g,
+            from_lip_mm: 13.0,
+        })
+        .expect("a key's weighing");
     bench
 }
 
@@ -285,17 +326,18 @@ fn write_readout(out: &mut String, bench: &Instrument) {
         stopped_by_the_mortise,
     } = readout;
 
-    number(out, "readout.key_mass_g", key_mass_g);
+    optional(out, "readout.key_mass_g", key_mass_g);
     optional(out, "readout.gap_front_mm", gap_front_mm);
     optional(out, "readout.gap_back_mm", gap_back_mm);
     number(out, "readout.key_friction_weight_g", key_friction_weight_g);
     number(out, "readout.key_height_target_mm", key_height_target_mm);
     number(out, "readout.key_dip_target_mm", key_dip_target_mm);
     match finger {
-        TouchVerdict::RestingOn { stop } => {
+        None => line(out, "readout.finger", "none"),
+        Some(TouchVerdict::RestingOn { stop }) => {
             line(out, "readout.finger", &format!("RestingOn {stop:?}"));
         }
-        TouchVerdict::HeldByFriction { touching, margin_g } => {
+        Some(TouchVerdict::HeldByFriction { touching, margin_g }) => {
             let on = touching.map_or_else(|| "nothing".to_owned(), |c| format!("{c:?}"));
             line(
                 out,
@@ -304,7 +346,7 @@ fn write_readout(out: &mut String, bench: &Instrument) {
             );
             number(out, "readout.finger.margin_g", margin_g);
         }
-        TouchVerdict::RidesOnBothStops { front, lift_mm } => {
+        Some(TouchVerdict::RidesOnBothStops { front, lift_mm }) => {
             line(
                 out,
                 "readout.finger",
@@ -312,11 +354,11 @@ fn write_readout(out: &mut String, bench: &Instrument) {
             );
             number(out, "readout.finger.lift_mm", lift_mm);
         }
-        TouchVerdict::LiftsOffBalancePunching {
+        Some(TouchVerdict::LiftsOffBalancePunching {
             touching,
             needs_friction,
             lift_mm,
-        } => {
+        }) => {
             let on: Vec<String> = touching.iter().map(|c| format!("{c:?}")).collect();
             line(
                 out,
@@ -328,7 +370,7 @@ fn write_readout(out: &mut String, bench: &Instrument) {
             );
             number(out, "readout.finger.lift_mm", lift_mm);
         }
-        TouchVerdict::LiftsOffItsFrame => line(out, "readout.finger", "LiftsOffItsFrame"),
+        Some(TouchVerdict::LiftsOffItsFrame) => line(out, "readout.finger", "LiftsOffItsFrame"),
     }
     number(out, "readout.out_of_level_deg", out_of_level_deg);
     // The slope, one step before the platform's `atan` turns it into the
@@ -414,6 +456,10 @@ mod tests {
     #[test]
     fn every_fixture_exercises_what_it_names() {
         use crate::instrument::{ContactCode, ProcedureId, Refused, WalkRefusal};
+        let default = Instrument::standard();
+        assert_eq!(default.profile().name, "hirschkorn");
+        assert!(default.faults().is_empty(), "his frame fits his key");
+
         let wedged = wedged_frame();
         let riding = wedged.riding().expect("the stops must fight, the key ride");
         assert_eq!(riding.front, ContactCode::FrontRailPunching);
@@ -424,14 +470,6 @@ mod tests {
             Some(&Err(Refused::Walk(WalkRefusal::NoTravel))),
             "and has no stroke to weigh"
         );
-
-        let back_heavy = back_heavy_key().sheet();
-        let front_weight = back_heavy
-            .get(crate::instrument::ProcedureId::FrontWeight)
-            .and_then(|r| r.as_ref().ok())
-            .expect("a back-heavy key weighs")
-            .value;
-        assert!(front_weight < 0.0, "{front_weight}");
 
         let mortise = mortise_limited_dip()
             .readout()
@@ -451,6 +489,41 @@ mod tests {
             Some(ContactCode::FrontPinOnTheWood),
             "and, standing under the key's wood, carry it"
         );
+
+        let unweighed = measured_section().sheet();
+        for p in [
+            ProcedureId::FrontWeight,
+            ProcedureId::DownWeight,
+            ProcedureId::UpWeight,
+            ProcedureId::KeyFrictionWeightZeroedOnTheJig,
+        ] {
+            assert_eq!(
+                unweighed.get(p),
+                Some(&Err(Refused::KeyNotWeighed)),
+                "{p:?} needs the key's mass"
+            );
+        }
+        for p in [
+            ProcedureId::KeyWeightRatio,
+            ProcedureId::KeyHeight,
+            ProcedureId::KeyDip,
+            ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
+        ] {
+            assert!(
+                matches!(unweighed.get(p), Some(Ok(_))),
+                "{p:?} reads no mass"
+            );
+        }
+
+        for (bench, sign) in [(measured_section_weighed(), 1.0), (back_heavy_key(), -1.0)] {
+            let front_weight = bench
+                .sheet()
+                .get(ProcedureId::FrontWeight)
+                .and_then(|r| r.as_ref().ok())
+                .expect("a weighed key weighs")
+                .value;
+            assert!(sign * front_weight > 0.0, "{front_weight}");
+        }
     }
 
     /// Fixture names are distinct, so no two sheets share a file.
