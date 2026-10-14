@@ -16,11 +16,12 @@
 //! # A key's mass is weighed
 //!
 //! A key is weighed whole, its leads in it: its mass and its front weight,
-//! which gives its static moment about the balance pin ([`key_mass`]). Until
-//! it is, the volume model's estimate stands for the whole of its mass; once
-//! it is, for the height of its centre of mass alone, which no scale gives.
-//! The volume model leaves with the composite key (`docs/FOUNDATIONS.md`
-//! §2.3).
+//! which gives its static moment about the balance pin ([`key_mass`]); or a
+//! source publishes it whole, its centre of mass's height included. Until it
+//! is weighed, the volume model's estimate stands for the whole of a
+//! composite key's mass; once it is, for the height of its centre of mass
+//! alone, which no scale gives. The volume model leaves with the composite
+//! key (`docs/FOUNDATIONS.md` §2.3).
 //!
 //! # The key's local frame
 //!
@@ -295,7 +296,8 @@ pub struct Capstan {
     /// Head diameter, metres. Wider than the shaft: it is the head's flat top
     /// that bears on the wippen heel.
     pub head_diameter: f64,
-    /// Height of the cylindrical part of the head, metres.
+    /// Height of the cylindrical part of the head, metres: up to its flat
+    /// top, or to where its dome begins.
     pub head_height: f64,
     /// Height of the cove that flares the shaft out into the head, metres.
     pub cove_height: f64,
@@ -306,21 +308,48 @@ pub struct Capstan {
     pub tip_height: f64,
     /// Density of the capstan's material, kg/m³. Brass unless stated.
     pub density: f64,
+    /// The radius of the dome its head is turned to, metres, where its top
+    /// is one: the head's top is then a spherical cap of this radius, its
+    /// centre on the axis this far below the top, which bears on the wippen's
+    /// heel as a circle does; none where the top is flat. No smaller than
+    /// the head's radius, or the dome would not cap the head
+    /// ([`crate::validate`]).
+    pub dome_radius: Option<f64>,
 }
 
 impl Capstan {
+    /// How far below its top the head's side ends: where a dome meets it,
+    /// the dome's sagitta over the head's radius; nothing for a flat top.
+    pub fn dome_sagitta(&self) -> f64 {
+        match self.dome_radius {
+            None => 0.0,
+            Some(r) => {
+                let half = 0.5 * self.head_diameter;
+                r - (r * r - half * half).sqrt()
+            }
+        }
+    }
+
     /// The half-profile to turn, as `(radius, height above the keystick)`
     /// points running from the bottom of the shaft to the centre of the flat
     /// top.
     ///
     /// Shaped from a photograph of a real capstan: a pointed, threaded shaft;
-    /// a cove flaring out; a short cylindrical head; a flat top. The thread
-    /// itself is not modelled — it changes the mass by about a twentieth and
-    /// nothing else, and a helix is not a profile.
+    /// a cove flaring out; a short cylindrical head; a flat top, or a dome
+    /// ([`Self::dome_radius`]), whose profile runs here as the chord from the
+    /// head's side to the top on the axis: the drawn part turns that chord
+    /// into the arc ([`KeyDesign::parts`]). The thread itself is not
+    /// modelled — it changes the mass by about a twentieth and nothing else,
+    /// and a helix is not a profile.
     pub fn profile(&self) -> Vec<(f64, f64)> {
         let (r_shaft, r_head) = (0.5 * self.diameter, 0.5 * self.head_diameter);
         let top = self.height;
-        let head_bottom = top - self.head_height;
+        // Where the head's side ends: the top itself where it is flat.
+        let shoulder = match self.dome_radius {
+            None => top,
+            Some(_) => top - self.dome_sagitta(),
+        };
+        let head_bottom = shoulder - self.head_height;
         let cove_bottom = head_bottom - self.cove_height;
         // The shaft runs down into the key; how far does not matter to the
         // section, but it does to the mass, so it is the full screw.
@@ -330,36 +359,32 @@ impl Capstan {
             (r_shaft, shaft_bottom + self.tip_height),
             (r_shaft, cove_bottom),
             (r_head, head_bottom),
-            (r_head, top),
+            (r_head, shoulder),
             (0.0, top),
         ]
     }
 }
 
-impl Default for Capstan {
-    /// Proportioned from a close photograph of a capstan on a grand key.
-    ///
-    /// **Steel, not brass.** The owner's photograph shows a bright chromed or
-    /// nickelled screw, which is common on modern grands; brass capstans exist
-    /// and are 8 % heavier, so the material is a field and not a constant. The
-    /// head is small — about 5 mm against a 3 mm shaft — with a cross hole
-    /// through it for the regulating tool, and a short cove flaring the one
-    /// into the other.
-    ///
-    /// Scaled from the photograph rather than measured with callipers, so
-    /// still [E] — but from a real screw rather than from nothing.
-    fn default() -> Self {
-        Self {
-            height: 0.0090,
-            diameter: 0.0030,
-            head_diameter: 0.0050,
-            head_height: 0.0030,
-            cove_height: 0.0008,
-            shaft_length: 0.0130,
-            tip_height: 0.0015,
-            // Steel. Brass is 8500 and is what many makers fit.
-            density: 7850.0,
-        }
+/// A block glued on the key's top: where it stands along the key and how
+/// high it stands above the wood under it.
+///
+/// It stands on whatever wood is under it, the keystick's full height or its
+/// thinned tail, wholly on one or the other ([`KeyDesign::wood_under`],
+/// [`crate::validate`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GluedBlock {
+    /// Its back end, metres from the balance pin (negative behind it).
+    pub back: f64,
+    /// Its length along the key, metres, forward from its back end.
+    pub length: f64,
+    /// Its height above the wood it stands on, metres.
+    pub height: f64,
+}
+
+impl GluedBlock {
+    /// Its front end, metres from the balance pin.
+    pub fn front(&self) -> f64 {
+        self.back + self.length
     }
 }
 
@@ -437,7 +462,12 @@ pub struct KeyDesign {
     pub capsule_height: f64,
     /// Length of the capsule along the key, metres.
     pub capsule_length: f64,
-    /// Height of the block that carries the **back check**, above the wood.
+    /// Where the capsule's middle stands along the key, metres from the
+    /// balance pin; none where it stands centred on the pin.
+    pub capsule_centre: Option<f64>,
+    /// Height of the block that carries the **back check**, above the wood
+    /// it stands on: the keystick's full height, or the thinned tail where
+    /// the tail runs on under it ([`Self::wood_under`]).
     ///
     /// Glued on, and there to give the back check wire something to be driven
     /// into — which is why it sits where the hammer's tail arrives and nowhere
@@ -455,12 +485,18 @@ pub struct KeyDesign {
     /// from the key's end, a longer key would carry its block away from the
     /// hammer it is there to check.
     ///
-    /// The thinned tail ends at or behind it, and the capstan stands in front
-    /// of the block ([`crate::validate`]).
+    /// It stands wholly on the keystick's full height or wholly on the
+    /// thinned tail, and the capstan stands in front of it
+    /// ([`crate::validate`]).
     pub back_check_block_back: f64,
     /// Length of that block along the key, metres, forward from its back end
     /// ([`Self::back_check_block_back`]).
     pub back_check_block_length: f64,
+    /// The block the capstan stands on, glued on the key between the back
+    /// check block and the key button, where the key has one; none where the
+    /// capstan screws straight into the keystick. The capstan stands wholly
+    /// on it ([`crate::validate`]).
+    pub capstan_block: Option<GluedBlock>,
     /// Thickness of the key's thinned tail, metres, above the underside.
     ///
     /// The last stretch of the key is cut down so that the **damper** system
@@ -470,11 +506,14 @@ pub struct KeyDesign {
     /// Length of that thinned tail along the key, metres, forward from the
     /// key's end ([`Self::tail_end`]).
     ///
-    /// It ends at or behind the back check block's back end. Where it ends
-    /// behind it, the keystick runs at its full height between the two.
+    /// Where it carries a felt, it ends at or behind the back check block's
+    /// back end, and where it ends behind it, the keystick runs at its full
+    /// height between the two; bare, it may run on under the glued blocks,
+    /// each standing wholly on it or wholly in front of it.
     pub tail_length: f64,
-    /// Thickness of the felt on the tail, metres. Hard felt, not punching felt.
-    pub damper_felt: f64,
+    /// Thickness of the felt on the tail, metres, hard felt and not punching
+    /// felt; none where the tail is bare.
+    pub damper_felt: Option<f64>,
     /// How far the underside rises towards the very end of the key, metres.
     pub tail_rise: f64,
     /// The length that rise is spread over, metres.
@@ -594,6 +633,42 @@ impl KeyDesign {
         self.front_edge + self.keytop_overhang
     }
 
+    /// The front of the thinned tail, metres from the balance pin: where the
+    /// keystick steps down to it.
+    pub fn tail_front(&self) -> f64 {
+        self.tail_end + self.tail_length
+    }
+
+    /// The height of the wood a block glued from `back` to `front` stands
+    /// on, metres above the underside: the thinned tail's top where the
+    /// block stands wholly on the tail, the keystick's top otherwise.
+    pub fn wood_under(&self, back: f64, front: f64) -> f64 {
+        debug_assert!(back <= front);
+        if front <= self.tail_front() {
+            self.tail_height
+        } else {
+            self.stick_height
+        }
+    }
+
+    /// The key button, as the two x it runs between, metres: centred on the
+    /// balance pin, or on [`Self::capsule_centre`].
+    pub fn key_button_span(&self) -> (f64, f64) {
+        match self.capsule_centre {
+            None => (-self.capsule_length * 0.5, self.capsule_length * 0.5),
+            Some(c) => (c - self.capsule_length * 0.5, c + self.capsule_length * 0.5),
+        }
+    }
+
+    /// The back check block, as a glued block.
+    pub fn back_check_block(&self) -> GluedBlock {
+        GluedBlock {
+            back: self.back_check_block_back,
+            length: self.back_check_block_length,
+            height: self.back_check_block_height,
+        }
+    }
+
     /// Middle of the front mortise, metres in front of the balance pin.
     ///
     /// **Where the front rail pin belongs**, and therefore where the frame
@@ -633,12 +708,12 @@ impl KeyDesign {
         let wood_front = self.front_edge - self.front_board;
         let lip = self.lip();
         let keytop_back = lip - self.keytop_length;
-        let capsule_front = self.capsule_length * 0.5;
-        let capsule_back = -self.capsule_length * 0.5;
-        let tail_front = self.tail_end + self.tail_length;
-        let block_back = self.back_check_block_back;
-        let block_front = block_back + self.back_check_block_length;
+        let tail_front = self.tail_front();
         let rise_from = self.tail_end + self.tail_rise_run;
+        let tail_top = match self.damper_felt {
+            Some(felt) => self.tail_height + felt,
+            None => self.tail_height,
+        };
 
         let mut outline = vec![
             // The underside, in two straight faces. The flat carries the
@@ -660,42 +735,70 @@ impl KeyDesign {
             Point::new(lip, top + self.keytop_thickness),
             Point::new(keytop_back, top + self.keytop_thickness),
             Point::new(keytop_back, top),
-            // The capsule: the block the balance mortise is cut through.
-            Point::new(capsule_front, top),
-            Point::new(capsule_front, top + self.capsule_height),
-            Point::new(capsule_back, top + self.capsule_height),
-            Point::new(capsule_back, top),
-            // The capstan screws straight into the wood here; there is no pad
-            // under it, so nothing to draw.
-            //
-            // The block that carries the back check.
-            Point::new(block_front, top),
-            Point::new(block_front, top + self.back_check_block_height),
-            Point::new(block_back, top + self.back_check_block_height),
         ];
-        // Where the tail begins right behind the block, the block's back face
-        // and the tail's front are one face, with no corner at the keystick's
-        // top. Where it begins further back, the keystick's full height runs
-        // between them; a tail run on under the block is refused
-        // ([`crate::validate`]).
-        if block_back.to_bits() != tail_front.to_bits() {
-            outline.extend([Point::new(block_back, top), Point::new(tail_front, top)]);
+        // The glued blocks, front to back, each on the wood under it: the
+        // capsule, the block the balance mortise is cut through; the block
+        // the capstan stands on, where there is one, or else the capstan
+        // screws straight into the wood, with no pad under it to draw; the
+        // block that carries the back check.
+        let (capsule_back, capsule_front) = self.key_button_span();
+        let mut blocks = vec![(capsule_back, capsule_front, self.capsule_height)];
+        if let Some(b) = self.capstan_block {
+            blocks.push((b.back, b.front(), b.height));
         }
-        outline.extend([
-            // And the tail: cut down to put the damper's contact at the right
-            // height, with its hard felt on top.
-            Point::new(tail_front, self.tail_height + self.damper_felt),
-            Point::new(self.tail_end, self.tail_height + self.damper_felt),
-        ]);
+        let check = self.back_check_block();
+        blocks.push((check.back, check.front(), check.height));
+        let mut stepped = false;
+        let step = |outline: &mut Vec<Point>| {
+            if outline.last() != Some(&Point::new(tail_front, top)) {
+                outline.push(Point::new(tail_front, top));
+            }
+            outline.push(Point::new(tail_front, tail_top));
+        };
+        for (back, front, height) in blocks {
+            let base = self.wood_under(back, front);
+            if !stepped && front <= tail_front {
+                step(&mut outline);
+                stepped = true;
+            }
+            if outline.last() != Some(&Point::new(front, base)) {
+                outline.push(Point::new(front, base));
+            }
+            outline.extend([
+                Point::new(front, base + height),
+                Point::new(back, base + height),
+            ]);
+            // Where the tail begins right behind a block on the keystick, the
+            // block's back face and the tail's front are one face, with no
+            // corner at the keystick's top. Where it begins further back, the
+            // keystick's full height runs between them; a felted tail run on
+            // under a block is refused ([`crate::validate`]).
+            if !stepped && back.to_bits() == tail_front.to_bits() {
+                outline.push(Point::new(tail_front, tail_top));
+                stepped = true;
+            } else {
+                outline.push(Point::new(back, base));
+            }
+        }
+        if !stepped {
+            step(&mut outline);
+        }
+        // And the tail: cut down to put the damper's contact at the right
+        // height, with its hard felt on top where it has one.
+        outline.push(Point::new(self.tail_end, tail_top));
         outline
     }
 
-    /// Height of the keystick's top where the capstan is screwed in, metres.
-    ///
-    /// The wood itself: the capstan is driven into a hole bored straight
-    /// through the keystick, with nothing glued under it.
-    fn capstan_seat(&self) -> f64 {
-        self.stick_height
+    /// Height of the wood the capstan is screwed into, metres: the top of
+    /// its block, where it stands on one; otherwise the wood itself, the
+    /// capstan driven into a hole bored straight through the keystick, or
+    /// through its thinned tail where it stands over that.
+    pub fn capstan_seat(&self) -> f64 {
+        match self.capstan_block {
+            Some(b) => self.wood_under(b.back, b.front()) + b.height,
+            None if self.capstan > self.tail_front() => self.stick_height,
+            None => self.tail_height,
+        }
     }
 
     /// The capstan's contact point, in the key's frame: the top of its head,
@@ -769,63 +872,6 @@ impl KeyDesign {
     }
 }
 
-impl Default for KeyDesign {
-    /// A natural key of the middle of the keyboard.
-    ///
-    /// The two longitudinal dimensions that set the key weight ratio: the
-    /// capstan 129.5 mm behind the balance pin, close to Thorin's 128.7 and
-    /// 129 mm; and the key front 258 mm in front of it, 13 mm ahead of
-    /// Thorin's 245 mm key arm [V, Thorin 2013, Table 2.1]. The covering's lip
-    /// stands 2 mm proud of the key front, so the measuring point, 13 mm back
-    /// from the lip, is at 247 mm, and the key ratio is 0.524 — inside the
-    /// published 0.50–0.60 band for a natural. Neither dimension has a record
-    /// yet (`data/params/README.md`).
-    ///
-    /// The section is measured too: 24.5 mm of wood, a 1.5 mm covering
-    /// 155 mm long over a 2 mm key front, and the capsule, back check block
-    /// and thinned tail on it. [V] — `data/params/key-section.json`. The
-    /// back check block's back end is placed 220 mm behind the balance pin,
-    /// where the measured tail ends on this key, the tail beginning right
-    /// behind the block as measured; the block's own distance from the pin
-    /// is not measured (`data/params/README.md`).
-    ///
-    /// What stays [E] is where the rails bear along the key, the wood's
-    /// density, and the position of the capsule, which depends on whether the
-    /// key is a natural or a sharp and belongs with the balance rail.
-    fn default() -> Self {
-        Self {
-            front_edge: 0.258,
-            tail_end: -0.240,
-            capstan: -0.1295,
-            front_mortise_from_front_edge: 0.033,
-            front_mortise_length: 0.008,
-            front_mortise_depth: 0.022,
-            stick_height: 0.0245,
-            capsule_height: 0.0060,
-            capsule_length: 0.062,
-            back_check_block_height: 0.0080,
-            // Where the measured thinned tail ends on this key, `tail_end +
-            // tail_length`: −0.240 + 0.020 is −0.220 to the bit. The block's
-            // own place along the key is not measured.
-            back_check_block_back: -0.220,
-            back_check_block_length: 0.027,
-            tail_height: 0.0070,
-            tail_length: 0.020,
-            damper_felt: 0.0050,
-            tail_rise: 0.0025,
-            tail_rise_run: 0.077,
-            keytop_thickness: 0.0015,
-            front_board: 0.0020,
-            keytop_overhang: 0.0020,
-            keytop_length: 0.155,
-            width: 0.022,
-            density: 430.0,
-            capstan_screw: Capstan::default(),
-            measured_stick_mass: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -866,7 +912,7 @@ mod tests {
     /// Winding direction is a draughtsman's habit, not a modelling choice.
     #[test]
     fn reversing_the_winding_changes_nothing_physical() {
-        let mut v = KeyDesign::default().outline_vertices();
+        let mut v = crate::test_fixture::key().outline_vertices();
         let cw = polygon_mass_properties(&v, 0.022, 430.0).unwrap();
         v.reverse();
         let ccw = polygon_mass_properties(&v, 0.022, 430.0).unwrap();
@@ -893,7 +939,8 @@ mod tests {
         assert!(polygon_mass_properties(&line, 0.022, 430.0).is_none());
         assert!(polygon_mass_properties(&[Point::new(0.0, 0.0)], 0.022, 430.0).is_none());
         assert!(
-            polygon_mass_properties(&KeyDesign::default().outline_vertices(), 0.0, 430.0).is_none(),
+            polygon_mass_properties(&crate::test_fixture::key().outline_vertices(), 0.0, 430.0)
+                .is_none(),
             "zero width is degenerate"
         );
     }
@@ -901,7 +948,7 @@ mod tests {
     /// A measured mass rescales the distribution without detaching from the shape.
     #[test]
     fn a_measured_mass_overrides_the_total_but_not_the_geometry() {
-        let mut d = KeyDesign::default();
+        let mut d = crate::test_fixture::key();
         let derived = d.stick_mass_properties().unwrap();
 
         d.measured_stick_mass = Some(derived.mass * 1.3);
@@ -928,7 +975,7 @@ mod capstan_tests {
     /// *drawn* as a turned part rather than a slab.
     #[test]
     fn the_capstan_is_its_own_turned_body_and_not_part_of_the_keystick() {
-        let d = KeyDesign::default();
+        let d = crate::test_fixture::key();
         let stick = d.outline_vertices();
         let cap_top = d.capstan_seat() + d.capstan_screw.height;
         let r = 0.5 * d.capstan_screw.head_diameter;
@@ -961,7 +1008,7 @@ mod capstan_tests {
     /// picture.
     #[test]
     fn the_capstan_is_turned_from_its_profile_and_not_extruded() {
-        let d = KeyDesign::default();
+        let d = crate::test_fixture::key();
         let turned = d.capstan_mass_properties().unwrap();
 
         // The same silhouette extruded across the key, for comparison.
@@ -996,7 +1043,7 @@ mod capstan_tests {
     /// heel, and the head's diameter decides where that contact can sit.
     #[test]
     fn the_capstan_has_a_flared_head_with_a_flat_top() {
-        let c = Capstan::default();
+        let c = crate::test_fixture::capstan();
         let profile = c.profile();
 
         assert!(
@@ -1118,7 +1165,7 @@ mod capstan_tests {
     /// raises the centre of gravity and nothing else.
     #[test]
     fn screwing_the_capstan_up_moves_it_without_changing_the_balance() {
-        let base = KeyDesign::default();
+        let base = crate::test_fixture::key();
         let mut raised = base.clone();
         raised.capstan_screw.height += 0.004;
 
@@ -1172,8 +1219,6 @@ mod capstan_tests {
 
 #[cfg(test)]
 mod profile_tests {
-    use super::*;
-
     /// Shaping the key must not break its weighing.
     ///
     /// However the profile is shaped, the key must weigh what a key weighs and
@@ -1181,7 +1226,7 @@ mod profile_tests {
     /// does not quietly become a different instrument.
     #[test]
     fn a_shaped_key_still_weighs_like_a_key() {
-        let p = KeyDesign::default().mass_properties().unwrap();
+        let p = crate::test_fixture::key().mass_properties().unwrap();
         assert!(
             (0.045..0.130).contains(&p.mass),
             "a grand key weighs 45 to 130 g, this one {} g",

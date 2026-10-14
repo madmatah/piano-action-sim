@@ -10,16 +10,22 @@ license.workspace = true
 # documents an interface reads (`boundary`): settings, the sheet, diagnostics,
 # the state and the scene, in codes and numbers; `serde_json` writes them,
 # here and once, so the browser's adapter and the shell's read the same JSON.
+# Both also read the profiles and the records they bind (`profile`), compiled
+# in; `float_roundtrip` makes `serde_json` read every recorded number
+# correctly rounded, which converting a unit rounding once relies on.
 # Neither reaches `pa-core`, which stays without them.
 [dependencies]
 pa-core.workspace = true
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["float_roundtrip"] }
 
 # `ts-rs` generates the TypeScript types of those documents from the Rust
 # ones, in a test (`boundary::types`), into `crates/pa-wasm/types/`, and the
 # test fails when the committed files differ: a field renamed here and not
 # there is a failing test rather than a page reading what nobody sends. A
-# dev-dependency, so nothing shipped links it.
+# dev-dependency, so nothing shipped links it. `pa-core`'s `fixtures`
+# compiles its test fixture for this crate's tests, which hold the composite
+# profile to its bits; nothing shipped enables it.
 [dev-dependencies]
+pa-core = { workspace = true, features = ["fixtures"] }
 ts-rs = "12"

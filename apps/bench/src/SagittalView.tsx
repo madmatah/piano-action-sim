@@ -34,6 +34,14 @@
  * dot where the key bears, a line across a gap still open, and another where
  * drawn parts overlap.
  *
+ * Marked by provenance, every line is drawn in the colour of how the number
+ * that places it is known, measured, published, traced from a figure,
+ * derived by a rule, borrowed from another instrument, assumed, or set on
+ * the bench since the instrument was built: the engine sends, with each
+ * stretch of an outline, the number that places it and how its profile knows
+ * it, and the view only paints it, in colours chosen apart from every fill
+ * they are drawn over (`palette.ts`).
+ *
  * Colours come from what a part is made of, never from what it is: the
  * keytop and the key front are white, the key button and the back check block
  * one wood and the keystick another, a paper the colour its thickness is sold
@@ -54,15 +62,7 @@
  * them.
  */
 
-import type {
-  ContactState,
-  MarkedContact,
-  Marker,
-  Outline,
-  Pose,
-  Scene,
-  State,
-} from '@pas/wasm/types'
+import type { How, MarkedContact, Marker, Outline, Pose, Scene, State } from '@pas/wasm/types'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
@@ -76,81 +76,43 @@ import {
   strokes,
   toShape,
 } from './outline'
+import {
+  CONTACT_COLOUR,
+  EDGE,
+  HOW_COLOUR,
+  KEYBED,
+  LIGHTS,
+  MATERIAL_FILL,
+  PAGE,
+  PAPER_FILL,
+  UNGRADED_FILL,
+} from './palette'
 
-/**
- * Each material's colour: what a part is made of is the engine's, how it
- * looks is this view's.
- */
-const MATERIAL_FILL: Record<string, string> = {
-  key_wood: '#ecdcb6',
-  // The key button and the back check block: a wood other than the
-  // keystick's, as the owner described them.
-  block_wood: '#a8713f',
-  // The keytop and the key front, white.
-  covering: '#ffffff',
-  key_front: '#ffffff',
-  rail_wood: '#c6a477',
-  steel: '#a9b1ba',
-  punching_felt: '#c8655d',
-  hard_felt: '#5d5a6b',
-  cloth: '#5e9a78',
+/** Each segment of an outline by how the number that places it is known. */
+function howOf(o: Outline): Map<number, How> {
+  const by = new Map<number, How>()
+  for (const s of o.sources) for (let k = s.from; k < s.to; k += 1) by.set(k, s.how)
+  return by
 }
 
 /**
- * Paper punchings, coloured by thickness.
- *
- * In a technician's drawer the colour *is* the thickness — you reach for a
- * two-tenths by its colour, without measuring — so the palette is keyed on the
- * number the engine sends rather than on the part. These are the owner's own
- * gradings, recorded with their provenance in
- * `data/params/punching-papers.json`; a different supplier would renumber
- * them, which is exactly why the mapping is data and not a guess.
+ * An outline's edges as line pieces, one set per way of knowing the number
+ * that places them, the segments in `skip` left out.
  */
-const PAPER_FILL: ReadonlyArray<readonly [number, string]> = [
-  [0.08, '#f1efe7'], // white
-  [0.12, '#b4d8a8'], // pastel green
-  [0.2, '#86c5e8'], // sky blue
-  [0.4, '#c19a6b'], // camel
-  [0.5, '#2e2e2e'], // black
-]
-
-/**
- * Above half a millimetre the drawer stops colour-coding and the papers are
- * plain card — 0.75 and 1.25 mm both arrive this colour, and the technician
- * tells them apart by feel and by what he reached for.
- */
-const CARD_FILL = '#9a7b52'
-
-/** The canvas behind everything: a grey light enough for the wood, dark
- * enough that a white keytop still reads as a part. */
-const PAGE = '#e7e4dd'
-
-/** Edges in the section, opaque so that one hidden under the key's wood stays
- * hidden. */
-const EDGE = '#5b544a'
-
-/**
- * The contacts' colours, by state: where the key bears, a gap of under a
- * millimetre still open, and drawn parts overlapping, which a rigid contact
- * should never show and a frame out of fit with its key does.
- */
-export const CONTACT_COLOUR: Record<ContactState, string> = {
-  closed: '#1d63a8',
-  open: '#8a8a8a',
-  overlapping: '#e8590c',
+function piecesByHow(o: Outline, skip: ReadonlySet<number>): Array<{ how: How; pieces: number[] }> {
+  const by = howOf(o)
+  const hows = [...new Set(by.values())]
+  return hows.map((how) => {
+    const other = new Set(skip)
+    for (const seg of o.segs) if (by.get(seg) !== how) other.add(seg)
+    return { how, pieces: strokes(o.points_mm, o.segs, other) }
+  })
 }
 
-/** The colour of a paper of this thickness. */
-function paperColour(mm: number): string {
-  for (const [thickness, fill] of PAPER_FILL) {
-    if (Math.abs(thickness - mm) < 0.005) return fill
-  }
-  return CARD_FILL
-}
-
-/** The colour a part is drawn in, from its material. */
+/** The colour a part is drawn in: a paper's as it is supplied, anything
+ * else's from its material. */
 function colourOf(o: Outline): string {
-  if (o.paper_mm != null) return paperColour(o.paper_mm)
+  if (o.material === 'paper') return o.paper_colour ? PAPER_FILL[o.paper_colour] : UNGRADED_FILL
   return MATERIAL_FILL[o.material] ?? '#9b9b9b'
 }
 
@@ -310,25 +272,74 @@ function Edges({
   pieces,
   layer,
   colour = EDGE,
+  z = 0,
+  depthTest = false,
 }: {
   pieces: number[]
   layer: number
   colour?: string
+  /** How far across the sagittal plane the edges stand: on a solid's face. */
+  z?: number
+  /** Whether the solids in front hide them, as on a solid's face. */
+  depthTest?: boolean
 }) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry()
     const xyz: number[] = []
     for (let i = 0; i < pieces.length; i += 2) {
-      xyz.push(pieces[i] as number, pieces[i + 1] as number, 0)
+      xyz.push(pieces[i] as number, pieces[i + 1] as number, z)
     }
     g.setAttribute('position', new THREE.Float32BufferAttribute(xyz, 3))
     return g
-  }, [pieces])
+  }, [pieces, z])
   useDisposal(geometry)
   return (
     <lineSegments geometry={geometry} renderOrder={layer}>
-      <lineBasicMaterial color={colour} depthTest={false} depthWrite={false} toneMapped={false} />
+      <lineBasicMaterial
+        color={colour}
+        depthTest={depthTest}
+        depthWrite={false}
+        toneMapped={false}
+      />
     </lineSegments>
+  )
+}
+
+/** An outline's edges, the segments in `skip` left out: in the edge colour,
+ * or, marked by provenance, each in the colour of how its number is known. */
+function OutlineEdges({
+  outline,
+  skip,
+  layer,
+  marked,
+  mirror = false,
+  z = 0,
+  depthTest = false,
+}: {
+  outline: Outline
+  skip: ReadonlySet<number>
+  layer: number
+  marked: boolean
+  mirror?: boolean
+  z?: number
+  depthTest?: boolean
+}) {
+  const sets = marked
+    ? piecesByHow(outline, skip).map(({ how, pieces }) => ({ colour: HOW_COLOUR[how], pieces }))
+    : [{ colour: EDGE, pieces: strokes(outline.points_mm, outline.segs, skip) }]
+  return (
+    <>
+      {sets.map(({ colour, pieces }) => (
+        <Edges
+          key={colour}
+          pieces={mirror ? mirrored(pieces) : pieces}
+          layer={layer}
+          colour={colour}
+          z={z}
+          depthTest={depthTest}
+        />
+      ))}
+    </>
   )
 }
 
@@ -343,6 +354,7 @@ function SectionPart({
   edgeLayer,
   masked,
   open,
+  marked,
 }: {
   outline: Outline
   layer: number
@@ -350,25 +362,25 @@ function SectionPart({
   masked: boolean
   /** Segments that are no edge: where the part runs along a cut's mouth. */
   open: ReadonlySet<number>
+  /** Whether its lines are marked by provenance. */
+  marked: boolean
 }) {
   const colour = colourOf(outline)
   if (outline.sweep === 'extruded') {
     return (
       <>
         <Fill points={outline.points_mm} colour={colour} layer={layer} masked={masked} />
-        <Edges pieces={strokes(outline.points_mm, outline.segs, open)} layer={edgeLayer} />
+        <OutlineEdges outline={outline} skip={open} layer={edgeLayer} marked={marked} />
       </>
     )
   }
   const onAxis = axisSegments(outline.points_mm, outline.segs)
-  const half = strokes(outline.points_mm, outline.segs, onAxis)
-  const mirror = mirrored(half)
   return (
     <group position={[outline.axis_x_mm, 0, 0]}>
       <Fill points={outline.points_mm} colour={colour} layer={layer} masked={masked} />
       <Fill points={mirrored(outline.points_mm)} colour={colour} layer={layer} masked={masked} />
-      <Edges pieces={half} layer={edgeLayer} />
-      <Edges pieces={mirror} layer={edgeLayer} />
+      <OutlineEdges outline={outline} skip={onAxis} layer={edgeLayer} marked={marked} />
+      <OutlineEdges outline={outline} skip={onAxis} layer={edgeLayer} marked={marked} mirror />
     </group>
   )
 }
@@ -434,7 +446,7 @@ function Keybed() {
   return (
     <mesh position={[30, -3, 0]}>
       <boxGeometry args={[560, 6, 86]} />
-      <meshLambertMaterial color="#b9b2a2" />
+      <meshLambertMaterial color={KEYBED} />
     </mesh>
   )
 }
@@ -450,12 +462,15 @@ function Body({
   outlines,
   mode,
   marker,
+  marked,
 }: {
   body: number
   pose: Pose
   outlines: Outline[]
   mode: ViewMode
   marker: Marker | undefined
+  /** Whether its lines are marked by provenance. */
+  marked: boolean
 }) {
   const matrix = useMemo(() => poseMatrix(pose), [pose])
   const cuts = outlines.filter((o) => o.role === 'cut')
@@ -473,12 +488,20 @@ function Body({
               colour={colourOf(o)}
             />
           ) : (
-            <Extruded
-              key={`${o.code}-${i}`}
-              points={o.points_mm}
-              width={o.width_mm}
-              colour={colourOf(o)}
-            />
+            <group key={`${o.code}-${i}`}>
+              <Extruded points={o.points_mm} width={o.width_mm} colour={colourOf(o)} />
+              {/* Marked by provenance, on the face towards the camera. */}
+              {marked && (
+                <OutlineEdges
+                  outline={o}
+                  skip={new Set()}
+                  layer={LAYER.marks}
+                  marked
+                  z={o.width_mm / 2 + 0.05}
+                  depthTest
+                />
+              )}
+            </group>
           ),
         )
       ) : (
@@ -491,10 +514,12 @@ function Body({
             const mouth = new Set<number>()
             for (const p of parts) for (const s of sharedSegments(o, p)) mouth.add(s)
             return (
-              <Edges
+              <OutlineEdges
                 key={`${o.code}-edges-${i}`}
-                pieces={strokes(o.points_mm, o.segs, mouth)}
+                outline={o}
+                skip={mouth}
                 layer={LAYER.keyEdges}
+                marked={marked}
               />
             )
           })}
@@ -515,6 +540,7 @@ function Body({
                 edgeLayer={edgeLayer}
                 masked={!grounded && cuts.length > 0}
                 open={open}
+                marked={marked}
               />
             )
           })}
@@ -542,12 +568,15 @@ export function SagittalView({
   scene,
   state,
   mode,
+  marked,
 }: {
   /** What is drawn: every part in its own body's frame. */
   scene: Scene
   /** Where each body stands, and the contacts to mark. */
   state: State
   mode: ViewMode
+  /** Whether every line is marked by how its number is known. */
+  marked: boolean
 }) {
   const preset = CAMERA[mode]
 
@@ -563,9 +592,10 @@ export function SagittalView({
       gl={{ stencil: true }}
       style={{ background: PAGE }}
     >
-      <ambientLight intensity={1.6} />
-      <directionalLight position={[-200, 300, 400]} intensity={2.0} />
-      <directionalLight position={[300, 140, -250]} intensity={0.9} />
+      <ambientLight intensity={LIGHTS.ambient} />
+      {LIGHTS.directional.map(({ position, intensity }) => (
+        <directionalLight key={position.join()} position={position} intensity={intensity} />
+      ))}
 
       {/* Mirrored in x so the player's end of the key is on the LEFT, which is
           how the trade's own sectional plates are drawn. A view convention and
@@ -581,6 +611,7 @@ export function SagittalView({
             outlines={scene.outlines.filter((o) => o.body === body)}
             mode={mode}
             marker={state.measuring_point.body === body ? state.measuring_point : undefined}
+            marked={marked}
           />
         ))}
         <Contacts contacts={state.contacts} />

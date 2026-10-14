@@ -9,42 +9,30 @@ under version control, and runs with `python3 -I`.
 
 ## What the engine does with these records
 
-**Built:** nothing reads them. The engine's defaults are Rust literals that
-repeat the records (`KeyDesign::default`, `FrameDesign::default`,
-`PAPER_THICKNESSES`, `MEASURING_POINT_FROM_LIP`, `MEASURING_POINT_HALF_INCH`,
-`KR_PROTOCOL_LOAD_G`), their doc comments pointing here, and nothing checks
-that the two agree.
-
-**Planned:** the engine loads its defaults from these records through the
-parameter registry (`docs/FOUNDATIONS.md` §7.3), and a test fails when a default
-has no record or disagrees with it.
-
-### Values the engine starts from that have no record
-
-| Value | Where it is used | What is known |
-|---|---|---|
-| wood density 430 kg/m³ | the key's mass | assumed |
-| keystick width 22 mm | the key's mass | assumed: integrated as a uniform prism over the whole key, although behind the head a grand keystick is much narrower |
-| capstan 129.5 mm behind the balance pin | key weight ratio | no source gives it: Thorin gives 128.7 mm (his §4.5.2) and 129 mm (his Table 2.1). The owner's measured 122 mm is recorded in `key-section.json` and not used |
-| key front 258 mm in front of the balance pin | key height, key dip, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, so at 247 mm | 13 mm ahead of Thorin's key arm, L = 0.245 m (his Table 2.1); no record |
-| back check block's back end 220 mm behind the balance pin | the key's drawn parts and the volume model's outline, through it the estimated key's mass and centre of mass; how far back the capstan and the thinned tail may reach | derived, not measured: where the tail measured in `key-section.json` ends on the default key, the tail beginning immediately behind the block as measured (500 mm from the key's end to the covering's lip, the lip 260 mm in front of the pin, 20 mm of tail). Placed from the balance pin, as the action places it, so a key lengthened at the back keeps it |
-| rail heights 26.6, 25.9 and 19.0 mm (balance, front, back) | key height, key dip | assumed |
-| key friction weight 6 g | the bushings' friction, a torque: 6 g at the measuring point with the key level, which Stanwood's protocol reads as 6.35 g on the key at rest; D, U, BW, F and both key friction weights | assumed, of the order the trade measures |
-| felt washers 1.5 and 2.0 mm (balance, front), back rail cloth 3.0 mm | key height, key dip | assumed |
-| front mortise depth 22 mm | the mortise stop | 3 mm of recess and 19 mm of mortise, written only in a note of `key-frame-sections.json` |
-| balance crown height 6 mm | the drawing | assumed |
-| balance pin 11.2 mm proud | the drawing, and where the key leaves its pin: 9 mm above the regulated punching, past which a pull or the key's stops take it off its frame, and the most paper the regulation lays under the balance punching | assumed, waiting on the balance mortise |
-| the stops' rounded edges, 0.5 mm in radius | where the punchings and the cloth meet the key, and the cloth's drawn edges | assumed: a shape, not a setting; the dip does not move with it by more than 5 µm when it is doubled |
-| back rail 24 mm along the key | where the tail bears on its cloth | assumed, to be measured |
-| the capstan's proportions, in steel at 7850 kg/m³ | the key's mass | proportions scaled from a photograph, material assumed |
-| regulation targets: key height 65.0 mm, key dip 10.2 mm | the default bench | close to, not equal to, the published Steinway New York figures |
+**Built:** the engine starts from no number of its own. An instrument is
+built from a profile (`data/profiles/`), which binds every number it starts
+from either to a record here, by its file and a JSON pointer, or to an
+assumption it states with its reason; `pa-app` compiles the profiles and the
+records they read into the engine, checks each record's unit against the
+number's quantity and converts it to SI once. A value the engine starts from
+that has no record here is stated in the profile that uses it, marked `S` or
+`E` with its rule, and says why: the composite key's front, capstan and
+rail heights, its felts and cloth, its wood's density and width, its
+capstan's proportions, its targets, the bushings it starts on, and the rest,
+each in `data/profiles/composite.json`; what Hirschkorn's thesis does not give,
+his keybed, rails, papers and pins borrowed from the composite and his felts'
+rails placed by a rule from his rounds, in `data/profiles/hirschkorn.json`. The test
+`every_default_has_a_record_or_a_stated_assumption` fails on a number of a
+shipped profile that is neither, on one read from a record in the wrong
+unit, and on one stated without its reason.
 
 ## Two instruments, two names
 
 **Hirschkorn's Boston GP-178, note 52** (Hirschkorn 2004, Appendix A) is the
 engine's base action: the only published set with all thirteen contact load
-laws measured on one action, and the default key of the bench to come. Its
-record, `hirschkorn-boston-gp178-note52.json`, states each body's frame
+laws measured on one action, a profile chosen on the bench
+(`data/profiles/hirschkorn.json`), and the default key of the bench to come.
+Its record, `hirschkorn-boston-gp178-note52.json`, states each body's frame
 convention at the top: every frame's origin is the body's own pivot, and `Pw2`,
 `Pw3` are the jack and repetition lever pins on the wippen (his Figure A.1). With no compression bench, every
 contact law the engine is to use is borrowed from this action, and anything
@@ -76,7 +64,7 @@ any maker's specification.
   `tools/derivations/` or written inline as a rule;
 - `S`: assumed, pending measurement.
 
-Four conventions come up as soon as a real instrument is measured:
+Five conventions come up as soon as a real instrument is measured:
 
 - **A measurement taken by the owner is `V`.** A calliper on an identified
   action is a primary source, and a stronger one than a transcribed table. It
@@ -93,6 +81,11 @@ Four conventions come up as soon as a real instrument is measured:
 - **A value derived by a rule short enough to write out states the rule
   inline**, as `derived_from` and `rule`. A script is for a derivation a reader
   could not check in their head.
+- **A source names the instrument it was measured or read on**, as
+  `instrument`, in the words every file of that instrument uses: a profile
+  names the instruments it describes the same way, and a number it reads
+  from a file of another instrument is borrowed (`data/profiles/README.md`).
+  Stock and protocols, of no instrument, name none.
 
 ## Contents
 
@@ -104,6 +97,7 @@ Four conventions come up as soon as a real instrument is measured:
 | `key-section.json` | the keystick in profile: the wood's thickness, the covering and key front, the capsule, the block that carries the back check, the thinned tail and its felt, and the chamfer under it |
 | `touchweight-protocol.json` | the conventions Stanwood's touchweight protocols run under: the measuring point 13 mm or 1/2 inch back from the front lip of the key, and the 10 g the key weight ratio is read with |
 | `hirschkorn-boston-gp178-note52.json` | all of Hirschkorn's Appendix A, the engine's base action: masses, centres of mass and inertias (A.1), the points and surfaces of the ground and the five bodies, each in its own body's frame with the frame convention stated at the top (A.2–A.7), the thirteen contact laws with their friction (A.8), the axis frictions (A.9), the springs, and his regulation; 235 values, each with its table, row and page, and what the thesis does not give. `tools/derivations/10` reads it |
+| `hirschkorn-key-outline.json` | Hirschkorn's key where his tables give no number for its shape, traced from his Figure A.1: the positions of the figure's markers and of the key's outline in pixels of the page rendered at 600 dpi, with how they were read, and the numbers his profile binds from them, each `E` by `tools/derivations/11`, which reads the pixels and his record, fits the trace on three printed points and prints the residuals at the others as its uncertainty |
 
 ## Planned records
 

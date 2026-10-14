@@ -58,7 +58,7 @@
     }
   ],
   "consequences": [
-    "The sizes do not divide one another, so the stack for a wanted thickness cannot be built greedily: 0.24 mm is two 0.12 papers exactly, while taking the thickest that fits lands on 0.20 and strands 0.04 mm. pa_core::parts::frame::papers_for searches the whole drawer for this reason.",
+    "The sizes do not divide one another, so the stack for a wanted thickness cannot be built greedily: 0.24 mm is two 0.12 papers exactly, while taking the thickest that fits lands on 0.20 and strands 0.04 mm. pa_core::parts::frame::Drawer::papers_for searches the whole drawer for this reason.",
     "The steps are whole hundredths of a millimetre, which is what makes that search exact rather than approximate."
   ]
 }

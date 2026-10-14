@@ -38,8 +38,9 @@ import { type Answer, type Around, type Edits, Panel, type Read, Refused, shown 
 import { ANGLE_DEG, decimals, LENGTH_MM, MASS_G } from './format'
 import { type Reported, t, word } from './i18n'
 import { madeBy } from './layout'
+import { CONTACT_COLOUR, HOW_COLOUR } from './palette'
 import { Rich } from './Rich'
-import { CONTACT_COLOUR, SagittalView, type ViewMode } from './SagittalView'
+import { SagittalView, type ViewMode } from './SagittalView'
 
 /** Everything the engine said when it was last asked: the registry, read
  * once at boot since it does not change, and every document after each
@@ -219,6 +220,9 @@ export function App() {
     // solid, so a particular reading can be linked to.
     new URLSearchParams(window.location.search).get('view') === 'section' ? 'section' : 'solid',
   )
+  // Whether every drawn line is marked by how the number that places it is
+  // known: a way of looking, the view's alone.
+  const [marked, setMarked] = useState(false)
   // What the engine answered the last action, shown until anything else is
   // done: the papers a regulation laid, which the engine keeps nowhere else.
   // An edit refused it keeps itself, in its diagnostics.
@@ -253,13 +257,15 @@ export function App() {
 
   /** Runs `f` on the engine, keeps its answer, and re-reads the page. The
    * engine is read here and not inside a state updater, which React's
-   * StrictMode runs twice: the registry does not change, so the one this
-   * render holds is the one to keep. */
+   * StrictMode runs twice. The registry is read again only where another
+   * instrument came on the bench, whose drawer may hold other papers. */
   const change = (f: (b: Bench) => Answer | null) => {
     const b = bench.current
     if (!b || !engine) return
-    setAnswer(f(b))
-    setEngine(read(b, engine.registry))
+    const answered = f(b)
+    setAnswer(answered)
+    const another = answered?.action === 'select_profile'
+    setEngine(read(b, another ? describe(b) : engine.registry))
   }
   const edits: Edits = {
     set: (path, value) =>
@@ -295,6 +301,7 @@ export function App() {
   // after a control, by its label's: the engine places the controls, and a
   // note follows the control it is about wherever the engine puts it.
   const around: { readonly [P in PanelCode]: Around } = {
+    instrument: {},
     sheet: {
       after: {
         measuring_point: (
@@ -411,7 +418,9 @@ export function App() {
               data-from-lip-mm={s.key.weighing?.from_lip_mm}
             >
               {s.key.weighing === null
-                ? t.weighing.notWeighed(s.key.mass_g)
+                ? s.key.mass_known === 'published'
+                  ? t.weighing.published(s.key.mass_g)
+                  : t.weighing.notWeighed(s.key.mass_g)
                 : t.weighing.weighed(
                     s.key.weighing.mass_g,
                     s.key.weighing.front_weight_g,
@@ -477,8 +486,12 @@ export function App() {
 
   return (
     <div className="bench">
-      <div className="view" data-touching={touching.join(' ')}>
-        <SagittalView scene={engine.scene} state={engine.state} mode={view} />
+      <div
+        className="view"
+        data-touching={touching.join(' ')}
+        data-marked={marked ? 'provenance' : undefined}
+      >
+        <SagittalView scene={engine.scene} state={engine.state} mode={view} marked={marked} />
         <div className="viewtabs">
           <button
             type="button"
@@ -496,6 +509,15 @@ export function App() {
           >
             {t.view.solid}
           </button>
+          <button
+            type="button"
+            className={marked ? 'on' : ''}
+            data-mark="provenance"
+            aria-pressed={marked}
+            onClick={() => setMarked(!marked)}
+          >
+            {t.view.provenance}
+          </button>
           <span className="hint">{t.view.hint}</span>
           <span className="legend">
             <i style={{ background: CONTACT_COLOUR.closed }} /> {t.view.bears}
@@ -503,6 +525,16 @@ export function App() {
             <i style={{ background: CONTACT_COLOUR.overlapping }} /> {t.view.overlapping}
           </span>
         </div>
+        {marked && (
+          <div className="provenance-legend">
+            {(Object.keys(HOW_COLOUR) as Array<keyof typeof HOW_COLOUR>).map((how) => (
+              <span key={how} data-how={how}>
+                <span className="swatch" style={{ background: HOW_COLOUR[how] }} />{' '}
+                {t.view.how[how]}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <aside className="panel">
@@ -544,7 +576,9 @@ export function App() {
 
         {engine.registry.page.map((p) => (
           <Panel
-            key={p.panel}
+            // Another instrument on the bench opens its forms on its own
+            // numbers.
+            key={`${s.profile}-${p.panel}`}
             layout={p}
             around={around[p.panel]}
             read={engine}

@@ -13,6 +13,11 @@ import type { RegulationSettings } from "./RegulationSettings";
  */
 export type Settings = { 
 /**
+ * The profile the instrument was built from, which a reset returns
+ * to, by its name (`data/profiles/<name>.json`).
+ */
+profile: string, 
+/**
  * The protocol the key is weighed by.
  */
 protocol: ProtocolSettings, 

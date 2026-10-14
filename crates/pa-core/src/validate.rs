@@ -27,7 +27,7 @@
 use crate::contact::PartCode;
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::AxisFriction;
-use crate::parts::frame::{PinShape, RailSection, PAPER};
+use crate::parts::frame::{Crown, FrameSections, PinShape, RailSection, PAPER};
 use crate::parts::{FrameDesign, KeyDesign, KeyMass};
 
 /// Why an edit is refused: what it would make that no part could be built
@@ -63,8 +63,9 @@ pub enum Problem {
         mass: f64,
     },
     /// The key's outline crosses itself: two parts glued on the keystick
-    /// overlapping along its top, the thinned tail and its felt run on under
-    /// the back check block, or the underside's chamfer running past the key
+    /// overlapping along its top, the thinned tail's felt run on under a
+    /// glued block, a block or the covering standing across the step down
+    /// to the thinned tail, or the underside's chamfer running past the key
     /// front.
     OutlineCrossesItself {
         /// The part behind, whose front end stands too far forward.
@@ -92,6 +93,21 @@ pub enum Problem {
         /// How far forward it must come for its head to clear the block,
         /// metres along the key.
         by: f64,
+    },
+    /// The capstan stands off the block it is screwed into: its head runs
+    /// past one end of the block.
+    CapstanOffItsBlock {
+        /// How far past the block's end its head reaches, metres along the
+        /// key.
+        by: f64,
+    },
+    /// The capstan's dome is narrower than its head: a sphere of that radius
+    /// cannot cap the head.
+    CapstanDomeNarrowerThanItsHead {
+        /// The dome's radius, metres.
+        dome: f64,
+        /// The head's radius, metres.
+        head: f64,
     },
     /// The capstan stands in a block glued on the keystick: the key button
     /// or the back check block.
@@ -165,9 +181,9 @@ pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
         .iter()
         .chain(&d.frame.front_punching.papers)
     {
-        PAPER.admits(*paper)?;
+        d.frame.drawer.admits(*paper)?;
     }
-    if let KeyMass::Weighed { mass, .. } = *d.mass {
+    if let KeyMass::Weighed { mass, .. } | KeyMass::Published { mass, .. } = *d.mass {
         if mass <= 0.0 {
             return Err(Problem::MassNotPositive { mass });
         }
@@ -183,47 +199,54 @@ pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     Ok(())
 }
 
-/// The key's outline along its top and its underside, back to front: the
-/// thinned tail, with its felt, ends at or behind the back check block, which
-/// stands on the keystick's full height; each part glued on the keystick ends
-/// before the next begins; and the chamfer under the tail runs out before the
-/// key front. Two that overlap are the outline crossing itself, by how far
-/// they overlap.
+/// The key's outline along its top and its underside, back to front. Each
+/// block glued on it, the back check block, the capstan's block where it has
+/// one and the key button, stands wholly on the thinned tail or wholly in
+/// front of it, and the covering in front of it: a felted tail runs on under
+/// none of them, and none stands across the step down to a bare one. Each
+/// glued part ends before the next begins; and the chamfer under the tail
+/// runs out before the key front. Two that overlap are the outline crossing
+/// itself, by how far they overlap.
 fn outline(key: &KeyDesign) -> Result<(), Problem> {
-    let tail_front = key.tail_end + key.tail_length;
-    let block_back = key.back_check_block_back;
-    let block_front = block_back + key.back_check_block_length;
-    let button_back = -key.capsule_length * 0.5;
-    let button_front = key.capsule_length * 0.5;
+    let tail_front = key.tail_front();
+    let check = key.back_check_block();
+    let (button_back, button_front) = key.key_button_span();
     let keytop_back = key.lip() - key.keytop_length;
     let wood_front = key.front_edge - key.front_board;
     let chamfer_end = key.tail_end + key.tail_rise_run;
-    for (back, ends, front, begins) in [
-        (
-            PartCode::KeyTailFelt,
-            tail_front,
-            PartCode::BackCheckBlock,
-            block_back,
-        ),
-        (
-            PartCode::BackCheckBlock,
-            block_front,
-            PartCode::KeyButton,
-            button_back,
-        ),
-        (
-            PartCode::KeyButton,
-            button_front,
-            PartCode::Keytop,
-            keytop_back,
-        ),
-        (
-            PartCode::Keystick,
-            chamfer_end,
-            PartCode::KeyFront,
-            wood_front,
-        ),
-    ] {
+    let mut glued = vec![(PartCode::BackCheckBlock, check.back, check.front())];
+    if let Some(b) = key.capstan_block {
+        glued.push((PartCode::CapstanBlock, b.back, b.front()));
+    }
+    glued.extend([
+        (PartCode::KeyButton, button_back, button_front),
+        (PartCode::Keytop, keytop_back, key.lip()),
+    ]);
+    for &(part, back, front) in &glued {
+        let felted = key.damper_felt.is_some();
+        let covering = part == PartCode::Keytop;
+        if (felted || covering) && tail_front > back {
+            return Err(Problem::OutlineCrossesItself {
+                back: if felted {
+                    PartCode::KeyTailFelt
+                } else {
+                    PartCode::Keystick
+                },
+                front: part,
+                by: tail_front - back,
+            });
+        }
+        if back < tail_front && tail_front < front {
+            return Err(Problem::OutlineCrossesItself {
+                back: part,
+                front: PartCode::Keystick,
+                by: front - tail_front,
+            });
+        }
+    }
+    for pair in glued.windows(2) {
+        let (back, _, ends) = pair[0];
+        let (front, begins, _) = pair[1];
         if ends > begins {
             return Err(Problem::OutlineCrossesItself {
                 back,
@@ -231,6 +254,13 @@ fn outline(key: &KeyDesign) -> Result<(), Problem> {
                 by: ends - begins,
             });
         }
+    }
+    if chamfer_end > wood_front {
+        return Err(Problem::OutlineCrossesItself {
+            back: PartCode::Keystick,
+            front: PartCode::KeyFront,
+            by: chamfer_end - wood_front,
+        });
     }
     Ok(())
 }
@@ -243,19 +273,32 @@ fn capstan_radius(key: &KeyDesign) -> f64 {
         .max(key.capstan_screw.diameter)
 }
 
-/// The capstan stands on the keystick's full height between the back check
-/// block and the key button, where nothing is glued on top: its head in
-/// either block is the capstan in that block, by how far it stands in; the
-/// whole of it behind the back check block, wherever the key's wood runs
-/// there, is behind the block, by how far it must come forward to clear it.
-/// The limit is the block's, which the action places, and not the key's end.
+/// The capstan stands between the back check block and the key button,
+/// where nothing is glued on top but its own block: its head in either block
+/// is the capstan in that block, by how far it stands in; the whole of it
+/// behind the back check block, wherever the key's wood runs there, is
+/// behind the block, by how far it must come forward to clear it. The limit
+/// is the block's, which the action places, and not the key's end. Where it
+/// stands on a block of its own, it stands wholly on it; where its head is
+/// a dome, the dome caps the head.
 fn capstan(key: &KeyDesign) -> Result<(), Problem> {
     let r = capstan_radius(key);
     let (back, front) = (key.capstan - r, key.capstan + r);
     let block_back = key.back_check_block_back;
     let block_front = block_back + key.back_check_block_length;
-    let button_back = -key.capsule_length * 0.5;
-    let button_front = key.capsule_length * 0.5;
+    let (button_back, button_front) = key.key_button_span();
+    if let Some(dome) = key.capstan_screw.dome_radius {
+        let head = 0.5 * key.capstan_screw.head_diameter;
+        if dome < head {
+            return Err(Problem::CapstanDomeNarrowerThanItsHead { dome, head });
+        }
+    }
+    if let Some(b) = key.capstan_block {
+        let past = (b.back - back).max(front - b.front());
+        if past > 0.0 {
+            return Err(Problem::CapstanOffItsBlock { by: past });
+        }
+    }
     if front > button_back && back < button_front {
         return Err(Problem::CapstanInBlock {
             block: PartCode::KeyButton,
@@ -306,7 +349,12 @@ fn mortise(key: &KeyDesign) -> Result<(), Problem> {
 /// Every number of the design, by name, in a fixed order, every field
 /// read: a field added to a part and not listed here is a compile error, so
 /// no number reaches the statics unchecked. What [`validate`] reads for
-/// finiteness, and what an instrument's state hash reads of its design.
+/// finiteness, what an instrument's state hash reads of its design, and
+/// what an instrument's profile must bind, each to a record or a stated
+/// assumption. Each name is the number's own, and named once, but for the
+/// papers on the punchings ([`PAPER`]'s name) and in the drawer
+/// ([`DRAWER`]), which are lists; a number a setting sets has the setting's
+/// name.
 pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
     let KeyDesign {
         front_edge,
@@ -318,9 +366,11 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         stick_height,
         capsule_height,
         capsule_length,
+        capsule_centre,
         back_check_block_height,
         back_check_block_back,
         back_check_block_length,
+        capstan_block,
         tail_height,
         tail_length,
         damper_felt,
@@ -344,6 +394,7 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         shaft_length,
         tip_height,
         density: capstan_density,
+        dome_radius,
     } = capstan_screw;
     let mut out = vec![
         ("front_edge", *front_edge),
@@ -358,12 +409,32 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         ("stick_height", *stick_height),
         ("capsule_height", *capsule_height),
         ("capsule_length", *capsule_length),
+    ];
+    if let Some(c) = capsule_centre {
+        out.push(("capsule_centre", *c));
+    }
+    out.extend([
         ("back_check_block_height", *back_check_block_height),
         ("back_check_block_back", *back_check_block_back),
         ("back_check_block_length", *back_check_block_length),
-        ("tail_height", *tail_height),
-        ("tail_length", *tail_length),
-        ("damper_felt", *damper_felt),
+    ]);
+    if let Some(crate::parts::GluedBlock {
+        back,
+        length,
+        height,
+    }) = capstan_block
+    {
+        out.extend([
+            ("capstan_block.back", *back),
+            ("capstan_block.length", *length),
+            ("capstan_block.height", *height),
+        ]);
+    }
+    out.extend([("tail_height", *tail_height), ("tail_length", *tail_length)]);
+    if let Some(felt) = damper_felt {
+        out.push(("damper_felt", *felt));
+    }
+    out.extend([
         ("tail_rise", *tail_rise),
         ("tail_rise_run", *tail_rise_run),
         ("keytop_thickness", *keytop_thickness),
@@ -380,12 +451,25 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         ("capstan.shaft_length", *shaft_length),
         ("capstan.tip_height", *tip_height),
         ("capstan.density", *capstan_density),
-    ];
+    ]);
+    if let Some(r) = dome_radius {
+        out.push(("capstan.dome_radius", *r));
+    }
     if let Some(m) = measured_stick_mass {
         out.push(("measured_stick_mass", *m));
     }
     match *d.mass {
         KeyMass::Estimated => {}
+        KeyMass::Published {
+            mass,
+            centre,
+            inertia,
+        } => out.extend([
+            ("published.mass", mass),
+            ("published.centre.x", centre.x),
+            ("published.centre.y", centre.y),
+            ("published.inertia", inertia),
+        ]),
         KeyMass::Weighed {
             mass,
             static_moment_n_m,
@@ -405,9 +489,12 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         front_punching,
         back_rail_height,
         back_rail_cloth,
+        back_rail_cloth_edge_radius,
         front_rail,
         back_rail,
+        back_rail_from_the_tail,
         sections,
+        drawer,
     } = d.frame;
     out.extend([
         ("balance_rail.height", *balance_rail_height),
@@ -416,8 +503,10 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         ("front_punching.felt", front_punching.felt),
         ("back_rail.height", *back_rail_height),
         ("back_rail.cloth", *back_rail_cloth),
+        ("back_rail.cloth_edge_radius", *back_rail_cloth_edge_radius),
         ("front_rail.x", *front_rail),
         ("back_rail.x", *back_rail),
+        ("back_rail.from_the_tail", *back_rail_from_the_tail),
     ]);
     out.extend(
         balance_punching
@@ -426,17 +515,23 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
             .chain(&front_punching.papers)
             .map(|&p| (PAPER.name, p)),
     );
-    for (rail, section) in [
-        ("balance_rail", &sections.balance),
-        ("front_rail", &sections.front),
-        ("back_rail", &sections.back),
-    ] {
-        section_numbers(rail, section, &mut out);
-    }
+    let FrameSections {
+        balance,
+        front,
+        back,
+    } = sections;
+    section_numbers(Rail::Balance, balance, &mut out);
+    section_numbers(Rail::Front, front, &mut out);
+    section_numbers(Rail::Back, back, &mut out);
+    out.extend(drawer.thicknesses().iter().map(|&t| (DRAWER, t)));
     let TouchweightProtocol {
         measuring_point_from_lip,
+        key_ratio_load_g,
     } = d.protocol;
-    out.push(("measuring_point_from_lip", *measuring_point_from_lip));
+    out.extend([
+        ("measuring_point_from_lip", *measuring_point_from_lip),
+        ("key_ratio_load_g", *key_ratio_load_g),
+    ]);
     let AxisFriction {
         bound_n_m,
         radius_m,
@@ -448,8 +543,21 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
     out
 }
 
-/// A rail section's numbers, each named by its rail.
-fn section_numbers(rail: &'static str, s: &RailSection, out: &mut Vec<(&'static str, f64)>) {
+/// The name of each paper a frame's drawer holds, among the design's
+/// numbers.
+pub const DRAWER: &str = "drawer";
+
+/// One of the three rails, as its section's numbers are named.
+#[derive(Debug, Clone, Copy)]
+enum Rail {
+    Balance,
+    Front,
+    Back,
+}
+
+/// A rail section's numbers, each named by its rail and its field, every
+/// field read.
+fn section_numbers(rail: Rail, s: &RailSection, out: &mut Vec<(&'static str, f64)>) {
     let RailSection {
         half_length,
         crown,
@@ -459,42 +567,95 @@ fn section_numbers(rail: &'static str, s: &RailSection, out: &mut Vec<(&'static 
         punching_hole_radius,
         sharp_row_offset,
     } = s;
-    let name = |field: &'static str| -> &'static str {
-        match (rail, field) {
-            ("balance_rail", "pin_height") => "balance_rail.pin_height",
-            ("front_rail", "pin_height") => "front_rail.pin_height",
-            ("back_rail", "pin_height") => "back_rail.pin_height",
-            ("balance_rail", _) => "sections.balance_rail",
-            ("front_rail", _) => "sections.front_rail",
-            _ => "sections.back_rail",
-        }
-    };
+    let name = |field: Section| section_name(rail, field);
     out.extend([
-        (name("half_length"), *half_length),
-        (name("pin_height"), *pin_height),
-        (name("punching_radius"), *punching_radius),
-        (name("punching_hole_radius"), *punching_hole_radius),
-        (name("sharp_row_offset"), *sharp_row_offset),
+        (name(Section::HalfLength), *half_length),
+        (name(Section::PinHeight), *pin_height),
+        (name(Section::PunchingRadius), *punching_radius),
+        (name(Section::PunchingHoleRadius), *punching_hole_radius),
+        (name(Section::SharpRowOffset), *sharp_row_offset),
     ]);
-    if let Some(c) = crown {
-        out.extend([(name("crown"), c.half_length), (name("crown"), c.height)]);
+    if let Some(Crown {
+        half_length,
+        height,
+    }) = crown
+    {
+        out.extend([
+            (name(Section::CrownHalfLength), *half_length),
+            (name(Section::CrownHeight), *height),
+        ]);
     }
     match pin {
-        Some(PinShape::Round { diameter }) => out.push((name("pin"), *diameter)),
-        Some(PinShape::Oblong { length, thickness }) => {
-            out.extend([(name("pin"), *length), (name("pin"), *thickness)]);
-        }
+        Some(PinShape::Round { diameter }) => out.push((name(Section::PinDiameter), *diameter)),
+        Some(PinShape::Oblong { length, thickness }) => out.extend([
+            (name(Section::PinLength), *length),
+            (name(Section::PinThickness), *thickness),
+        ]),
         None => {}
+    }
+}
+
+/// A number of a rail's section.
+#[derive(Debug, Clone, Copy)]
+enum Section {
+    HalfLength,
+    PinHeight,
+    PunchingRadius,
+    PunchingHoleRadius,
+    SharpRowOffset,
+    CrownHalfLength,
+    CrownHeight,
+    PinDiameter,
+    PinLength,
+    PinThickness,
+}
+
+/// The name of `field` of `rail`'s section: the rail, then the field, as a
+/// profile binds it; a pin's height is the name its setting has.
+fn section_name(rail: Rail, field: Section) -> &'static str {
+    use Rail::{Back, Balance, Front};
+    use Section::*;
+    match (rail, field) {
+        (Balance, HalfLength) => "balance_rail.half_length",
+        (Balance, PinHeight) => "balance_rail.pin_height",
+        (Balance, PunchingRadius) => "balance_rail.punching_radius",
+        (Balance, PunchingHoleRadius) => "balance_rail.punching_hole_radius",
+        (Balance, SharpRowOffset) => "balance_rail.sharp_row_offset",
+        (Balance, CrownHalfLength) => "balance_rail.crown.half_length",
+        (Balance, CrownHeight) => "balance_rail.crown.height",
+        (Balance, PinDiameter) => "balance_rail.pin.diameter",
+        (Balance, PinLength) => "balance_rail.pin.length",
+        (Balance, PinThickness) => "balance_rail.pin.thickness",
+        (Front, HalfLength) => "front_rail.half_length",
+        (Front, PinHeight) => "front_rail.pin_height",
+        (Front, PunchingRadius) => "front_rail.punching_radius",
+        (Front, PunchingHoleRadius) => "front_rail.punching_hole_radius",
+        (Front, SharpRowOffset) => "front_rail.sharp_row_offset",
+        (Front, CrownHalfLength) => "front_rail.crown.half_length",
+        (Front, CrownHeight) => "front_rail.crown.height",
+        (Front, PinDiameter) => "front_rail.pin.diameter",
+        (Front, PinLength) => "front_rail.pin.length",
+        (Front, PinThickness) => "front_rail.pin.thickness",
+        (Back, HalfLength) => "back_rail.half_length",
+        (Back, PinHeight) => "back_rail.pin_height",
+        (Back, PunchingRadius) => "back_rail.punching_radius",
+        (Back, PunchingHoleRadius) => "back_rail.punching_hole_radius",
+        (Back, SharpRowOffset) => "back_rail.sharp_row_offset",
+        (Back, CrownHalfLength) => "back_rail.crown.half_length",
+        (Back, CrownHeight) => "back_rail.crown.height",
+        (Back, PinDiameter) => "back_rail.pin.diameter",
+        (Back, PinLength) => "back_rail.pin.length",
+        (Back, PinThickness) => "back_rail.pin.thickness",
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parts::frame::PAPER_THICKNESSES;
     use crate::registry::ParamSpec;
+    use crate::test_fixture::PAPER_THICKNESSES;
 
-    /// The default key and frame, unweighed, on Stanwood's protocol and
+    /// The composite key and frame, unweighed, on Stanwood's protocol and
     /// bushings of 6 g at the measuring point.
     struct Standard {
         key: KeyDesign,
@@ -506,13 +667,13 @@ mod tests {
 
     impl Standard {
         fn new() -> Self {
-            let key = KeyDesign::default();
-            let protocol = TouchweightProtocol::default();
+            let key = crate::test_fixture::key();
+            let protocol = crate::test_fixture::protocol();
             let friction = AxisFriction::of_weight_at(6.0, protocol.measuring_point(&key));
             Self {
                 key,
                 mass: KeyMass::Estimated,
-                frame: FrameDesign::default(),
+                frame: crate::test_fixture::frame(),
                 protocol,
                 friction,
             }
@@ -533,7 +694,7 @@ mod tests {
         }
     }
 
-    /// `spec` set to a value no number of the default design holds, on the
+    /// `spec` set to a value no number of the composite design holds, on the
     /// part `on` picks: the design's numbers show that value once, under
     /// the setting's own name, every other number as it was, and the
     /// setting reads it back. The bushings' setting drops the radius a
@@ -618,7 +779,7 @@ mod tests {
         refused(&s, "friction.bound");
     }
 
-    /// Consistency: the default design is one parts can be built as.
+    /// Consistency: the composite design is one parts can be built as.
     #[test]
     fn the_default_design_passes() {
         assert_eq!(Standard::new().validate(), Ok(()));
@@ -697,7 +858,7 @@ mod tests {
     const ROUNDING: f64 = 8.0 * f64::EPSILON * 0.300;
 
     /// Consistency: **the capstan's limit behind the pin is the back check
-    /// block's, not the key's end.** On the default key and on keys
+    /// block's, not the key's end.** On the composite key and on keys
     /// lengthened at the back by 30 and 60 mm, the block stays from 220 to
     /// 193 mm behind the pin, and so does the limit: a micrometre either
     /// side of the capstan's head clearing the block's front, it stands
@@ -936,5 +1097,116 @@ mod tests {
             },
         };
         assert_eq!(s.validate(), Err(Problem::MassNotPositive { mass: 0.0 }));
+        let mut s = Standard::new();
+        s.mass = KeyMass::Published {
+            mass: -0.1,
+            centre: crate::geometry::Point::new(0.05, 0.015),
+            inertia: 0.002,
+        };
+        assert_eq!(s.validate(), Err(Problem::MassNotPositive { mass: -0.1 }));
+    }
+
+    /// The composite design with the key that carries every feature the
+    /// composite key lacks ([`crate::test_fixture::key_with_every_feature`]).
+    fn featured() -> Standard {
+        Standard {
+            key: crate::test_fixture::key_with_every_feature(),
+            ..Standard::new()
+        }
+    }
+
+    /// Consistency: **a key with every feature the composite lacks passes**,
+    /// and its design's numbers name each feature, and name no felt on its
+    /// bare tail.
+    #[test]
+    fn a_key_with_every_feature_passes_and_names_them() {
+        let s = featured();
+        assert_eq!(s.validate(), Ok(()));
+        let names: Vec<&str> = numbers(&s.design()).iter().map(|(n, _)| *n).collect();
+        for name in [
+            "capsule_centre",
+            "capstan_block.back",
+            "capstan_block.length",
+            "capstan_block.height",
+            "capstan.dome_radius",
+        ] {
+            assert!(names.contains(&name), "{name}");
+        }
+        assert!(!names.contains(&"damper_felt"));
+        let composite: Vec<&str> = numbers(&Standard::new().design())
+            .iter()
+            .map(|(n, _)| *n)
+            .collect();
+        for name in [
+            "capsule_centre",
+            "capstan_block.back",
+            "capstan.dome_radius",
+        ] {
+            assert!(!composite.contains(&name), "{name} on the composite key");
+        }
+    }
+
+    /// Consistency: **a capstan off its block, or domed narrower than its
+    /// head, is refused**: moved a millimetre past its block's back end, its
+    /// head stands that far off the block; a dome a micrometre narrower than
+    /// the head's radius caps nothing.
+    #[test]
+    fn a_capstan_off_its_block_or_domed_narrower_than_its_head_is_refused() {
+        let micrometre = 1e-6;
+        let mut s = featured();
+        let block = s.key.capstan_block.expect("a block");
+        let head = 0.5 * s.key.capstan_screw.head_diameter;
+        s.key.capstan = block.back + head - 0.001;
+        match s.validate() {
+            Err(Problem::CapstanOffItsBlock { by }) => {
+                assert!((by - 0.001).abs() <= ROUNDING, "{by}");
+            }
+            got => panic!("{got:?}"),
+        }
+        let mut s = featured();
+        s.key.capstan_screw.dome_radius = Some(head - micrometre);
+        assert_eq!(
+            s.validate(),
+            Err(Problem::CapstanDomeNarrowerThanItsHead {
+                dome: head - micrometre,
+                head
+            })
+        );
+        s.key.capstan_screw.dome_radius = Some(head);
+        assert_eq!(s.validate(), Ok(()), "a hemisphere caps the head");
+    }
+
+    /// Consistency: **a glued block stands wholly on a bare thinned tail or
+    /// wholly in front of it**: the tail stopped a millimetre short of the
+    /// capstan's block's front end puts the block across the step, by that
+    /// millimetre; the same tail felted runs its felt under the back check
+    /// block, by how far the tail's front stands in front of the block's
+    /// back end.
+    #[test]
+    fn a_block_across_the_step_to_a_bare_tail_crosses_the_outline() {
+        let mut s = featured();
+        let block = s.key.capstan_block.expect("a block");
+        s.key.tail_length = block.front() - 0.001 - s.key.tail_end;
+        match s.validate() {
+            Err(Problem::OutlineCrossesItself {
+                back: PartCode::CapstanBlock,
+                front: PartCode::Keystick,
+                by,
+            }) => assert!((by - 0.001).abs() <= ROUNDING, "{by}"),
+            got => panic!("{got:?}"),
+        }
+        let mut s = featured();
+        s.key.damper_felt = Some(0.005);
+        match s.validate() {
+            Err(Problem::OutlineCrossesItself {
+                back: PartCode::KeyTailFelt,
+                front: PartCode::BackCheckBlock,
+                by,
+            }) => {
+                let want = s.key.tail_front() - s.key.back_check_block_back;
+                assert!((by - want).abs() <= ROUNDING, "{by}");
+            }
+            got => panic!("{got:?}"),
+        }
     }
 }

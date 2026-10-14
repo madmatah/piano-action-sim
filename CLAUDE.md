@@ -57,18 +57,23 @@ trade's own protocols, and come back with the expected values.**
    alike, never `sign()` or `tanh()`; axis friction is stored as a torque with
    its measurement radius. Check: `grep -rn tanh crates/*/src` finds
    only comments; `AxisFriction` carries its radius.
-5. **No number without provenance**: a record in `data/params/` for every value
-   the engine starts from, a script in `tools/derivations/` for every derived
-   one and every `[E]`; a source in `private/` counts, a lost one does not.
-   *Not mechanically checked* (`data/params/README.md` lists unrecorded ones).
+5. **No number without provenance**: the engine starts from no number of its
+   own; a profile in `data/profiles/` binds every value an instrument starts
+   from to a record in `data/params/` or to an assumption it states with its
+   reason, and a derived one has its rule beside it or its script in
+   `tools/derivations/`, as every `[E]` does; a source in `private/` counts,
+   a lost one does not. Check:
+   `every_default_has_a_record_or_a_stated_assumption`,
+   `the_composite_profile_loads_to_the_test_fixture`.
 6. **No general-purpose physics engine in the core** (FOUNDATIONS §3.9); MuJoCo
    only ever as an optional oracle. Check: `cargo tree`, the `package.json`s.
 7. **`pa-core` has no I/O and no web dependency, and justifies each
    dependency** in its manifest: `libm` today, for every transcendental (rule
-   8); `serde` behind a feature, with persistence, is the planned one.
-   `pa-wasm` and `pa-cli` adapt `pa-app` and add no physics. Check: the three
-   manifests; `grep -rnE 'std::(fs|io|net)|wasm_bindgen' crates/pa-core/src`
-   finds nothing.
+   8); `serde` behind a feature, with persistence, is the planned one. Its one
+   feature, `fixtures`, compiles its test fixture for `pa-app`'s tests, and
+   nothing shipped enables it. `pa-wasm` and `pa-cli` adapt `pa-app` and add
+   no physics. Check: the three manifests; `grep -rnE
+   'std::(fs|io|net)|wasm_bindgen' crates/pa-core/src` finds nothing.
 8. **Determinism** (FOUNDATIONS §4.4): IEEE-754 only, a fixed order of
    operations and contacts, no `HashMap` iteration in the solver, every
    transcendental in `pa-core` (`pow` included) through the `libm` crate, no
@@ -159,13 +164,15 @@ crates/pa-core     domain: geometry · mechanism · contact · solve · parts ·
                    measure · regulation · registry · validate. No I/O, no
                    web; libm its one dependency
 crates/pa-app      application: the single-key bench as an Instrument (set by
-                   path, act by action, the composed registry), the golden
-                   sheet (tests/golden/)
+                   path, act by action, the composed registry, built from a
+                   profile), the golden sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;
                    its package.json lets Turborepo drive wasm-pack
 crates/pa-cli      shell adapter of pa-app: `weigh`, `golden`
 apps/bench         the bench: React, react-three-fiber
 data/params/       parameter records with provenance
+data/profiles/     what each instrument starts from: every number a record or
+                   a stated assumption
 data/references/   primary corpus: gitignored, third-party copyright
 docs/              FOUNDATIONS.md · vocabulary-worksheet.md · research/ A1–A5
 tools/derivations/ the script behind every [E] number (python3 -I)
@@ -182,7 +189,7 @@ pnpm verify                          # every CI gate but the frozen install
 cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build -p pa-wasm --target wasm32-unknown-unknown
-cargo run -p pa-cli -- weigh         # the weighing sheet, no browser
+cargo run -p pa-cli -- weigh [PROFILE]   # the weighing sheet, no browser
 cargo run -p pa-cli -- golden        # rewrites the golden sheet: say why
 pnpm check                           # Biome (`pnpm exec biome`, never npx)
 PATH="$HOME/.cargo/bin:$PATH" pnpm typecheck    # builds the wasm, then tsc

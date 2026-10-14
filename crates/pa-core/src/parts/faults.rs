@@ -182,12 +182,12 @@ mod tests {
     /// invisible, which is worse than having no badge at all.
     #[test]
     fn a_frame_built_for_its_key_has_nothing_to_report() {
-        let key = KeyDesign::default();
-        let frame = FrameDesign::default().placed_under(&key);
+        let key = crate::test_fixture::key();
+        let frame = crate::test_fixture::frame().placed_under(&key);
         assert_eq!(
             faults_of(&key, &frame),
             Vec::new(),
-            "the default keyboard must be one that could be built"
+            "the composite keyboard must be one that could be built"
         );
     }
 
@@ -201,10 +201,10 @@ mod tests {
     /// to find out, which is what else has to change when a key's length does.
     #[test]
     fn lengthening_a_key_leaves_the_front_rail_behind_and_names_the_miss() {
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let short = KeyDesign {
             front_edge: 0.158,
-            ..KeyDesign::default()
+            ..crate::test_fixture::key()
         };
         let moved = 0.258 - 0.158;
 
@@ -243,9 +243,9 @@ mod tests {
     fn placing_the_frame_under_the_new_key_clears_the_miss() {
         let key = KeyDesign {
             front_edge: 0.158,
-            ..KeyDesign::default()
+            ..crate::test_fixture::key()
         };
-        let frame = FrameDesign::default().placed_under(&key);
+        let frame = crate::test_fixture::frame().placed_under(&key);
         assert_eq!(faults_of(&key, &frame), Vec::new());
     }
 
@@ -259,13 +259,13 @@ mod tests {
     /// that works.
     #[test]
     fn the_cloth_has_to_fall_inside_the_chamfer_at_both_ends() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (chamfer_begins, _) = key.underside_flat();
-        let half = FrameDesign::default().sections.back.half_length;
+        let half = crate::test_fixture::frame().sections.back.half_length;
 
         let forward = FrameDesign {
             back_rail: chamfer_begins,
-            ..FrameDesign::default()
+            ..crate::test_fixture::frame()
         };
         let faults = faults_of(&key, &forward);
         assert!(
@@ -277,7 +277,7 @@ mod tests {
 
         let behind = FrameDesign {
             back_rail: key.tail_end,
-            ..FrameDesign::default()
+            ..crate::test_fixture::frame()
         };
         let faults = faults_of(&key, &behind);
         assert!(
@@ -296,12 +296,12 @@ mod tests {
     /// dimension or mis-designed a keyboard.
     #[test]
     fn a_fault_shrinks_to_nothing_as_the_frame_comes_right() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let mut previous = f64::MAX;
         for front_rail in [0.100_f64, 0.150, 0.200, 0.220, 0.223] {
             let frame = FrameDesign {
                 front_rail,
-                ..FrameDesign::default()
+                ..crate::test_fixture::frame()
             };
             let by = faults_of(&key, &frame)
                 .iter()

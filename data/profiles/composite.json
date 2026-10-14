@@ -1,0 +1,484 @@
+{
+  "profile": "composite",
+  "what": "The bench's composite key: the owner's measured key section, with a capstan and a key front no source gives, on the owner's measured key frame with its rails placed under the key, weighed by Stanwood's protocols. Not a model of any instrument: a plausible grand natural, each value either recorded or assumed here with its reason.",
+  "instruments": [
+    "natural keys from a grand piano keyboard",
+    "a grand piano key frame"
+  ],
+  "key_kind": {
+    "is": "natural",
+    "why": "A natural of the middle of the keyboard: it stands on the row of pins in front, which is the row the owner's frame was measured on."
+  },
+  "key_mass": {
+    "is": "volume_model",
+    "why": "Not weighed. The keystick is integrated as a uniform prism of an assumed width and density and the steel capstan turned from its profile; that estimate stands for the key's whole mass until the key is weighed, and afterwards for the height of its centre of mass, which no scale gives. It cannot predict a real key's front weight, which makes every touchweight of this profile an indication."
+  },
+  "arrival": {
+    "is": "regulated",
+    "why": "Built as a technician hands over a frame: regulated before it is weighed. The papers on both punchings are those the regulation solve lays from the drawer to the targets below, so no paper is a starting value of its own."
+  },
+  "values": [
+    {
+      "param": "front_edge",
+      "value": 258.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "No record. 13 mm ahead of Thorin's 245 mm key arm (Thorin 2013, Table 2.1): with the capstan below it gives a key weight ratio of 0.524, inside the 0.50 to 0.60 published for a natural. Key height and dip are read here, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, at 247 mm."
+    },
+    {
+      "param": "tail_end",
+      "value": -240.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "The key's measured overall length, 500 mm from its end to the covering's lip (key-section.json, key_length_overall), laid back from the lip at 258 + 2 = 260 mm: 260 - 500 = -240 mm.",
+      "why": "The measured length placed on the assumed key front, so it rests on that assumption too."
+    },
+    {
+      "param": "capstan.x",
+      "value": -129.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "No source gives it: Thorin gives 128.7 mm (his thesis, section 4.5.2) and 129 mm (his Table 2.1). It sets the key weight ratio. The owner's measured 122 mm is recorded in key-section.json and belongs to his key's own profile, not to this composite."
+    },
+    {
+      "param": "front_mortise.from_front_edge",
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_from_front_edge"
+    },
+    {
+      "param": "front_mortise.length",
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_length"
+    },
+    {
+      "param": "front_mortise.depth",
+      "value": 22.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "3 mm of recess and 19 mm of mortise above it: 3 + 19 = 22 mm, measured from the key's underside.",
+      "why": "Read on the key of the owner's measured frame and written in a note of key-frame-sections.json (the_pin_must_stay_in_its_mortise), not as a record of its own. It is the mortise stop: how far the front pin may rise into the key at the bottom of its stroke."
+    },
+    {
+      "param": "stick_height",
+      "record": "key-section.json",
+      "pointer": "/records/stick_thickness"
+    },
+    {
+      "param": "capsule_height",
+      "record": "key-section.json",
+      "pointer": "/records/capsule_height"
+    },
+    {
+      "param": "capsule_length",
+      "record": "key-section.json",
+      "pointer": "/records/capsule_length"
+    },
+    {
+      "param": "capsule_centre",
+      "none": true,
+      "why": "Drawn centred on the balance pin: where the key button sits along the key is not measured (key-section.json, still_to_measure). Drawn and read by nothing else."
+    },
+    {
+      "param": "back_check_block_height",
+      "record": "key-section.json",
+      "pointer": "/records/back_check_block_height"
+    },
+    {
+      "param": "back_check_block_back",
+      "value": -220.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Where the measured thinned tail ends on this key, the tail beginning right behind the block as measured: the key's end at -240 mm plus the tail's 20 mm (key-section.json, tail_length) = -220 mm.",
+      "why": "Derived, not measured: the block's own place along the key is not measured. Placed from the balance pin, as the action places it, so a key lengthened at the back keeps it. It bounds how far back the capstan and the thinned tail may reach, and through the volume model it moves the key's estimated mass and centre of mass."
+    },
+    {
+      "param": "back_check_block_length",
+      "record": "key-section.json",
+      "pointer": "/records/back_check_block_length"
+    },
+    {
+      "param": "capstan_block",
+      "none": true,
+      "why": "The capstan screws straight into the keystick, with no block glued under it (key-section.json, capstan_seat)."
+    },
+    {
+      "param": "tail_height",
+      "record": "key-section.json",
+      "pointer": "/records/tail_thickness"
+    },
+    {
+      "param": "tail_length",
+      "record": "key-section.json",
+      "pointer": "/records/tail_length"
+    },
+    {
+      "param": "damper_felt",
+      "record": "key-section.json",
+      "pointer": "/records/damper_felt_thickness"
+    },
+    {
+      "param": "tail_rise",
+      "record": "key-section.json",
+      "pointer": "/records/tail_underside_rise"
+    },
+    {
+      "param": "tail_rise_run",
+      "record": "key-section.json",
+      "pointer": "/records/tail_underside_rise_run"
+    },
+    {
+      "param": "keytop_thickness",
+      "record": "key-section.json",
+      "pointer": "/records/keytop_thickness"
+    },
+    {
+      "param": "keytop_length",
+      "record": "key-section.json",
+      "pointer": "/records/keytop_length"
+    },
+    {
+      "param": "front_board",
+      "record": "key-section.json",
+      "pointer": "/records/key_front_thickness"
+    },
+    {
+      "param": "keytop_overhang",
+      "record": "key-section.json",
+      "pointer": "/records/keytop_overhang"
+    },
+    {
+      "param": "width",
+      "value": 22.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed. The volume model integrates the key as a uniform prism this wide over its whole length, although behind the head a grand keystick is much narrower, so it sets the estimated mass; the solid view extrudes the key by it."
+    },
+    {
+      "param": "density",
+      "value": 430.0,
+      "unit": "kg/m³",
+      "reliability": "S",
+      "why": "Assumed: the keystick's wood, which with the width sets the volume model's mass."
+    },
+    {
+      "param": "capstan.height",
+      "value": 9.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Where the bench first sets the capstan's head above the keystick, in proportion with the owner's close photograph of a capstan on a grand key. A regulating screw, turned continuously from here."
+    },
+    {
+      "param": "capstan.diameter",
+      "value": 3.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The threaded shaft, scaled from the owner's close photograph of a capstan on a grand key, not measured with callipers. The thread itself is not modelled: it changes the mass by about a twentieth and nothing else."
+    },
+    {
+      "param": "capstan.head_diameter",
+      "value": 5.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The head, small against the shaft, with a cross hole for the regulating tool, scaled from the owner's photograph. Its flat top is what bears on the wippen's heel, and where the key weight ratio's load is centred."
+    },
+    {
+      "param": "capstan.head_height",
+      "value": 3.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The head's cylindrical part, scaled from the owner's photograph."
+    },
+    {
+      "param": "capstan.cove_height",
+      "value": 0.8,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The short cove flaring the shaft into the head, scaled from the owner's photograph."
+    },
+    {
+      "param": "capstan.shaft_length",
+      "value": 13.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The threaded shaft below the cove, part of it buried in the key, all of it counted in the mass; scaled from the owner's photograph."
+    },
+    {
+      "param": "capstan.tip_height",
+      "value": 1.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The shaft's pointed tip, scaled from the owner's photograph."
+    },
+    {
+      "param": "capstan.density",
+      "value": 7850.0,
+      "unit": "kg/m³",
+      "reliability": "S",
+      "why": "Steel: the owner's photograph shows a bright chromed or nickelled screw, common on modern grands. Brass capstans exist and are about 8 % heavier, which is why the material is a value and not a constant."
+    },
+    {
+      "param": "capstan.dome_radius",
+      "none": true,
+      "why": "The head's top is flat, as the owner's photograph shows it: it bears on the wippen's heel with its flat, and the key weight ratio's load is centred on it."
+    },
+    {
+      "param": "measured_stick_mass",
+      "none": true,
+      "why": "The bare keystick has not been weighed, so nothing rescales the volume model's mass."
+    },
+    {
+      "param": "balance_rail.height",
+      "value": 26.6,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not measured, but not free: a correctly set key is level at the bottom of its travel and slightly nose-up when released, which puts the balance bearing above the back bearing by the dip times the back arm over the key front's arm (10.2 x 212 / 258 = 8.4 mm, where the key bears on the cloth's back edge, 212 mm behind the pin), less the 1.6 mm the chamfer has risen there. Each rail is placed so that the targets are met with a positive stack of real paper on it."
+    },
+    {
+      "param": "front_rail.height",
+      "value": 25.9,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not measured: placed so that the dip target is met with a positive stack of real paper on the front punching, the front punching coming up to the height of the balance punching with the key level at the bottom of its travel."
+    },
+    {
+      "param": "back_rail.height",
+      "value": 19.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not measured: with its cloth, it sets the key's rest attitude together with the balance bearing, by the relation stated for the balance rail."
+    },
+    {
+      "param": "balance_punching.felt",
+      "value": 1.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed, and deliberately thin, so that regulating to the targets leaves positive paper under the balance punching: a felt thicker than the whole stack the regulation calls for is a wrong washer, which the regulation refuses with its shortfall."
+    },
+    {
+      "param": "front_punching.felt",
+      "value": 2.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed, and deliberately thin, so that regulating to the dip target leaves positive paper on the front punching."
+    },
+    {
+      "param": "back_rail.cloth",
+      "value": 3.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: the back rail cloth's thickness has not been measured (key-frame-sections.json, still_to_measure)."
+    },
+    {
+      "param": "back_rail.cloth_edge_radius",
+      "value": 0.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: a shape, not a setting. The cloth's two top edges are rounded so that where the key bears on an edge is essentially the end of the cloth's face, and still a real curve. The contact reads the arcs as drawn; the dip moves by less than 5 µm when the radius is doubled."
+    },
+    {
+      "param": "front_rail.x",
+      "value": 225.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Under the key's front mortise: the key front's 258 mm less the mortise's 33 mm from it.",
+      "why": "Placed under this key by the rule a frame is built to, then kept as recorded: a frame does not follow a key edited afterwards, and the faults name the drift."
+    },
+    {
+      "param": "back_rail.x",
+      "value": -200.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Set in from the key's end at -240 mm by the 40 mm of back_rail.from_the_tail: -240 + 40 = -200 mm.",
+      "why": "Placed under this key by the rule a frame is built to, then kept as recorded."
+    },
+    {
+      "param": "back_rail.from_the_tail",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/back_rail_from_the_tail"
+    },
+    {
+      "param": "balance_rail.half_length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_rail_length",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.crown.half_length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_crown_length",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.crown.height",
+      "value": 6.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: the crown's height above its shoulder has not been measured (key-frame-sections.json, still_to_measure). Drawn, and read by nothing else."
+    },
+    {
+      "param": "balance_rail.pin.diameter",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_pin_diameter"
+    },
+    {
+      "param": "balance_rail.pin_height",
+      "value": 11.2,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed, waiting on the balance mortise: a pin's height and the depth of the slot it enters are one measurement. It is drawn, and it is where the key leaves its pin: 9 mm above the regulated punching, past which a pull or the key's stops take it off its frame, and the most paper the regulation lays under the balance punching."
+    },
+    {
+      "param": "balance_rail.punching_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_punching_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.punching_hole_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_punching_hole_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.sharp_row_offset",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_row_offset"
+    },
+    {
+      "param": "front_rail.half_length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_rail_length",
+      "derive": "half"
+    },
+    {
+      "param": "front_rail.crown",
+      "none": true,
+      "why": "The front rail is a plain block, its punchings bearing on its top."
+    },
+    {
+      "param": "front_rail.pin.length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_pin_length"
+    },
+    {
+      "param": "front_rail.pin.thickness",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_pin_thickness"
+    },
+    {
+      "param": "front_rail.pin_height",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_pin_head_length"
+    },
+    {
+      "param": "front_rail.punching_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_punching_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "front_rail.punching_hole_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_punching_hole_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "front_rail.sharp_row_offset",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_row_offset"
+    },
+    {
+      "param": "back_rail.half_length",
+      "value": 12.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed, to be measured: a back rail 24 mm along the key, where the tail bears on its cloth (key-frame-sections.json, still_to_measure)."
+    },
+    {
+      "param": "back_rail.crown",
+      "none": true,
+      "why": "The back rail is a plain block, its cloth along its whole top."
+    },
+    {
+      "param": "back_rail.pin",
+      "none": true,
+      "why": "No pin stands in the back rail: the key's tail rests on its cloth."
+    },
+    {
+      "param": "back_rail.pin_height",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "No pin stands in the back rail, so none stands above it.",
+      "why": "A rail section holds a pin's height whether or not the rail has a pin."
+    },
+    {
+      "param": "back_rail.punching_radius",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "No punching sits on the back rail: its cloth does.",
+      "why": "A rail section holds a punching's size whether or not the rail has one."
+    },
+    {
+      "param": "back_rail.punching_hole_radius",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "No punching sits on the back rail, so none is pierced.",
+      "why": "A rail section holds a punching's hole whether or not the rail has one."
+    },
+    {
+      "param": "back_rail.sharp_row_offset",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Naturals and sharps meet the back rail's cloth at one place: the rail has one row.",
+      "why": "A rail section holds the offset between its two rows of pins whether or not it has two."
+    },
+    {
+      "param": "drawer",
+      "record": "punching-papers.json",
+      "pointer": "/records"
+    },
+    {
+      "param": "measuring_point_from_lip",
+      "record": "touchweight-protocol.json",
+      "pointer": "/records/measuring_point_from_lip"
+    },
+    {
+      "param": "key_ratio_load_g",
+      "record": "touchweight-protocol.json",
+      "pointer": "/records/key_weight_ratio_load"
+    },
+    {
+      "param": "friction.level_weight_g",
+      "value": 6.0,
+      "unit": "g",
+      "reliability": "S",
+      "why": "Of the order of the key friction weight the trade measures on a well-centred key, a starting value to be replaced by a measurement, and the one value the non-confusion tests scale. Set as the torque 6 g overcome at the measuring point with the key level, an assumption and not a reading: Stanwood's protocol, run on the key resting nose-up, reads these bushings a few tenths of a gram heavier."
+    },
+    {
+      "param": "key_height",
+      "value": 65.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Close to, not equal to, the published Steinway New York key height of 65.88 mm."
+    },
+    {
+      "param": "key_dip",
+      "value": 10.2,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Close to the published key dips: 10.16 mm Steinway New York, 9.9 to 10.6 mm Hamburg, 10.1 to 10.3 mm Kawai."
+    },
+    {
+      "param": "weight_g",
+      "value": 0.0,
+      "unit": "g",
+      "reliability": "E",
+      "rule": "Nothing stands on the measuring point.",
+      "why": "The bench starts with the key at rest under no weight; a weight is what an experiment puts on it."
+    }
+  ]
+}

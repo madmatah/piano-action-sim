@@ -49,11 +49,15 @@ Run: python3 -I scenarios.py position|forte|piano|rest [--integrator A|B]
      slides; a few seconds)
      python3 -I scenarios.py capstan-study   (the capstan's chatter in the
      finger force during the stroke; a few seconds)
+     python3 -I scenarios.py stops   (the key's attitudes at rest and at the
+     bottom, and the dip at Pk2, which the bench's cross-implementation test
+     records; a second)
 """
 
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 import time
 from pathlib import Path
@@ -489,10 +493,36 @@ def capstan_study(at_s=0.0286, window_s=0.0012):
               + " ".join(f"{m:.3f}" for m in means), flush=True)
 
 
+def stops():
+    """The key between its two stops, as the bench's cross-implementation
+    test reads it: its attitude at the frictionless rest of the whole action,
+    the contacts compressed under its weight, and at the bottom with the
+    front-rail punching (contact 2) just closed, and the travel of Pk2, where
+    the finger presses, between the two; with contact 3's and contact 2's
+    gaps there, the compression the compliant contacts take."""
+    state, iterations, residual = rest_state()
+    q = np.array(state.q, dtype=float)
+    rest = float(q[mdl.K])
+    bottom = key_angle_at_penetration(q, 0.0)
+    at_bottom = q.copy()
+    at_bottom[mdl.K] = bottom
+    finger = Recorder.finger_height
+    dip = finger(None, q) - finger(None, at_bottom)
+    gap = lambda c, qq: mdl.contact_geometry(mdl.SPECS[c], mdl.Pose(qq))[0]
+    print(f"the key between its stops: frictionless equilibrium in {iterations} iterations,"
+          f" residual {residual:.1e} N·m")
+    print(f"  rest:   {rest:+.9f} rad  {math.degrees(rest):+.6f} deg nose-up;"
+          f" contact 3 gap {gap(3, q) * 1e3:+.6f} mm")
+    print(f"  bottom: {bottom:+.9f} rad  {math.degrees(bottom):+.6f} deg nose-up;"
+          f" contact 2 gap {gap(2, at_bottom) * 1e3:+.6f} mm")
+    print(f"  dip at Pk2: {dip * 1e3:.6f} mm")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     p.add_argument("scenario", choices=("position", "forte", "piano", "rest", "slope-study",
-                                        "letoff-geometry", "chatter-study", "capstan-study"))
+                                        "letoff-geometry", "chatter-study", "capstan-study",
+                                        "stops"))
     p.add_argument("--integrator", choices=("A", "B"), default="B")
     p.add_argument("--dt", type=float, default=2e-6)
     p.add_argument("--t-end", type=float, default=0.25)
@@ -505,6 +535,8 @@ def main(argv=None):
         chatter_study()
     elif a.scenario == "capstan-study":
         capstan_study()
+    elif a.scenario == "stops":
+        stops()
     else:
         run(a.scenario, a.integrator, a.dt, a.t_end)
 

@@ -28,6 +28,12 @@ export function numberAt(document: object, address: string): number | null {
   return typeof value === 'number' ? value : null
 }
 
+/** The text at `address`, or `null` where none is. */
+export function textAt(document: object, address: string): string | null {
+  const value = at(document, address)
+  return typeof value === 'string' ? value : null
+}
+
 /** The numbers listed at `address`: none where no list is. */
 export function numbersAt(document: object, address: string): number[] {
   const value = at(document, address)

@@ -1,0 +1,515 @@
+{
+  "profile": "hirschkorn",
+  "what": "Hirschkorn's key, note 52 of a Boston GP-178 grand, on his printed frame (Hirschkorn 2004, Appendix A): his key's printed points and lines, its outline traced from his Figure A.1 where his tables give no number, its mass, centre of mass and inertia from Table A.1, its bushings from Table A.9, and his dip target. His frame bears on the key where his model does, at Pg4 and Pg5, but on real felts: a flat front punching washer and a flat back rail cloth strip, each with its top where his round of 5 mm has its, since what is drawn is what is touched. His printed frame on his rounds lets the key fall 9.306 mm at Pk2, where his finger presses; on the real felts 9.202 mm, 0.105 mm less, because the key, nose-up at rest, bears with its chamfer's kink, at -196.43 mm, on the cloth's face, where his round met the chamfer 7.3 mm further back (tools/derivations/11-hirschkorn-key-outline.py). His keybed, rails, papers, pins and the key's width are not published: they are the composite's, so his key height is an indication. It arrives as his frame is printed, not regulated: his dip of 10.0 mm is one regulation away.",
+  "instruments": ["Boston GP-178 grand piano, note 52"],
+  "key_kind": {
+    "is": "natural",
+    "why": "His Figure A.1 draws a natural: a covering whose lip overhangs a key front."
+  },
+  "key_mass": {
+    "is": "published",
+    "why": "Table A.1 gives the key's mass, its centre of mass in the key's frame and its inertia, weighed and located on the key itself, leads in it: the statics read them as published, the height of the centre of mass included. The figure's CMk marker stands elsewhere; Table A.1 governs."
+  },
+  "arrival": {
+    "is": "as_recorded",
+    "why": "On his printed frame as it is printed: the felts' tops where his rounds' tops stand, which no regulation laid. His dip of 10.0 mm is a target of his regulation, which the printed frame does not meet."
+  },
+  "values": [
+    {
+      "param": "front_edge",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/front_edge"
+    },
+    {
+      "param": "tail_end",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/tail_end"
+    },
+    {
+      "param": "chamfer.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk5/x"
+    },
+    {
+      "param": "chamfer.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk5/y"
+    },
+    {
+      "param": "chamfer.normal.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk5/normal/x"
+    },
+    {
+      "param": "chamfer.normal.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk5/normal/y"
+    },
+    {
+      "param": "capstan.dome.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk3/x"
+    },
+    {
+      "param": "capstan.dome.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk3/y"
+    },
+    {
+      "param": "capstan.dome_radius",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/key/points/Pk3/radius"
+    },
+    {
+      "param": "front_mortise.from_front_edge",
+      "value": 20.6,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Over his front bearing, where the front rail pin stands: the key front's 237.80 mm less Pg4's 217.2 mm = 20.6 mm.",
+      "why": "His tables give no front mortise. Borrowed from the owner's key as a slot sized not to bind on his geometry: placed over his front bearing, the owner's length and depth."
+    },
+    {
+      "param": "front_mortise.length",
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_length"
+    },
+    {
+      "param": "front_mortise.depth",
+      "value": 22.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "3 mm of recess and 19 mm of mortise above it, as on the owner's key: 3 + 19 = 22 mm, measured from the key's underside.",
+      "why": "His tables give no front mortise. Borrowed from the owner's key (key-frame-sections.json, the_pin_must_stay_in_its_mortise): at the bottom of the stroke it stands about 0.9 mm above the borrowed front rail pin, which so never stops the key."
+    },
+    {
+      "param": "stick_height",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/stick_height"
+    },
+    {
+      "param": "capsule_height",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capsule_height"
+    },
+    {
+      "param": "capsule_length",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capsule_length"
+    },
+    {
+      "param": "capsule_centre",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capsule_centre"
+    },
+    {
+      "param": "back_check_block_height",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/back_check_block_height"
+    },
+    {
+      "param": "back_check_block_back",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/back_check_block_back"
+    },
+    {
+      "param": "back_check_block_length",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/back_check_block_length"
+    },
+    {
+      "param": "capstan_block.back",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capstan_block_back"
+    },
+    {
+      "param": "capstan_block.length",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capstan_block_length"
+    },
+    {
+      "param": "capstan_block.height",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capstan_block_height"
+    },
+    {
+      "param": "tail_height",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/tail_height"
+    },
+    {
+      "param": "tail_length",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/tail_length"
+    },
+    {
+      "param": "damper_felt",
+      "none": true,
+      "why": "His figure draws no felt on the key's tail, and his model has no damper."
+    },
+    {
+      "param": "keytop_thickness",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/keytop_thickness"
+    },
+    {
+      "param": "keytop_length",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/keytop_length"
+    },
+    {
+      "param": "front_board",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/front_board"
+    },
+    {
+      "param": "keytop_overhang",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/keytop_overhang"
+    },
+    {
+      "param": "width",
+      "value": 22.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite key: the solid view extrudes the key by it, and nothing else reads it on a key whose mass is published."
+    },
+    {
+      "param": "density",
+      "value": 430.0,
+      "unit": "kg/m³",
+      "reliability": "S",
+      "why": "Not published, and read by nothing on this key: Table A.1 gives its mass and centre of mass whole, so no volume is weighed. Borrowed from the composite key because the key's description has the field."
+    },
+    {
+      "param": "capstan.diameter",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capstan_diameter"
+    },
+    {
+      "param": "capstan.head_diameter",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capstan_head_diameter"
+    },
+    {
+      "param": "capstan.head_height",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capstan_head_height"
+    },
+    {
+      "param": "capstan.cove_height",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "His figure draws the head standing straight on its shank, with no cove between them."
+    },
+    {
+      "param": "capstan.shaft_length",
+      "value": 13.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The shank below the head, the part buried in the block included, which no figure shows: borrowed from the composite key's capstan."
+    },
+    {
+      "param": "capstan.tip_height",
+      "value": 1.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "The shank's buried point, which no figure shows: borrowed from the composite key's capstan."
+    },
+    {
+      "param": "capstan.density",
+      "value": 7850.0,
+      "unit": "kg/m³",
+      "reliability": "S",
+      "why": "Read by nothing on this key, whose mass Table A.1 gives whole. Borrowed from the composite key's capstan because the capstan's description has the field."
+    },
+    {
+      "param": "measured_stick_mass",
+      "none": true,
+      "why": "The key is weighed whole, by Table A.1: there is no bare keystick to weigh."
+    },
+    {
+      "param": "published.mass",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/key/mass"
+    },
+    {
+      "param": "published.centre.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/key/centre_of_mass/x"
+    },
+    {
+      "param": "published.centre.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/key/centre_of_mass/y"
+    },
+    {
+      "param": "published.inertia",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/key/moment_of_inertia"
+    },
+    {
+      "param": "balance_rail.height",
+      "value": 26.6,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "His keybed is not published: his model's frame begins at the balance bearing, Pg1. Borrowed from the composite's frame, whose balance bearing, rail, felt and the papers its regulation lays, stands 28.8 mm above the keybed; his key height is read on it, an indication."
+    },
+    {
+      "param": "balance_punching.felt",
+      "value": 1.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame."
+    },
+    {
+      "param": "balance_punching.papers",
+      "values": [0.5, 0.2],
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame, the papers its regulation lays under its balance punching: the balance bearing stands where the composite's does."
+    },
+    {
+      "param": "front_rail.height",
+      "value": 23.22,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "The front punching's top where his front round's top stands, 2.7 mm under the balance bearing (Pg4: -7.7 mm and a radius of 5.0 mm), on the borrowed bearing at 26.6 + 0.7 + 1.5 = 28.8 mm: 28.8 - 2.7 - 2.0 of felt - 0.88 of paper = 23.22 mm.",
+      "why": "His front bearing is printed as a round, which a flat washer replaces with its top where the round's top is."
+    },
+    {
+      "param": "front_punching.felt",
+      "value": 2.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame: a flat washer, the real felt his round stands for."
+    },
+    {
+      "param": "front_punching.papers",
+      "values": [0.4, 0.4, 0.08],
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame, the papers its regulation lays on its front punching, so that regulating his dip has paper to lift as well as to lay."
+    },
+    {
+      "param": "back_rail.height",
+      "value": 20.3,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "The cloth's top where his back round's top stands, 5.5 mm under the balance bearing (Pg5: -10.5 mm and a radius of 5.0 mm), on the borrowed bearing at 28.8 mm: 28.8 - 5.5 - 3.0 of cloth = 20.3 mm.",
+      "why": "His back bearing is printed as a round, which a flat cloth strip replaces with its top where the round's top is."
+    },
+    {
+      "param": "back_rail.cloth",
+      "value": 3.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame: a flat cloth strip, the real cloth his round stands for."
+    },
+    {
+      "param": "back_rail.cloth_edge_radius",
+      "value": 0.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Borrowed from the composite's frame: a shape, not a setting. The key bears on its own kink on the cloth's face, away from either edge."
+    },
+    {
+      "param": "front_rail.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/ground/points/Pg4/x"
+    },
+    {
+      "param": "back_rail.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/ground/points/Pg5/x"
+    },
+    {
+      "param": "back_rail.from_the_tail",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/back_rail_from_the_tail"
+    },
+    {
+      "param": "balance_rail.half_length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_rail_length",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.crown.half_length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_crown_length",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.crown.height",
+      "value": 6.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame. Drawn, and read by nothing else."
+    },
+    {
+      "param": "balance_rail.pin.diameter",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_pin_diameter"
+    },
+    {
+      "param": "balance_rail.pin_height",
+      "value": 11.2,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame: drawn, and where the key leaves its pin, 9 mm above the balance punching."
+    },
+    {
+      "param": "balance_rail.punching_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_punching_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.punching_hole_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_punching_hole_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "balance_rail.sharp_row_offset",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/balance_row_offset"
+    },
+    {
+      "param": "front_rail.half_length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_rail_length",
+      "derive": "half"
+    },
+    {
+      "param": "front_rail.crown",
+      "none": true,
+      "why": "The front rail is a plain block, its punchings bearing on its top."
+    },
+    {
+      "param": "front_rail.pin.length",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_pin_length"
+    },
+    {
+      "param": "front_rail.pin.thickness",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_pin_thickness"
+    },
+    {
+      "param": "front_rail.pin_height",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_pin_head_length"
+    },
+    {
+      "param": "front_rail.punching_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_punching_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "front_rail.punching_hole_radius",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_punching_hole_diameter",
+      "derive": "half"
+    },
+    {
+      "param": "front_rail.sharp_row_offset",
+      "record": "key-frame-sections.json",
+      "pointer": "/records/front_row_offset"
+    },
+    {
+      "param": "back_rail.half_length",
+      "value": 12.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Borrowed from the composite's frame: a strip 24 mm long, which on his key reaches 4.73 mm in front of the chamfer's kink, so the key rests on its kink and the bench reports the cloth in front of the chamfer."
+    },
+    {
+      "param": "back_rail.crown",
+      "none": true,
+      "why": "The back rail is a plain block, its cloth along its whole top."
+    },
+    {
+      "param": "back_rail.pin",
+      "none": true,
+      "why": "No pin stands in the back rail: the key's tail rests on its cloth."
+    },
+    {
+      "param": "back_rail.pin_height",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "No pin stands in the back rail, so none stands above it.",
+      "why": "A rail section holds a pin's height whether or not the rail has a pin."
+    },
+    {
+      "param": "back_rail.punching_radius",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "No punching sits on the back rail: its cloth does.",
+      "why": "A rail section holds a punching's size whether or not the rail has one."
+    },
+    {
+      "param": "back_rail.punching_hole_radius",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "No punching sits on the back rail, so none is pierced.",
+      "why": "A rail section holds a punching's hole whether or not the rail has one."
+    },
+    {
+      "param": "back_rail.sharp_row_offset",
+      "value": 0.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Naturals and sharps meet the back rail's cloth at one place: the rail has one row.",
+      "why": "A rail section holds the offset between its two rows of pins whether or not it has two."
+    },
+    {
+      "param": "drawer",
+      "record": "punching-papers.json",
+      "pointer": "/records"
+    },
+    {
+      "param": "measuring_point_from_lip",
+      "record": "touchweight-protocol.json",
+      "pointer": "/records/measuring_point_from_lip"
+    },
+    {
+      "param": "key_ratio_load_g",
+      "record": "touchweight-protocol.json",
+      "pointer": "/records/key_weight_ratio_load"
+    },
+    {
+      "param": "friction.bound",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/joint_friction/rows/key/A"
+    },
+    {
+      "param": "friction.radius",
+      "none": true,
+      "why": "Table A.9 prints the kinetic torque and not the radius it was read at (§A.4: 'at a known distance from the centre of the joint')."
+    },
+    {
+      "param": "key_height",
+      "none": true,
+      "why": "No key height is published: his regulation sets the dip and the hammer's height, not the key's. The target is the key height his key stands at on its frame as it arrives, so regulating it lays the dip and leaves the key height where it stands."
+    },
+    {
+      "param": "key_dip",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/regulation/steps/0/target"
+    },
+    {
+      "param": "weight_g",
+      "value": 0.0,
+      "unit": "g",
+      "reliability": "E",
+      "rule": "Nothing stands on the measuring point.",
+      "why": "The bench starts with the key at rest under no weight; a weight is what an experiment puts on it."
+    }
+  ]
+}

@@ -17,10 +17,11 @@
 //! frame is the ground's: [`FrameDesign::parts`] builds its parts on
 //! [`BodyId::GROUND`].
 
-use crate::contact::{Material, Part, PartCode, PartId, Provenance, Role, SurfaceRef, Sweep};
+use crate::contact::{Material, Part, PartCode, PartId, PlacedBy, Role, SurfaceRef, Sweep};
 use crate::geometry::{Dir, Point, Seg};
 use crate::mechanism::BodyId;
 use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
+use crate::validate::Problem;
 
 /// A stack of punchings on a rail: the papers laid, bottom first, and the
 /// felt or leather washer on them.
@@ -76,6 +77,12 @@ pub struct FrameDesign {
     pub back_rail_height: f64,
     /// Cloth on the back rail.
     pub back_rail_cloth: f64,
+    /// The radius the back rail cloth's two top edges are rounded to,
+    /// metres: a shape, not a setting. Small enough that where the key bears
+    /// on an edge is essentially the end of the cloth's face, large enough
+    /// to be a real curve rather than a numerical fiction; it is drawn, and
+    /// the contact with the key's underside reads the arcs as drawn.
+    pub back_rail_cloth_edge_radius: f64,
     /// Where the front rail stands, metres in front of the balance pin,
     /// measured to the **natural** row of pins.
     ///
@@ -96,6 +103,14 @@ pub struct FrameDesign {
     /// the rail is under it. Cloth in front of the chamfer could only ever be
     /// met by the kink, which is the thing the chamfer exists to prevent.
     pub back_rail: f64,
+    /// How far in from the end of the key [`Self::placed_under`] sets the
+    /// back rail, metres: the relation a frame is built to under a key, not
+    /// a dimension of any part.
+    ///
+    /// The tail has to overhang the rail — the key is lifted off the frame
+    /// from behind, and the damper lift works at the very end of the tail —
+    /// and the cloth has to sit wholly within the chamfer cut to bed on it.
+    pub back_rail_from_the_tail: f64,
     /// The three rails as parts: their sections, pins and punching sizes.
     ///
     /// Here rather than beside the design because a section is not only drawn.
@@ -104,6 +119,11 @@ pub struct FrameDesign {
     /// it, and a frame that held its regulation in one place and its parts in
     /// another would have the contact set reading half of itself.
     pub sections: FrameSections,
+    /// The drawer the punchings' papers are laid from: the stock the frame
+    /// is shimmed with, every paper on a punching one of its thicknesses.
+    /// Held with the frame because the regulation lays from it and the
+    /// validation reads every paper against it.
+    pub drawer: Drawer,
 }
 
 /// One length of the frame, set directly in the design layer, from nothing
@@ -208,7 +228,7 @@ impl FrameDesign {
     ///   in that slot, so there is nowhere else for it to be.
     /// - **The back rail is set in from the end of the key**, far enough that
     ///   the tail overhangs it and the whole of its cloth falls within the
-    ///   chamfer cut to bed on it. [`BACK_RAIL_FROM_THE_TAIL`].
+    ///   chamfer cut to bed on it: [`Self::back_rail_from_the_tail`].
     ///
     /// Running this is how a frame is **built**, and it is the right default:
     /// nobody should have to type a coordinate to get a keyboard that goes
@@ -225,78 +245,8 @@ impl FrameDesign {
     /// real one.
     pub fn placed_under(mut self, key: &super::KeyDesign) -> Self {
         self.front_rail = key.front_mortise_x();
-        self.back_rail = key.tail_end + BACK_RAIL_FROM_THE_TAIL;
+        self.back_rail = key.tail_end + self.back_rail_from_the_tail;
         self
-    }
-}
-
-/// The radius the back rail cloth's two top edges are rounded to, metres.
-///
-/// Half a millimetre: small enough that where the key bears on an edge is
-/// essentially the end of the cloth's face, large enough to be a real curve
-/// rather than a numerical fiction. A shape, not a setting: it is drawn, and
-/// the contact with the key's underside reads the arcs as drawn.
-pub const CLOTH_EDGE_RADIUS: f64 = 0.0005;
-
-/// How far in from the end of the key the back rail is set, metres.
-///
-/// The tail has to overhang the rail — the key is lifted off the frame from
-/// behind, and the damper lift works at the very end of the tail — and the
-/// cloth has to sit wholly within the 77 mm of chamfer that is cut to bed on
-/// it. 40 mm satisfies both with room either side, and puts a 24 mm rail with
-/// 26 mm of chamfer in front of it and 28 mm of tail behind. [E] — waiting on
-/// a measurement of a real frame.
-pub const BACK_RAIL_FROM_THE_TAIL: f64 = 0.040;
-
-impl Default for FrameDesign {
-    /// A plausible frame for a grand. The heights themselves are **not
-    /// measured** — [E] — but they are no longer free, because trade practice
-    /// fixes the relation between them.
-    ///
-    /// **A correctly set key is level at the bottom of its travel**, and
-    /// slightly nose-up when released. That is a statement about the *back
-    /// rail*, not the front one: the key's rest attitude is set by the balance
-    /// bearing and the back rail cloth together, and the front punching only
-    /// catches the key where that attitude brings it. The condition reduces to
-    ///
-    /// ```text
-    /// balance bearing − back bearing = dip × (back rail arm ÷ key front arm)
-    /// ```
-    ///
-    /// — and the arm in it is where the key **really bears**, which is the back
-    /// edge of the cloth and not the middle of the rail: 212 mm, not 200. So
-    /// 10.2 × 212/258 = 8.4 mm, less the 1.6 mm the chamfer has risen by where
-    /// the cloth meets it. There is also an equivalent form a test can read off
-    /// the finished frame, and it is the one to trust: **the front punching
-    /// comes up to exactly the height of the balance punching**.
-    /// `the_default_frame_puts_the_key_level_at_the_bottom_of_its_travel` holds it.
-    ///
-    /// Within that, the three are **chosen for consistency, not invented
-    /// freely**: each rail is placed so that the published targets are met
-    /// with a positive stack of real paper on it, and the regulation solve
-    /// ([`crate::regulation`]) refuses a design where they cannot be, rather
-    /// than clamping. The targets are published: key height 65.88 mm
-    /// Steinway New York, and key dip 10.16 mm Steinway NY / 9.9–10.6 Hamburg
-    /// / 10.1–10.3 Kawai. [V]
-    ///
-    /// The **felt washers are deliberately thin**, 1.5 mm and 2.0 mm, so that
-    /// regulating to those targets leaves positive paper on both rails. A felt
-    /// thicker than the whole stack the regulation calls for is not a rounding
-    /// problem, it is a wrong washer — and the solver refuses rather than
-    /// returning a negative shim, naming the felt and by how much the target
-    /// is out of reach.
-    fn default() -> Self {
-        Self {
-            balance_rail_height: 0.0266,
-            balance_punching: PunchingStack::new(vec![0.0005], 0.0015),
-            front_rail_height: 0.0259,
-            front_punching: PunchingStack::new(vec![0.0005], 0.0020),
-            back_rail_height: 0.0190,
-            back_rail_cloth: 0.0030,
-            front_rail: 0.225,
-            back_rail: -0.200,
-            sections: FrameSections::default(),
-        }
     }
 }
 
@@ -325,7 +275,7 @@ mod tests {
     /// lever that sets the dip.
     #[test]
     fn levelling_the_key_does_not_change_the_front_or_back_bearings() {
-        let base = FrameDesign::default();
+        let base = crate::test_fixture::frame();
         let mut raised = base.clone();
         raised.balance_punching.papers.push(0.0004);
 
@@ -531,116 +481,181 @@ pub struct FrameSections {
     pub back: RailSection,
 }
 
-impl Default for FrameSections {
-    /// The sections of a grand key frame.
-    ///
-    /// Nine dimensions come off the owner's calliper on a real key frame and
-    /// they fix most of the rest: punchings 12 mm across at the balance and
-    /// 22 mm at the front, with 4 mm and 5 mm holes; a round balance pin of
-    /// 3.4 mm; a front rail pin oblong, 5.0 mm along the key by 3.4 mm across
-    /// it; and 27 mm at the balance, 49 mm at the front, between the natural
-    /// and sharp rows. [V] — `data/params/key-frame-sections.json`.
-    ///
-    /// **This is a generic base and not a model.** Key frames differ a great
-    /// deal between makers, so one measured frame stands in for a plausible
-    /// grand. A maker's own figures would be a named template, measured and
-    /// labelled as that maker's; nothing here should be read as *the* figure
-    /// for any particular instrument.
-    ///
-    /// **The row offsets are what set the rails' width**, through
-    /// [`RailSection::minimum_half_length`], and they set it wide: 49 mm
-    /// between the front rail's rows plus a 22 mm punching is 71 mm of wood at
-    /// the least. So the rail lengths and the crown's flat below are not free
-    /// choices: each is that minimum plus a margin, [E] only in the margin —
-    /// 2 mm at the front rail and at the crown, 6 mm on the balance rail's body
-    /// so that its crown has a shoulder to stand on.
-    ///
-    /// The **front rail pin stands 24 mm proud** of the rail: a 37 mm pin with
-    /// a 13 mm round shank, driven 2 mm past its shoulder so that its tip
-    /// still clears the top of the key's front mortise when the key is fully
-    /// down — see [`RailSection::pin_height`] for that arithmetic. [V]
-    ///
-    /// What stays genuinely [E] is the crown's height, the back rail's length,
-    /// and the **balance** pin's height, which waits on the balance mortise.
-    fn default() -> Self {
-        Self {
-            balance: RailSection {
-                half_length: 0.0255,
-                crown: Some(Crown {
-                    half_length: 0.0215,
-                    height: 0.0060,
-                }),
-                pin: Some(PinShape::Round { diameter: 0.0034 }),
-                pin_height: 0.0112,
-                punching_radius: 0.0060,
-                punching_hole_radius: 0.0020,
-                sharp_row_offset: 0.0270,
-            },
-            front: RailSection {
-                half_length: 0.0375,
-                crown: None,
-                pin: Some(PinShape::Oblong {
-                    length: 0.0050,
-                    thickness: 0.0034,
-                }),
-                pin_height: 0.0240,
-                punching_radius: 0.0110,
-                punching_hole_radius: 0.0025,
-                sharp_row_offset: 0.0490,
-            },
-            back: RailSection {
-                half_length: 0.0120,
-                crown: None,
-                pin: None,
-                pin_height: 0.0,
-                punching_radius: 0.0,
-                punching_hole_radius: 0.0,
-                sharp_row_offset: 0.0,
-            },
+/// The punching papers a drawer holds: their thicknesses, metres, thinnest
+/// first, each a whole number of [`PAPER_STEP`]s.
+///
+/// Key height and key dip are not continuous quantities on a real bench: they
+/// move in these steps, and a target between two of them is not reachable.
+/// The bench shims with these and reports what is left over rather than
+/// hiding it.
+///
+/// Thickness is also how a paper punching is **identified**: a drawer is
+/// sorted by colour and the colour *is* the thickness. That is why the
+/// geometry builds one part per paper rather than one block of the right
+/// total height. Which thicknesses a drawer holds is the stock a technician
+/// buys, data and not code: an instrument's profile binds them to their
+/// record.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Drawer {
+    /// Thinnest first, each a whole number of steps: held by
+    /// [`Drawer::graded`], the only way to build one.
+    thicknesses: Vec<f64>,
+}
+
+/// Why a list of thicknesses is no drawer the exact search can lay from.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NotADrawer {
+    /// It holds no paper.
+    Empty,
+    /// A thickness that is not a number, or not more than nothing, metres.
+    NotAThickness(f64),
+    /// A thickness that is not a whole number of [`PAPER_STEP`]s, metres: the
+    /// search through the drawer is exact only while every paper is one.
+    NotGraded(f64),
+    /// A thickness listed after one as thick or thicker, metres.
+    NotThinnestFirst(f64),
+}
+
+impl Drawer {
+    /// A drawer holding these thicknesses, metres; or why they are none the
+    /// exact search can lay from: listed thinnest first, each a whole
+    /// number of [`PAPER_STEP`]s and more than nothing.
+    pub fn graded(thicknesses: Vec<f64>) -> Result<Self, NotADrawer> {
+        if thicknesses.is_empty() {
+            return Err(NotADrawer::Empty);
         }
+        for &t in &thicknesses {
+            if !t.is_finite() || t <= 0.0 {
+                return Err(NotADrawer::NotAThickness(t));
+            }
+            let steps = t / PAPER_STEP;
+            if (steps - steps.round()).abs() >= 1e-6 {
+                return Err(NotADrawer::NotGraded(t));
+            }
+        }
+        if let Some(w) = thicknesses.windows(2).find(|w| w[0] >= w[1]) {
+            return Err(NotADrawer::NotThinnestFirst(w[1]));
+        }
+        Ok(Self { thicknesses })
+    }
+
+    /// The thicknesses it holds, metres, thinnest first.
+    pub fn thicknesses(&self) -> &[f64] {
+        &self.thicknesses
+    }
+
+    /// Its thinnest paper, metres: what key height and dip are adjusted by,
+    /// and read to.
+    pub fn thinnest(&self) -> f64 {
+        self.thicknesses[0]
+    }
+
+    /// Whether it holds a paper of exactly this thickness, to the bit.
+    pub fn holds(&self, thickness: f64) -> bool {
+        self.thicknesses
+            .iter()
+            .any(|t| t.to_bits() == thickness.to_bits())
+    }
+
+    /// Whether `paper` is one it holds, a paper being one of them
+    /// ([`PAPER`]); or why not.
+    pub fn admits(&self, paper: f64) -> Result<(), Problem> {
+        PAPER.admits(paper)?;
+        if !self.holds(paper) {
+            return Err(Problem::NotInTheDrawer {
+                param: PAPER.name,
+                thickness: paper,
+            });
+        }
+        Ok(())
+    }
+
+    /// Builds the stack of its papers that comes closest to a wanted
+    /// thickness without overshooting — thickest first, which is how a pile
+    /// is laid.
+    ///
+    /// **Not greedy, and the difference is physical.** Taking the thickest
+    /// paper that fits and repeating is correct only for a drawer whose
+    /// sizes divide one another. The owner's does not: 0.24 mm is two pastel
+    /// greens *exactly*, while greed reaches for a sky blue and strands
+    /// 0.04 mm that nothing in the drawer can fill. A bench that reported
+    /// that leftover would be blaming the drawer for its own arithmetic — and
+    /// key height is regulated in precisely those hundredths. So the search
+    /// is exhaustive: the closest total from below, and among those, the
+    /// fewest papers.
+    ///
+    /// What is left over after that *is* a genuine miss. 0.37 mm is
+    /// unreachable from that drawer because every paper thin enough to help
+    /// is an even number of hundredths; the honest answer is 0.36 and a
+    /// stated 0.01 mm short, not a rounded 0.37.
+    ///
+    /// **From below, always.** The wanted thickness is floored to the
+    /// drawer's step, never rounded: 0.395 mm asks for 0.39 and gets 0.36,
+    /// where rounding would have laid 0.40, five thousandths over what was
+    /// asked. The regulation solve relies on it: a stack laid from below
+    /// lands a key height under its target and a dip past it, each by less
+    /// than one paper ([`crate::regulation`]).
+    pub fn papers_for(&self, total: f64) -> Vec<f64> {
+        if !total.is_finite() || total <= 0.0 || total > PAPER_SEARCH_LIMIT {
+            return Vec::new();
+        }
+        let steps: Vec<usize> = self
+            .thicknesses
+            .iter()
+            .map(|&t| (t / PAPER_STEP).round() as usize)
+            .collect();
+        let target = ((total + PAPER_EPSILON) / PAPER_STEP).floor() as usize;
+
+        // Fewest papers that reach exactly `n` steps, and which paper to peel
+        // off the top of that stack to get there. `usize::MAX` means nothing
+        // reaches it.
+        let mut count = vec![usize::MAX; target + 1];
+        let mut peel = vec![0usize; target + 1];
+        count[0] = 0;
+        for n in 1..=target {
+            for (i, &step) in steps.iter().enumerate() {
+                if step <= n && count[n - step] != usize::MAX && count[n - step] + 1 < count[n] {
+                    count[n] = count[n - step] + 1;
+                    peel[n] = i;
+                }
+            }
+        }
+
+        let mut n = (0..=target)
+            .rev()
+            .find(|&n| count[n] != usize::MAX)
+            .unwrap_or(0);
+        let mut stack = Vec::with_capacity(count[n]);
+        while n > 0 {
+            let i = peel[n];
+            stack.push(self.thicknesses[i]);
+            n -= steps[i];
+        }
+        stack.sort_by(|a, b| b.total_cmp(a));
+        stack
     }
 }
 
-/// How many thicknesses the drawer holds.
-pub const PAPER_KINDS: usize = 8;
-
-/// The thicknesses a punching drawer actually holds, metres, thinnest first.
-///
-/// 0.08, 0.12, 0.20, 0.40, 0.50, 0.75, 1.00 and 1.25 mm. Key height and key dip
-/// are not continuous quantities on a real bench: they move in these steps, and a
-/// target between two of them is not reachable. The bench shims with these and
-/// reports what is left over rather than hiding it.
-///
-/// Thickness is also how a paper punching is **identified**: a drawer is sorted
-/// by colour and the colour *is* the thickness — white, pastel green, sky blue,
-/// camel, black, and card for anything above half a millimetre. That is why the
-/// geometry builds one part per paper rather than one block of the right total
-/// height, and why the view keys its palette on the thickness rather than on
-/// the part. [V] — `data/params/punching-papers.json`.
-pub const PAPER_THICKNESSES: [f64; PAPER_KINDS] = [
-    0.00008, 0.00012, 0.0002, 0.0004, 0.0005, 0.00075, 0.001, 0.00125,
-];
-
-/// A paper laid on a punching: one the drawer holds, which is what a paper
-/// is ([`PAPER_THICKNESSES`]); laid and lifted one at a time, a stack being
-/// a pile and not a thickness.
+/// A paper laid on a punching: more than nothing; laid and lifted one at a
+/// time, a stack being a pile and not a thickness. Which thicknesses are
+/// papers is the drawer's to say ([`Drawer::admits`]).
 pub const PAPER: ParamSpec<f64> = ParamSpec {
     name: "punching.paper",
     quantity: Quantity::Length,
     hard: (0.0, f64::INFINITY),
-    step: Step::Drawer(&PAPER_THICKNESSES),
+    step: Step::Drawer,
     layer: Layer::Regulation,
     kind: Kind::Actuated,
     get: |p| *p,
     set: |p, v| *p = v,
 };
 
-/// The step the drawer is graded in: 0.01 mm.
+/// The step a drawer is graded in: 0.01 mm.
 ///
-/// Every thickness in [`PAPER_THICKNESSES`] is a whole number of these, which
-/// is what lets [`papers_for`] search the drawer *exactly* rather than
-/// approximately. `every_paper_is_a_whole_number_of_steps` holds it true.
-pub(crate) const PAPER_STEP: f64 = 0.000_01;
+/// Every thickness a [`Drawer`] holds is a whole number of these, which is
+/// what lets [`Drawer::papers_for`] search it *exactly* rather than
+/// approximately.
+pub const PAPER_STEP: f64 = 0.000_01;
 
 /// The tallest stack worth searching for, metres.
 ///
@@ -659,71 +674,60 @@ pub(crate) const PAPER_SEARCH_LIMIT: f64 = 0.100;
 /// apart from the next step is ever rounded up to it.
 pub(crate) const PAPER_EPSILON: f64 = 1e-12;
 
-/// Builds the stack of real papers that comes closest to a wanted thickness
-/// without overshooting — thickest first, which is how a pile is laid.
-///
-/// **Not greedy, and the difference is physical.** Taking the thickest paper
-/// that fits and repeating is correct only for a drawer whose sizes divide one
-/// another. This one does not: 0.24 mm is two pastel greens *exactly*, while
-/// greed reaches for a sky blue and strands 0.04 mm that nothing in the drawer
-/// can fill. A bench that reported that leftover would be blaming the drawer
-/// for its own arithmetic — and key height is regulated in precisely those
-/// hundredths. So the search is exhaustive: the closest total from below, and
-/// among those, the fewest papers.
-///
-/// What is left over after that *is* a genuine miss. 0.37 mm is unreachable
-/// because every paper thin enough to help is an even number of hundredths; the
-/// honest answer is 0.36 and a stated 0.01 mm short, not a rounded 0.37.
-///
-/// **From below, always.** The wanted thickness is floored to the drawer's
-/// step, never rounded: 0.395 mm asks for 0.39 and gets 0.36, where rounding
-/// would have laid 0.40, five thousandths over what was asked. The regulation
-/// solve relies on it: a stack laid from below lands a key height under its
-/// target and a dip past it, each by less than one paper
-/// ([`crate::regulation`]).
-pub fn papers_for(total: f64) -> Vec<f64> {
-    if !total.is_finite() || total <= 0.0 || total > PAPER_SEARCH_LIMIT {
-        return Vec::new();
-    }
-    let steps: [usize; PAPER_KINDS] =
-        core::array::from_fn(|i| (PAPER_THICKNESSES[i] / PAPER_STEP).round() as usize);
-    let target = ((total + PAPER_EPSILON) / PAPER_STEP).floor() as usize;
-
-    // Fewest papers that reach exactly `n` steps, and which paper to peel off
-    // the top of that stack to get there. `usize::MAX` means nothing reaches it.
-    let mut count = vec![usize::MAX; target + 1];
-    let mut peel = vec![0usize; target + 1];
-    count[0] = 0;
-    for n in 1..=target {
-        for (i, &step) in steps.iter().enumerate() {
-            if step <= n && count[n - step] != usize::MAX && count[n - step] + 1 < count[n] {
-                count[n] = count[n - step] + 1;
-                peel[n] = i;
-            }
-        }
-    }
-
-    let mut n = (0..=target)
-        .rev()
-        .find(|&n| count[n] != usize::MAX)
-        .unwrap_or(0);
-    let mut stack = Vec::with_capacity(count[n]);
-    while n > 0 {
-        let i = peel[n];
-        stack.push(PAPER_THICKNESSES[i]);
-        n -= steps[i];
-    }
-    stack.sort_by(|a, b| b.total_cmp(a));
-    stack
+/// The numbers that place one rail's parts: its height and its length, its
+/// crown, its punching's felt and sizes, and its pin.
+struct RailNames {
+    height: PlacedBy,
+    half_length: PlacedBy,
+    crown_height: PlacedBy,
+    felt: PlacedBy,
+    punching_radius: PlacedBy,
+    punching_hole_radius: PlacedBy,
+    pin_diameter: PlacedBy,
+    pin_length: PlacedBy,
+    pin_height: PlacedBy,
 }
 
-/// The rails' sections and the punchings' sizes: measured, or derived from
-/// measurements by a rule written beside them.
-const SECTIONS: &str = "data/params/key-frame-sections.json";
-/// The punching papers a drawer holds.
-const PAPERS: &str = "data/params/punching-papers.json";
-/// Where the values that have no record are listed.
-const UNRECORDED: &str = "data/params/README.md";
+const BALANCE: RailNames = RailNames {
+    height: "balance_rail.height",
+    half_length: "balance_rail.half_length",
+    crown_height: "balance_rail.crown.height",
+    felt: "balance_punching.felt",
+    punching_radius: "balance_rail.punching_radius",
+    punching_hole_radius: "balance_rail.punching_hole_radius",
+    pin_diameter: "balance_rail.pin.diameter",
+    pin_length: "balance_rail.pin.length",
+    pin_height: "balance_rail.pin_height",
+};
+
+const FRONT: RailNames = RailNames {
+    height: "front_rail.height",
+    half_length: "front_rail.half_length",
+    crown_height: "front_rail.crown.height",
+    felt: "front_punching.felt",
+    punching_radius: "front_rail.punching_radius",
+    punching_hole_radius: "front_rail.punching_hole_radius",
+    pin_diameter: "front_rail.pin.diameter",
+    pin_length: "front_rail.pin.length",
+    pin_height: "front_rail.pin_height",
+};
+
+const BACK: RailNames = RailNames {
+    height: "back_rail.height",
+    half_length: "back_rail.half_length",
+    crown_height: "back_rail.crown.height",
+    felt: "back_rail.cloth",
+    punching_radius: "back_rail.punching_radius",
+    punching_hole_radius: "back_rail.punching_hole_radius",
+    pin_diameter: "back_rail.pin.diameter",
+    pin_length: "back_rail.pin.length",
+    pin_height: "back_rail.pin_height",
+};
+
+/// Each segment of an outline placed by its own number, in order.
+fn each(names: &[PlacedBy]) -> Vec<(core::ops::Range<u16>, PlacedBy)> {
+    (0u16..).zip(names).map(|(i, &n)| (i..i + 1, n)).collect()
+}
 
 /// What the frame's parts declare: where each is, and the ranges of them
 /// that anything else may read.
@@ -812,7 +816,8 @@ impl FrameDesign {
     /// A punching's felt is drawn from the top of its papers up to its
     /// bearing height ([`Self::balance_bearing_height`],
     /// [`Self::front_bearing_height`]), and the cloth's face to the back
-    /// bearing's, its edges rounded to [`CLOTH_EDGE_RADIUS`].
+    /// bearing's, its edges rounded to
+    /// [`Self::back_rail_cloth_edge_radius`].
     pub fn parts(&self, key: &super::KeyDesign, kind: KeyKind, out: &mut Vec<Part>) -> FrameRanges {
         let s = &self.sections;
         let mut push = |part: Part| {
@@ -820,7 +825,7 @@ impl FrameDesign {
             out.push(part);
             id
         };
-        let whole = |outline: &[Seg], provenance| vec![(0..super::count(outline), provenance)];
+        let whole = |outline: &[Seg], name: PlacedBy| vec![(0..super::count(outline), name)];
 
         // The rails. A rail is continuous across the keyboard, so a single-key
         // bench shows a slice a little wider than the key: enough to read as
@@ -833,30 +838,43 @@ impl FrameDesign {
             .max(s.front.half_length)
             .max(s.back.half_length);
         let slice = (key.width * 1.8).max(2.4 * longest);
-        let mut rail = |code, natural_x: f64, top: f64, sec: &RailSection| {
+        let mut rail = |code, natural_x: f64, top: f64, sec: &RailSection, n: &RailNames| {
             // Centred between its two rows: a rail wide enough for both is not
             // symmetric about either.
             let x = sec.centre_x(natural_x);
             let h = sec.half_length;
-            let outline = match sec.crown {
-                None => rect(x - h, 0.0, x + h, top),
+            let (outline, placed_by) = match sec.crown {
+                None => (
+                    rect(x - h, 0.0, x + h, top),
+                    each(&[n.height, n.half_length, n.height, n.half_length]),
+                ),
                 Some(crown) => {
                     let shoulder = top - crown.height;
                     let c = crown.half_length;
-                    super::polygon(&[
-                        Point::new(x - h, 0.0),
-                        Point::new(x + h, 0.0),
-                        Point::new(x + h, shoulder),
-                        Point::new(x + c, top),
-                        Point::new(x - c, top),
-                        Point::new(x - h, shoulder),
-                    ])
+                    (
+                        super::polygon(&[
+                            Point::new(x - h, 0.0),
+                            Point::new(x + h, 0.0),
+                            Point::new(x + h, shoulder),
+                            Point::new(x + c, top),
+                            Point::new(x - c, top),
+                            Point::new(x - h, shoulder),
+                        ]),
+                        each(&[
+                            n.height,
+                            n.half_length,
+                            n.crown_height,
+                            n.height,
+                            n.crown_height,
+                            n.half_length,
+                        ]),
+                    )
                 }
             };
             push(Part {
                 body: BodyId::GROUND,
                 code,
-                sources: whole(&outline, Provenance::Assumed(SECTIONS)),
+                placed_by,
                 outline,
                 sweep: Sweep::Extruded { width: slice },
                 role: Role::Solid,
@@ -868,18 +886,21 @@ impl FrameDesign {
             self.back_rail,
             self.back_rail_height,
             &s.back,
+            &BACK,
         );
         let balance_rail = rail(
             PartCode::BalanceRail,
             0.0,
             self.balance_rail_height,
             &s.balance,
+            &BALANCE,
         );
         let front_rail = rail(
             PartCode::FrontRail,
             self.front_rail,
             self.front_rail_height,
             &s.front,
+            &FRONT,
         );
 
         // The cloth: a strip the length of the rail, its two top edges rounded,
@@ -888,7 +909,7 @@ impl FrameDesign {
         let centre = s.back.centre_x(self.back_rail);
         let (x0, x1) = (centre - s.back.half_length, centre + s.back.half_length);
         let (bottom, top) = (self.back_rail_height, self.back_bearing_height());
-        let r = CLOTH_EDGE_RADIUS;
+        let r = self.back_rail_cloth_edge_radius;
         let front_edge = Seg::Arc {
             c: Point::new(x1, top - r),
             r,
@@ -925,7 +946,14 @@ impl FrameDesign {
         let back_rail_cloth = push(Part {
             body: BodyId::GROUND,
             code: PartCode::BackRailCloth,
-            sources: whole(&cloth_outline, Provenance::Assumed(UNRECORDED)),
+            placed_by: each(&[
+                BACK.height,
+                BACK.half_length,
+                "back_rail.cloth_edge_radius",
+                BACK.felt,
+                "back_rail.cloth_edge_radius",
+                BACK.half_length,
+            ]),
             outline: cloth_outline,
             sweep: Sweep::Extruded { width: slice },
             role: Role::Lining,
@@ -948,7 +976,8 @@ impl FrameDesign {
                          sec: &RailSection,
                          papers: &[f64],
                          bearing: f64,
-                         felt_code| {
+                         felt_code,
+                         n: &RailNames| {
             let (r_in, r_out) = (sec.punching_hole_radius, sec.punching_radius);
             let mut laid = Vec::with_capacity(papers.len());
             let mut y = rail_top;
@@ -957,7 +986,7 @@ impl FrameDesign {
                 laid.push(push(Part {
                     body: BodyId::GROUND,
                     code: PartCode::PaperPunching,
-                    sources: whole(&outline, Provenance::Measured(PAPERS)),
+                    placed_by: whole(&outline, PAPER.name),
                     outline,
                     sweep: Sweep::Revolved { axis_x },
                     role: Role::Lining,
@@ -970,12 +999,7 @@ impl FrameDesign {
             let felt = push(Part {
                 body: BodyId::GROUND,
                 code: felt_code,
-                sources: vec![
-                    (0..1, Provenance::Measured(SECTIONS)),
-                    (1..2, Provenance::Assumed(UNRECORDED)),
-                    (2..3, Provenance::Measured(SECTIONS)),
-                    (3..4, Provenance::Assumed(UNRECORDED)),
-                ],
+                placed_by: each(&[n.felt, n.punching_radius, n.felt, n.punching_hole_radius]),
                 outline,
                 sweep: Sweep::Revolved { axis_x },
                 role: Role::Lining,
@@ -992,6 +1016,7 @@ impl FrameDesign {
             &self.balance_punching.papers,
             self.balance_bearing_height(),
             PartCode::BalanceRailPunching,
+            &BALANCE,
         );
         let (front_papers, front_rail_punching, front_bearing) = stack(
             self.front_rail_height,
@@ -1000,6 +1025,7 @@ impl FrameDesign {
             &self.front_punching.papers,
             self.front_bearing_height(),
             PartCode::FrontRailPunching,
+            &FRONT,
         );
 
         // The pins. They guide the key and carry no vertical load, which is
@@ -1017,6 +1043,7 @@ impl FrameDesign {
                 bottom,
                 top,
                 PartCode::BalanceRailPin,
+                &BALANCE,
                 &mut push,
             )
         });
@@ -1025,7 +1052,15 @@ impl FrameDesign {
                 self.front_rail_height,
                 self.front_rail_height + s.front.pin_height,
             );
-            pin_part(pin, front_x, bottom, top, PartCode::FrontRailPin, &mut push)
+            pin_part(
+                pin,
+                front_x,
+                bottom,
+                top,
+                PartCode::FrontRailPin,
+                &FRONT,
+                &mut push,
+            )
         });
         FrameRanges {
             back_rail,
@@ -1055,35 +1090,30 @@ fn pin_part(
     bottom: f64,
     top: f64,
     code: PartCode,
+    n: &RailNames,
     push: &mut impl FnMut(Part) -> PartId,
 ) -> (PartId, core::ops::Range<u16>) {
     match pin {
         PinShape::Round { diameter } => {
             let outline = washer(0.0, 0.5 * diameter, bottom, top);
-            let n = super::count(&outline);
+            let segments = super::count(&outline);
             let id = push(Part {
                 body: BodyId::GROUND,
                 code,
-                sources: vec![
-                    (0..1, Provenance::Measured(SECTIONS)),
-                    (1..2, Provenance::Assumed(UNRECORDED)),
-                    (2..3, Provenance::Measured(SECTIONS)),
-                    (3..4, Provenance::Assumed(UNRECORDED)),
-                ],
+                placed_by: each(&[n.height, n.pin_diameter, n.pin_height, n.pin_diameter]),
                 outline,
                 sweep: Sweep::Revolved { axis_x: x },
                 role: Role::Solid,
                 material: Material::Steel,
             });
-            (id, top_of_turned(id, n).segs)
+            (id, top_of_turned(id, segments).segs)
         }
         PinShape::Oblong { length, thickness } => {
             let outline = rect(x - 0.5 * length, bottom, x + 0.5 * length, top);
-            let n = super::count(&outline);
             let id = push(Part {
                 body: BodyId::GROUND,
                 code,
-                sources: vec![(0..n, Provenance::Measured(SECTIONS))],
+                placed_by: each(&[n.height, n.pin_length, n.pin_height, n.pin_length]),
                 outline,
                 sweep: Sweep::Extruded { width: thickness },
                 role: Role::Solid,
@@ -1097,21 +1127,64 @@ fn pin_part(
 #[cfg(test)]
 mod drawer_tests {
     use super::*;
+    use crate::test_fixture::PAPER_THICKNESSES;
 
-    /// The search through the drawer is exact only while this holds.
+    /// The owner's drawer's stack for `total` metres of paper.
+    fn papers_for(total: f64) -> Vec<f64> {
+        crate::test_fixture::drawer().papers_for(total)
+    }
+
+    /// Consistency: **the search through the drawer is exact only while
+    /// every paper is a whole number of steps, listed thinnest first**, so a
+    /// drawer is built only so: the owner's is, and a list that breaks
+    /// either is refused, naming the paper that does.
     #[test]
-    fn every_paper_is_a_whole_number_of_steps() {
-        for &t in &PAPER_THICKNESSES {
-            let steps = t / PAPER_STEP;
+    fn a_drawer_is_graded_in_hundredths_and_listed_thinnest_first() {
+        assert_eq!(
+            crate::test_fixture::drawer().thicknesses(),
+            &PAPER_THICKNESSES[..]
+        );
+        assert_eq!(Drawer::graded(Vec::new()), Err(NotADrawer::Empty));
+        assert_eq!(
+            Drawer::graded(vec![0.00008, 0.000125]),
+            Err(NotADrawer::NotGraded(0.000125))
+        );
+        assert_eq!(
+            Drawer::graded(vec![0.0002, 0.00012]),
+            Err(NotADrawer::NotThinnestFirst(0.00012))
+        );
+        assert_eq!(
+            Drawer::graded(vec![0.0002, 0.0002]),
+            Err(NotADrawer::NotThinnestFirst(0.0002))
+        );
+        for bad in [0.0, -0.0001, f64::NAN, f64::INFINITY] {
             assert!(
-                (steps - steps.round()).abs() < 1e-6,
-                "{t} m is not a whole number of 0.01 mm steps, so the search is no longer exact"
+                matches!(Drawer::graded(vec![bad]), Err(NotADrawer::NotAThickness(t)) if t.to_bits() == bad.to_bits()),
+                "{bad} m taken as a paper"
             );
         }
-        assert!(
-            PAPER_THICKNESSES.windows(2).all(|w| w[0] < w[1]),
-            "the drawer is listed thinnest first"
+    }
+
+    /// Consistency: **a paper the drawer does not hold is refused**, to the
+    /// bit, and so is one that is no thickness at all; one it holds is
+    /// admitted.
+    #[test]
+    fn a_paper_the_drawer_does_not_hold_is_refused() {
+        let drawer = crate::test_fixture::drawer();
+        assert_eq!(
+            drawer.admits(0.0003),
+            Err(Problem::NotInTheDrawer {
+                param: PAPER.name,
+                thickness: 0.0003,
+            })
         );
+        assert_eq!(
+            drawer.admits(f64::NAN),
+            Err(Problem::NotFinite { param: PAPER.name })
+        );
+        for &t in &PAPER_THICKNESSES {
+            assert_eq!(drawer.admits(t), Ok(()));
+        }
     }
 
     /// Two pastel greens, not one sky blue and a gap nothing can fill.
@@ -1237,7 +1310,7 @@ mod part_tests {
     /// The frame's parts, its papers drawn under both felts.
     fn laid(frame: &FrameDesign, kind: KeyKind) -> (Vec<Part>, FrameRanges) {
         let mut parts = Vec::new();
-        let ranges = frame.parts(&KeyDesign::default(), kind, &mut parts);
+        let ranges = frame.parts(&crate::test_fixture::key(), kind, &mut parts);
         (parts, ranges)
     }
 
@@ -1269,7 +1342,7 @@ mod part_tests {
     /// under both punchings.
     #[test]
     fn the_frame_carries_its_rails_pins_punchings_and_cloth() {
-        let (parts, ranges) = laid(&FrameDesign::default(), KeyKind::Natural);
+        let (parts, ranges) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
         for papers in [&ranges.balance_papers, &ranges.front_papers] {
             assert!(!papers.is_empty(), "a punching stands on its papers");
             for id in papers {
@@ -1300,7 +1373,7 @@ mod part_tests {
     /// counter-clockwise, and has a source for every segment.
     #[test]
     fn every_part_of_the_frame_is_closed_and_counter_clockwise() {
-        let (parts, _) = laid(&FrameDesign::default(), KeyKind::Natural);
+        let (parts, _) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
         for part in &parts {
             assert!(part.is_closed(), "{} is open", part.code.code());
             let p = drawn(part);
@@ -1308,20 +1381,20 @@ mod part_tests {
                 .map(|i| p[i].x * p[(i + 1) % p.len()].y - p[(i + 1) % p.len()].x * p[i].y)
                 .sum();
             assert!(twice_area > 0.0, "{} turns clockwise", part.code.code());
-            let covered: u16 = part.sources.iter().map(|(r, _)| r.end - r.start).sum();
+            let covered: u16 = part.placed_by.iter().map(|(r, _)| r.end - r.start).sum();
             assert_eq!(usize::from(covered), part.outline.len());
         }
     }
 
     /// The cloth is drawn with its rounded edges: two quarter circles of
-    /// [`CLOTH_EDGE_RADIUS`], centred under the ends of its face, the face
+    /// the frame's cloth edge radius, centred under the ends of its face, the face
     /// between them.
     #[test]
     fn the_cloth_is_drawn_with_its_rounded_edges() {
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         let top = ranges.cloth_top.segs(&parts);
-        let r = CLOTH_EDGE_RADIUS;
+        let r = frame.back_rail_cloth_edge_radius;
         let centre = frame.sections.back.centre_x(frame.back_rail);
         let half = frame.sections.back.half_length;
         match (top[0], top[1], top[2]) {
@@ -1351,7 +1424,7 @@ mod part_tests {
     /// thickness is the felt's within the roundings of that height's sum.
     #[test]
     fn adding_paper_lifts_the_felt_without_thickening_it() {
-        let base = FrameDesign::default();
+        let base = crate::test_fixture::frame();
         let mut raised = base.clone();
         raised.balance_punching.papers.push(0.0004);
 
@@ -1380,7 +1453,7 @@ mod part_tests {
     /// instrument.
     #[test]
     fn each_paper_is_drawn_as_itself_and_they_stack_without_a_gap() {
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         assert_eq!(
             ranges.balance_papers.len(),
@@ -1418,7 +1491,7 @@ mod part_tests {
     /// real part.
     #[test]
     fn a_punching_is_a_washer_whose_hole_admits_its_pin() {
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         for (id, sec) in [
             (ranges.balance_rail_punching, frame.sections.balance),
@@ -1446,7 +1519,7 @@ mod part_tests {
     /// One piece, and the crown is what the key's balance mortise straddles.
     #[test]
     fn the_balance_rail_is_crowned_and_the_others_are_not() {
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         let rail = &parts[ranges.balance_rail.index()];
         let crown = frame.sections.balance.crown.expect("it is crowned");
@@ -1474,7 +1547,7 @@ mod part_tests {
     /// from the side.
     #[test]
     fn each_rail_carries_both_of_its_rows() {
-        let sections = FrameSections::default();
+        let sections = crate::test_fixture::sections();
         for (name, sec) in [
             ("balance rail", sections.balance),
             ("front rail", sections.front),
@@ -1495,7 +1568,7 @@ mod part_tests {
         // And the rail as drawn really does span them, which is what
         // `centre_x` is for: the width alone would be satisfied by a rail
         // sitting in the wrong place.
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         for (id, sec, natural_x) in [
             (ranges.balance_rail, sections.balance, 0.0),
@@ -1513,19 +1586,18 @@ mod part_tests {
         }
     }
 
-    /// The frame shipped as the default is the one the rule builds for the
-    /// default key.
+    /// The composite frame is the one the rule builds for the composite key.
     ///
     /// Two expressions of the same frame, and they have to agree: the
-    /// coordinates are typed out in `FrameDesign::default` so a reader can see
-    /// them, and derived in `placed_under` so a changed key can be given a
-    /// frame. If they drifted, the bench would open on a keyboard its own rule
-    /// calls wrong.
+    /// coordinates are stated in the composite profile, as the fixture
+    /// repeats them, so a reader can see them, and derived in `placed_under`
+    /// so a changed key can be given a frame. If they drifted, the bench
+    /// would open on a keyboard its own rule calls wrong.
     #[test]
     fn the_default_frame_is_the_one_the_rule_builds_for_the_default_key() {
-        let key = KeyDesign::default();
-        let typed = FrameDesign::default();
-        let placed = FrameDesign::default().placed_under(&key);
+        let key = crate::test_fixture::key();
+        let typed = crate::test_fixture::frame();
+        let placed = crate::test_fixture::frame().placed_under(&key);
         assert!(
             (typed.front_rail - placed.front_rail).abs() < 1e-15,
             "the front rail is typed at {} m and placed at {} m",
@@ -1549,12 +1621,12 @@ mod part_tests {
     /// anything in a piano, and the rule still has to produce a frame that
     /// goes together. A key 40 mm shorter at the back is built for an action
     /// whose back check block stands right in front of its tail, as the
-    /// default key's does; a longer one keeps the default's block.
+    /// composite key's does; a longer one keeps the default's block.
     #[test]
     fn placing_the_frame_follows_the_key_it_is_built_for() {
         for front_edge in [0.180_f64, 0.220, 0.258, 0.300] {
             for tail_end in [-0.200_f64, -0.240, -0.280] {
-                let standard = KeyDesign::default();
+                let standard = crate::test_fixture::key();
                 let key = KeyDesign {
                     front_edge,
                     tail_end,
@@ -1563,7 +1635,7 @@ mod part_tests {
                         .max(tail_end + standard.tail_length),
                     ..standard
                 };
-                let frame = FrameDesign::default().placed_under(&key);
+                let frame = crate::test_fixture::frame().placed_under(&key);
                 let (mortise_back, mortise_front) = key.front_mortise_span();
                 let pin = frame.sections.front.pin.expect("the front rail has a pin");
                 assert!(
@@ -1598,7 +1670,7 @@ mod part_tests {
     /// are first-class and a keyboard cannot be graduated without them.
     #[test]
     fn a_sharp_stands_on_the_second_row_of_pins() {
-        let frame = FrameDesign::default();
+        let frame = crate::test_fixture::frame();
         let (natural, n) = laid(&frame, KeyKind::Natural);
         let (sharp, s) = laid(&frame, KeyKind::Sharp);
         let at = |parts: &[Part], id: Option<PartId>| axis(&parts[id.expect("a pin").index()]);
@@ -1634,7 +1706,7 @@ mod part_tests {
     /// The balance pin is turned and the front rail pin is flattened.
     #[test]
     fn the_two_pins_are_not_the_same_part() {
-        let (parts, ranges) = laid(&FrameDesign::default(), KeyKind::Natural);
+        let (parts, ranges) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
         let balance = &parts[ranges.balance_rail_pin.expect("a balance pin").index()];
         assert!(
             matches!(balance.sweep, Sweep::Revolved { .. }),

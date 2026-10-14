@@ -96,6 +96,9 @@ pub enum PartCode {
     KeyButton,
     /// The block glued on the keystick for the back check wire.
     BackCheckBlock,
+    /// The block glued on the key that the capstan stands on, where the key
+    /// has one.
+    CapstanBlock,
     /// The hard felt on the key's thinned tail, where the damper bears.
     KeyTailFelt,
     /// The capstan screwed into the keystick.
@@ -131,6 +134,7 @@ impl PartCode {
             Self::KeyFront => "key_front",
             Self::KeyButton => "key_button",
             Self::BackCheckBlock => "back_check_block",
+            Self::CapstanBlock => "capstan_block",
             Self::KeyTailFelt => "key_tail_felt",
             Self::Capstan => "capstan",
             Self::FrontMortise => "front_mortise",
@@ -213,23 +217,17 @@ pub enum Sweep {
     },
 }
 
-/// Where a stretch of an outline comes from: how it was obtained, and the
-/// record that holds it, a path under `data/params/`.
+/// What places a stretch of an outline: the number of the design whose value
+/// draws it there, by the name [`crate::validate::numbers`] gives it, as
+/// `"stick_height"` places the keystick's top and `"front_edge"` its front.
 ///
-/// It describes the shape the segments draw. Where a part stands along its
-/// body is a different fact: the key's place on its balance pin, for one, has
-/// no record yet, which `data/params/README.md` lists.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Provenance {
-    /// Measured on a real part.
-    Measured(&'static str),
-    /// Read from a published source.
-    Published(&'static str),
-    /// Scaled from a figure or a photograph.
-    Traced(&'static str),
-    /// Assumed, pending measurement.
-    Assumed(&'static str),
-}
+/// Where that number comes from, measured on a part, read from a published
+/// table, traced from a figure or assumed, is not the domain's to say: the
+/// domain starts from no number of its own, and builds its parts from the
+/// numbers an instrument hands it. The instrument's profile keeps each
+/// number's provenance, and an application marks a drawn stretch by the
+/// provenance of the number that places it.
+pub type PlacedBy = &'static str;
 
 /// One part: a closed outline on one body, of one material.
 #[derive(Debug, Clone, PartialEq)]
@@ -250,8 +248,9 @@ pub struct Part {
     pub role: Role,
     /// What it is made of.
     pub material: Material,
-    /// Which segments of the outline come from where, in order, covering it.
-    pub sources: Vec<(Range<u16>, Provenance)>,
+    /// Which number places each run of segments of the outline, in order,
+    /// covering it ([`PlacedBy`]).
+    pub placed_by: Vec<(Range<u16>, PlacedBy)>,
 }
 
 /// `p` moved `dx` along `x`: a profile's point carried out to its axis.
@@ -467,7 +466,7 @@ mod tests {
             sweep: Sweep::Revolved { axis_x: 0.225 },
             role: Role::Lining,
             material: Material::PunchingFelt,
-            sources: vec![(0..4, Provenance::Assumed("a test"))],
+            placed_by: vec![(0..4, "a test")],
         }
     }
 

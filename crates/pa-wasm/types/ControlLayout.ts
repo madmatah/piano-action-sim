@@ -93,4 +93,25 @@ action: ActionCode,
 /**
  * What it is worded by.
  */
-label: Label, };
+label: Label, } | { "control": "profile", 
+/**
+ * The action.
+ */
+action: ActionCode, 
+/**
+ * The action's argument the name fills.
+ */
+argument: string, 
+/**
+ * What it is worded by.
+ */
+label: Label, 
+/**
+ * The profiles to choose from, by name, in the order shipped.
+ */
+options: Array<string>, 
+/**
+ * The address, in the settings document, of the name of the one on
+ * the bench.
+ */
+at: string, };

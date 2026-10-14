@@ -1227,8 +1227,8 @@ fn merit(
 pub(crate) mod tests {
     use super::*;
     use crate::contact::{
-        ContactCode, ContactLaw, ContactPair, Material, PairGeometry, Part, PartCode, PartId,
-        Provenance, Role, Surface, SurfaceRef, Sweep,
+        ContactCode, ContactLaw, ContactPair, Material, PairGeometry, Part, PartCode, PartId, Role,
+        Surface, SurfaceRef, Sweep,
     };
     use crate::geometry::Dir;
     use crate::mechanism::fixtures::XorShift;
@@ -1247,7 +1247,7 @@ pub(crate) mod tests {
             sweep: Sweep::Extruded { width: 0.01 },
             role: Role::Solid,
             material: Material::KeyWood,
-            sources: vec![(0..n, Provenance::Assumed("a test"))],
+            placed_by: vec![(0..n, "a test")],
         }
     }
 

@@ -43,7 +43,7 @@
 //! weighs what it weighed before.
 
 use pa_core::contact::{Bearing as ContactBearing, Part, Piece, Rows, ROW_MARGIN};
-pub use pa_core::contact::{ContactCode, HowItBears, Material, PartCode, Provenance, Role, Sweep};
+pub use pa_core::contact::{ContactCode, HowItBears, Material, PartCode, PlacedBy, Role, Sweep};
 use pa_core::geometry::Point;
 use pa_core::measure::jig::KeyJig;
 /// A reading of the sheet and what it carries, re-exported so an adapter can
@@ -67,10 +67,7 @@ use pa_core::mechanism::{
     Problem as MechanismProblem,
 };
 pub use pa_core::parts::faults::Fault;
-/// The punching thicknesses a drawer holds, re-exported so an adapter can
-/// offer the drawer without reaching past the application layer.
-pub use pa_core::parts::frame::PAPER_THICKNESSES;
-use pa_core::parts::frame::{KeyKind, PAPER};
+use pa_core::parts::frame::KeyKind;
 use pa_core::parts::mounts::{self, Carried, KeyMount, Mounted, OnItsFrame};
 use pa_core::parts::verdicts::{edge_overlaps, holding, Holding, TOUCHING};
 use pa_core::parts::{FrameDesign, FrameRanges, KeyDesign, KeyRanges};
@@ -95,6 +92,7 @@ use ts_rs::TS;
 
 use crate::boundary;
 use crate::composite_key;
+use crate::profile::{Arrival, Profile, Start};
 use crate::registry::{self, Field, Weighing as WeighingField};
 
 /// What the bench reports beside its weighing sheet ([`Instrument::sheet`]),
@@ -407,8 +405,9 @@ pub struct Outline {
     pub points: Vec<Point>,
     /// The segment of the part's outline each point starts or lies on.
     pub segs: Vec<u16>,
-    /// Which segments come from where.
-    pub sources: Vec<(core::ops::Range<u16>, Provenance)>,
+    /// Which number of the design places each run of its segments
+    /// ([`PlacedBy`]).
+    pub placed_by: Vec<(core::ops::Range<u16>, PlacedBy)>,
 }
 
 /// How many times an arc's sweep is halved for drawing: a quarter circle in
@@ -507,9 +506,17 @@ pub enum Action {
         /// The key friction weight, grams.
         kf_g: f64,
     },
-    /// Puts the instrument back as [`Instrument::standard`] builds it, the
-    /// bench's one profile, whatever it was built as; the log kept.
+    /// Puts the instrument back as its own profile builds it
+    /// ([`Instrument::profile`]), whatever it was edited into; the log
+    /// kept.
     Reset,
+    /// Puts another instrument on the bench: the one the shipped profile of
+    /// that name builds ([`Profile::names`]), as it arrives, which a reset
+    /// then returns to; the log kept.
+    SelectProfile {
+        /// The profile's name.
+        profile: String,
+    },
 }
 
 /// An action by its name, as a page names the one a control runs.
@@ -525,6 +532,7 @@ pub enum ActionCode {
     WeighKey,
     SetFrictionFromKeyFrictionWeight,
     Reset,
+    SelectProfile,
 }
 
 impl Action {
@@ -540,6 +548,7 @@ impl Action {
                 ActionCode::SetFrictionFromKeyFrictionWeight
             }
             Self::Reset => ActionCode::Reset,
+            Self::SelectProfile { .. } => ActionCode::SelectProfile,
         }
     }
 }
@@ -602,6 +611,11 @@ pub enum EditRefusal {
     Weighing(NotAWeighing),
     /// A key friction weight no bushings read.
     Friction(BushingsRefusal),
+    /// No shipped profile has that name.
+    UnknownProfile {
+        /// The name asked for.
+        profile: String,
+    },
 }
 
 impl From<Problem> for EditRefusal {
@@ -699,6 +713,9 @@ impl Fnv {
 /// on it.
 #[derive(Debug, Clone)]
 pub struct Instrument {
+    /// The profile it was built from, and returns to on
+    /// [`Action::Reset`]: where every number it started from comes from.
+    profile: &'static Profile,
     /// The key.
     key: KeyDesign,
     /// What is known of the key's mass: an estimate, the composite key's
@@ -743,39 +760,47 @@ pub struct Instrument {
 }
 
 impl Instrument {
-    /// An instrument regulated to the given targets: the key on the frame
-    /// with the felts it is given, and on them the papers the regulation
-    /// solve lays ([`pa_core::regulation`]), the papers the frame held
-    /// replaced.
+    /// The instrument `profile` describes, built as it arrives.
+    pub fn of(profile: &'static Profile) -> Result<Self, EditRefusal> {
+        Self::new(profile.start.clone(), profile)
+    }
+
+    /// An instrument that starts from `start`, `profile` being the one it
+    /// returns to on [`Action::Reset`]: the key on its frame with the felts
+    /// it is given and, where it arrives regulated, on them the papers the
+    /// regulation solve lays to its targets ([`pa_core::regulation`]), the
+    /// papers the frame held replaced; where it arrives as recorded, the
+    /// papers it holds. The bushings are read on this key: bushings given
+    /// as a weight at the measuring point hold that weight on this key's
+    /// arm, not on the arm of the key a profile describes.
     ///
     /// Refused where no part could be built as the design ([`validate`]), or
     /// where the targets cannot be met on this geometry, with why: a real
     /// answer and not an error to swallow.
-    pub fn new(key: KeyDesign, frame: FrameDesign, targets: Targets) -> Result<Self, EditRefusal> {
-        // Stanwood's protocol until the instrument is told otherwise.
-        let protocol = TouchweightProtocol::default();
-        // Six grams is the order of Key Friction Weight on a well-centred key;
-        // it is a starting value to be replaced by a measurement, and it is the
-        // single parameter the two non-confusion tests move. [S] It is set
-        // straight as the torque 6 g overcome at the measuring point with the
-        // key level, an assumption and not a reading: Stanwood's protocol,
-        // run on the key resting nose-up, reads these bushings a few tenths of
-        // a gram heavier. A key friction weight typed is turned into a torque
-        // by that protocol instead
-        // ([`Action::SetFrictionFromKeyFrictionWeight`]). The radius is this
-        // key's measuring point, read where every protocol reads it, not a
-        // number retyped from the default key: that would give any other key
-        // a friction bound measured on someone else's arm.
-        let friction = AxisFriction::of_weight_at(6.0, protocol.measuring_point(&key));
-        let mut instrument = Self {
+    pub fn new(start: Start, profile: &'static Profile) -> Result<Self, EditRefusal> {
+        let Start {
             key,
-            mass: KeyMass::Estimated,
+            kind,
+            mass,
             frame,
             protocol,
-            kind: KeyKind::Natural,
+            bushings,
+            friction_basis,
+            targets,
+            weight_g,
+            arrival,
+        } = start;
+        let friction = bushings.on(&key, &protocol);
+        let mut instrument = Self {
+            profile,
+            key,
+            mass,
+            frame,
+            protocol,
+            kind,
             friction,
-            friction_basis: Basis::Assumed,
-            weight_g: 0.0,
+            friction_basis,
+            weight_g,
             targets,
             state: None,
             lifts_off: false,
@@ -784,25 +809,26 @@ impl Instrument {
             refused: None,
         };
         validate(&instrument.design())?;
-        let (stacks, _) = instrument.solve(targets).map_err(EditRefusal::Regulation)?;
-        instrument.lay(&stacks);
-        // Then put the key on the frame so built, with nothing on it.
+        if arrival == Arrival::Regulated {
+            let (stacks, _) = instrument.solve(targets).map_err(EditRefusal::Regulation)?;
+            instrument.lay(&stacks);
+        }
+        // Then put the key on the frame so built, with what is on it.
         instrument.initialize();
         Ok(instrument)
     }
 
-    /// The default instrument: a middle natural, regulated to Steinway New
-    /// York.
+    /// The standard instrument: the standard profile's
+    /// ([`crate::profile::STANDARD`]), a middle natural regulated to its
+    /// targets.
     pub fn standard() -> Self {
-        Self::new(
-            KeyDesign::default(),
-            FrameDesign::default(),
-            Targets {
-                key_height: 0.0650,
-                key_dip: 0.0102,
-            },
-        )
-        .expect("the standard instrument must be regulable")
+        Self::of(Profile::standard()).expect("the standard instrument must be regulable")
+    }
+
+    /// The profile this instrument was built from: where every number it
+    /// started from comes from, and what [`Action::Reset`] returns it to.
+    pub fn profile(&self) -> &'static Profile {
+        self.profile
     }
 
     // ---- set and act -----------------------------------------------------
@@ -878,21 +904,25 @@ impl Instrument {
         self.refused.as_ref()
     }
 
-    /// **The state's hash**: FNV-1a over the bit patterns of every
-    /// normative coordinate, the key's, its weighing's, the frame's with
-    /// every paper on its punchings, the protocol's, the bushings' and the
-    /// experiment's, the targets, and the hidden state, where the last
+    /// **The state's hash**: FNV-1a over the name of the profile a reset
+    /// returns to and the bit patterns of every normative coordinate, the
+    /// key's, its weighing's, the frame's with every paper on its punchings
+    /// and the drawer they are laid from, the protocol's, the bushings' and
+    /// the experiment's, the targets, and the hidden state, where the last
     /// equilibrium left the key, what each contact row carried there and
-    /// whether it lifts off its frame, in a fixed order: a hash whose algorithm is fixed here, as `std`'s
-    /// `DefaultHasher`'s is not, so a state hashes alike in every build and
-    /// every release. Two instruments that hash alike read the same; the
-    /// log is not hashed, since two paths to one state are one state.
+    /// whether it lifts off its frame, in a fixed order: a hash whose
+    /// algorithm is fixed here, as `std`'s `DefaultHasher`'s is not, so a
+    /// state hashes alike in every build and every release. Two instruments
+    /// that hash alike read the same, and replay a log alike; the log is not
+    /// hashed, since two paths to one state are one state.
     pub fn state_hash(&self) -> u64 {
         // Every field, so that one added and not hashed fails to compile:
         // the key, its weighing, the frame, the protocol and the bushings
         // are read through the design's numbers, which read every field of
-        // theirs; the log and the last refusal are not state.
+        // theirs; the profile by its name, which a reset rebuilds; the log
+        // and the last refusal are not state.
         let Self {
+            profile,
             key: _,
             mass: _,
             frame,
@@ -909,6 +939,7 @@ impl Instrument {
             refused: _,
         } = self;
         let mut h = Fnv(Fnv::OFFSET);
+        h.bytes(profile.name.as_bytes());
         for (name, x) in numbers(&self.design()) {
             h.bytes(name.as_bytes());
             h.f64(x);
@@ -1026,6 +1057,12 @@ impl Instrument {
             .expect("the sheet reads every procedure")
     }
 
+    /// Every number of the instrument's design, by name, as
+    /// [`pa_core::validate::numbers`] reads them.
+    pub fn numbers(&self) -> Vec<(&'static str, f64)> {
+        numbers(&self.design())
+    }
+
     /// The instrument's design, as [`validate`] reads it.
     fn design(&self) -> Design<'_> {
         Design {
@@ -1121,21 +1158,32 @@ impl Instrument {
     /// [`Self::act`], the instrument written only where it is taken.
     fn try_act(&mut self, action: &Action) -> Result<Outcome, EditRefusal> {
         match *action {
+            Action::SelectProfile { ref profile } => {
+                let named = Profile::named(profile).ok_or_else(|| EditRefusal::UnknownProfile {
+                    profile: profile.clone(),
+                })?;
+                let fresh = Self::of(named)?;
+                let log = core::mem::take(&mut self.log);
+                *self = fresh;
+                self.log = log;
+                return Ok(Outcome::Done);
+            }
             Action::AddPaper {
                 stack,
                 thickness_mm,
             } => {
                 // The drawer's own thickness, as the settings send it in
                 // millimetres or as it is in metres; anything else is said
-                // why by the paper's declaration.
+                // why by the drawer.
                 let thickness_m = thickness_mm / 1000.0;
-                let paper = match PAPER_THICKNESSES.iter().copied().find(|t| {
+                let drawer = &self.frame.drawer;
+                let paper = match drawer.thicknesses().iter().copied().find(|t| {
                     (t * 1000.0).to_bits() == thickness_mm.to_bits()
                         || t.to_bits() == thickness_m.to_bits()
                 }) {
                     Some(paper) => paper,
                     None => {
-                        PAPER.admits(thickness_m)?;
+                        drawer.admits(thickness_m)?;
                         thickness_m
                     }
                 };
@@ -1238,8 +1286,9 @@ impl Instrument {
                 self.friction_basis = Basis::SetByHand;
             }
             Action::Reset => {
+                let fresh = Self::of(self.profile)?;
                 let log = core::mem::take(&mut self.log);
-                *self = Self::standard();
+                *self = fresh;
                 self.log = log;
                 return Ok(Outcome::Done);
             }
@@ -1593,7 +1642,7 @@ impl Instrument {
                     sweep: part.sweep,
                     points,
                     segs,
-                    sources: part.sources,
+                    placed_by: part.placed_by,
                 }
             })
             .collect()
@@ -1660,12 +1709,26 @@ impl Instrument {
     }
 
     /// The key's mass and centre of mass as the statics take them
-    /// ([`KeyMass::props`]): as it was weighed, the height of its centre of
-    /// mass the volume model's, which no scale gives; until it is weighed,
-    /// wholly the volume model's ([`composite_key`]). `None` where the volume
-    /// model encloses nothing and so estimates nothing.
+    /// ([`KeyMass::props`]): as a source publishes them, whole; as it was
+    /// weighed, the height of its centre of mass the estimate's, which no
+    /// scale gives; until it is weighed, wholly the estimate's. `None` where
+    /// the estimate is needed and the volume model encloses nothing.
     fn mass_props(&self) -> Option<MassProps> {
-        composite_key::mass(&self.key).map(|estimate| self.mass.props(estimate))
+        match self.mass.whole() {
+            Some(props) => Some(props),
+            None => self.estimate().map(|estimate| self.mass.props(estimate)),
+        }
+    }
+
+    /// What stands in for what nobody weighed: the centre of mass the
+    /// profile publishes, where it publishes one, which is what a weighed
+    /// key of that profile takes the height of its centre of mass from; the
+    /// composite key's volume model otherwise ([`composite_key`]).
+    fn estimate(&self) -> Option<MassProps> {
+        match self.profile.start.mass {
+            KeyMass::Published { mass, centre, .. } => Some(MassProps { mass, com: centre }),
+            KeyMass::Estimated | KeyMass::Weighed { .. } => composite_key::mass(&self.key),
+        }
     }
 
     /// The key on its frame as a mechanism: its parts and its frame's, the
@@ -1684,7 +1747,7 @@ impl Instrument {
     /// trade's gestures ([`pa_core::measure::seat`]): where key height, dip
     /// and the bearings at the back and at the bottom are read, whatever the
     /// weight on the measuring point is doing.
-    fn seated(&self) -> Result<(OnItsFrame, Seats), SeatRefusal> {
+    pub(crate) fn seated(&self) -> Result<(OnItsFrame, Seats), SeatRefusal> {
         let k = self.on_frame().map_err(SeatRefusal::Mechanism)?;
         let seats = Seating {
             mounted: &k.mounted,
@@ -1800,23 +1863,31 @@ impl Instrument {
             jig: &jig,
             measuring_point: protocol.measuring_point_on_key(key),
             measuring_point_from_lip_m: protocol.measuring_point_from_lip,
+            thinnest_paper_m: self.frame.drawer.thinnest(),
             bases: self.bases(),
         }))
     }
 
     /// What the bench's inputs rest on: the key's mass and static moment as
-    /// it was weighed, by the bench's user, or derived from its volume at an
-    /// assumed density until it is; the height of its centre of mass from
-    /// that volume either way, since no scale gives it; its friction the
-    /// bench's assumption until it is set; its dimensions partly without a
-    /// record (`data/params/README.md`).
+    /// a source publishes them, as it was weighed by the bench's user, or
+    /// derived from its volume at an assumed density until it is; the
+    /// height of its centre of mass as published where the profile
+    /// publishes one, from that volume otherwise, since no scale gives it;
+    /// its friction the profile's until it is set; its dimensions partly
+    /// without a record, assumptions its profile states (`data/profiles/`).
     pub fn bases(&self) -> Bases {
+        let published = |mass: KeyMass| matches!(mass, KeyMass::Published { .. });
         Bases {
             key_mass: match self.mass {
                 KeyMass::Estimated => Basis::Estimated,
                 KeyMass::Weighed { .. } => Basis::SetByHand,
+                KeyMass::Published { .. } => Basis::Published,
             },
-            centre_of_mass_height: Basis::Estimated,
+            centre_of_mass_height: if published(self.mass) || published(self.profile.start.mass) {
+                Basis::Published
+            } else {
+                Basis::Estimated
+            },
             key_friction: self.friction_basis,
             geometry: Basis::Assumed,
         }
@@ -1975,10 +2046,12 @@ impl Instrument {
 /// arithmetic reads it, for the tests.
 #[cfg(test)]
 pub(crate) mod read {
-    use super::{Action, Instrument, Measurement, ProcedureId, Stack};
+    use super::{
+        Action, EditRefusal, FrameDesign, Instrument, KeyDesign, Measurement, ProcedureId, Profile,
+        Stack, Start, Targets,
+    };
     use crate::registry::path;
     use pa_core::measure::walk::{HALVINGS, STEP_G};
-    use pa_core::parts::frame::papers_for;
     use pa_core::solve::statics::RESIDUAL_TOLERANCE;
     use pa_core::G;
 
@@ -2000,13 +2073,33 @@ pub(crate) mod read {
             b.act(Action::RemovePaper { stack, index: 0 })
                 .expect("a paper lifted");
         }
-        for paper in papers_for(total) {
+        let papers = b.frame().drawer.papers_for(total);
+        for paper in papers {
             b.act(Action::AddPaper {
                 stack,
                 thickness_mm: paper * 1000.0,
             })
             .expect("a paper from the drawer");
         }
+    }
+
+    /// An instrument on the standard profile, built from this key and
+    /// frame and regulated to these targets.
+    pub(crate) fn built(
+        key: KeyDesign,
+        frame: FrameDesign,
+        targets: Targets,
+    ) -> Result<Instrument, EditRefusal> {
+        let profile = Profile::standard();
+        Instrument::new(
+            Start {
+                key,
+                frame,
+                targets,
+                ..profile.start.clone()
+            },
+            profile,
+        )
     }
 
     /// A reading of `b`'s sheet, which must not be refused.
@@ -2067,7 +2160,7 @@ mod tests {
         // cloth, 212 mm behind the pin; on the front punching it shallows the
         // dip by 0.08 x 258/225. A regulation that lands inside that is as
         // close as the drawer allows; one that does not has a real error in it.
-        let paper_mm = PAPER_THICKNESSES[0] * 1000.0;
+        let paper_mm = pa_core::test_fixture::PAPER_THICKNESSES[0] * 1000.0;
         let behind = r.bears_at_the_back_mm;
         let one_paper_height_mm = paper_mm * (258.0 + behind) / behind;
         let one_paper_dip_mm = paper_mm * (258.0 / 225.0);
@@ -2894,7 +2987,7 @@ mod contact_readout_tests {
         let b = Instrument::standard();
         let f = &b.frame;
         let out = (f.front_bearing_height() - f.balance_bearing_height()) * 1000.0;
-        let two_papers = 2.0 * PAPER_THICKNESSES[0] * 1000.0;
+        let two_papers = 2.0 * pa_core::test_fixture::PAPER_THICKNESSES[0] * 1000.0;
         assert!(
             out.abs() < two_papers,
             "the key is out of level by {out:.3} mm at the bottom of its travel: \
@@ -3301,16 +3394,16 @@ mod contact_readout_tests {
         // of a key, a key down inside a rail — are invisible to a test that
         // asks the contact code whether it is happy.
         for back_rail in [-0.150_f64, -0.200, -0.232] {
-            let key = KeyDesign::default();
+            let key = pa_core::test_fixture::key();
             let frame = FrameDesign {
                 back_rail,
-                ..FrameDesign::default()
+                ..pa_core::test_fixture::frame()
             };
             let target = Targets {
                 key_height: 0.0650,
                 key_dip: 0.0102,
             };
-            let Ok(b) = Instrument::new(key, frame, target) else {
+            let Ok(b) = read::built(key, frame, target) else {
                 continue;
             };
             let drawn = b.outlines();
@@ -3411,31 +3504,35 @@ mod contact_readout_tests {
     /// surface is a range of a drawn part.**
     ///
     /// By type, a contact pair holds nothing but ranges of parts. Here, on
-    /// the bench and on every bench of the golden sheet: the mechanism the
-    /// contacts are read on carries exactly the parts the view draws, and
-    /// every range of every pair names one of them and segments its drawn
-    /// silhouette has.
+    /// every bench of the golden sheet and on every shipped profile's: the
+    /// mechanism the contacts are read on carries exactly the parts the view
+    /// draws, and every range of every pair names one of them and segments
+    /// its drawn silhouette has.
     #[test]
     fn every_contact_surface_is_a_range_of_a_drawn_part() {
-        for fixture in &crate::golden::FIXTURES {
-            let b = (fixture.build)();
+        let fixtures = crate::golden::FIXTURES
+            .iter()
+            .map(|fixture| (fixture.name, (fixture.build)()));
+        let profiles = Profile::names().map(|name| {
+            let profile = Profile::named(name).expect("shipped");
+            (name, Instrument::of(profile).expect("built"))
+        });
+        for (name, b) in fixtures.chain(profiles) {
             let (drawn, _, _) = b.parts();
             let mounted = b.key_on_frame().expect("the key mounts on its frame");
             assert_eq!(
                 mounted.mechanism.parts(),
                 &drawn[..],
-                "{}: the contacts read the parts the view draws",
-                fixture.name
+                "{name}: the contacts read the parts the view draws"
             );
-            assert_eq!(mounted.mechanism.pairs().len(), 5, "{}", fixture.name);
+            assert_eq!(mounted.mechanism.pairs().len(), 5, "{name}");
             for pair in mounted.mechanism.pairs() {
                 for range in pair.a.ranges.iter().chain(&pair.b.ranges) {
                     let part = &drawn[range.part.index()];
                     assert!(
                         range.segs.start < range.segs.end
                             && usize::from(range.segs.end) <= part.silhouette().len(),
-                        "{}: {:?} reads segments {:?} of {:?}",
-                        fixture.name,
+                        "{name}: {:?} reads segments {:?} of {:?}",
                         pair.code,
                         range.segs,
                         part.code
@@ -3703,7 +3800,9 @@ mod paper_tests {
             assert!(!stack.is_empty(), "{which:?} stack is empty");
             for &p in stack {
                 assert!(
-                    PAPER_THICKNESSES.iter().any(|t| (t - p).abs() < 1e-12),
+                    pa_core::test_fixture::PAPER_THICKNESSES
+                        .iter()
+                        .any(|t| (t - p).abs() < 1e-12),
                     "{p} m is not a punching paper anybody stocks"
                 );
             }
@@ -3739,7 +3838,7 @@ mod paper_tests {
         // its back edge, which is 12 mm further out and 5 % of this answer. So
         // the arm is read off what the bench says it is bearing at.
         let arm = before.bears_at_the_back_mm;
-        let expected = 0.2 * (arm + KeyDesign::default().front_edge * 1000.0) / arm;
+        let expected = 0.2 * (arm + pa_core::test_fixture::key().front_edge * 1000.0) / arm;
         assert!(
             (risen - expected).abs() < 0.02,
             "a two-tenths raised the key by {risen} mm, expected about {expected}"
@@ -3779,12 +3878,12 @@ mod paper_tests {
     #[test]
     fn a_stack_of_real_papers_misses_an_arbitrary_target_and_says_so() {
         let wanted = 0.00037;
-        let stack = pa_core::parts::frame::papers_for(wanted);
+        let stack = pa_core::test_fixture::drawer().papers_for(wanted);
         let total: f64 = stack.iter().sum();
 
         assert!(total <= wanted + 1e-12, "a stack must never overshoot");
         assert!(
-            wanted - total < PAPER_THICKNESSES[0],
+            wanted - total < pa_core::test_fixture::PAPER_THICKNESSES[0],
             "and must get within the thinnest paper there is"
         );
         // Which is why the bench reports the achieved dip beside the target:
@@ -3846,7 +3945,7 @@ mod regulation_tests {
             assert!(b
                 .papers(which)
                 .iter()
-                .all(|p| PAPER_THICKNESSES.contains(p)));
+                .all(|p| pa_core::test_fixture::PAPER_THICKNESSES.contains(p)));
         }
         assert!(!b.reinitialized(), "the key follows its new stacks");
     }
@@ -4202,7 +4301,7 @@ mod state_tests {
 mod measuring_point_tests {
     use super::*;
     use crate::registry::path;
-    use pa_core::measure::MEASURING_POINT_HALF_INCH;
+    use pa_core::test_fixture::MEASURING_POINT_HALF_INCH;
 
     /// Level 0: **moving the measuring point changes front weight exactly as
     /// the lever says**, and nothing about the key.
@@ -5004,19 +5103,19 @@ mod edit_tests {
     #[test]
     fn a_design_no_part_could_be_built_as_is_refused_on_load() {
         let targets = Instrument::standard().targets();
-        let mut frame = FrameDesign::default();
+        let mut frame = pa_core::test_fixture::frame();
         frame.balance_punching.felt = -0.001;
         assert!(matches!(
-            Instrument::new(KeyDesign::default(), frame, targets),
+            read::built(pa_core::test_fixture::key(), frame, targets),
             Err(EditRefusal::Problem(Problem::OutOfRange {
                 param: "balance_punching.felt",
                 ..
             }))
         ));
-        let mut key = KeyDesign::default();
+        let mut key = pa_core::test_fixture::key();
         key.capstan_screw.height = 0.001;
         assert!(matches!(
-            Instrument::new(key, FrameDesign::default(), targets),
+            read::built(key, pa_core::test_fixture::frame(), targets),
             Err(EditRefusal::Problem(Problem::OutOfRange {
                 param: "capstan.height",
                 ..
@@ -5024,26 +5123,26 @@ mod edit_tests {
         ));
         let key = KeyDesign {
             front_edge: 0.170,
-            ..KeyDesign::default()
+            ..pa_core::test_fixture::key()
         };
         assert!(matches!(
-            Instrument::new(key, FrameDesign::default(), targets),
+            read::built(key, pa_core::test_fixture::frame(), targets),
             Err(EditRefusal::Problem(Problem::OutlineCrossesItself { .. }))
         ));
-        let mut key = KeyDesign::default();
+        let mut key = pa_core::test_fixture::key();
         key.tail_end += 0.010;
         assert!(matches!(
-            Instrument::new(key, FrameDesign::default(), targets),
+            read::built(key, pa_core::test_fixture::frame(), targets),
             Err(EditRefusal::Problem(Problem::OutlineCrossesItself {
                 back: PartCode::KeyTailFelt,
                 front: PartCode::BackCheckBlock,
                 by,
             })) if (by - 0.010).abs() < 1e-12
         ));
-        let mut key = KeyDesign::default();
+        let mut key = pa_core::test_fixture::key();
         key.tail_end -= 0.030;
-        let frame = FrameDesign::default().placed_under(&key);
-        let built = Instrument::new(key, frame, targets);
+        let frame = pa_core::test_fixture::frame().placed_under(&key);
+        let built = read::built(key, frame, targets);
         assert!(built.is_ok(), "{:?}", built.err());
     }
 }

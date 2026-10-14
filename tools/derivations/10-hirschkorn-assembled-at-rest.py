@@ -30,7 +30,11 @@ Prints:
   3. the gap gradients of contacts 7 and 10 (their lever arms);
   4. the effective mass along every contact normal;
   5. the reflected masses on the two sides of the jack/knuckle contact;
-  6. the highest linearised mode with chosen contacts loaded at assumed forces.
+  6. the highest linearised mode with chosen contacts loaded at assumed forces;
+  7. the key between its two stops on his rigid frame: its attitude at rest,
+     contact 3 closed, and at the bottom, contact 2 closed, both read off the
+     key's coordinate alone, and how far Pk2, where his finger presses, falls
+     between them.
 
 Pure arithmetic on the standard library: math, and json to read the record by
 its path relative to this file. Run with python3 -I.
@@ -352,3 +356,27 @@ if __name__ == "__main__":
                       ("all thirteen at once, an upper bound", list(range(1, 14)))):
         f = top_mode_hz(m_mat, m_inv, cs, q0)
         print(f"  {label:40s} {f:6.0f} Hz")
+
+    print("\n=== 7. The key between its stops on his rigid frame ===")
+
+    def key_alone(c, lo, hi):
+        """The key's angle closing contact c, which only the key's
+        coordinate moves: bisection on the gap's sign."""
+        gap_at = lambda t: gaps([t, 0.0, 0.0, 0.0, 0.0])[c]
+        g_lo = gap_at(lo)
+        for _ in range(200):
+            mid = 0.5 * (lo + hi)
+            g_mid = gap_at(mid)
+            if (g_mid > 0) == (g_lo > 0):
+                lo, g_lo = mid, g_mid
+            else:
+                hi = mid
+        return 0.5 * (lo + hi)
+
+    rest, bottom = key_alone(3, 0.0, 0.1), key_alone(2, -0.1, 0.0)
+    pk2 = POINT["Pk2"][2]
+    dip = point(frames([rest, 0, 0, 0, 0]), "k", pk2)[1] - point(frames([bottom, 0, 0, 0, 0]), "k", pk2)[1]
+    print(f"  rest, contact 3 closed:   {rest:+.9f} rad  {math.degrees(rest):+.6f} deg nose-up"
+          f"  (the assembled rest above: {q0[0]:+.9f} rad)")
+    print(f"  bottom, contact 2 closed: {bottom:+.9f} rad  {math.degrees(bottom):+.6f} deg nose-up")
+    print(f"  dip at Pk2: {dip * 1e3:.6f} mm")

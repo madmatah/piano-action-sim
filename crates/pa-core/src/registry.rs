@@ -42,9 +42,10 @@ pub enum Step {
     /// Continuously: a dimension edited, or a regulating screw turned, which
     /// turns continuously and has no quantum.
     Continuous,
-    /// By the thicknesses a drawer holds, metres: a paper is one of them or
-    /// it is not a paper.
-    Drawer(&'static [f64]),
+    /// By the thicknesses a drawer holds: a paper is one of them or it is
+    /// not a paper. Which they are is the instrument's drawer's to say
+    /// ([`crate::parts::frame::Drawer::admits`]), not the setting's.
+    Drawer,
 }
 
 /// Which layer of the instrument a setting belongs to.
@@ -121,8 +122,9 @@ impl<T> core::fmt::Debug for ParamSpec<T> {
 }
 
 impl<T> ParamSpec<T> {
-    /// Whether this setting admits `value`: a number, within its hard range,
-    /// and one its step reaches; or why not.
+    /// Whether this setting admits `value`: a number, within its hard range;
+    /// or why not. A paper's thickness is checked against the drawer it is
+    /// laid from ([`crate::parts::frame::Drawer::admits`]).
     pub fn admits(&self, value: f64) -> Result<(), Problem> {
         if !value.is_finite() {
             return Err(Problem::NotFinite { param: self.name });
@@ -135,14 +137,6 @@ impl<T> ParamSpec<T> {
                 min,
                 max,
             });
-        }
-        if let Step::Drawer(sizes) = self.step {
-            if !sizes.iter().any(|&s| s.to_bits() == value.to_bits()) {
-                return Err(Problem::NotInTheDrawer {
-                    param: self.name,
-                    thickness: value,
-                });
-            }
         }
         Ok(())
     }
@@ -176,15 +170,9 @@ mod tests {
         set: |x, v| *x = v,
     };
 
-    const PAPER: ParamSpec<f64> = ParamSpec {
-        name: "paper",
-        step: Step::Drawer(&[0.0002, 0.0004]),
-        ..LENGTH
-    };
-
     /// Consistency: **a value a setting does not admit is refused, and
-    /// nothing is written**: not a number, either infinity, outside the
-    /// hard range, or off the drawer; an admitted value is written as given.
+    /// nothing is written**: not a number, either infinity, or outside the
+    /// hard range; an admitted value is written as given.
     #[test]
     fn a_value_a_setting_does_not_admit_is_refused_and_nothing_is_written() {
         let mut x = 0.001;
@@ -203,16 +191,9 @@ mod tests {
                 max: f64::INFINITY,
             })
         );
-        assert_eq!(
-            PAPER.apply(&mut x, 0.0003),
-            Err(Problem::NotInTheDrawer {
-                param: "paper",
-                thickness: 0.0003,
-            })
-        );
         assert_eq!(x.to_bits(), 0.001_f64.to_bits(), "a refusal wrote");
-        assert_eq!(PAPER.apply(&mut x, 0.0004), Ok(()));
+        assert_eq!(LENGTH.apply(&mut x, 0.0004), Ok(()));
         assert_eq!(x.to_bits(), 0.0004_f64.to_bits());
-        assert_eq!(PAPER.holds(&x), Ok(()));
+        assert_eq!(LENGTH.holds(&x), Ok(()));
     }
 }

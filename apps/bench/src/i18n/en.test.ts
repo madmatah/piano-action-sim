@@ -212,6 +212,29 @@ describe('a problem', () => {
       "the key's thinned tail and its felt would end 10.0 mm in front of the back check block's back end, and the block is glued on the keystick's full height: no key is cut like that.",
     )
     expect(
+      word(t.editRefusal, 'outline_crosses_itself', {
+        code: 'outline_crosses_itself',
+        back: 'capstan_block',
+        front: 'keystick',
+        by_mm: 1,
+      }),
+    ).toBe(
+      "the capstan block would stand 1.0 mm across the step down to the key's thinned tail, and a block stands on the one or on the other: no key is cut like that.",
+    )
+    expect(
+      word(t.editRefusal, 'capstan_off_its_block', { code: 'capstan_off_its_block', by_mm: 1.25 }),
+    ).toBe('the capstan would stand 1.3 mm off the block it is screwed into.')
+    expect(
+      word(t.editRefusal, 'capstan_dome_narrower_than_its_head', {
+        code: 'capstan_dome_narrower_than_its_head',
+        dome_mm: 3.5,
+        head_mm: 3.92,
+      }),
+    ).toBe('a dome of 3.50 mm cannot cap a capstan head of 3.92 mm radius.')
+    expect(
+      word(t.editRefusal, 'unknown_profile', { code: 'unknown_profile', profile: 'nobody' }),
+    ).toBe('the bench ships no instrument nobody.')
+    expect(
       word(t.editRefusal, 'feature_outside_keystick', {
         code: 'feature_outside_keystick',
         part: 'front_mortise',
@@ -299,6 +322,14 @@ describe('a form', () => {
     expect(t.weighing.notWeighed(121.123)).toBe(
       'Not weighed yet: its 121.12 g, and where its centre of mass stands, are derived from its volume at an assumed wood density.',
     )
+    expect(t.weighing.published(120.08)).toBe(
+      'As published: 120.08 g, and its centre of mass, its height included, as its source gives them.',
+    )
+  })
+
+  it('names every profile the bench ships, and every way a line is known', () => {
+    expect(Object.keys(t.profile)).toEqual(['composite', 'hirschkorn'])
+    expect(t.view.how.traced).toBe('traced from a figure')
   })
 
   it('words a control by its label, its unit beside its value', () => {

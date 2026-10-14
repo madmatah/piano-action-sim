@@ -48,8 +48,8 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use pa_core::contact::{
-    Bearing, ContactCode, HowItBears, Material as CoreMaterial, PartCode, Provenance,
-    Role as CoreRole, Sweep as CoreSweep,
+    Bearing, ContactCode, HowItBears, Material as CoreMaterial, PartCode, Role as CoreRole,
+    Sweep as CoreSweep,
 };
 use pa_core::measure::jig::JigRefusal;
 use pa_core::measure::measurement::{
@@ -60,21 +60,22 @@ use pa_core::measure::seat::SeatRefusal;
 use pa_core::measure::walk::{WalkRefusal, CAP, STEP_G};
 use pa_core::measure::weighing::{BushingsRefusal, Refused, FRICTION_SEARCH_G};
 use pa_core::parts::faults::Fault as CoreFault;
-use pa_core::parts::frame::PAPER;
+use pa_core::parts::frame::{Drawer, PAPER};
 use pa_core::parts::mounts::KeyMount;
 use pa_core::parts::{KeyMass, NotAWeighing};
 use pa_core::registry::{
     Kind as CoreKind, Layer as CoreLayer, Quantity as CoreQuantity, Step as CoreStep,
 };
 use pa_core::regulation::{Limit as CoreLimit, Target as CoreTarget, Unsolvable, STACK_SEARCH};
-use pa_core::validate::Problem as CoreProblem;
+use pa_core::validate::{Problem as CoreProblem, DRAWER};
 use pa_core::G;
 
 use crate::instrument::{
     Action, ActionCode, ContactState as CoreContactState, Edit as CoreEdit,
     EditRefusal as CoreEditRefusal, Instrument, NotRegulated, Outcome, Riding as CoreRiding,
-    SeatReport, Stack, TouchVerdict, KEY, PAPER_THICKNESSES,
+    SeatReport, Stack, TouchVerdict, KEY,
 };
+use crate::profile::{Known, PaperColour, Profile};
 use crate::registry::{self, path, Control, Entry, Field, Label, Panel, Weighing as WeighingField};
 
 /// A document as the interface reads it: JSON, the shape of its generated
@@ -146,6 +147,7 @@ pub enum Part {
     KeyFront,
     KeyButton,
     BackCheckBlock,
+    CapstanBlock,
     KeyTailFelt,
     Capstan,
     FrontMortise,
@@ -168,6 +170,7 @@ impl From<PartCode> for Part {
             PartCode::KeyFront => Self::KeyFront,
             PartCode::KeyButton => Self::KeyButton,
             PartCode::BackCheckBlock => Self::BackCheckBlock,
+            PartCode::CapstanBlock => Self::CapstanBlock,
             PartCode::KeyTailFelt => Self::KeyTailFelt,
             PartCode::Capstan => Self::Capstan,
             PartCode::FrontMortise => Self::FrontMortise,
@@ -418,6 +421,9 @@ impl Refusal {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct Settings {
+    /// The profile the instrument was built from, which a reset returns
+    /// to, by its name (`data/profiles/<name>.json`).
+    pub profile: String,
     /// The protocol the key is weighed by.
     pub protocol: ProtocolSettings,
     /// What an experiment puts on the key.
@@ -470,12 +476,30 @@ pub struct KeySettings {
     /// Its bushings.
     pub friction: FrictionSettings,
     /// Its weighing as it was typed; `null` while its mass is derived from
-    /// its volume.
+    /// its volume or published.
     pub weighing: Option<Weighed>,
-    /// Its mass as the statics take it, grams: as weighed, or derived from
-    /// its volume until it is; `null` where the volume model encloses
-    /// nothing. Not a setting: what the weighing, or the estimate, gives.
+    /// Its mass as the statics take it, grams: as published, as weighed, or
+    /// derived from its volume until it is; `null` where the volume model
+    /// encloses nothing. Not a setting: what the weighing, the source or the
+    /// estimate gives.
     pub mass_g: Option<f64>,
+    /// How its mass is known.
+    pub mass_known: MassKnown,
+}
+
+/// How the key's mass is known.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum MassKnown {
+    /// Derived from its volume at an assumed density: nobody has weighed
+    /// it.
+    Estimated,
+    /// Weighed whole on the bench, as typed.
+    Weighed,
+    /// Weighed and located by a published source, whole, its centre of
+    /// mass's height included.
+    Published,
 }
 
 /// The capstan.
@@ -598,6 +622,7 @@ impl Settings {
             }
         };
         Self {
+            profile: instrument.profile().name.clone(),
             protocol: ProtocolSettings {
                 measuring_point_from_lip_mm: at(path::MEASURING_POINT),
             },
@@ -621,7 +646,7 @@ impl Settings {
                     torque_gmm: at(path::FRICTION_TORQUE),
                 },
                 weighing: match instrument.key_mass() {
-                    KeyMass::Estimated => None,
+                    KeyMass::Estimated | KeyMass::Published { .. } => None,
                     KeyMass::Weighed { .. } => Some(Weighed {
                         mass_g: at(path::WEIGHED_MASS),
                         front_weight_g: at(path::WEIGHED_FRONT_WEIGHT),
@@ -629,6 +654,11 @@ impl Settings {
                     }),
                 },
                 mass_g: instrument.key_mass_g(),
+                mass_known: match instrument.key_mass() {
+                    KeyMass::Estimated => MassKnown::Estimated,
+                    KeyMass::Weighed { .. } => MassKnown::Weighed,
+                    KeyMass::Published { .. } => MassKnown::Published,
+                },
             },
             frame: FrameSettings {
                 balance_rail: BalanceRailSettings {
@@ -879,6 +909,21 @@ pub enum ControlLayout {
         /// What it is worded by.
         label: Label,
     },
+    /// A choice of what is on the bench, among the profiles it ships, run by
+    /// `action` with the chosen one's name as `argument`.
+    Profile {
+        /// The action.
+        action: ActionCode,
+        /// The action's argument the name fills.
+        argument: String,
+        /// What it is worded by.
+        label: Label,
+        /// The profiles to choose from, by name, in the order shipped.
+        options: Vec<String>,
+        /// The address, in the settings document, of the name of the one on
+        /// the bench.
+        at: String,
+    },
 }
 
 /// The registry: every path of the instrument, what it admits and how it is
@@ -893,10 +938,14 @@ pub struct Registry {
 }
 
 impl Registry {
-    /// The registry of `instrument`'s paths.
-    pub fn of(_instrument: &Instrument) -> Self {
+    /// The registry of `instrument`'s paths, its papers from its drawer.
+    pub fn of(instrument: &Instrument) -> Self {
+        let drawer = &instrument.frame().drawer;
         Self {
-            params: registry::ENTRIES.iter().map(Param::of).collect(),
+            params: registry::ENTRIES
+                .iter()
+                .map(|e| Param::of(e, drawer))
+                .collect(),
             page: registry::PAGE
                 .iter()
                 .map(|(panel, controls)| PanelLayout {
@@ -914,7 +963,7 @@ fn bound(x: f64) -> Option<f64> {
 }
 
 impl Param {
-    fn of(e: &Entry) -> Self {
+    fn of(e: &Entry, drawer: &Drawer) -> Self {
         let declared = |hard: (f64, f64), quantity, layer, kind, step: CoreStep| {
             let (a, b) = (e.from_si(hard.0), e.from_si(hard.1));
             let (min, max) = if a <= b { (a, b) } else { (b, a) };
@@ -924,7 +973,7 @@ impl Param {
                 kind,
                 bound(min),
                 bound(max),
-                Step::of(step),
+                Step::of(step, drawer),
             )
         };
         let (quantity, layer, kind, min, max, step) = match e.field {
@@ -996,11 +1045,11 @@ impl Param {
 }
 
 impl Step {
-    fn of(step: CoreStep) -> Self {
+    fn of(step: CoreStep, drawer: &Drawer) -> Self {
         match step {
             CoreStep::Continuous => Self::Continuous,
-            CoreStep::Drawer(sizes) => Self::Drawer {
-                sizes_mm: sizes.iter().map(|&s| mm(s)).collect(),
+            CoreStep::Drawer => Self::Drawer {
+                sizes_mm: drawer.thicknesses().iter().map(|&s| mm(s)).collect(),
             },
         }
     }
@@ -1062,6 +1111,17 @@ impl ControlLayout {
                 step: soft.step,
             },
             Control::Button { action, label } => Self::Button { action, label },
+            Control::Profile {
+                action,
+                argument,
+                label,
+            } => Self::Profile {
+                action,
+                argument: argument.to_owned(),
+                label,
+                options: Profile::names().map(str::to_owned).collect(),
+                at: registry::PROFILE.to_owned(),
+            },
         }
     }
 }
@@ -1803,7 +1863,7 @@ pub enum Sweep {
     Revolved,
 }
 
-/// How a stretch of an outline was obtained.
+/// How the number that places a stretch of an outline is known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
@@ -1812,13 +1872,36 @@ pub enum How {
     Measured,
     /// Read from a published source.
     Published,
-    /// Scaled from a figure or a photograph.
+    /// Traced from a figure.
     Traced,
+    /// Derived by a rule from other numbers.
+    Derived,
+    /// Borrowed from another instrument: read from a record of an
+    /// instrument the profile does not describe.
+    Borrowed,
     /// Assumed, pending measurement.
     Assumed,
+    /// Set on the bench since the instrument was built: no longer the
+    /// number its profile gives.
+    SetOnTheBench,
 }
 
-/// Where a stretch of an outline comes from.
+impl From<Known> for How {
+    fn from(k: Known) -> Self {
+        match k {
+            Known::Measured => Self::Measured,
+            Known::Published => Self::Published,
+            Known::Traced => Self::Traced,
+            Known::Derived => Self::Derived,
+            Known::Borrowed => Self::Borrowed,
+            Known::Assumed => Self::Assumed,
+        }
+    }
+}
+
+/// Where a stretch of an outline comes from: the number of the design that
+/// places it, and how that number is known, by the provenance the
+/// instrument's profile keeps.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct Source {
@@ -1826,10 +1909,45 @@ pub struct Source {
     pub from: u16,
     /// One past its last.
     pub to: u16,
-    /// How it was obtained.
+    /// The number that places it, as the engine's validation names it.
+    pub number: String,
+    /// How that number is known.
     pub how: How,
-    /// The record that holds it, a path under `data/params/`.
-    pub record: String,
+    /// The file that records or states it, relative to the repository's
+    /// root; `null` where it was set on the bench.
+    pub at: Option<String>,
+}
+
+impl Source {
+    /// The stretch `range` of an outline of `instrument`'s, placed by the
+    /// number `name`: known as its profile knows it while it holds the
+    /// profile's value, set on the bench once it does not. A paper is one
+    /// the drawer holds, known as the drawer is.
+    fn of(
+        instrument: &Instrument,
+        numbers: &[(&'static str, f64)],
+        range: &core::ops::Range<u16>,
+        name: &'static str,
+    ) -> Self {
+        let profile = instrument.profile();
+        let name = if name == PAPER.name { DRAWER } else { name };
+        let held = numbers.iter().find(|(n, _)| *n == name).map(|(_, v)| *v);
+        let started = profile.provenance(name).map(|p| p.value);
+        let edited = name != DRAWER
+            && matches!((held, started), (Some(h), Some(s)) if h.to_bits() != s.to_bits());
+        let (how, at) = match profile.known(name) {
+            _ if edited => (How::SetOnTheBench, None),
+            Some((known, file)) => (known.into(), Some(file)),
+            None => (How::SetOnTheBench, None),
+        };
+        Self {
+            from: range.start,
+            to: range.end,
+            number: name.to_owned(),
+            how,
+            at,
+        }
+    }
 }
 
 /// One part, in millimetres, in its own body's frame, arcs cut into lines.
@@ -1847,6 +1965,10 @@ pub struct Outline {
     /// For a paper punching, its own thickness, millimetres: the trade knows
     /// a paper by its colour, and its colour by its thickness.
     pub paper_mm: Option<f32>,
+    /// For a paper punching, the colour its record says a paper of that
+    /// thickness is supplied in (`data/params/punching-papers.json`); none
+    /// for a part that is no paper, or a paper the drawer does not hold.
+    pub paper_colour: Option<PaperColour>,
     /// How the outline becomes a solid.
     pub sweep: Sweep,
     /// Extrusion across the sagittal plane, millimetres; zero when turned.
@@ -1874,6 +1996,7 @@ pub struct Scene {
 impl Scene {
     /// The scene of `instrument`.
     pub fn of(instrument: &Instrument) -> Self {
+        let numbers = instrument.numbers();
         Self {
             outlines: instrument
                 .outlines()
@@ -1907,6 +2030,12 @@ impl Scene {
                             CoreMaterial::Paper { thickness } => Some(mm32(thickness)),
                             _ => None,
                         },
+                        paper_colour: match o.material {
+                            CoreMaterial::Paper { thickness } => {
+                                instrument.profile().paper_colour(thickness)
+                            }
+                            _ => None,
+                        },
                         sweep,
                         width_mm: width,
                         axis_x_mm: axis_x,
@@ -1917,22 +2046,9 @@ impl Scene {
                             .collect(),
                         segs: o.segs,
                         sources: o
-                            .sources
+                            .placed_by
                             .iter()
-                            .map(|(range, provenance)| {
-                                let (how, record) = match *provenance {
-                                    Provenance::Measured(r) => (How::Measured, r),
-                                    Provenance::Published(r) => (How::Published, r),
-                                    Provenance::Traced(r) => (How::Traced, r),
-                                    Provenance::Assumed(r) => (How::Assumed, r),
-                                };
-                                Source {
-                                    from: range.start,
-                                    to: range.end,
-                                    how,
-                                    record: record.to_owned(),
-                                }
-                            })
+                            .map(|(range, name)| Source::of(instrument, &numbers, range, name))
                             .collect(),
                     }
                 })
@@ -2218,6 +2334,19 @@ pub enum Problem {
         /// along the key.
         by_mm: f64,
     },
+    /// The capstan stands off the block it is screwed into.
+    CapstanOffItsBlock {
+        /// How far past the block's end its head reaches, millimetres along
+        /// the key.
+        by_mm: f64,
+    },
+    /// The capstan's dome is narrower than its head.
+    CapstanDomeNarrowerThanItsHead {
+        /// The dome's radius, millimetres.
+        dome_mm: f64,
+        /// The head's radius, millimetres.
+        head_mm: f64,
+    },
     /// The capstan stands in a glued block.
     CapstanInBlock {
         /// The block.
@@ -2246,6 +2375,11 @@ pub enum Problem {
         /// The path asked for.
         path: String,
     },
+    /// No profile the bench ships has that name.
+    UnknownProfile {
+        /// The name asked for.
+        profile: String,
+    },
     /// The path is reached through an action, not set.
     SetByAction {
         /// The path.
@@ -2268,8 +2402,8 @@ pub enum Problem {
 
 impl Problem {
     /// `p`, a domain problem, in the trade's units, each setting by its
-    /// path.
-    pub fn of(p: &CoreProblem) -> Self {
+    /// path, a paper against the drawer it is not in.
+    pub fn of(p: &CoreProblem, drawer: &Drawer) -> Self {
         let named = |param: &'static str| registry::by_param(param).map_or(param, |e| e.path);
         match *p {
             CoreProblem::NotFinite { param } => Self::NotFinite {
@@ -2293,7 +2427,7 @@ impl Problem {
             }
             CoreProblem::NotInTheDrawer { thickness, .. } => Self::NotInTheDrawer {
                 thickness_mm: mm(thickness),
-                drawer_mm: PAPER_THICKNESSES.iter().map(|&p| mm(p)).collect(),
+                drawer_mm: drawer.thicknesses().iter().map(|&p| mm(p)).collect(),
             },
             CoreProblem::MassNotPositive { mass } => Self::MassNotPositive {
                 mass_g: mass * 1000.0,
@@ -2309,6 +2443,13 @@ impl Problem {
             },
             CoreProblem::CapstanBehindBackCheckBlock { by } => {
                 Self::CapstanBehindBackCheckBlock { by_mm: mm(by) }
+            }
+            CoreProblem::CapstanOffItsBlock { by } => Self::CapstanOffItsBlock { by_mm: mm(by) },
+            CoreProblem::CapstanDomeNarrowerThanItsHead { dome, head } => {
+                Self::CapstanDomeNarrowerThanItsHead {
+                    dome_mm: mm(dome),
+                    head_mm: mm(head),
+                }
             }
             CoreProblem::CapstanInBlock { block, by } => Self::CapstanInBlock {
                 block: block.into(),
@@ -2351,10 +2492,15 @@ impl EditRefusal {
     /// own answer.
     pub fn of(instrument: &Instrument, edit: &CoreEdit, why: &CoreEditRefusal) -> Self {
         match why {
-            CoreEditRefusal::Problem(p) => Self::Problem(Problem::of(p)),
+            CoreEditRefusal::Problem(p) => {
+                Self::Problem(Problem::of(p, &instrument.frame().drawer))
+            }
             CoreEditRefusal::UnknownPath { path } => {
                 Self::Problem(Problem::UnknownPath { path: path.clone() })
             }
+            CoreEditRefusal::UnknownProfile { profile } => Self::Problem(Problem::UnknownProfile {
+                profile: profile.clone(),
+            }),
             CoreEditRefusal::SetByAction { path, action } => Self::Problem(Problem::SetByAction {
                 path: (*path).to_owned(),
                 action: *action,
@@ -2781,13 +2927,15 @@ mod tests {
                 &CoreProblem::CapstanInBlock {
                     block: PartCode::BackCheckBlock,
                     by: 0.0095,
-                }
+                },
+                &pa_core::test_fixture::drawer()
             ))),
             r#"{"code":"capstan_in_block","block":"back_check_block","by_mm":9.5}"#
         );
         assert_eq!(
             written(&EditRefusal::Problem(Problem::of(
-                &CoreProblem::CapstanBehindBackCheckBlock { by: 0.0395 }
+                &CoreProblem::CapstanBehindBackCheckBlock { by: 0.0395 },
+                &pa_core::test_fixture::drawer()
             ))),
             r#"{"code":"capstan_behind_back_check_block","by_mm":39.5}"#
         );
@@ -2797,17 +2945,21 @@ mod tests {
                     back: PartCode::KeyTailFelt,
                     front: PartCode::BackCheckBlock,
                     by: 0.0125,
-                }
+                },
+                &pa_core::test_fixture::drawer()
             ))),
             r#"{"code":"outline_crosses_itself","back":"key_tail_felt","front":"back_check_block","by_mm":12.5}"#
         );
         assert_eq!(
-            written(&Problem::of(&CoreProblem::OutOfRange {
-                param: "capstan.x",
-                value: 0.005,
-                min: f64::NEG_INFINITY,
-                max: 0.0,
-            })),
+            written(&Problem::of(
+                &CoreProblem::OutOfRange {
+                    param: "capstan.x",
+                    value: 0.005,
+                    min: f64::NEG_INFINITY,
+                    max: 0.0,
+                },
+                &pa_core::test_fixture::drawer()
+            )),
             r#"{"code":"out_of_range","param":"key.capstan.behind_mm","value":-5.0,"min":-0.0,"max":null}"#
         );
     }
@@ -3172,7 +3324,10 @@ mod tests {
         assert_eq!(
             papers.step,
             Step::Drawer {
-                sizes_mm: PAPER_THICKNESSES.iter().map(|&p| p * 1000.0).collect()
+                sizes_mm: pa_core::test_fixture::PAPER_THICKNESSES
+                    .iter()
+                    .map(|&p| p * 1000.0)
+                    .collect()
             }
         );
         assert_eq!(
@@ -3187,6 +3342,7 @@ mod tests {
         assert_eq!(
             r.page.iter().map(|p| p.panel).collect::<Vec<_>>(),
             [
+                Panel::Instrument,
                 Panel::Sheet,
                 Panel::Regulation,
                 Panel::Punchings,
@@ -3238,9 +3394,112 @@ mod tests {
                         assert!(serde_json::from_str::<Action>(&typed).is_ok(), "{typed}");
                     }
                     ControlLayout::Button { .. } => {}
+                    ControlLayout::Profile {
+                        action,
+                        argument,
+                        options,
+                        at: address,
+                        ..
+                    } => {
+                        // Every option is a profile the action takes, and the
+                        // one on the bench is among them.
+                        for option in options {
+                            let typed = format!(
+                                r#"{{"action":{},"{argument}":"{option}"}}"#,
+                                written(action)
+                            );
+                            assert!(serde_json::from_str::<Action>(&typed).is_ok(), "{typed}");
+                        }
+                        let on = at(&settings, address);
+                        assert!(options.iter().any(|o| Some(o.as_str()) == on.as_str()));
+                    }
                 }
             }
         }
+    }
+
+    /// Consistency: **every drawn stretch is known by its profile.** On
+    /// every shipped profile's instrument as it arrives, each stretch of
+    /// every part's outline is placed by a number its profile binds, and
+    /// carries how that number is known and the file that records or states
+    /// it, every segment of every part covered once; on Hirschkorn's key
+    /// the chamfer is published, his key front traced, the key button's
+    /// height traced, his front punching's felt assumed, and the pins and
+    /// punchings his profile reads of the owner's key frame borrowed, which
+    /// the composite's are measured; no stretch of his is drawn as measured
+    /// but a paper's, the drawer's stock being no instrument's, and none of
+    /// the composite's as borrowed. A key front set on the bench is no
+    /// longer the profile's: the stretches it places say so, and nothing
+    /// else does.
+    #[test]
+    fn every_drawn_stretch_is_known_by_its_profile() {
+        for name in Profile::names() {
+            let b = Instrument::of(Profile::named(name).unwrap()).unwrap();
+            for o in Scene::of(&b).outlines {
+                let segments = usize::from(*o.segs.last().unwrap()) + 1;
+                let covered: usize = o.sources.iter().map(|s| usize::from(s.to - s.from)).sum();
+                assert_eq!(covered, segments, "{name}: {:?}", o.code);
+                for source in &o.sources {
+                    assert!(
+                        source.how != How::SetOnTheBench && source.at.is_some(),
+                        "{name}: {:?} placed by {} is not known",
+                        o.code,
+                        source.number
+                    );
+                }
+            }
+        }
+        let his = Instrument::of(Profile::named("hirschkorn").unwrap()).unwrap();
+        let how = |b: &Instrument, part: Part, number: &str| -> How {
+            Scene::of(b)
+                .outlines
+                .into_iter()
+                .find(|o| o.code == part)
+                .and_then(|o| o.sources.into_iter().find(|s| s.number == number))
+                .unwrap_or_else(|| panic!("{part:?} placed by {number}"))
+                .how
+        };
+        assert_eq!(how(&his, Part::Keystick, "tail_rise"), How::Published);
+        assert_eq!(how(&his, Part::KeyFront, "front_edge"), How::Traced);
+        assert_eq!(how(&his, Part::KeyButton, "capsule_height"), How::Traced);
+        assert_eq!(
+            how(&his, Part::FrontRailPunching, "front_punching.felt"),
+            How::Assumed
+        );
+        assert_eq!(how(&his, Part::Capstan, "capstan.height"), How::Published);
+        let composite = Instrument::standard();
+        for (part, number) in [
+            (Part::FrontRailPin, "front_rail.pin.length"),
+            (Part::FrontRailPin, "front_rail.pin_height"),
+            (Part::BalanceRailPin, "balance_rail.pin.diameter"),
+            (Part::FrontRailPunching, "front_rail.punching_radius"),
+            (Part::FrontRailPunching, "front_rail.punching_hole_radius"),
+            (Part::BalanceRailPunching, "balance_rail.punching_radius"),
+            (
+                Part::BalanceRailPunching,
+                "balance_rail.punching_hole_radius",
+            ),
+        ] {
+            assert_eq!(how(&his, part, number), How::Borrowed, "{number}");
+            assert_eq!(how(&composite, part, number), How::Measured, "{number}");
+        }
+        let drawn = |b: &Instrument| -> Vec<(Part, How)> {
+            Scene::of(b)
+                .outlines
+                .into_iter()
+                .flat_map(|o| o.sources.into_iter().map(move |s| (o.code, s.how)))
+                .collect()
+        };
+        assert!(drawn(&his)
+            .iter()
+            .all(|&(part, how)| how != How::Measured || part == Part::PaperPunching));
+        assert!(drawn(&composite)
+            .iter()
+            .all(|&(_, how)| how != How::Borrowed));
+        let mut set = his.clone();
+        set.set(path::FRONT_EDGE, 236.0).expect("a shorter key");
+        assert_eq!(how(&set, Part::KeyFront, "front_edge"), How::SetOnTheBench);
+        assert_eq!(how(&set, Part::KeyFront, "front_board"), How::Traced);
     }
 
     /// Consistency, the boundary's half of the contacts the view shows: **a

@@ -277,3 +277,51 @@ button.action {
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* What is on the bench: one of the profiles the engine ships, each name
+   wrapping in full beside its button. */
+.choice {
+  display: block;
+  margin: 0.6rem 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.choice legend {
+  padding: 0;
+  color: var(--muted);
+  margin-bottom: 0.15rem;
+}
+.choice label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0.15rem 0;
+  cursor: pointer;
+}
+.choice input {
+  flex: none;
+  margin: 0;
+}
+
+/* Where each drawn line's number comes from, under the view when it is
+   marked. */
+.provenance-legend {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.75);
+}
+.provenance-legend .swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 0.2rem;
+  margin-left: 0.4rem;
+}

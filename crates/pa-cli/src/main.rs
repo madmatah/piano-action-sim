@@ -2,8 +2,10 @@
 //!
 //! The same instrument that runs in the browser runs here natively, changed
 //! by the same calls. Two commands:
-//! `weigh` prints the key weighing sheet, so that the numbers can be read and
-//! checked without a browser in the way; `golden` writes the golden sheet,
+//! `weigh [PROFILE]` prints the key weighing sheet of the standard
+//! instrument, or of the shipped profile named, so that the numbers can be
+//! read and checked without a browser in the way; `golden` writes the golden
+//! sheet,
 //! every reading of the default bench and of the fixture benches in full bits,
 //! which `crates/pa-app/tests/golden.rs` compares the engine against.
 //!
@@ -16,6 +18,7 @@ use std::path::{Path, PathBuf};
 use pa_app::boundary::{self, json, Acted, Refusal, Riding};
 use pa_app::golden;
 use pa_app::instrument::{Action, Instrument, KeyMass, ProcedureId, Sheet, Trust, Unit};
+use pa_app::profile::Profile;
 
 /// Where `golden` writes when it is not told, relative to the repository root.
 const GOLDEN_DIR: &str = "crates/pa-app/tests/golden";
@@ -23,7 +26,7 @@ const GOLDEN_DIR: &str = "crates/pa-app/tests/golden";
 fn main() {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
-        Some("weigh") | None => weigh(),
+        Some("weigh") | None => weigh(args.next().as_deref()),
         Some("golden") => {
             let dir = args
                 .next()
@@ -34,7 +37,7 @@ fn main() {
             }
         }
         Some(other) => {
-            eprintln!("pa-cli: unknown command {other:?}. Try: weigh, golden [DIR]");
+            eprintln!("pa-cli: unknown command {other:?}. Try: weigh [PROFILE], golden [DIR]");
             std::process::exit(2);
         }
     }
@@ -61,10 +64,28 @@ fn write_golden(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Weighs the standard bench key, its mass its volume model's, then
-/// re-weighed with its front weight a gram heavier, and prints both.
-fn weigh() {
-    let mut bench = Instrument::standard();
+/// Weighs the key of the standard bench, or of the shipped profile named,
+/// as it arrives, then re-weighed with its front weight a gram heavier, and
+/// prints both.
+fn weigh(profile: Option<&str>) {
+    let mut bench = match profile {
+        None => Instrument::standard(),
+        Some(name) => match Profile::named(name).map(Instrument::of) {
+            Some(Ok(bench)) => bench,
+            Some(Err(why)) => {
+                eprintln!("pa-cli weigh: the profile {name:?} builds no instrument: {why:?}");
+                std::process::exit(1);
+            }
+            None => {
+                let names: Vec<&str> = Profile::names().collect();
+                eprintln!(
+                    "pa-cli weigh: no profile {name:?}. Shipped: {}",
+                    names.join(", ")
+                );
+                std::process::exit(2);
+            }
+        },
+    };
     let before = bench.sheet();
 
     println!("  KEY WEIGHING SHEET");
@@ -82,7 +103,12 @@ fn weigh() {
     println!("  from those two; each value in full beside it, with its procedure,");
     println!("  its trust and the static solves it took.");
     println!();
-    print_sheet("the key as its volume model gives it", &bench, &before);
+    println!("  profile: {}", bench.profile().name);
+    for fault in bench.faults() {
+        println!("  fault: {fault:?}");
+    }
+    println!();
+    print_sheet("the key as it arrives", &bench, &before);
 
     // The key re-weighed as a technician weighs one, whole: the same mass on
     // the scale, its front weight read a gram heavier where the sheet reads
@@ -211,6 +237,13 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
             KeyMass::Estimated => println!(
                 "  {:<22}{:>8.2} g    derived from its volume at an assumed density",
                 "key mass", r.key_mass_g
+            ),
+            KeyMass::Published { centre, .. } => println!(
+                "  {:<22}{:>8.2} g    as published, its centre of mass at ({:.1}, {:.1}) mm",
+                "key mass",
+                r.key_mass_g,
+                centre.x * 1000.0,
+                centre.y * 1000.0
             ),
             KeyMass::Weighed { datum, .. } => println!(
                 "  {:<22}{:>8.2} g    weighed whole, its front weight {:.2} g read {:.1} mm \

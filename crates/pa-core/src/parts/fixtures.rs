@@ -8,13 +8,10 @@ use crate::geometry::Point;
 use crate::measure::seat::{Seating, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::MassProps;
-use crate::regulation::{Regulating, TargetOutcome, Targets};
-
-/// The bench's targets: 65.0 mm of key height and 10.2 mm of key dip.
-pub const TARGETS: Targets = Targets {
-    key_height: 0.0650,
-    key_dip: 0.0102,
-};
+use crate::regulation::{Regulating, TargetOutcome};
+/// The composite bench's targets: 65.0 mm of key height and 10.2 mm of key
+/// dip.
+pub use crate::test_fixture::TARGETS;
 
 /// A key, its frame and the protocol it is weighed by: what a test sets up
 /// and then pushes one way or another.
@@ -43,18 +40,18 @@ pub fn mass_of(key: &KeyDesign) -> Option<MassProps> {
     })
 }
 
-/// The default key regulated on the default frame, as the bench builds it:
+/// The composite key regulated on the composite frame, as the bench builds it:
 /// each felt kept, and on it the papers the regulation solve lays from the
 /// drawer for [`TARGETS`]. Solved once, the first time a test asks.
 pub fn regulated() -> Setup {
     static REGULATED: std::sync::OnceLock<Setup> = std::sync::OnceLock::new();
-    REGULATED.get_or_init(regulate_the_default).clone()
+    REGULATED.get_or_init(regulate_the_composite).clone()
 }
 
-fn regulate_the_default() -> Setup {
-    let key = KeyDesign::default();
-    let mut frame = FrameDesign::default();
-    let protocol = TouchweightProtocol::default();
+fn regulate_the_composite() -> Setup {
+    let key = crate::test_fixture::key();
+    let mut frame = crate::test_fixture::frame();
+    let protocol = crate::test_fixture::protocol();
     let outcome = Regulating {
         key: &key,
         frame: &frame,
@@ -64,7 +61,7 @@ fn regulate_the_default() -> Setup {
     }
     .solve(TARGETS);
     let Ok(TargetOutcome::Met { stacks, .. }) = outcome else {
-        panic!("the default targets are reachable on the default frame: {outcome:?}");
+        panic!("the composite targets are reachable on the composite frame: {outcome:?}");
     };
     frame.balance_punching.papers = stacks.balance.papers;
     frame.front_punching.papers = stacks.front.papers;

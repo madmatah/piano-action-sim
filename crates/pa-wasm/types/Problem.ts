@@ -68,7 +68,20 @@ by_mm: number, } | { "code": "capstan_behind_back_check_block",
  * How far forward it must come to clear the block, millimetres
  * along the key.
  */
-by_mm: number, } | { "code": "capstan_in_block", 
+by_mm: number, } | { "code": "capstan_off_its_block", 
+/**
+ * How far past the block's end its head reaches, millimetres along
+ * the key.
+ */
+by_mm: number, } | { "code": "capstan_dome_narrower_than_its_head", 
+/**
+ * The dome's radius, millimetres.
+ */
+dome_mm: number, 
+/**
+ * The head's radius, millimetres.
+ */
+head_mm: number, } | { "code": "capstan_in_block", 
 /**
  * The block.
  */
@@ -100,7 +113,11 @@ covering_mm: number, } | { "code": "unknown_path",
 /**
  * The path asked for.
  */
-path: string, } | { "code": "set_by_action", 
+path: string, } | { "code": "unknown_profile", 
+/**
+ * The name asked for.
+ */
+profile: string, } | { "code": "set_by_action", 
 /**
  * The path.
  */

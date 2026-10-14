@@ -60,7 +60,19 @@ key button, a capstan in a glued block, a front mortise cut through the key
 top, a measuring point off the covering, a mass of nothing, a value that is
 not a number. Everything an assembled keyboard can be, however badly
 regulated, is computed and reported. Every edit taken is logged, and the log
-replayed gives the same state, which a hash names.
+replayed gives the same state, which a hash names. The bench starts from no
+number of its own: an instrument is built from a profile (`data/profiles/`),
+which binds every number it starts from to a record in `data/params/` or to an
+assumption stated with its reason, and a test fails on one that is neither.
+The standard bench is the composite profile; resetting returns an instrument to
+its own profile. The page chooses between the two profiles shipped: the
+composite key, and Hirschkorn's published Boston GP-178 key, note 52, on his
+printed frame with real felts, its outline traced from his drawing where his
+tables give no number, its mass, centre of mass and bushings his. Every line of
+the section, and the outlines of the extruded parts in the solid, can be
+marked by how the number that draws it is known: measured, published, traced,
+derived by a rule, borrowed from another instrument, assumed, or set on the
+bench.
 
 Every reading on the weighing sheet is a procedure run on the model; their
 closed forms are the tests' oracles. What the stage simplifies is listed in
@@ -71,8 +83,9 @@ default bench an indication rather than a measurement.
 | Part | What it is |
 |---|---|
 | `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
-| `crates/pa-app` | the single-key bench as an instrument, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
-| `crates/pa-cli` | `weigh`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `golden`: rewrites the golden sheet |
+| `crates/pa-app` | the single-key bench as an instrument, built from a profile, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
+| `data/profiles` | what each instrument starts from, every number bound to a record or a stated assumption |
+| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section and in solid (React, react-three-fiber), from the same Rust compiled to WebAssembly |
 
 ## What is planned
@@ -81,12 +94,13 @@ In this order, each stage with its engine and its view
 ([`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §8):
 
 - a general quasi-static core with the key as its first client, on
-  Hirschkorn's published Boston GP-178 key, a parameter registry that loads
-  `data/params/`, and an interface in English and French (its first parts,
-  the mechanism, the contacts over all coordinates, the static solve, every
-  reading of the sheet by procedure, a boundary that sends codes and numbers
-  which the page words in English, the registry and the validation layer,
-  are built);
+  Hirschkorn's published Boston GP-178 key as the default profile, and an
+  interface in English and French (its first parts, the mechanism, the
+  contacts over all coordinates, the static solve, every reading of the sheet
+  by procedure, a boundary that sends codes and numbers which the page words
+  in English, the registry and the validation layer, the profiles that load
+  `data/params/`, Hirschkorn's key as a profile chosen on the bench, are
+  built);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;
@@ -126,9 +140,9 @@ pnpm --filter @pas/app-bench dev           # the bench; add ?view=section for th
 - [`docs/research/`](docs/research/): the research annexes (physics engines,
   the literature, nomenclature and regulation, the web toolchain, the numerical
   formulation); where one disagrees with FOUNDATIONS, FOUNDATIONS holds.
-- [`data/params/`](data/params/): parameter records, each with its source; the
-  engine does not read them yet, and the README there lists the starting values
-  that have no record.
+- [`data/params/`](data/params/): parameter records, each with its source.
+- [`data/profiles/`](data/profiles/): what each instrument starts from, every
+  number bound to a record or to an assumption stated with its reason.
 - [`tools/derivations/`](tools/derivations/): the script behind every `[E]`
   number in FOUNDATIONS.
 - [`CLAUDE.md`](CLAUDE.md): the working rules.

@@ -303,6 +303,8 @@ pub fn by_param(param: &str) -> Option<&'static Entry> {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum Panel {
+    /// The instrument on the bench: which profile it is built from.
+    Instrument,
     /// The weighing sheet, with the measuring point above it.
     Sheet,
     /// The regulation: targets, papers, the bushings.
@@ -325,6 +327,7 @@ pub enum Panel {
 #[serde(rename_all = "snake_case")]
 #[allow(missing_docs)]
 pub enum Label {
+    Profile,
     MeasuringPoint,
     KeyHeight,
     KeyDip,
@@ -454,7 +457,21 @@ pub enum Control {
         /// What it is worded by.
         label: Label,
     },
+    /// A choice among the profiles the bench ships, run by an action whose
+    /// one argument is the profile's name: what is on the bench.
+    Profile {
+        /// The action.
+        action: ActionCode,
+        /// The action's argument the name fills.
+        argument: &'static str,
+        /// What it is worded by.
+        label: Label,
+    },
 }
+
+/// The name of the profile the instrument was built from, in the settings
+/// document.
+pub const PROFILE: &str = "profile";
 
 /// The key's mass as the statics take it, grams, in the settings document:
 /// as weighed, or derived from its volume until it is. Not a path: what the
@@ -524,7 +541,15 @@ const WEIGHING: [FormField; 3] = [
 ];
 
 /// The bench's page: its panels in order, each its controls in order.
-pub const PAGE: [(Panel, &[Control]); 7] = [
+pub const PAGE: [(Panel, &[Control]); 8] = [
+    (
+        Panel::Instrument,
+        &[Control::Profile {
+            action: ActionCode::SelectProfile,
+            argument: "profile",
+            label: Label::Profile,
+        }],
+    ),
     (
         Panel::Sheet,
         &[Control::Slider {
@@ -740,7 +765,9 @@ mod tests {
                             assert_eq!(e.set_by(), Some(action), "{} is not {action:?}'s", f.path);
                         }
                     }
-                    Control::KeyFrictionWeight { .. } | Control::Button { .. } => {}
+                    Control::KeyFrictionWeight { .. }
+                    | Control::Button { .. }
+                    | Control::Profile { .. } => {}
                 }
             }
         }

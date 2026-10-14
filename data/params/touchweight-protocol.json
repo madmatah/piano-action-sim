@@ -17,7 +17,7 @@
       "quote": "The datum point on the top of the key 13mm or 1/2\" back from the front lip of the key. Weights are centered on this point when measuring Up Weight and Down Weight. When measuring Front Weight (FW) the key rests on a roller bearing on the scale pan. The point at which the front of the key rests on the bearing is directly below the Measuring Point.",
       "what_for": "The arm every touchweight is read on: front weight and the key weight ratio on the jig, down, up, balance and friction weight, and key friction weight.",
       "which_lip": "The covering's: the front edge of the keytop, which overhangs the key front (keytop_overhang in key-section.json, 2 mm). The glossary does not say which lip it means; this one is the owner's choice. Key height and key dip keep the key front as their datum.",
-      "engine": "pa_core::measure::MEASURING_POINT_FROM_LIP, the default of TouchweightProtocol::measuring_point_from_lip, which the bench can set."
+      "engine": "TouchweightProtocol::measuring_point_from_lip, which the bench can set; data/profiles/composite.json binds the composite bench's to this record."
     },
     {
       "name": "measuring_point_from_lip_imperial",
@@ -27,7 +27,7 @@
       "reliability": "V",
       "locator": { "page": 23, "entry": "Glossary, Measuring Point" },
       "note": "The same entry's alternative, converted exactly (1 in = 25.4 mm). It stands 0.3 mm from 13 mm, 0.1 % of the arm, below the 0.1 g front weight is read to.",
-      "engine": "pa_core::measure::MEASURING_POINT_HALF_INCH"
+      "engine": "The alternative the bench may be set to; the tests read it from this record."
     },
     {
       "name": "key_weight_ratio_load",
@@ -37,7 +37,7 @@
       "locator": { "page": 22, "column": 1 },
       "quote": "With the scale set to zero, a 10-gram weight is placed on the back of the key, centered on a vertical axis which passes through the capstan/heel contact point. This gives results accurate to two decimal places. For instance, if the scale reads -5.5 the Key Weight Ratio (KR) would be 0.55.",
       "what_for": "The key weight ratio, read on the front weight jig with the scale tared: the reading over the load.",
-      "engine": "pa_core::measure::KR_PROTOCOL_LOAD_G"
+      "engine": "TouchweightProtocol::key_ratio_load_g; data/profiles/composite.json binds the composite bench's to this record."
     }
   ]
 }

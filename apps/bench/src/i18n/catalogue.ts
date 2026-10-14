@@ -18,6 +18,7 @@ import type {
   EditRefusal,
   Fault,
   FrictionRefusal,
+  How,
   Input,
   Label,
   Panel,
@@ -98,7 +99,17 @@ export interface Catalogue {
     readonly bears: string
     readonly open: string
     readonly overlapping: string
+    /** The toggle that marks each drawn line by where its number comes
+     * from. */
+    readonly provenance: string
+    /** Where a line's number comes from, as the overlay's legend names it. */
+    readonly how: Named<How>
   }
+
+  /** A shipped profile's name, as the page offers it: the engine sends
+   * profiles by their file's name, which a profile added and not worded
+   * here shows as it is. */
+  readonly profile: Readonly<Record<string, string>>
 
   readonly faults: {
     readonly heading: string
@@ -202,6 +213,8 @@ export interface Catalogue {
     notWeighed(massG: number | null): string
     /** The key's weighing as it was typed. */
     weighed(massG: number, frontWeightG: number, fromLipMm: number): string
+    /** The key's mass as its profile's source publishes it, whole. */
+    published(massG: number | null): string
     readonly note: string
   }
 

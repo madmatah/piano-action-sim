@@ -2,8 +2,8 @@
 //! of every kind a contact reads, and pairs between them.
 
 use super::{
-    ContactCode, ContactLaw, ContactPair, Material, PairGeometry, Part, PartCode, PartId,
-    Provenance, Role, Surface, SurfaceRef, Sweep,
+    ContactCode, ContactLaw, ContactPair, Material, PairGeometry, Part, PartCode, PartId, Role,
+    Surface, SurfaceRef, Sweep,
 };
 use crate::geometry::{Dir, Point, Seg};
 use crate::mechanism::fixtures::chain;
@@ -31,7 +31,7 @@ fn part(body: usize, outline: Vec<Seg>, role: Role, sweep: Sweep) -> Part {
         sweep,
         role,
         material: Material::KeyWood,
-        sources: vec![(0..n, Provenance::Assumed("a test"))],
+        placed_by: vec![(0..n, "a test")],
     }
 }
 

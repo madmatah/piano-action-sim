@@ -1,0 +1,457 @@
+{
+ "id": "hirschkorn-key-outline",
+ "what": "Hirschkorn's key (Boston GP-178, note 52) where his tables give no number for its shape: the key front and the covering's lip, the covering, the key button, the capstan block, the back check block, the thinned tail and its end, the capstan's head and shank. Traced from his Figure A.1, the only drawing of the key in the thesis, as positions in pixels of the page rendered at 600 dpi; tools/derivations/11-hirschkorn-key-outline.py carries them into his key's frame by a similarity fitted on three markers whose coordinates are printed, prints the residuals at the others as the trace's uncertainty, and derives the numbers below from them.",
+ "source": {
+  "author": "Martin C. Hirschkorn",
+  "title": "Dynamic Model of a Piano Action Mechanism",
+  "kind": "MASc thesis, Systems Design Engineering, University of Waterloo, 2004",
+  "local_copy": "data/references/papers/hirschkorn_thesis.pdf",
+  "traced_from": "Figure A.1, Defined Points on Action Components",
+  "page": 68,
+  "pdf_page": 77,
+  "instrument": "Boston GP-178 grand piano, note 52"
+ },
+ "how_read": {
+  "rendering": "pdftoppm -f 77 -l 77 -r 600 -png hirschkorn_thesis.pdf a1",
+  "dpi": 600,
+  "image": "5100 by 6600 pixels: the whole page, US letter.",
+  "pixels": "x to the right and y down from the page's top-left corner, in pixels of that rendering, continuous: the top-left pixel spans (0, 0) to (1, 1).",
+  "method": "The figure is line art drawn as vector paths. Each position is a vertex of those paths, or the centre of a marker's ellipse (the mean of its four quadrant points), read with pdftocairo -svg -f 77 -l 77 hirschkorn_thesis.pdf a1.svg in points of the page and multiplied by 600/72 into the rendering's pixels, to 0.01 pixel. Each lies on its drawn stroke in the rendering, within a pixel. A stroke is about 0.46 point wide, half a millimetre of key; a position is its stroke's centre line.",
+  "scale": "One pixel is about 0.138 mm of key: the figure draws the key at about 1:3.25."
+ },
+ "fitted_on": "Pg1, Pk2 and Pk5, the three markers whose printed coordinates are points of the key: a similarity (turn, scale and shift, the page's y running down) by least squares. Pk4 and Pk6 are points of printed lines, compared across the line; Pk3's marker sits on the dome its printed point is the centre of.",
+ "residuals_mm": {
+  "Pg1": 0.27,
+  "Pk2": 0.13,
+  "Pk5": 0.14,
+  "Pk4": 0.29,
+  "Pk6": 1.62,
+  "Pk3": 1.05,
+  "what": "The trace's uncertainty, as tools/derivations/11 prints it: at the three fitted markers, the distance between where the fit puts each and its printed point; at Pk4 and Pk6, points of printed lines, the distance across the line; at Pk3, the distance from the marker drawn on the capstan's dome to the dome's top, Pk3's centre raised by its radius."
+ },
+ "markers": {
+  "Pg1": {
+   "px": [
+    2569.95,
+    4600.29
+   ],
+   "what": "The centre of the small circle at the key's axes, on its underside at the balance point: the origin of the key's frame, Table A.2's Pg1, (0, 0)."
+  },
+  "Pk2": {
+   "px": [
+    4221.68,
+    4365.66
+   ],
+   "what": "The tip of the downward arrow on top of the key front, which touches the covering's top: Table A.3's Pk2, where his finger presses."
+  },
+  "Pk5": {
+   "px": [
+    968.88,
+    4639.18
+   ],
+   "what": "The centre of the ellipse drawn on the chamfer under the tail: a point of Table A.3's Pk5 line."
+  },
+  "Pk4": {
+   "px": [
+    4204.12,
+    4553.34
+   ],
+   "what": "The centre of the ellipse drawn on the underside under the key front: a point of Table A.3's Pk4 line, not its printed point."
+  },
+  "Pk3": {
+   "px": [
+    1717.6,
+    4369.14
+   ],
+   "what": "The centre of the ellipse drawn on the capstan's head, at the top of its dome: Table A.3's Pk3 is that dome's centre, its radius below."
+  },
+  "Pk6": {
+   "px": [
+    971.08,
+    4041.76
+   ],
+   "what": "The centre of the ellipse drawn on the back check's face: a point of Table A.3's Pk6 line."
+  },
+  "CMk": {
+   "px": [
+    2843.32,
+    4506.6
+   ],
+   "what": "The centre of the key's centre-of-mass symbol."
+  }
+ },
+ "features": {
+  "key_front_face": {
+   "px": [
+    [
+     4298.7,
+     4550.55
+    ],
+    [
+     4293.72,
+     4378.16
+    ]
+   ],
+   "what": "The key front's outer face, bottom then top: the plate glued over the end grain, where key height and dip are read."
+  },
+  "keystick_front": {
+   "px": [
+    [
+     4291.5,
+     4550.78
+    ],
+    [
+     4286.56,
+     4378.35
+    ]
+   ],
+   "what": "The keystick's front face behind that plate, bottom then top; its top is the keystick's top at its front."
+  },
+  "lip": {
+   "px": [
+    [
+     4304.07,
+     4362.73
+    ],
+    [
+     4304.53,
+     4377.83
+    ]
+   ],
+   "what": "The covering's lip, top then bottom: its front face, overhanging the key front."
+  },
+  "covering_back": {
+   "px": [
+    [
+     3164.49,
+     4410.64
+    ],
+    [
+     3192.81,
+     4394.73
+    ]
+   ],
+   "what": "The covering's back end, where it meets the keystick's top, then where its bevel reaches its top."
+  },
+  "key_button": {
+   "px": [
+    [
+     2290.3,
+     4435.78
+    ],
+    [
+     2363.77,
+     4388.51
+    ],
+    [
+     2643.23,
+     4380.47
+    ],
+    [
+     2719.3,
+     4423.44
+    ]
+   ],
+   "what": "The key button over the balance point: its back foot on the keystick, the two ends of its flat top, its front foot. Its ends are drawn rounded."
+  },
+  "capstan_block": {
+   "px": [
+    [
+     1606.45,
+     4505.96
+    ],
+    [
+     1640.1,
+     4447.04
+    ],
+    [
+     1820.18,
+     4441.86
+    ],
+    [
+     1820.38,
+     4449.32
+    ]
+   ],
+   "what": "The block the capstan stands on: its back foot on the thinned tail, where its back cove reaches its top, its top's front end, and where its front face meets the keystick's top. Its back is drawn as a cove."
+  },
+  "step": {
+   "px": [
+    [
+     1820.38,
+     4449.32
+    ],
+    [
+     1821.78,
+     4499.77
+    ]
+   ],
+   "what": "Where the keystick steps down to its thinned tail, top then foot: the capstan block's front face runs down it."
+  },
+  "back_check_block": {
+   "px": [
+    [
+     1009.54,
+     4523.14
+    ],
+    [
+     1007.16,
+     4430.96
+    ],
+    [
+     1164.49,
+     4426.43
+    ],
+    [
+     1211.2,
+     4517.35
+    ]
+   ],
+   "what": "The back check block: its back foot and back top on the thinned tail, its top's front end, its front foot. Its front is drawn as a cove."
+  },
+  "tail_end": {
+   "px": [
+    [
+     872.53,
+     4527.08
+    ],
+    [
+     875.39,
+     4637.79
+    ]
+   ],
+   "what": "The key's end, top then bottom: the thinned tail's top and the chamfer's back end."
+  },
+  "underside": {
+   "px": [
+    [
+     1151.47,
+     4641.11
+    ],
+    [
+     4291.5,
+     4550.78
+    ]
+   ],
+   "what": "The underside's flat: the chamfer's kink, then the flat's front end under the key front."
+  },
+  "capstan_head": {
+   "px": [
+    [
+     1687.99,
+     4376.17
+    ],
+    [
+     1689.68,
+     4414.88
+    ],
+    [
+     1746.62,
+     4412.37
+    ],
+    [
+     1744.92,
+     4373.76
+    ]
+   ],
+   "what": "The capstan's head: the top and bottom of its back side, then the bottom and top of its front side; its dome is drawn above."
+  },
+  "capstan_shank": {
+   "px": [
+    [
+     1701.6,
+     4414.36
+    ],
+    [
+     1702.93,
+     4445.22
+    ],
+    [
+     1735.06,
+     4444.3
+    ],
+    [
+     1733.69,
+     4412.92
+    ]
+   ],
+   "what": "The capstan's shank between its head and the block: the top and bottom of its back side, then the bottom and top of its front side."
+  }
+ },
+ "records": [
+  {
+   "name": "front_edge",
+   "value": 237.8,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The key front's outer face, in front of the balance point: where key height and dip are read."
+  },
+  {
+   "name": "front_board",
+   "value": 0.99,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The key front's plate: its outer face less the keystick's front face."
+  },
+  {
+   "name": "keytop_overhang",
+   "value": 1.48,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "How far the covering's lip stands in front of the key front: the datum every touchweight is read back from."
+  },
+  {
+   "name": "keytop_thickness",
+   "value": 2.08,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The covering's thickness at its lip."
+  },
+  {
+   "name": "keytop_length",
+   "value": 156.98,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The covering's length, from its lip back to where its bevelled end meets the keystick: drawn square there."
+  },
+  {
+   "name": "stick_height",
+   "value": 24.02,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The keystick's height in front of its step: Pk2's printed height less the covering, so that the covering's top passes through Pk2, the printed point on it. The keystick as drawn is 23.74 mm high, 0.28 mm less: within the trace's uncertainty."
+  },
+  {
+   "name": "capsule_length",
+   "value": 59.07,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The key button over the balance point, foot to foot: drawn square-ended, its ends drawn rounded."
+  },
+  {
+   "name": "capsule_centre",
+   "value": -8.55,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "Where the key button's middle stands, behind the balance point: not on it."
+  },
+  {
+   "name": "capsule_height",
+   "value": 6.21,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The key button's height above the keystick."
+  },
+  {
+   "name": "capstan_block_back",
+   "value": -132.45,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The capstan block's back end, behind the balance point: drawn square, its back drawn as a cove."
+  },
+  {
+   "name": "capstan_block_length",
+   "value": 29.65,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The capstan block's length, from its back end to its front face, which runs down the keystick's step."
+  },
+  {
+   "name": "capstan_block_height",
+   "value": 7.97,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The capstan block's height above the thinned tail it stands on: its top stands 0.74 mm above the keystick's in front of it."
+  },
+  {
+   "name": "back_check_block_back",
+   "value": -214.64,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The back check block's back end, behind the balance point."
+  },
+  {
+   "name": "back_check_block_length",
+   "value": 27.77,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The back check block's length, foot to foot: drawn square, its front drawn as a cove."
+  },
+  {
+   "name": "back_check_block_height",
+   "value": 12.69,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The back check block's height above the thinned tail it stands on."
+  },
+  {
+   "name": "tail_end",
+   "value": -233.52,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The key's end, behind the balance point."
+  },
+  {
+   "name": "tail_length",
+   "value": 130.73,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The thinned tail's length, from the key's end forward to the keystick's step: the capstan block and the back check block both stand on it."
+  },
+  {
+   "name": "tail_height",
+   "value": 16.79,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The thinned tail's height above the underside's flat."
+  },
+  {
+   "name": "capstan_diameter",
+   "value": 4.42,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The capstan's shank, between its head and the block."
+  },
+  {
+   "name": "capstan_head_diameter",
+   "value": 7.84,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The capstan's head, under its dome."
+  },
+  {
+   "name": "capstan_head_height",
+   "value": 5.72,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The capstan's head from its bottom, as drawn, to where Pk3's dome of 9.7 mm meets its side: Pk3's height plus its radius, less the dome's sagitta over the head, less the head's drawn bottom."
+  }
+ ],
+ "not_traced": {
+  "chamfer": "Not traced: it is Table A.3's Pk5 line, printed. It meets the underside's flat, Pk4's line, at -196.43 mm; the figure draws the kink at -195.57 mm.",
+  "capstan_dome": "Not traced: Table A.3's Pk3, a circle of 9.7 mm about (-117.6, 25.9) mm. The figure draws its top 1.0 mm from where Pk3 puts it.",
+  "back_check": "Its wire and head, on the key behind the back check block, are drawn and not traced: they are the action's, part of the key's published mass, and the key on its frame touches nothing with them.",
+  "mass": "Table A.1 gives the key's mass and centre of mass. The figure's CMk marker stands 13.7 mm behind Table A.1's centre and 3.8 mm lower; the record never takes the marker for the mass."
+ }
+}

@@ -7,10 +7,10 @@
 //! shows is computed here. The module is compiled for `pa-core`'s own tests
 //! and nowhere else, so no application can reach it.
 
-use super::KR_PROTOCOL_LOAD_G;
 use crate::geometry::Point;
 use crate::parts::{FrameDesign, KeyDesign};
 use crate::regulation::Targets;
+use crate::test_fixture::KEY_RATIO_LOAD_G;
 use crate::G;
 
 /// The key on the level jig, by the closed forms of Stanwood's current
@@ -55,13 +55,13 @@ impl KeyWeighing {
     /// Key weight ratio, dimensionless, force convention: the tared reading
     /// with the protocol's load at the capstan, over the load, sign turned.
     pub fn key_ratio(&self) -> f64 {
-        -self.jig_reading_g(KR_PROTOCOL_LOAD_G, -self.capstan_arm) / KR_PROTOCOL_LOAD_G
+        -self.jig_reading_g(KEY_RATIO_LOAD_G, -self.capstan_arm) / KEY_RATIO_LOAD_G
     }
 
     /// What the tared scale reads with the protocol's 10 g at the capstan,
     /// grams. Negative: the load is behind the pin.
     pub fn tared_scale_reading_g(&self) -> f64 {
-        self.jig_reading_g(KR_PROTOCOL_LOAD_G, -self.capstan_arm)
+        self.jig_reading_g(KEY_RATIO_LOAD_G, -self.capstan_arm)
     }
 }
 
@@ -183,7 +183,7 @@ fn nearest(roots: [Option<f64>; 2], near: f64) -> Option<f64> {
 ///
 /// It takes the key top as level at both seats, dropping its height times
 /// one less the cosine of the attitude, and so misses the targets by that
-/// term, about 0.02 mm on the default bench; it reads the front punching
+/// term, about 0.02 mm on the composite bench; it reads the front punching
 /// alone, not the pin in its mortise. `back_bears` is where the key bears on
 /// its cloth, in its own frame, as the seated pose finds it, for the arm
 /// the rest turns about.

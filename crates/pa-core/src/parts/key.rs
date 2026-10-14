@@ -1,17 +1,24 @@
 //! The key as parts: one outline for each piece of material, in the key's
 //! frame.
 //!
-//! The keystick is one thickness of wood. Glued to it: the keytop, whose lip
-//! overhangs the key front; the key front over the end grain; the key button
-//! where the balance mortise is cut; the back check block; the hard felt on
-//! the thinned tail. Screwed into it: the capstan, a turned part. Cut out of
-//! it: the front mortise, drawn as the void it is.
+//! The keystick is one thickness of wood, cut down to its thinned tail at the
+//! back. Glued to it: the keytop, whose lip overhangs the key front; the key
+//! front over the end grain; the key button where the balance mortise is
+//! cut; the back check block; the block the capstan stands on, where the key
+//! has one; the hard felt on the thinned tail, where it has one. Each glued
+//! block stands on the wood under it, the keystick's full height or the bare
+//! tail. Screwed into it, or into its block: the capstan, a turned part, its
+//! head flat or domed. Cut out of it: the front mortise, drawn as the void it
+//! is.
 //!
 //! Each piece is its own part with its own material, so the keytop and the key
-//! front can be drawn white and the two glued blocks in their own wood: what
-//! a part is made of is the model's, the colour the view's. The key's mass is
-//! not integrated over these outlines; it comes from the volume model
-//! ([`KeyDesign::mass_properties`]), whose polygon these parts tile exactly.
+//! front can be drawn white and the glued blocks in their own wood: what a
+//! part is made of is the model's, the colour the view's. Each stretch of each
+//! outline names the number of the key that places it ([`PlacedBy`]), so an
+//! application can say how that number is known. The key's mass is not
+//! integrated over these outlines; it is weighed or published, or it comes
+//! from the volume model ([`KeyDesign::mass_properties`]), whose polygon these
+//! parts tile exactly.
 //!
 //! # The underside, and the mortise in it
 //!
@@ -25,19 +32,16 @@
 //! The balance mortise is not drawn: none of its dimensions is measured, and
 //! the balance pin's height waits on it (`data/params/key-frame-sections.json`).
 
-use super::{count, next_id, polygon, KeyDesign};
+use super::{count, next_id, polygon, GluedBlock, KeyDesign};
 use crate::contact::{
-    Anchor, AnchorCode, Material, Part, PartCode, PartId, Provenance, Role, SurfaceRef, Sweep,
+    Anchor, AnchorCode, Material, Part, PartCode, PartId, PlacedBy, Role, SurfaceRef, Sweep,
 };
-use crate::geometry::{Point, Seg};
+use crate::geometry::{Dir, Point, Seg};
 use crate::mechanism::BodyId;
 
-/// The section the key's shape is measured in.
-const SECTION: &str = "data/params/key-section.json";
-/// The frame's measured sections, whose notes hold the front mortise's depth.
-const FRAME_SECTIONS: &str = "data/params/key-frame-sections.json";
-/// Where the values that have no record are listed.
-const UNRECORDED: &str = "data/params/README.md";
+/// The numbers that place a glued block's four sides, from its bottom round
+/// counter-clockwise: the wood it stands on, its front, its top, its back.
+type BlockNames = [PlacedBy; 4];
 
 /// What the key's parts declare: where each is, and the ranges and points of
 /// them that anything else may read.
@@ -53,8 +57,10 @@ pub struct KeyRanges {
     pub key_button: PartId,
     /// The back check block.
     pub back_check_block: PartId,
-    /// The felt on the key's tail.
-    pub key_tail_felt: PartId,
+    /// The block the capstan stands on, where the key has one.
+    pub capstan_block: Option<PartId>,
+    /// The felt on the key's tail, where it has one.
+    pub key_tail_felt: Option<PartId>,
     /// The capstan.
     pub capstan: PartId,
     /// The front mortise, a cut.
@@ -100,11 +106,7 @@ impl KeyDesign {
         let lip = self.lip();
         let keytop_back = lip - self.keytop_length;
         let covered = top + self.keytop_thickness;
-        let button_front = self.capsule_length * 0.5;
-        let button_back = -self.capsule_length * 0.5;
-        let tail_front = self.tail_end + self.tail_length;
-        let block_back = self.back_check_block_back;
-        let block_front = block_back + self.back_check_block_length;
+        let tail_front = self.tail_front();
         let kink = self.tail_end + self.tail_rise_run;
         let (mortise_back, mortise_front) = self.front_mortise_span();
         let mut push = |part: Part| {
@@ -112,21 +114,49 @@ impl KeyDesign {
             out.push(part);
             id
         };
-        let solid = |code, outline: Vec<Seg>, material, provenance| Part {
+        let solid = |code,
+                     outline: Vec<Seg>,
+                     material,
+                     placed_by: Vec<(core::ops::Range<u16>, PlacedBy)>| Part {
             body,
             code,
-            sources: vec![(0..count(&outline), provenance)],
+            placed_by,
             outline,
             sweep: Sweep::Extruded { width: self.width },
             role: Role::Solid,
             material,
         };
+        // A rectangle's four sides, from its bottom round counter-clockwise,
+        // each placed by its own number.
+        let sides = |names: BlockNames| -> Vec<(core::ops::Range<u16>, PlacedBy)> {
+            (0u16..).zip(names).map(|(i, n)| (i..i + 1, n)).collect()
+        };
+        // A glued block: on the wood under it, its sides placed by its own
+        // numbers and its bottom by the wood's.
+        let block = |code, b: GluedBlock, names: [PlacedBy; 3]| {
+            let base = self.wood_under(b.back, b.front());
+            let on = if base.to_bits() == top.to_bits() {
+                "stick_height"
+            } else {
+                "tail_height"
+            };
+            solid(
+                code,
+                polygon(&[
+                    Point::new(b.back, base),
+                    Point::new(b.front(), base),
+                    Point::new(b.front(), base + b.height),
+                    Point::new(b.back, base + b.height),
+                ]),
+                Material::BlockWood,
+                sides([on, names[0], names[1], names[2]]),
+            )
+        };
 
         // The keystick: the underside from the tail forward, split at the
         // mortise's edges where they fall on the flat, then the end grain the
         // key front covers, the top at its full height back to the tail's
-        // front, under the back check block and behind it, and the tail cut
-        // down for the damper.
+        // front, and the tail cut down behind it.
         let mut underside = vec![
             Point::new(self.tail_end, self.tail_rise),
             Point::new(kink, 0.0),
@@ -166,11 +196,22 @@ impl KeyDesign {
             Point::new(tail_front, self.tail_height),
             Point::new(self.tail_end, self.tail_height),
         ]);
+        // The chamfer, the flat in its pieces, the end grain, the top, the
+        // step down to the tail, the tail's top and the key's end.
+        let u = underside_segments;
         let keystick = push(solid(
             PartCode::Keystick,
             polygon(&stick),
             Material::KeyWood,
-            Provenance::Measured(SECTION),
+            vec![
+                (0..1, "tail_rise"),
+                (1..u, "tail_rise_run"),
+                (u..u + 1, "front_edge"),
+                (u + 1..u + 2, "stick_height"),
+                (u + 2..u + 3, "tail_length"),
+                (u + 3..u + 4, "tail_height"),
+                (u + 4..u + 5, "tail_end"),
+            ],
         ));
 
         let key_front = push(solid(
@@ -182,7 +223,7 @@ impl KeyDesign {
                 Point::new(wood_front, top),
             ]),
             Material::KeyFront,
-            Provenance::Measured(SECTION),
+            sides(["front_board", "front_edge", "stick_height", "front_board"]),
         ));
 
         // The keytop, its top split where the key front stands under it: the
@@ -200,70 +241,116 @@ impl KeyDesign {
             2
         };
         keytop_points.push(Point::new(keytop_back, covered));
+        let keytop_segments = u16::try_from(keytop_points.len()).expect("a short outline");
         let keytop = push(solid(
             PartCode::Keytop,
             polygon(&keytop_points),
             Material::Covering,
-            Provenance::Measured(SECTION),
+            vec![
+                (0..1, "stick_height"),
+                (1..2, "keytop_overhang"),
+                (2..keytop_segments - 1, "keytop_thickness"),
+                (keytop_segments - 1..keytop_segments, "keytop_length"),
+            ],
         ));
 
-        let key_button = push(solid(
+        // The key button, where the balance mortise is cut through.
+        let (button_back, button_front) = self.key_button_span();
+        let key_button = push(block(
             PartCode::KeyButton,
-            polygon(&[
-                Point::new(button_back, top),
-                Point::new(button_front, top),
-                Point::new(button_front, top + self.capsule_height),
-                Point::new(button_back, top + self.capsule_height),
-            ]),
-            Material::BlockWood,
-            Provenance::Measured(SECTION),
+            GluedBlock {
+                back: button_back,
+                length: button_front - button_back,
+                height: self.capsule_height,
+            },
+            ["capsule_length", "capsule_height", "capsule_length"],
         ));
+
+        // The block the capstan stands on, where the key has one.
+        let capstan_block = self.capstan_block.map(|b| {
+            push(block(
+                PartCode::CapstanBlock,
+                b,
+                [
+                    "capstan_block.length",
+                    "capstan_block.height",
+                    "capstan_block.back",
+                ],
+            ))
+        });
 
         // The back check block, where the action puts it: placed from the
         // balance pin, it stays under the hammer's tail whatever the key's
         // length.
-        let back_check_block = push(solid(
+        let back_check_block = push(block(
             PartCode::BackCheckBlock,
-            polygon(&[
-                Point::new(block_back, top),
-                Point::new(block_front, top),
-                Point::new(block_front, top + self.back_check_block_height),
-                Point::new(block_back, top + self.back_check_block_height),
-            ]),
-            Material::BlockWood,
-            Provenance::Measured(SECTION),
+            self.back_check_block(),
+            [
+                "back_check_block_length",
+                "back_check_block_height",
+                "back_check_block_back",
+            ],
         ));
 
-        let felt_outline = polygon(&[
-            Point::new(self.tail_end, self.tail_height),
-            Point::new(tail_front, self.tail_height),
-            Point::new(tail_front, self.tail_height + self.damper_felt),
-            Point::new(self.tail_end, self.tail_height + self.damper_felt),
-        ]);
-        let key_tail_felt = push(Part {
-            role: Role::Lining,
-            ..solid(
-                PartCode::KeyTailFelt,
-                felt_outline,
-                Material::HardFelt,
-                Provenance::Measured(SECTION),
-            )
+        let key_tail_felt = self.damper_felt.map(|felt| {
+            push(Part {
+                role: Role::Lining,
+                ..solid(
+                    PartCode::KeyTailFelt,
+                    polygon(&[
+                        Point::new(self.tail_end, self.tail_height),
+                        Point::new(tail_front, self.tail_height),
+                        Point::new(tail_front, self.tail_height + felt),
+                        Point::new(self.tail_end, self.tail_height + felt),
+                    ]),
+                    Material::HardFelt,
+                    sides(["tail_height", "tail_length", "damper_felt", "tail_end"]),
+                )
+            })
         });
 
         // The capstan, turned from the profile the volume model turns: from
-        // the point of the shaft up to the middle of the head's flat top, then
-        // down the axis.
+        // the point of the shaft up to the middle of the head's top, then
+        // down the axis. A domed head's top is the dome's arc, from the
+        // head's side to the axis, where the profile runs its chord.
         let profile: Vec<Point> = self
             .capstan_profile()
             .into_iter()
             .map(|(r, y)| Point::new(r, y))
             .collect();
-        let capstan_outline = polygon(&profile);
+        let mut capstan_outline = polygon(&profile);
+        if let Some(r) = self.capstan_screw.dome_radius {
+            let n = capstan_outline.len();
+            let shoulder = profile[n - 2];
+            let centre = Point::new(0.0, profile[n - 1].y - r);
+            if let Some(from) = Dir::new(shoulder.x, shoulder.y - centre.y) {
+                let dome = Seg::Arc {
+                    c: centre,
+                    r,
+                    from,
+                    to: Dir::Y,
+                };
+                if let Seg::Line { b, .. } = &mut capstan_outline[n - 3] {
+                    *b = dome.start();
+                }
+                if let Seg::Line { a, .. } = &mut capstan_outline[n - 1] {
+                    *a = dome.end();
+                }
+                capstan_outline[n - 2] = dome;
+            }
+        }
         let capstan_segments = count(&capstan_outline);
         let capstan = push(Part {
             body,
             code: PartCode::Capstan,
-            sources: vec![(0..capstan_segments, Provenance::Traced(UNRECORDED))],
+            placed_by: vec![
+                (0..1, "capstan.tip_height"),
+                (1..2, "capstan.diameter"),
+                (2..3, "capstan.cove_height"),
+                (3..4, "capstan.head_diameter"),
+                (4..5, "capstan.height"),
+                (5..capstan_segments, "capstan.x"),
+            ],
             outline: capstan_outline,
             sweep: Sweep::Revolved {
                 axis_x: self.capstan,
@@ -274,8 +361,7 @@ impl KeyDesign {
 
         // The front mortise, cut up from the underside. How wide it is across
         // the keyboard is not a dimension the model has: the slot is bushed
-        // and close on the pin's flats, out of the sagittal plane. Its length
-        // along the key is assumed; its depth, its two walls, is measured.
+        // and close on the pin's flats, out of the sagittal plane.
         let mortise_outline = polygon(&[
             Point::new(mortise_back, 0.0),
             Point::new(mortise_front, 0.0),
@@ -285,11 +371,11 @@ impl KeyDesign {
         let front_mortise = push(Part {
             body,
             code: PartCode::FrontMortise,
-            sources: vec![
-                (0..1, Provenance::Assumed(SECTION)),
-                (1..2, Provenance::Measured(FRAME_SECTIONS)),
-                (2..3, Provenance::Assumed(SECTION)),
-                (3..4, Provenance::Measured(FRAME_SECTIONS)),
+            placed_by: vec![
+                (0..1, "front_mortise.length"),
+                (1..2, "front_mortise.from_front_edge"),
+                (2..3, "front_mortise.depth"),
+                (3..4, "front_mortise.from_front_edge"),
             ],
             outline: mortise_outline,
             sweep: Sweep::Extruded { width: 0.0 },
@@ -340,6 +426,7 @@ impl KeyDesign {
             key_front,
             key_button,
             back_check_block,
+            capstan_block,
             key_tail_felt,
             capstan,
             front_mortise,
@@ -393,13 +480,14 @@ impl KeyRanges {
     /// stands at `x`. `parts` is the list the key's parts were built into.
     pub fn top_at(&self, parts: &[Part], x: f64) -> Option<Point> {
         let material = [
-            self.keystick,
-            self.keytop,
-            self.key_front,
-            self.key_button,
-            self.back_check_block,
+            Some(self.keystick),
+            Some(self.keytop),
+            Some(self.key_front),
+            Some(self.key_button),
+            Some(self.back_check_block),
+            self.capstan_block,
             self.key_tail_felt,
-            self.capstan,
+            Some(self.capstan),
         ];
         let mut top: Option<f64> = None;
         let mut offer = |y: f64| {
@@ -407,7 +495,7 @@ impl KeyRanges {
                 top = Some(y);
             }
         };
-        for part in material {
+        for part in material.into_iter().flatten() {
             for seg in parts[part.index()].silhouette() {
                 match seg {
                     Seg::Line { a, b } => {
@@ -439,7 +527,6 @@ impl KeyRanges {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parts::frame::FrameDesign;
     use crate::parts::polygon_mass_properties;
 
     const KEY: BodyId = BodyId(1);
@@ -475,14 +562,15 @@ mod tests {
     #[test]
     fn every_part_of_the_key_is_closed_and_counter_clockwise() {
         for key in [
-            KeyDesign::default(),
+            crate::test_fixture::key(),
             KeyDesign {
                 front_edge: 0.180,
-                ..KeyDesign::default()
+                ..crate::test_fixture::key()
             },
+            crate::test_fixture::key_with_every_feature(),
         ] {
             let (parts, ranges) = built(&key);
-            assert_eq!(parts.len(), 8);
+            assert_eq!(parts.len(), 8, "a felt or a capstan block, not both");
             for part in &parts {
                 assert!(part.is_closed(), "{:?} is open", part.code);
                 assert_eq!(part.body, KEY);
@@ -493,7 +581,7 @@ mod tests {
                     "{:?} turns clockwise",
                     part.code
                 );
-                let covered: u16 = part.sources.iter().map(|(r, _)| r.end - r.start).sum();
+                let covered: u16 = part.placed_by.iter().map(|(r, _)| r.end - r.start).sum();
                 assert_eq!(usize::from(covered), part.outline.len(), "{:?}", part.code);
             }
             for range in ranges.underside.iter().chain([&ranges.front_mortise_top]) {
@@ -511,7 +599,7 @@ mod tests {
     /// place and integrated in another, as a block slid along the key's top,
     /// is caught where the area alone would not see it.
     ///
-    /// Tiled on the default key, whose tail begins right behind its back
+    /// Tiled on the composite key, whose tail begins right behind its back
     /// check block, and on a key lengthened at the back by 30 mm, with the
     /// keystick's full height between the two.
     ///
@@ -521,7 +609,11 @@ mod tests {
     /// larger than twice the reach cubed.
     #[test]
     fn the_drawn_key_tiles_the_polygon_its_mass_is_integrated_over() {
-        for key in [KeyDesign::default(), lengthened_at_the_back(0.030)] {
+        for key in [
+            crate::test_fixture::key(),
+            lengthened_at_the_back(0.030),
+            crate::test_fixture::key_with_every_feature(),
+        ] {
             let (parts, _) = built(&key);
             let drawn = parts
                 .iter()
@@ -567,10 +659,10 @@ mod tests {
         })
     }
 
-    /// The default key with its tail end taken `by` metres further back, its
+    /// The composite key with its tail end taken `by` metres further back, its
     /// back check block left where the action puts it.
     fn lengthened_at_the_back(by: f64) -> KeyDesign {
-        let mut key = KeyDesign::default();
+        let mut key = crate::test_fixture::key();
         key.tail_end -= by;
         key
     }
@@ -584,7 +676,7 @@ mod tests {
             })
     }
 
-    /// Consistency: **on the default key the tail begins right behind the
+    /// Consistency: **on the composite key the tail begins right behind the
     /// back check block**, where the measured tail ends, and the block's
     /// back face runs straight down to the tail's felt: the volume model's
     /// outline closes on the block's back top corner, the tail's front at
@@ -594,12 +686,12 @@ mod tests {
     /// front.
     #[test]
     fn on_the_default_key_the_tail_begins_right_behind_the_block() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let tail_front = key.tail_end + key.tail_length;
         assert_eq!(key.back_check_block_back.to_bits(), tail_front.to_bits());
         let top = key.stick_height;
         let block_front = tail_front + key.back_check_block_length;
-        let felt = key.tail_height + key.damper_felt;
+        let felt = key.tail_height + key.damper_felt.expect("the composite key's tail is felted");
         let outline = key.outline_vertices();
         assert_eq!(outline.len(), 18);
         let tail = [
@@ -620,7 +712,7 @@ mod tests {
 
     /// Consistency: **a key lengthened at the back keeps its back check block
     /// where the action puts it.** 30 mm longer, the block's two ends stand
-    /// where the default key's do, to the bit, drawn and in the volume
+    /// where the composite key's do, to the bit, drawn and in the volume
     /// model; the thinned tail keeps its 20 mm, now 30 mm behind the block;
     /// and the key's top over those 30 mm is the keystick's full height, the
     /// felt's height behind them. The volume model steps down at the block's
@@ -628,7 +720,7 @@ mod tests {
     /// drops to the felt there.
     #[test]
     fn a_key_lengthened_at_the_back_keeps_its_block_where_it_was() {
-        let standard = KeyDesign::default();
+        let standard = crate::test_fixture::key();
         let (parts, r) = built(&standard);
         let (back, front) = block_ends(&parts, &r);
         let key = lengthened_at_the_back(0.030);
@@ -647,7 +739,7 @@ mod tests {
             back - tail_front
         );
         let top = key.stick_height;
-        let felt = key.tail_height + key.damper_felt;
+        let felt = key.tail_height + key.damper_felt.expect("the composite key's tail is felted");
         let micrometre = 1e-6;
         for (x, height) in [
             (back - micrometre, top),
@@ -693,7 +785,7 @@ mod tests {
     /// segment of it.
     #[test]
     fn the_underside_is_split_at_the_mortise_edges_and_runs_on_across_the_slot() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (parts, ranges) = built(&key);
         let stick = ranges.underside[0].segs(&parts);
         let front = ranges.underside[1].segs(&parts);
@@ -744,7 +836,7 @@ mod tests {
     #[test]
     fn the_flat_and_the_wood_beside_the_mortise_are_declared() {
         let length = |segs: &[Seg]| -> f64 { segs.iter().map(|s| s.end().x - s.start().x).sum() };
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (parts, ranges) = built(&key);
         let [_, kink, nose] = corners(&key);
         let flat: Vec<Seg> = ranges
@@ -790,7 +882,7 @@ mod tests {
         // the flat is over it.
         let odd = KeyDesign {
             front_mortise_from_front_edge: -0.010,
-            ..KeyDesign::default()
+            ..crate::test_fixture::key()
         };
         let (parts, ranges) = built(&odd);
         let flat: Vec<Seg> = ranges
@@ -811,7 +903,7 @@ mod tests {
     /// height and dip are read, the capstan's top where the jig centres 10 g.
     #[test]
     fn the_named_points_are_where_the_protocols_read() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (parts, ranges) = built(&key);
         let covered = key.stick_height + key.keytop_thickness;
         assert!(same(
@@ -833,7 +925,7 @@ mod tests {
     /// one wood, which is not the keystick's.
     #[test]
     fn the_glued_blocks_are_another_wood_and_the_front_its_own_material() {
-        let (parts, r) = built(&KeyDesign::default());
+        let (parts, r) = built(&crate::test_fixture::key());
         let material = |id: PartId| parts[id.index()].material;
         assert_eq!(material(r.keytop), Material::Covering);
         assert_eq!(material(r.key_front), Material::KeyFront);
@@ -848,7 +940,7 @@ mod tests {
     /// tail.
     #[test]
     fn the_keystick_is_one_thickness_with_its_parts_on_it() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (parts, r) = built(&key);
         let lowest = |id: PartId| {
             vertices(&parts[id.index()])
@@ -870,7 +962,10 @@ mod tests {
             top_of_the_wood.to_bits(),
             highest(r.back_check_block).to_bits()
         );
-        assert_eq!(lowest(r.key_tail_felt).to_bits(), key.tail_height.to_bits());
+        assert_eq!(
+            lowest(r.key_tail_felt.expect("a felt")).to_bits(),
+            key.tail_height.to_bits()
+        );
         assert!(key.tail_height < key.stick_height);
     }
 
@@ -879,7 +974,7 @@ mod tests {
     /// technician sets above that seat.
     #[test]
     fn the_capstan_screws_into_the_stick_itself() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (parts, r) = built(&key);
         assert_eq!(key.capstan_seat().to_bits(), key.stick_height.to_bits());
         let head = vertices(&parts[r.capstan.index()])
@@ -913,15 +1008,72 @@ mod tests {
         assert_eq!(capstan.material, Material::Steel);
     }
 
+    /// Consistency: **a glued block stands on the wood under it, and a
+    /// capstan on its own block, its dome's top where the protocols read
+    /// it.** On a key whose bare thinned tail runs on under its back check
+    /// block and its capstan's block, both stand on the tail's top, and its
+    /// key button, behind the balance pin, on the keystick's; the capstan
+    /// is seated on its block's top, and its drawn top, the dome's apex on
+    /// its axis, is the capstan's contact point within an ulp of the height
+    /// it is screwed to, the dome an arc of its radius about a centre that
+    /// far below. No felt is drawn on the bare tail.
+    #[test]
+    fn a_block_stands_on_the_wood_under_it_and_the_capstan_on_its_block() {
+        let key = crate::test_fixture::key_with_every_feature();
+        let (parts, r) = built(&key);
+        let lowest = |id: PartId| {
+            vertices(&parts[id.index()])
+                .iter()
+                .fold(f64::MAX, |a, p| a.min(p.y))
+        };
+        let block = r.capstan_block.expect("a capstan block");
+        assert_eq!(lowest(block).to_bits(), key.tail_height.to_bits());
+        assert_eq!(
+            lowest(r.back_check_block).to_bits(),
+            key.tail_height.to_bits()
+        );
+        assert_eq!(lowest(r.key_button).to_bits(), key.stick_height.to_bits());
+        assert_eq!(r.key_tail_felt, None);
+        let b = key.capstan_block.expect("a block");
+        assert_eq!(
+            key.capstan_seat().to_bits(),
+            (key.tail_height + b.height).to_bits()
+        );
+        let (button_back, _) = key.key_button_span();
+        assert_eq!(
+            vertices(&parts[r.key_button.index()])[0].x.to_bits(),
+            button_back.to_bits()
+        );
+
+        let anchored = r.capstan_contact.point(&parts);
+        let screwed = key.capstan_contact();
+        assert_eq!(anchored.x.to_bits(), screwed.x.to_bits());
+        assert!((anchored.y - screwed.y).abs() <= f64::EPSILON * screwed.y);
+        let capstan = &parts[r.capstan.index()];
+        assert!(capstan.is_closed());
+        let dome = key.capstan_screw.dome_radius.expect("a dome");
+        let arcs: Vec<Seg> = capstan
+            .outline
+            .iter()
+            .filter(|s| matches!(s, Seg::Arc { .. }))
+            .copied()
+            .collect();
+        let [Seg::Arc { c, r: radius, .. }] = arcs[..] else {
+            panic!("one arc: {arcs:?}")
+        };
+        assert_eq!(radius.to_bits(), dome.to_bits());
+        assert!((c.y + radius - key.capstan_screw.height - key.capstan_seat()).abs() <= 1e-15);
+    }
+
     /// The back rail the placement rule builds bears on the chamfer, rail
     /// width included: the drawn chamfer runs from the tail to where the flat
     /// begins, and the rule is free to put the cloth anywhere but there.
     #[test]
     fn the_back_rail_placed_for_the_key_falls_on_the_drawn_chamfer() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let (parts, r) = built(&key);
         let chamfer = r.underside[0].segs(&parts)[0];
-        let placed = FrameDesign::default().placed_under(&key);
+        let placed = crate::test_fixture::frame().placed_under(&key);
         let half = placed.sections.back.half_length;
         assert!(placed.back_rail - half > chamfer.start().x);
         assert!(placed.back_rail + half < chamfer.end().x);

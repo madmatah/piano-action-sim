@@ -41,6 +41,8 @@
  * first thing that fails to change.
  */
 
+import { EDGE } from '../../apps/bench/src/palette.ts'
+
 const [port = '9222', appPort = '5199'] = process.argv.slice(2)
 
 /** Polls `probe` until it returns something truthy, or fails after 30 s. */
@@ -865,6 +867,162 @@ if ((await refusalShown('.edit-refused')) !== null) {
 }
 console.log('  ok  the next edit taken clears it')
 
+// What is on the bench is one of the profiles the engine ships, chosen by the
+// action that puts it there, as it arrives, each offered by its whole name,
+// which says where its numbers come from. Hirschkorn's key comes with its
+// mass published whole, so its front weight is Table A.1's static moment over
+// the measuring arm, 120.08 g at 51.4 mm over the traced lip's 239.28 mm less
+// 13 mm, 27.28 g, read to the tenth as 27.3 g; his key mass is Table A.1's;
+// and the bench says that the borrowed 24 mm cloth strip reaches in front of
+// his key's chamfer. Every line drawn can be marked by how the number that
+// places it is known, and what his profile reads of the owner's key frame,
+// its pins and punchings, is marked borrowed, which nothing on the composite
+// is. The composite chosen again is the instrument the page booted on: the
+// same sheet, to the last bit.
+const choose = (profile) =>
+  evaluate(`
+    (() => {
+      const radio = document.querySelector(
+        '[data-action="select_profile"] input[value=${JSON.stringify(profile)}]')
+      if (!radio) return 'no profile choice'
+      radio.click()
+      return 'ok'
+    })()
+  `)
+const onTheBench = () =>
+  evaluate(`document.querySelector('[data-action="select_profile"]')?.dataset.profile ?? null`)
+/** Each profile's name as the page lays it out: wholly inside the panel, and
+ * nothing of it cut, as a drop-down list cuts a long name at its edge. */
+const namesCut = await evaluate(`
+  (() => {
+    const panel = document.querySelector('.panel')?.getBoundingClientRect()
+    const options = [...document.querySelectorAll('[data-action="select_profile"] [data-option]')]
+    if (!panel || options.length < 2) return 'the profiles are not offered one by one'
+    for (const o of options) {
+      const box = o.getBoundingClientRect()
+      const name = o.querySelector('span')
+      if (box.width === 0 || box.left < panel.left || box.right > panel.right) {
+        return o.dataset.option + ' is laid out outside the panel'
+      }
+      if (!name || name.scrollWidth > name.clientWidth || name.scrollHeight > name.clientHeight) {
+        return o.dataset.option + ' is cut'
+      }
+    }
+    return null
+  })()
+`)
+if (namesCut !== null) fail(`a profile's name is not shown whole: ${namesCut}`)
+console.log('  ok  every profile offered by its whole name')
+if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
+await settle()
+if ((await onTheBench()) !== 'hirschkorn')
+  fail(`Hirschkorn's key not on the bench: ${await onTheBench()}`)
+const his = await measured()
+const tableA1 = (120.08 * 51.4) / (239.28 - 13)
+if (his.front_weight?.shown !== 27.3 || !(Math.abs(his.front_weight.exact - tableA1) < 0.001)) {
+  fail(
+    `his front weight is not Table A.1's: ${JSON.stringify(his.front_weight)} against ${tableA1}`,
+  )
+}
+const hisMass = (await sheet()).key_mass
+if (!(Math.abs(Number(hisMass) - 120.08) < 1e-9))
+  fail(`his key mass is not Table A.1's: ${hisMass}`)
+const clothFault = await evaluate(
+  `document.querySelector('.faults li[data-code="cloth_in_front_of_chamfer"]')?.textContent ?? null`,
+)
+if (!clothFault) fail('the cloth in front of his chamfer is not said')
+console.log(
+  `  ok  Hirschkorn's key on the bench: FW ${his.front_weight.exact} g, ${hisMass} g, ${clothFault}`,
+)
+// The marks are lines the view paints, in the section and on the solid's faces
+// alike, two drawings apart: a toggle whose attribute and legend change while
+// the lines stay as they were reaches nothing. So each view is captured below
+// its buttons: marked, it differs above the legend from the same view
+// unmarked, and unmarked it is drawn again pixel for pixel as it was before
+// it was marked, where the legend stood included, the scene and the camera
+// being the same.
+const mark = () =>
+  evaluate(`
+    (() => {
+      const b = document.querySelector('button[data-mark="provenance"]')
+      if (!b) return 'no provenance toggle'
+      b.click()
+      return 'ok'
+    })()
+  `)
+const markedState = () =>
+  evaluate(`
+    JSON.stringify({
+      view: document.querySelector('.view')?.dataset.marked ?? null,
+      legend: [...document.querySelectorAll('.provenance-legend [data-how]')].map((e) => e.dataset.how),
+    })
+  `).then(JSON.parse)
+/** The view's drawing below its buttons, down to the legend's top where it
+ * stands, else to the drawing's foot. */
+const drawnArea = () =>
+  evaluate(`
+    (() => {
+      const canvas = document.querySelector('.view canvas')?.getBoundingClientRect()
+      const tabs = document.querySelector('.viewtabs')?.getBoundingClientRect()
+      if (!canvas || !tabs) return null
+      const legend = document.querySelector('.provenance-legend')?.getBoundingClientRect()
+      const top = Math.ceil(tabs.bottom) + 1
+      const bottom = Math.floor(legend ? legend.top : canvas.bottom) - 1
+      return JSON.stringify({
+        x: Math.ceil(canvas.left),
+        y: top,
+        width: Math.floor(canvas.width),
+        height: bottom - top,
+      })
+    })()
+  `).then((clip) => (clip ? JSON.parse(clip) : null))
+const drawn = async (clip) =>
+  (await send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 1 } })).result
+    ?.data
+let marked = null
+for (const v of ['section', 'solid']) {
+  if ((await showView(v)) !== 'ok') fail(`no ${v} button`)
+  await settle()
+  const whole = await drawnArea()
+  if (!whole || whole.height < 50) {
+    fail(`no drawing to capture in the ${v}: ${JSON.stringify(whole)}`)
+  }
+  const before = await drawn(whole)
+  if ((await mark()) !== 'ok') fail('no provenance toggle')
+  await settle()
+  marked = await markedState()
+  if (marked.view !== 'provenance' || marked.legend.length !== 7) {
+    fail(`the lines are not marked by provenance in the ${v}: ${JSON.stringify(marked)}`)
+  }
+  const aboveLegend = await drawnArea()
+  if (!aboveLegend || aboveLegend.height < 50) {
+    fail(`no drawing above the legend in the ${v}: ${JSON.stringify(aboveLegend)}`)
+  }
+  const withMarks = await drawn(aboveLegend)
+  if ((await mark()) !== 'ok') fail('no provenance toggle')
+  await settle()
+  if ((await markedState()).view !== null) fail(`the ${v} stays marked once unmarked`)
+  if ((await evaluate(`document.querySelector('.provenance-legend') === null`)) !== true) {
+    fail(`the provenance legend stays once unmarked in the ${v}`)
+  }
+  if (!withMarks || withMarks === (await drawn(aboveLegend))) {
+    fail(`marking the lines changes nothing drawn in the ${v}`)
+  }
+  if (!before || (await drawn(whole)) !== before) {
+    fail(`the ${v} unmarked is not drawn as it was before it was marked`)
+  }
+  console.log(`  ok  the ${v} drawn marked, and unmarked as it was before`)
+}
+console.log(`  ok  every line marked by how its number is known: ${marked.legend.join(', ')}`)
+if ((await choose('composite')) !== 'ok') fail('no profile choice')
+await settle()
+if (JSON.stringify(await measured()) !== JSON.stringify(startRead)) {
+  fail(
+    `the composite chosen again is not the one the page booted on: ${JSON.stringify(await measured())}`,
+  )
+}
+console.log('  ok  the composite chosen again reads the sheet the page booted on')
+
 // The section draws every part flat, each in its own body's frame, a cut as a
 // void in the key's wood. It is a different drawing from the solid's, and a
 // renderer that throws there blanks that view alone, so both are shown.
@@ -873,6 +1031,82 @@ await settle()
 if ((await showView('solid')) !== 'ok') fail('no solid button')
 await settle()
 console.log('  ok  both views drawn')
+
+// What a profile reads of another instrument than the one it describes is
+// marked borrowed, in a colour of its own: his pins and punchings, read from
+// the owner's key frame, which the section draws as it draws every turned
+// part; on the composite, which describes that frame, they are measured and
+// nothing is borrowed. Counted on the section opened by its link, which
+// faces it. Where the marked drawing differs from the unmarked one, a line is
+// drawn in a mark's colour where the edge colour was, over the same fill and
+// covering as much of the pixel, so the difference is the mark's colour less
+// the edge's, scaled by that cover: each such pixel is the mark's whose
+// difference from the edge points its way, at a quarter of its length at
+// least.
+await send('Page.navigate', { url: `http://127.0.0.1:${appPort}/?view=section` })
+await waitFor('the engine to boot again on the section', async () => {
+  const s = await sheet().catch(() => ({}))
+  return Object.keys(s).length > 0 ? s : undefined
+})
+await settle()
+const rgbOf = (hex) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+const paintedOn = async (profile) => {
+  if ((await choose(profile)) !== 'ok') fail('no profile choice')
+  await settle()
+  if ((await mark()) !== 'ok') fail('no provenance toggle')
+  await settle()
+  const area = await drawnArea()
+  if (!area || area.height < 50) fail(`no drawing to capture: ${JSON.stringify(area)}`)
+  const colours = await evaluate(`
+    JSON.stringify(Object.fromEntries([...document.querySelectorAll('.provenance-legend [data-how]')]
+      .map((e) => [e.dataset.how,
+        getComputedStyle(e.querySelector('.swatch')).backgroundColor.match(/\\d+/g).map(Number)])))
+  `).then(JSON.parse)
+  const withMarks = await drawn(area)
+  if ((await mark()) !== 'ok') fail('no provenance toggle')
+  await settle()
+  const plain = await drawn(area)
+  return evaluate(`
+    (async () => {
+      const pixels = async (png) => {
+        const image = await (await fetch('data:image/png;base64,' + png)).blob()
+        const bitmap = await createImageBitmap(image)
+        const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')
+        context.drawImage(bitmap, 0, 0)
+        return context.getImageData(0, 0, bitmap.width, bitmap.height).data
+      }
+      const [u, p] = [await pixels('${plain}'), await pixels('${withMarks}')]
+      const edge = ${JSON.stringify(rgbOf(EDGE))}
+      const ways = ${JSON.stringify(colours)}
+      const counts = Object.fromEntries(Object.keys(ways).map((how) => [how, 0]))
+      for (let i = 0; i < u.length; i += 4) {
+        const d = [p[i] - u[i], p[i + 1] - u[i + 1], p[i + 2] - u[i + 2]]
+        const nd = Math.hypot(...d)
+        if (nd < 12) continue
+        for (const [how, c] of Object.entries(ways)) {
+          const e = [c[0] - edge[0], c[1] - edge[1], c[2] - edge[2]]
+          const ne = Math.hypot(...e)
+          const cos = (d[0] * e[0] + d[1] * e[1] + d[2] * e[2]) / (nd * ne)
+          if (cos > 0.97 && nd >= 0.25 * ne) {
+            counts[how] += 1
+            break
+          }
+        }
+      }
+      return JSON.stringify(counts)
+    })()
+  `).then(JSON.parse)
+}
+const onHis = await paintedOn('hirschkorn')
+const onOwn = await paintedOn('composite')
+if (!(onHis.borrowed > 0)) {
+  fail(`what his profile borrows is not marked borrowed: ${JSON.stringify(onHis)}`)
+}
+if (onOwn.borrowed !== 0 || !(onOwn.measured > 0)) {
+  fail(`the composite is marked ${JSON.stringify(onOwn)}`)
+}
+console.log(`  ok  his key's section marked ${JSON.stringify(onHis)}`)
+console.log(`  ok  the composite's section marked ${JSON.stringify(onOwn)}`)
 
 if (thrown.length > 0) fail(`the page threw: ${thrown[0].split('\n')[0]}`)
 

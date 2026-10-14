@@ -138,24 +138,6 @@ impl Touchweight {
     }
 }
 
-/// How far back from the front lip of the key every weight is centred, metres:
-/// the default of [`TouchweightProtocol::measuring_point_from_lip`].
-///
-/// The glossary's *Measuring Point*: *"The datum point on the top of the key
-/// 13mm or 1/2" back from the front lip of the key. Weights are centered on
-/// this point when measuring Up Weight and Down Weight."* [V, Stanwood 2000,
-/// glossary, p. 23; `data/params/touchweight-protocol.json`]
-pub const MEASURING_POINT_FROM_LIP: f64 = 0.013;
-
-/// The imperial alternative the same glossary gives, 1/2 inch, metres.
-///
-/// It differs from [`MEASURING_POINT_FROM_LIP`] by 0.3 mm, which is 0.1 % of
-/// the lever arm and therefore below the 0.1 g resolution of the scale. The
-/// default is 13 mm; this is the documented alternative a bench may be set to,
-/// recorded rather than silently dropped. [V, Stanwood 2000, glossary, p. 23;
-/// `data/params/touchweight-protocol.json`]
-pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
-
 /// The conventions the touchweight protocols are run under.
 ///
 /// # Why this is not a dimension of the key
@@ -179,23 +161,33 @@ pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
 /// saying which lip; the 1996 paper's *"front vertical edge of the key"* is
 /// superseded with the rest of its protocols. The bench takes the
 /// **covering's** lip, the owner's choice: the front edge of the keytop, which
-/// overhangs the key front ([`KeyDesign::lip`]) — by 2 mm on the default key,
-/// so the measuring point stands 2 mm further forward than one measured from
-/// the key front, and every touchweight is read on a 0.8 % longer arm. Key
-/// height and key dip keep their own datum, the key front.
+/// overhangs the key front ([`KeyDesign::lip`]) — by 2 mm on the composite
+/// key, so the measuring point stands 2 mm further forward than one measured
+/// from the key front, and every touchweight is read on a 0.8 % longer arm.
+/// Key height and key dip keep their own datum, the key front.
+///
+/// # Where its numbers come from
+///
+/// An instrument's profile binds both to their record
+/// (`data/params/touchweight-protocol.json`): the measuring point 13 mm, or
+/// the same glossary entry's 1/2 inch, back from the lip; and the 10 g the
+/// key weight ratio is read with, since February 2000, a hundred before
+/// that [V, Stanwood 2000, glossary, p. 23, and p. 22].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TouchweightProtocol {
     /// How far back from the covering's lip every weight is centred, metres.
-    ///
-    /// [`MEASURING_POINT_FROM_LIP`] by default; [`MEASURING_POINT_HALF_INCH`]
-    /// is the published alternative.
     pub measuring_point_from_lip: f64,
+    /// The weight the key weight ratio is read with, centred on the
+    /// capstan's contact with the heel, grams.
+    pub key_ratio_load_g: f64,
 }
 
 impl TouchweightProtocol {
     /// The protocol's setting: where every weight is centred. Any number is
     /// a distance back from the lip; whether it stands on the covering is
-    /// [`crate::validate`]'s to say, since the covering is the key's.
+    /// [`crate::validate`]'s to say, since the covering is the key's. The key
+    /// weight ratio's load is the protocol's own, bound by the instrument's
+    /// profile, and has no setting.
     pub const PARAMS: [ParamSpec<Self>; 1] = [ParamSpec {
         name: "measuring_point_from_lip",
         quantity: Quantity::Length,
@@ -230,15 +222,6 @@ impl TouchweightProtocol {
     }
 }
 
-impl Default for TouchweightProtocol {
-    /// Stanwood's: 13 mm back from the front lip.
-    fn default() -> Self {
-        Self {
-            measuring_point_from_lip: MEASURING_POINT_FROM_LIP,
-        }
-    }
-}
-
 /// The weight an experiment puts on the measuring point, grams, negative
 /// pulling up: any weight at all, since a pull past what the key's punching
 /// answers lifts it off its frame, which is a state to report and not a
@@ -253,11 +236,6 @@ pub const WEIGHT_ON_THE_MEASURING_POINT: ParamSpec<f64> = ParamSpec {
     get: |w| *w,
     set: |w, v| *w = v,
 };
-
-/// The weight the current protocol places at the capstan to read the key ratio,
-/// grams. Ten, since February 2000; a hundred before that. [V, Stanwood 2000,
-/// p. 22; `data/params/touchweight-protocol.json`]
-pub const KR_PROTOCOL_LOAD_G: f64 = 10.0;
 
 #[cfg(test)]
 mod tests {

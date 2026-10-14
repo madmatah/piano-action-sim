@@ -22,6 +22,16 @@ license.workspace = true
 [dependencies]
 libm = "0.2.16"
 
+# One feature, for tests. The engine starts from no number of its own: an
+# instrument is built from a profile whose every value is a record or a stated
+# assumption. `pa-core`'s own tests still need a key and a frame, which
+# `test_fixture` holds as Rust literals, compiled for its tests and, through
+# `fixtures`, for those of the crates above that enable it as a
+# dev-dependency: `pa-app`'s, which hold the composite profile to the
+# fixture's bits. Nothing shipped enables it.
+[features]
+fixtures = []
+
 [lints.rust]
 missing_docs = "warn"
 

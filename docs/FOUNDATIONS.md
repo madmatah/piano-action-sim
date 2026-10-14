@@ -117,8 +117,16 @@ placed from the balance pin and not from the key's end: a key lengthened at the
 back keeps its block in place, the keystick running at its full height between
 the block and the thinned tail. On the default key its back end stands 220 mm
 behind the pin, where the measured tail ends, a place derived and not measured
-(`data/params/README.md`). The capstan is a turned steel part, integrated as a
-solid of revolution. No lead is modelled: a key's leads are in its weighing
+(stated with its rule in `data/profiles/composite.json`). The capstan is a turned steel part, integrated as a
+solid of revolution. A key may carry what the composite key lacks, each a
+feature its description holds only where the key has it: a block glued under
+the capstan, the capstan standing wholly on it; a bare thinned tail, no felt
+on it, running on under the glued blocks, each standing wholly on the tail or
+wholly on the keystick's full height; a capstan head turned to a dome, whose
+top bears as a circle does; a capsule standing off the pin. The validation
+layer refuses a block across the step down to the tail, a felted tail under a
+block, a capstan off its block and a dome narrower than its head (§7.3).
+Hirschkorn's key has every one of them (§5.2 b). No lead is modelled: a key's leads are in its weighing
 (below). Each piece is a part of its own, with its own material, on the key's
 body: the covering and the key front are of their own materials, the capsule and
 the back check block of one wood that is not the keystick's, and the front
@@ -141,13 +149,18 @@ weighed, the volume model's estimate stands for its whole mass. A weighing no
 key could have is refused with its reason, the bench left as it was: a mass of
 nothing, a front weight read off the covering, a centre of mass the two readings
 put off the key. What one more lead would do somewhere along the key is not
-computed.
+computed. A key a source weighed and located whole, as Hirschkorn's Table A.1
+gives his key's mass, its centre of mass in the key's frame and its inertia,
+is read as published, the height of its centre of mass included, and nothing
+of it is estimated; weighed again on the bench, it keeps that published height.
 
 **The frame**, `FrameDesign`, is three different rails: the balance rail with
 its crown and round pin, the front rail with its oblong pin, the back rail with
-its cloth. A punching is a felt washer plus papers from a drawer of eight
-thicknesses, 0.08 to 1.25 mm, each known by its colour [V,
-`data/params/key-frame-sections.json`, `punching-papers.json`].
+its cloth. A punching is a felt washer plus papers from a drawer, the owner's
+of eight thicknesses, 0.08 to 1.25 mm, each known by its colour [V,
+`data/params/key-frame-sections.json`, `punching-papers.json`]; the drawer is
+data the profile binds, and each paper is drawn in the colour its record
+gives.
 
 **The key stands on its balance punching, free to lift off it.** A key is not
 pinned to its frame: its balance punching can push it up and cannot hold it
@@ -182,10 +195,10 @@ point for any coordinate, by the lever-arm identity of §6.2 extended to every
 ancestor joint; gravity at each body's centre of mass and forces fixed in the
 world, with their potential and generalized forces; and coordinates prescribed
 for one procedure, with the reaction that holds each. The mechanism never
-computes a body's mass; it is handed one: the key's as it was weighed, or, until
-it is, as one adapter in `pa-app`, the composite key's derivation, derives it
-from its volume model (§2.3), which also gives a weighed key the height of its
-centre of mass. Its first client is the jig (§2.2). Each coordinate carries its
+computes a body's mass; it is handed one: the key's as a source publishes it,
+as it was weighed, or, until it is, as one adapter in `pa-app`, the composite
+key's derivation, derives it from its volume model (§2.3), which also gives a
+weighed composite key the height of its centre of mass. Its first client is the jig (§2.2). Each coordinate carries its
 limits, an interval it cannot leave, and its joint's dry friction, a torque
 bound that holds it still against any generalized force inside it; the static
 solve below finds the coordinates a procedure leaves free. The key on its frame
@@ -582,10 +595,11 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   nobody knows, and is weighed whole.
 - **The default key is a composite**: the owner's measured key section, a
   capstan 129.5 mm behind the balance pin that no source gives, and a key front
-  258 mm out, which puts the measuring point at 247 mm. Planned, with the
-  quasi-static core: the default key becomes Hirschkorn's (§5.2 b), whose mass,
-  centre of gravity, inertia and contact points were measured and published on
-  one action, and the owner's measured section a second profile.
+  258 mm out, which puts the measuring point at 247 mm. Built beside it, and
+  chosen on the bench: Hirschkorn's key on his printed frame (§5.2 b), whose
+  mass, centre of gravity, inertia and contact points were measured and
+  published on one action. Planned, with the quasi-static core: his key the
+  default, and the owner's measured section a second profile.
 - **The balance punching bears at its centre, on the pin's axis.** The key
   bears on a felt washer whose pressure centre moves with attitude and load;
   the model reads it rigidly, at the centre of the washer's drawn top. Moving
@@ -609,7 +623,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   never weighs. The bushings' friction acts on the key's turning alone, as the
   key friction weight reads it. Where the key leaves its pin is read off the
   drawn pin, whose height, 11.2 mm above its rail, is assumed until the balance
-  mortise is measured (`data/params/README.md`).
+  mortise is measured (`data/profiles/composite.json`).
 - **A front pin's sides carry no contact.** The pin declares its top and the
   corners of its top, which are all a pin standing in its slot can meet. One
   a few tenths of a millimetre into the wood behind its slot meets the wood's
@@ -631,6 +645,13 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   the capstan's thread against its hole, so a capstan screwed up past its
   shaft's length, within the 2 to 30 mm the bench admits, is drawn standing
   above the wood (§7.3).
+- **Hirschkorn's key is drawn square** where his figure draws its key button
+  with rounded ends, its two blocks coved and its covering bevelled, each
+  traced to its feet [E, 11]; its back check, wire and head, belongs to the
+  action and is not drawn, though Table A.1's mass includes it. His front
+  mortise is the owner's, placed over his front bearing. Placing the frame
+  under his key follows the composite's rule, the back rail 40 mm in from the
+  tail [S], which stands his back rail in front of his 37 mm chamfer.
 - **Drawing**: one row of pins; flat-topped pins; a flat balance crown only.
   The balance mortise is not drawn, none of its dimensions being measured, so
   the balance pin stands hidden in the key's wood; the front mortise's place
@@ -843,15 +864,32 @@ ratio is computed from the arms and has no setter.
 ### 3.8 Every number has its provenance
 
 Every value the engine starts from has a record in `data/params/` with its unit,
-source and reliability marker (`V`, `E` or `S`), and a derived value has its
-script in `tools/derivations/`. The owner's measurements are primary sources,
-marked `V` with the instrument and the date. A value whose source is unpublished
-is provenanced; one whose source is lost is not. Built: records for the key
-section, the key frame, the papers, the touchweight protocol's measuring point
-and key-ratio load, and Stanwood's weight curves, which the engine does not
-read: its defaults are Rust literals repeating them, and several defaults have
-no record (listed in `data/params/README.md`). Planned: the parameter registry
-loads them, and a test fails on a default with no record.
+source and reliability marker (`V`, `E` or `S`), or is an assumption a profile
+states with its reason, and a derived value has its script in
+`tools/derivations/` or its rule written beside it. The owner's measurements are
+primary sources, marked `V` with the instrument and the date. A value whose
+source is unpublished is provenanced; one whose source is lost is not. Built:
+records for the key section, the key frame, the papers and their colours, the
+touchweight protocol's measuring point and key-ratio load, Hirschkorn's action,
+and Stanwood's weight curves; and the profiles (`data/profiles/`), compiled
+into `pa-app`, which bind every number an instrument starts from, every field
+of its key, frame, drawer, protocol and bushings, its targets and the weight on
+it, to a record by a JSON pointer, its unit checked against the number's
+quantity and converted to SI rounding once, or to an assumption marked `S`, or
+`E` with its rule, and its reason. The engine has no default of its own: the
+standard instrument is the composite profile, whose values without a record
+are stated there. `every_default_has_a_record_or_a_stated_assumption` fails on
+a number of a shipped profile that is neither, the numbers taken from the
+validation layer's walk of every field, which the compiler holds exhaustive.
+Hirschkorn's profile reads his record and the outline traced from his
+Figure A.1 (§5.2 b), each traced number `[E, 11]`. A drawn stretch of a part
+is placed by one number of the design, which the part names; how it is known,
+measured, published, traced, derived, borrowed, assumed, or set on the bench
+since the instrument was built, is read from the instrument's profile, and the
+view marks every line by it when asked (§7.3). A profile names the
+instruments it describes as its records name them, so a number it reads from
+a record of another instrument, as Hirschkorn's reads the owner's key frame's
+pins and punchings, is marked borrowed rather than measured.
 
 ### 3.9 A dedicated planar solver, not a general-purpose engine
 
@@ -1098,9 +1136,10 @@ trial a hair past breakaway starts the key with a step of a femtometre, each
 accepted step three times the last. A fingerprint names the solver with its
 frozen numbers and travels with every reading; a test hashes the caps,
 tolerances, margins and counts, the free key's pieces, the temporary weight's
-stations, the protocols' loads and the searches' reaches, and fails when one
-changes and the fingerprint does not; where the key leaves its balance pin is
-read off the drawn pin, a dimension and not a frozen number. The golden
+stations and the searches' reaches, and fails when one changes and the
+fingerprint does not; where the key leaves its balance pin is read off the
+drawn pin, a dimension and not a frozen number, and the key weight ratio's
+load is the protocol's, bound by the instrument's profile to its record. The golden
 sheet (§7.1) holds the engine's readings bit for bit wherever the tests run, and
 the WebAssembly build to the same bits as the native one.
 
@@ -1164,7 +1203,7 @@ the rest attitude add. But it is the first comparison of computed readings with
 independent ones, and it exercises what stage 1a builds: arms, datum, bearing,
 protocols.
 
-**(b) Hirschkorn's Boston GP-178, note 52** (planned): geometry, masses,
+**(b) Hirschkorn's Boston GP-178, note 52**: geometry, masses,
 thirteen contact laws and five axis frictions measured on one action [V,
 Hirschkorn 2004, Appendix A]. With every frame's origin at its own pivot, his
 geometry closes on contacts 1, 3, 5, 7 and 10 with the hammer 47.0 mm from the
@@ -1182,6 +1221,40 @@ positions (forte, piano, double blow): the dynamics prototype's reference. It
 is also the engine's reference action: the base profile the engine is built and
 checked on before any other action is compared with it (planned), its values
 transcribed with their locators in `data/params/`.
+
+Built: his key on his printed frame, a profile chosen on the bench
+(`data/profiles/hirschkorn.json`). Its printed points, lines and circles are
+read as printed: the underside through Pk4, the chamfer along Pk5's line,
+meeting the flat at −196.43 mm, the capstan's dome Pk3's circle of 9.7 mm, the
+bearings at Pg1, Pg4 and Pg5. What his tables give no number for, the key
+front, the covering and its lip, the key button, the capstan's block standing
+on a bare thinned tail with the back check block, the tail's end and the
+capstan's head, is traced from his Figure A.1 [E, 11]: a similarity fitted on
+Pg1, Pk2 and Pk5 leaves 0.27 mm at Pg1, and puts the key front 237.80 mm and
+the covering's lip 239.28 mm in front of the pin, 10.0 mm ahead of Pk2. The
+figure's centre-of-mass marker stands 13.7 mm behind Table A.1's centre, about
+7 g of front weight: Table A.1 governs the mass. His bushings are Table A.9's
+0.0122 N·m, read at no published radius; his dip target 10.0 mm; no key
+height is published, so the key height he is regulated to is the one his key
+stands at. His frame bears on **real felts**, a flat front punching washer and
+a flat back rail cloth strip, each with its top where his round of 5 mm has
+its, since what is drawn is what is touched; its keybed, rails, papers, pins
+and the key's width are the composite's, so his key height is an indication.
+The felts reproduce his printed dip to a tenth of a millimetre and no closer:
+at Pk2 his rounds let the key fall 9.306 mm and the felts 9.202 mm, 0.105 mm
+less, because the key, nose-up at rest, bears with its chamfer's kink on the
+cloth's face where his round met its chamfer 7.3 mm further back; the front
+punching, read at its centre, changes the bottom by 2 µrad [E, 11]. A
+cross-implementation test closes that difference from his printed points
+alone, never from the bench's frame, and holds the bench to it, against the
+rigid closure of script 10 to its last printed digit and the dynamics
+prototype's compliant contacts within their compression
+(`the_bench_differs_from_his_rounds_by_the_felts_alone`), so a rail read a
+micrometre off fails it; and its front weight to Table A.1's static moment:
+consistency, not validation, every input being his. On his frame as printed the bench reads FW 27.3 g, KR 0.52, a dip of
+9.61 mm at the key front, D −21.6 g, U −32.8 g and KF 6 g: the bare key is
+leaded for its action, and falls on its own. Nothing on the key validates
+until his action's own readings are compared (stage 2).
 
 **(c) Thorin's Renner demonstrator** (planned): the only published key force
 under position drive, and escapement velocities measured and simulated, 1.01 and
@@ -1428,9 +1501,14 @@ wins, so pedal force falls as notes are played.
 ```
 crates/pa-core     the domain: geometry, mechanism, contact, solve, parts, measure,
                    regulation, registry, validate. No I/O, no web; one
-                   dependency, libm (§4.4)
+                   dependency, libm (§4.4); no number to start from of its
+                   own, its tests' fixture compiled for tests only
 crates/pa-app      the application: the single-key bench as an instrument, set by
-                   path and by action, and its registry; the golden sheet
+                   path and by action, built from a profile, and its registry;
+                   the golden sheet
+data/params        the records, each value with its source
+data/profiles      what each instrument starts from, every number a record or a
+                   stated assumption (§3.8)
 crates/pa-wasm     the browser's adapter of pa-app; the only crate that knows JavaScript
 crates/pa-cli      the shell's adapter of pa-app: `weigh`, `golden`
 apps/bench         the bench page: React, react-three-fiber
@@ -1534,7 +1612,8 @@ The page changes the bench by two calls. `set(path, value)` sets a setting in
 the unit its path names; `act(action)` runs an operation: laying a paper from
 the drawer or lifting one, regulating to a key height and a key dip, weighing
 the key whole, typing the key friction weight Stanwood's protocol reads,
-placing the frame under the key. Each answers that it was done, the papers a
+placing the frame under the key, putting another shipped profile's instrument
+on the bench. Each answers that it was done, the papers a
 regulation laid and what they give, or why it was refused, by its code, the
 bench left as it was to the bit. After every edit taken the key is solved one
 increment from where it stood, so it is always drawn at an equilibrium. Every
@@ -1554,7 +1633,8 @@ the module to the native bits.
 The page is drawn from the registry (`apps/bench/src/Control.tsx`): one
 component draws whichever control the registry describes, a slider over a
 setting, a punching's papers laid from the drawer and lifted, fields sent
-together by one action, the key friction weight, a button; its value read
+together by one action, the key friction weight, a button, the choice of the
+profile on the bench; its value read
 from the settings at its path, its range, step and unit the engine's, its
 label the catalogue's by the code the registry gives it. A form's fields
 open on what the bench holds for each quantity, as the registry says where to
@@ -1596,9 +1676,11 @@ built as, naming the limiting dimension and the shortfall: a value that is not a
 number or an infinity, anywhere in the design; a value outside its setting's
 range; a paper no drawer holds; a key weighed at no mass; an outline crossing
 itself, a glued part run into the next along the key's top (a key front brought
-back until its covering runs into the key button), the thinned tail run on under
-the back check block, or the chamfer past the key front; the capstan in a glued
-block, or wholly behind the back check block; the front mortise off the flat of
+back until its covering runs into the key button), a felted thinned tail run on
+under a glued block, a block standing across the step down to a bare one, or
+the chamfer past the key front; the capstan in a glued block, off its own
+block, or wholly behind the back check block, or its dome narrower than its
+head; the front mortise off the flat of
 the underside, or cut through the top of the keystick; the measuring point off
 the covering. A refused edit leaves the instrument as it was, to the bit of its
 state hash, and the diagnostics keep it. Everything an assembled keyboard can
@@ -1606,11 +1688,21 @@ be, however badly regulated, is computed and reported, not refused: a pin
 standing proud of its mortise is a state, the key riding on it; an action
 regulated into jamming is a state to report, not an error.
 
-**Planned.** The defaults loaded from `data/params/` with a test that each has
-a record, and each setting's provenance beside it; the paths a profile needs
-beyond the bench's page, the tail's end, the back check block's place, the
-front mortise's place and length, the key's row, with the profiles that set
-them; the rails checked
+An instrument starts from a profile (§3.8, §7.5), every number of which is a
+record or a stated assumption; the profile it was built from is kept with
+each value's provenance, and resetting the instrument returns to it, not to
+another.
+
+Each drawn stretch of every part is sent with the number that places it and
+how its profile knows it, which the view marks when asked: every line of the
+section, and in the solid the outlines of the extruded parts, turned parts
+staying unmarked there; the profile on the
+bench is chosen among those shipped, by an action that puts it there as it
+arrives (built).
+
+**Planned.** Each setting's provenance sent beside it to the page; the paths a
+profile needs beyond the bench's page, the tail's end, the back check block's
+place, the front mortise's place and length, the key's row; the rails checked
 against one another and the capstan's thread against its hole (§2.3).
 
 ### 7.4 Persistence
@@ -1639,7 +1731,11 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
 - **Three kinds of setting**, which decide what the interface offers: actuated
   (a control turned), derived (read-only), target (aimed at through an actuator).
 - **A profile is a base plus a measured difference**, the base being
-  Hirschkorn's action (§5.2 b). All layers but one are
+  Hirschkorn's action (§5.2 b). Built: a profile (`data/profiles/`) may name
+  a base and bind only what differs, each binding and each choice (the key's
+  row, how its mass is known, whether it arrives regulated) replacing the
+  base's; the two shipped, the composite and Hirschkorn's key on his printed
+  frame, have none, and Hirschkorn's action becomes the base (planned). All layers but one are
   measurable with a calliper and the trade's gauges; the material set needs a
   compression bench, so it is inherited, and anything computed from an
   inherited layer says so and shows as indicative.
@@ -1688,7 +1784,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), built; the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), and the profiles that bind every number it starts from to a record or a stated assumption (§3.8), Hirschkorn's key on his printed frame among them, chosen on the bench, every drawn line marked by how its number is known (§5.2 b, §7.3), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

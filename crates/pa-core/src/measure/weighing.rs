@@ -56,7 +56,6 @@ use super::seat::{SeatRefusal, Seating, Seats, SEAT_MARGIN};
 use super::walk::{Breakaway, Stroke, WalkRefusal, HALVINGS, ROUNDING_TOLERANCE_G, STEP_G};
 use crate::geometry::Point;
 use crate::mechanism::{AxisFriction, MaterialPoint, PointLoad, Problem};
-use crate::parts::frame::PAPER_THICKNESSES;
 use crate::parts::mounts::OnItsFrame;
 use crate::solve::{SolveReport, Statics, SOLVER_FINGERPRINT};
 use crate::G;
@@ -203,6 +202,9 @@ pub struct Weighing<'a> {
     pub measuring_point: Point,
     /// How far back from the covering's lip it stands, metres.
     pub measuring_point_from_lip_m: f64,
+    /// The thinnest paper the frame's drawer holds, metres: what key height
+    /// and dip are adjusted by, and read to.
+    pub thinnest_paper_m: f64,
     /// What the bench's inputs rest on.
     pub bases: Bases,
 }
@@ -350,7 +352,7 @@ impl Weighing<'_> {
             Err(why) => return (Err(why.clone()), Err(why.clone())),
         };
         let (top, bottom) = seats.heights(&self.on_frame.mounted, self.on_frame.front_top);
-        let paper = PAPER_THICKNESSES[0];
+        let paper = self.thinnest_paper_m;
         let height = self.measured(
             ProcedureId::KeyHeight,
             top,
@@ -685,6 +687,7 @@ impl Weighing<'_> {
                 jig: self.jig,
                 measuring_point: self.measuring_point,
                 measuring_point_from_lip_m: self.measuring_point_from_lip_m,
+                thinnest_paper_m: self.thinnest_paper_m,
                 bases: self.bases,
             };
             let kf = trial
@@ -759,13 +762,14 @@ mod tests {
     use crate::measure::measurement::{Basis, Input};
     use crate::measure::oracle::{band_at, Branches, KeyOnFrame};
     use crate::measure::walk::HALVINGS;
-    use crate::measure::{TouchweightProtocol, MEASURING_POINT_HALF_INCH};
+    use crate::measure::TouchweightProtocol;
     use crate::mechanism::{AxisFriction, MassProps};
     use crate::parts::fixtures::{mass_of, regulated, Setup};
     use crate::parts::frame::KeyKind;
     use crate::parts::mounts::{on_its_frame, KeyMount};
     use crate::parts::KeyMass;
     use crate::solve::statics::RESIDUAL_TOLERANCE;
+    use crate::test_fixture::MEASURING_POINT_HALF_INCH;
 
     /// The composite bench's inputs: its mass and the height of its centre
     /// of mass derived from its volume, its friction and its dimensions
@@ -833,6 +837,7 @@ mod tests {
                 jig: &self.jig,
                 measuring_point: self.a.protocol.measuring_point_on_key(&self.a.key),
                 measuring_point_from_lip_m: self.a.protocol.measuring_point_from_lip,
+                thinnest_paper_m: self.a.frame.drawer.thinnest(),
                 bases: COMPOSITE,
             }
         }
@@ -1474,6 +1479,7 @@ mod tests {
         let mut a = regulated();
         a.protocol = TouchweightProtocol {
             measuring_point_from_lip: MEASURING_POINT_HALF_INCH,
+            ..crate::test_fixture::protocol()
         };
         let b = bench(&a, 6.0);
         let sheet = b.sheet();
@@ -1547,6 +1553,7 @@ mod tests {
         let mut half_inch = regulated();
         half_inch.protocol = TouchweightProtocol {
             measuring_point_from_lip: MEASURING_POINT_HALF_INCH,
+            ..crate::test_fixture::protocol()
         };
         let half_inch_mass = mass_of(&half_inch.key);
         vec![

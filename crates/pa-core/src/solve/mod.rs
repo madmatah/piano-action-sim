@@ -60,18 +60,20 @@ mod tests {
     /// contact counts as touching, the regulation's search and halvings, the
     /// drawer's search; then how near a whole gram the walk's threshold reads
     /// as that gram, the temporary weight's two stations, the search for the
-    /// bushings a key friction weight reads on and its halvings, the key
-    /// weight ratio's load at the capstan, the jig's level, gravity, which
-    /// turns every gram the procedures put on a key into newtons and every
-    /// torque they read back into grams, the slack of a contact row's sector
-    /// test, and how flat a key's bearing on its cloth counts as flat.
+    /// bushings a key friction weight reads on and its halvings, the jig's
+    /// level, gravity, which turns every gram the procedures put on a key
+    /// into newtons and every torque they read back into grams, the slack of
+    /// a contact row's sector test, and how flat a key's bearing on its cloth
+    /// counts as flat.
     ///
     /// Not here, because each reading carries it or its record holds it: the
-    /// measuring point, a setting every reading names in its conditions; each
-    /// reading's resolution and rounding rule; the drawer's papers and the
-    /// parts' dimensions, data with their records, among them how far above
-    /// its balance punching the key leaves its pin, which the drawn pin
-    /// gives. Nor the numbers the bench draws with and reads nothing by.
+    /// measuring point, a setting every reading names in its conditions; the
+    /// key weight ratio's load, the protocol's, which the instrument's
+    /// profile binds to its record; each reading's resolution and rounding
+    /// rule; the drawer's papers and the parts' dimensions, data with their
+    /// records, among them how far above its balance punching the key leaves
+    /// its pin, which the drawn pin gives. Nor the numbers the bench draws
+    /// with and reads nothing by.
     fn frozen() -> Vec<u64> {
         use crate::measure::{jig, seat, walk, weighing};
         use crate::parts::{frame, mounts, verdicts};
@@ -116,7 +118,6 @@ mod tests {
             weighing::STATION_IN_FRONT.to_bits(),
             weighing::FRICTION_SEARCH_G.to_bits(),
             u64::from(weighing::FRICTION_HALVINGS),
-            crate::measure::KR_PROTOCOL_LOAD_G.to_bits(),
             jig::KeyJig::LEVEL.to_bits(),
             crate::G.to_bits(),
             crate::geometry::signed::SECTOR_SLACK.to_bits(),
@@ -134,7 +135,7 @@ mod tests {
         let hash = fnv1a(&frozen());
         assert_eq!(
             (SOLVER_FINGERPRINT, hash),
-            ("statics/1", 0xf2f9_288c_3a9c_cf51),
+            ("statics/1", 0xe3b2_ab79_45c8_0905),
             "a frozen number changed: the hash is now {hash:#018x}. Give the solver a new \
              fingerprint and record the hash beside it."
         );
@@ -156,7 +157,6 @@ mod tests {
             ("STATION_IN_FRONT", weighing::STATION_IN_FRONT),
             ("FRICTION_SEARCH_G", weighing::FRICTION_SEARCH_G),
             ("ROUNDING_TOLERANCE_G", walk::ROUNDING_TOLERANCE_G),
-            ("KR_PROTOCOL_LOAD_G", crate::measure::KR_PROTOCOL_LOAD_G),
             ("KeyJig::LEVEL", jig::KeyJig::LEVEL),
             ("G", crate::G),
         ] {

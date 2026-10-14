@@ -3,4 +3,4 @@
 /**
  * A panel of the bench's page, in the order the page shows them.
  */
-export type Panel = "sheet" | "regulation" | "punchings" | "key" | "weighing" | "frame" | "touch";
+export type Panel = "instrument" | "sheet" | "regulation" | "punchings" | "key" | "weighing" | "frame" | "touch";

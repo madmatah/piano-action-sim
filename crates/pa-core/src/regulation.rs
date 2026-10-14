@@ -12,7 +12,7 @@
 //! cloth's edge or on its own corner, the front pin bottoming in its mortise,
 //! the pin meeting the wood beside its slot. A closed form taking the key top
 //! as level would miss by the key top's height times the square of the
-//! attitude, about 0.02 mm of key height and dip on the default bench, a
+//! attitude, about 0.02 mm of key height and dip on the composite bench, a
 //! quarter of the thinnest paper.
 //!
 //! # Sequential bisection, in the trade's order
@@ -23,8 +23,9 @@
 //! 1. the paper under the balance punching from the key height target, with
 //!    no paper on the front punching, by [`HALVINGS`] halvings of
 //!    [`STACK_SEARCH`];
-//! 2. that paper laid from the drawer ([`papers_for`]), the closest total from
-//!    below;
+//! 2. that paper laid from the frame's drawer
+//!    ([`Drawer::papers_for`](crate::parts::frame::Drawer::papers_for)), the
+//!    closest total from below;
 //! 3. the paper on the front punching from the dip target, the balance stack
 //!    as laid, by the same bisection;
 //! 4. that paper laid the same way, and both readings taken again by the
@@ -75,7 +76,7 @@ use crate::contact::ContactCode;
 use crate::measure::seat::{SeatRefusal, Seating, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::MassProps;
-use crate::parts::frame::{papers_for, FrameDesign, KeyKind};
+use crate::parts::frame::{FrameDesign, KeyKind};
 use crate::parts::mounts::{on_its_frame, KeyMount, OnItsFrame};
 use crate::parts::KeyDesign;
 use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
@@ -351,7 +352,7 @@ impl Regulating<'_> {
             Bisected::Asked(paper) => paper,
             Bisected::Out(outcome) => return Ok(outcome),
         };
-        let balance_papers = papers_for(asked_balance);
+        let balance_papers = self.frame.drawer.papers_for(asked_balance);
         let laid_balance: f64 = balance_papers.iter().sum();
 
         let asked_front = match self.bisect(
@@ -365,7 +366,7 @@ impl Regulating<'_> {
             Bisected::Asked(paper) => paper,
             Bisected::Out(outcome) => return Ok(outcome),
         };
-        let front_papers = papers_for(asked_front);
+        let front_papers = self.frame.drawer.papers_for(asked_front);
 
         let achieved = self.read(&mut statics, &mut report, &balance_papers, &front_papers)?;
         Ok(TargetOutcome::Met {
@@ -756,8 +757,8 @@ mod tests {
     use crate::measure::oracle;
     use crate::measure::seat::Seats;
     use crate::parts::fixtures::{mass_of, TARGETS};
-    use crate::parts::frame::PAPER_THICKNESSES;
     use crate::solve::statics::GAP_TOLERANCE;
+    use crate::test_fixture::PAPER_THICKNESSES;
 
     /// A key on its frame to regulate, owned.
     struct Bench {
@@ -770,10 +771,10 @@ mod tests {
     impl Bench {
         fn standard() -> Self {
             Self {
-                key: KeyDesign::default(),
-                frame: FrameDesign::default(),
+                key: crate::test_fixture::key(),
+                frame: crate::test_fixture::frame(),
                 kind: KeyKind::Natural,
-                protocol: TouchweightProtocol::default(),
+                protocol: crate::test_fixture::protocol(),
             }
         }
 
@@ -1209,10 +1210,10 @@ mod tests {
 
         let key = KeyDesign {
             front_edge: 0.230,
-            ..KeyDesign::default()
+            ..crate::test_fixture::key()
         };
         let mut cut = Bench {
-            frame: FrameDesign::default().placed_under(&key),
+            frame: crate::test_fixture::frame().placed_under(&key),
             key,
             ..Bench::standard()
         };
@@ -1231,7 +1232,10 @@ mod tests {
         ) else {
             panic!("60 mm of key height is reachable on the cut key");
         };
-        let (deep, held_by) = deepest(&cut, total(&papers_for(balance)));
+        let (deep, held_by) = deepest(
+            &cut,
+            total(&crate::test_fixture::drawer().papers_for(balance)),
+        );
         assert!(held_by.contains(&ContactCode::FrontPinInTheMortise));
         assert_eq!(
             cut.solve(asked),

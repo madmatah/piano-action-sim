@@ -2,7 +2,9 @@
 import type { How } from "./How";
 
 /**
- * Where a stretch of an outline comes from.
+ * Where a stretch of an outline comes from: the number of the design that
+ * places it, and how that number is known, by the provenance the
+ * instrument's profile keeps.
  */
 export type Source = { 
 /**
@@ -14,10 +16,15 @@ from: number,
  */
 to: number, 
 /**
- * How it was obtained.
+ * The number that places it, as the engine's validation names it.
+ */
+number: string, 
+/**
+ * How that number is known.
  */
 how: How, 
 /**
- * The record that holds it, a path under `data/params/`.
+ * The file that records or states it, relative to the repository's
+ * root; `null` where it was set on the bench.
  */
-record: string, };
+at: string | null, };

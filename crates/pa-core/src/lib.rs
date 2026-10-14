@@ -25,6 +25,7 @@
 //! | [`regulation`] | the regulation solve: key height and dip targets to the papers laid on the two punchings, by the seated pose itself |
 //! | [`registry`] | what each setting of a part admits, declared beside the part's fields: its quantity, hard range, step, layer and kind |
 //! | [`validate`] | the validation layer: what no part could be built as, refused with the limiting dimension and the shortfall before any solve |
+//! | `test_fixture` | the composite key, its frame, the drawer and Stanwood's protocol as Rust literals, for tests only: the engine starts from no number of its own |
 //!
 //! # What holds today, and what holds it
 //!
@@ -71,6 +72,8 @@ pub mod parts;
 pub mod registry;
 pub mod regulation;
 pub mod solve;
+#[cfg(any(test, feature = "fixtures"))]
+pub mod test_fixture;
 pub mod validate;
 
 /// Standard gravity, m/s². Fixed here so that no caller can vary it silently.

@@ -23,6 +23,7 @@ function actionsOf(c: ControlLayout): readonly ActionCode[] {
     case 'form':
     case 'key_friction_weight':
     case 'button':
+    case 'profile':
       return [c.action]
   }
 }

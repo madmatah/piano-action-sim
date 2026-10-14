@@ -47,4 +47,8 @@ from_lip_mm: number, } | { "action": "set_friction_from_key_friction_weight",
 /**
  * The key friction weight, grams.
  */
-kf_g: number, } | { "action": "reset" };
+kf_g: number, } | { "action": "reset" } | { "action": "select_profile", 
+/**
+ * The profile's name.
+ */
+profile: string, };

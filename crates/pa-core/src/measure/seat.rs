@@ -842,7 +842,8 @@ mod tests {
     /// a static solve converges to.
     fn polyline_resolution() -> f64 {
         let spacing = crate::contact::oracle::SPACING;
-        spacing * spacing / (8.0 * crate::parts::frame::CLOTH_EDGE_RADIUS) + 2.0 * GAP_TOLERANCE
+        spacing * spacing / (8.0 * crate::test_fixture::frame().back_rail_cloth_edge_radius)
+            + 2.0 * GAP_TOLERANCE
     }
 
     /// Consistency: **a key its stops would hold past its balance pin has no

@@ -3,4 +3,4 @@
 /**
  * What a control is worded by: a code the page's catalogue words.
  */
-export type Label = "measuring_point" | "key_height" | "key_dip" | "regulate" | "balance_stack" | "front_stack" | "key_friction_weight" | "balance_felt" | "front_felt" | "front_pin" | "front_mortise" | "back_cloth" | "capstan" | "front_edge" | "capstan_height" | "key_mass" | "front_weight" | "read_at" | "weigh" | "balance_rail" | "front_rail" | "back_rail" | "front_rail_at" | "back_rail_at" | "place" | "weight";
+export type Label = "profile" | "measuring_point" | "key_height" | "key_dip" | "regulate" | "balance_stack" | "front_stack" | "key_friction_weight" | "balance_felt" | "front_felt" | "front_pin" | "front_mortise" | "back_cloth" | "capstan" | "front_edge" | "capstan_height" | "key_mass" | "front_weight" | "read_at" | "weigh" | "balance_rail" | "front_rail" | "back_rail" | "front_rail_at" | "back_rail_at" | "place" | "weight";

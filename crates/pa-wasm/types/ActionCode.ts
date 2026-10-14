@@ -3,4 +3,4 @@
 /**
  * An action by its name, as a page names the one a control runs.
  */
-export type ActionCode = "add_paper" | "remove_paper" | "place_frame_under_key" | "regulate" | "weigh_key" | "set_friction_from_key_friction_weight" | "reset";
+export type ActionCode = "add_paper" | "remove_paper" | "place_frame_under_key" | "regulate" | "weigh_key" | "set_friction_from_key_friction_weight" | "reset" | "select_profile";

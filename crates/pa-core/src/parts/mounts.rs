@@ -170,7 +170,7 @@ const GOLDEN: f64 = 0.618_033_988_749_894_9;
 /// step at most, every step bounded by the stop's margin, and a key lifting
 /// off its punching under a pull turns up on its cloth until it leaves its
 /// balance pin ([`Mounted::leaves_its_pin`]): some 20 mm at its front on
-/// the default frame. A key riding on a front pin standing in its wood,
+/// the composite frame. A key riding on a front pin standing in its wood,
 /// solved from where it stands level on its punching, takes three quarters
 /// of a cap to come to rest with every row that carries it closed
 /// (`a_load_on_a_row_standing_open_is_no_rest`). Four caps hold either
@@ -1041,10 +1041,10 @@ mod tests {
     use crate::contact::{Feature, HowItBears, Piece, Rows, Surface};
     use crate::mechanism::Pose;
     use crate::parts::fixtures::{on_frame, Setup};
-    use crate::parts::frame::{KeyKind, CLOTH_EDGE_RADIUS};
+    use crate::parts::frame::KeyKind;
     use crate::solve::Statics;
 
-    /// The default key regulated on the default frame, as the bench builds
+    /// The composite key regulated on the composite frame, as the bench builds
     /// it.
     fn regulated() -> Setup {
         crate::parts::fixtures::regulated()
@@ -1226,6 +1226,13 @@ mod tests {
         let mut cases: Vec<(String, Setup, Vec<f64>)> = Vec::new();
         let mut benches = assemblies();
         benches.push(("a frame whose stops fight", wedged()));
+        benches.push((
+            "a key with every feature the composite lacks",
+            Setup {
+                key: crate::test_fixture::key_with_every_feature(),
+                ..regulated()
+            },
+        ));
         for (name, a) in benches {
             let (m, ..) = mounted(&a);
             if let Some((top, bottom)) = seated(&a) {
@@ -1554,8 +1561,8 @@ mod tests {
     /// sees it makes this test fail, and the warning goes with it.
     #[test]
     fn a_corner_sunk_past_an_edge_centre_can_have_no_row() {
-        let r = CLOTH_EDGE_RADIUS;
         let mut a = regulated();
+        let r = a.frame.back_rail_cloth_edge_radius;
         let (_, face_front) = cloth_edges(&a);
         a.frame.back_rail += a.key.tail_end - 0.00025 - face_front;
         let (m, key, frame) = mounted(&a);

@@ -85,6 +85,7 @@ const PART: Named<Part> = {
   key_front: 'key front',
   key_button: 'key button',
   back_check_block: 'back check block',
+  capstan_block: 'capstan block',
   key_tail_felt: 'key tail felt',
   capstan: 'capstan',
   front_mortise: 'front mortise',
@@ -241,14 +242,21 @@ const weighingWhy: Worded<WeighingRefusal> = {
     `that front weight on that mass stands the key's centre of mass ${fixed(Math.abs(at_mm), 0)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
 }
 
-/** Two parts that would overlap along the key, as a problem names them. The
- * thinned tail, which ends at or behind the back check block, is said by how
- * far in front of the block's back end it would end: on a key shortened at the
- * back by more than its tail's length, further than the two overlap. */
+/** Two parts that would overlap along the key, as a problem names them. A
+ * felted thinned tail, which ends at or behind every glued block, is said by
+ * how far in front of the block's back end it would end: on a key shortened
+ * at the back by more than its tail's length, further than the two overlap.
+ * A block standing across the step down to a bare tail is said by how far
+ * it reaches past the step; a covering over a bare tail, by how far the tail
+ * runs under it. */
 const OVERLAP = (back: Part, front: Part, by: string): string =>
   back === 'key_tail_felt'
     ? `the key's thinned tail and its felt would end ${by} mm in front of the ${PART[front]}'s back end, and the block is glued on the keystick's full height`
-    : `the ${PART[back]} and the ${PART[front]} would overlap by ${by} mm along the key`
+    : front === 'keystick'
+      ? `the ${PART[back]} would stand ${by} mm across the step down to the key's thinned tail, and a block stands on the one or on the other`
+      : back === 'keystick' && front === 'keytop'
+        ? `the key's thinned tail would run ${by} mm under the keytop, which is glued on the keystick's full height`
+        : `the ${PART[back]} and the ${PART[front]} would overlap by ${by} mm along the key`
 
 /** A setting's unit, as a value in it is written. */
 const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
@@ -281,11 +289,16 @@ const problem: Worded<Problem> = {
     `the capstan would stand behind the back check block: its place is between the block and the key button, and it clears the block ${fixed(by_mm, 1)} mm further forward.`,
   capstan_in_block: ({ block, by_mm }) =>
     `the capstan would stand ${fixed(by_mm, 1)} mm into the ${PART[block]}.`,
+  capstan_off_its_block: ({ by_mm }) =>
+    `the capstan would stand ${fixed(by_mm, 1)} mm off the block it is screwed into.`,
+  capstan_dome_narrower_than_its_head: ({ dome_mm, head_mm }) =>
+    `a dome of ${fixed(dome_mm, 2)} mm cannot cap a capstan head of ${fixed(head_mm, 2)} mm radius.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `a front mortise ${fixed(depth_mm, 1)} mm deep goes through the ${fixed(wood_mm, 1)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
     `the measuring point stands on the covering, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
   unknown_path: ({ path }) => `the bench has no setting ${path}.`,
+  unknown_profile: ({ profile }) => `the bench ships no instrument ${profile}.`,
   set_by_action: ({ path }) => `${path} is not set directly: it is laid, regulated or weighed.`,
   no_such_paper: ({ index, papers }) =>
     `the stack holds ${papers} ${papers === 1 ? 'paper' : 'papers'}: there is no paper ${index + 1} to lift off.`,
@@ -306,6 +319,7 @@ const nothingChanged = (why: EditRefusal): string =>
 
 /** What each control is worded by, by its label's code. */
 const control: { readonly [K in Label]: Labelled } = {
+  profile: { label: 'on the bench' },
   measuring_point: { label: 'measuring point, back from the key’s front lip' },
   key_height: { label: 'key height' },
   key_dip: { label: 'key dip' },
@@ -377,10 +391,25 @@ export const en: Catalogue = {
     bears: 'bears',
     open: 'open, under 1 mm',
     overlapping: 'drawn parts overlap',
+    provenance: 'where each line comes from',
+    how: {
+      measured: 'measured',
+      published: 'published',
+      traced: 'traced from a figure',
+      derived: 'derived by a rule',
+      borrowed: 'borrowed from another instrument',
+      assumed: 'assumed',
+      set_on_the_bench: 'set on the bench',
+    },
+  },
+
+  profile: {
+    composite: 'a composite key, its section measured, its front and capstan assumed',
+    hirschkorn: 'Hirschkorn’s key, Boston GP-178, note 52, on real felts',
   },
 
   faults: {
-    heading: 'This is not a keyboard anybody could build.',
+    heading: 'This frame does not fit this key.',
     placement:
       'The rails are placed under the key when the frame is built, and then they stay bolted where they are. Change the key afterwards and they do not follow — a real keybed does not either. *Place the frame under the key*, under The frame, unbolts them and stands them where this key needs them.',
   },
@@ -407,6 +436,7 @@ export const en: Catalogue = {
     remove_paper: nothingChanged,
     place_frame_under_key: nothingChanged,
     reset: nothingChanged,
+    select_profile: nothingChanged,
     regulate: (why) => `Refused, the papers left as they were: ${word(editRefusal, why.code, why)}`,
     weigh_key: (why) =>
       `Refused, the key's weighing left as it was: ${word(editRefusal, why.code, why)}`,
@@ -428,9 +458,11 @@ export const en: Catalogue = {
     place_frame_under_key: null,
     set_friction_from_key_friction_weight: null,
     reset: null,
+    select_profile: null,
   },
 
   panel: {
+    instrument: 'The instrument',
     sheet: 'Weighing sheet',
     regulation: 'Regulation',
     punchings: 'Punchings and cloth',
@@ -542,7 +574,9 @@ export const en: Catalogue = {
       `Not weighed yet: its ${massG === null ? 'mass' : `${to(massG, MASS_G)} g`}, and where its centre of mass stands, are derived from its volume at an assumed wood density.`,
     weighed: (massG, frontWeightG, fromLipMm) =>
       `Weighed: ${to(massG, MASS_G)} g, its front weight ${to(frontWeightG, MASS_G)} g read ${to(fromLipMm, FROM_LIP_MM)} mm back from the lip.`,
-    note: "The **key mass** is the whole key on a scale, capstan and leads included: the weight gravity pulls at its centre of mass. The **front weight** is the levelled key's weight on the jig's scale, the key turning on its balance pin and the roller under the measuring point; times the arm it was read on, it is the key's static moment about the pin, which places its centre of mass along the key. **Read at** is where the roller stood, back from the covering's lip: the arm it was read on. The bench keeps that static moment, so moving the measuring point afterwards, or changing the key, reads the same moment on another arm, and the front weight on the sheet follows by the lever. The height of the centre of mass, which no scale gives, stays an estimate from the key's volume: it acts only through the key's tilt on its frame, a few hundredths of a gram of down weight per millimetre, and the sheet marks every reading it reaches.",
+    published: (massG) =>
+      `As published: ${massG === null ? 'its mass' : `${to(massG, MASS_G)} g`}, and its centre of mass, its height included, as its source gives them.`,
+    note: "The **key mass** is the whole key on a scale, capstan and leads included: the weight gravity pulls at its centre of mass. The **front weight** is the levelled key's weight on the jig's scale, the key turning on its balance pin and the roller under the measuring point; times the arm it was read on, it is the key's static moment about the pin, which places its centre of mass along the key. **Read at** is where the roller stood, back from the covering's lip: the arm it was read on. The bench keeps that static moment, so moving the measuring point afterwards, or changing the key, reads the same moment on another arm, and the front weight on the sheet follows by the lever. The height of the centre of mass, which no scale gives, stays what the key came with: published, where its source gives one, or an estimate from the key's volume, which the sheet marks on every reading it reaches. It acts only through the key's tilt on its frame, a few hundredths of a gram of down weight per millimetre.",
   },
 
   frame: {

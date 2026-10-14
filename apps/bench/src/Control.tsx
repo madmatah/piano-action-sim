@@ -31,7 +31,7 @@ import type {
 } from '@pas/wasm/types'
 import { Fragment, type ReactNode, useState } from 'react'
 import { type Arguments, reading } from './bench'
-import { numberAt, numbersAt, param } from './document'
+import { numberAt, numbersAt, param, textAt } from './document'
 import { typedNumber } from './fields'
 import { decimals, LENGTH_MM, RESOLUTION } from './format'
 import { t, unitBeside, word } from './i18n'
@@ -344,6 +344,44 @@ function KeyFrictionWeight({
 }
 
 /**
+ * What is on the bench: one of the profiles the engine ships, by its name,
+ * worded by the catalogue where it words it. Choosing another runs the
+ * action that puts that profile's instrument on the bench, as it arrives.
+ *
+ * One button per profile, each name wrapping in full under the others: a
+ * profile's name says where its numbers come from, and a drop-down list cut
+ * it at the panel's edge.
+ */
+function ProfileChoice({
+  c,
+  read,
+  edits,
+}: {
+  c: Extract<ControlLayout, { control: 'profile' }>
+  read: Read
+  edits: Edits
+}) {
+  const on = textAt(read.settings, c.at)
+  return (
+    <fieldset className="choice" data-action={c.action} data-profile={on ?? undefined}>
+      <legend>{t.control[c.label].label}</legend>
+      {c.options.map((name) => (
+        <label key={name} data-option={name}>
+          <input
+            type="radio"
+            name={c.action}
+            value={name}
+            checked={on === name}
+            onChange={() => edits.act(c.action, { [c.argument]: name })}
+          />
+          <span>{t.profile[name] ?? name}</span>
+        </label>
+      ))}
+    </fieldset>
+  )
+}
+
+/**
  * One control of the page, whichever the engine describes, followed by the
  * edit of its the engine refused last, if the last refused is one of its.
  */
@@ -369,6 +407,8 @@ export function Control({
         <Form c={c} read={read} edits={edits} answer={answer} />
       ) : c.control === 'key_friction_weight' ? (
         <KeyFrictionWeight c={c} read={read} edits={edits} />
+      ) : c.control === 'profile' ? (
+        <ProfileChoice c={c} read={read} edits={edits} />
       ) : (
         <button
           type="button"

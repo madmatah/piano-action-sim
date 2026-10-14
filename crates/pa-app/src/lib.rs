@@ -7,9 +7,13 @@
 //! One use case lives here: [`instrument`], the single-key weighing bench as
 //! an application composes it, every setting set by its path and every
 //! operation run as an action, each edit validated before any solve, logged
-//! and replayable, its state hashed. [`registry`] composes the domain's
-//! declarations of what each setting admits into the instrument's paths, with
-//! the trade unit in each path's name, and the page that presents them. The
+//! and replayable, its state hashed. An instrument is built from a
+//! [`profile`], which binds every number it starts from to a record in
+//! `data/params/` or to an assumption stated with its reason, both compiled
+//! in; the domain starts from no number of its own. [`registry`] composes
+//! the domain's declarations of what each setting admits into the
+//! instrument's paths, with the trade unit in each path's name, and the page
+//! that presents them. The
 //! regulation solve the instrument calls, which turns trade targets into
 //! punching stacks, is domain code: [`pa_core::regulation`]. The bench's
 //! composite key has no measured mass until it is weighed whole;
@@ -34,5 +38,8 @@
 pub mod boundary;
 pub mod composite_key;
 pub mod golden;
+#[cfg(test)]
+mod hirschkorn;
 pub mod instrument;
+pub mod profile;
 pub mod registry;

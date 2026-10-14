@@ -358,7 +358,7 @@ fn centre(
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Material, PartCode, Provenance, SurfaceRef};
+    use super::super::{Material, PartCode, SurfaceRef};
     use super::*;
 
     fn polygon(points: &[(f64, f64)]) -> Vec<Seg> {
@@ -382,7 +382,7 @@ mod tests {
             sweep: Sweep::Extruded { width: 0.02 },
             role,
             material: Material::KeyWood,
-            sources: vec![(0..n, Provenance::Assumed("a test"))],
+            placed_by: vec![(0..n, "a test")],
         }
     }
 

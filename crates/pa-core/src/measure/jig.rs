@@ -32,7 +32,7 @@
 //! (`docs/FOUNDATIONS.md` §5.2 a). And its pivot turns without friction, which
 //! is an assumption: the real key turns on a pin through its bushings.
 
-use super::{TouchweightProtocol, KR_PROTOCOL_LOAD_G};
+use super::TouchweightProtocol;
 use crate::geometry::Point;
 use crate::mechanism::{
     CoordId, MassProps, MaterialPoint, Mechanism, PointLoad, Prescribed, Problem,
@@ -115,6 +115,8 @@ pub struct KeyJig {
     measuring_point: Point,
     /// The capstan's contact point, in the key's frame.
     capstan: Point,
+    /// The load the key weight ratio is read with, grams: the protocol's.
+    key_ratio_load_g: f64,
 }
 
 impl KeyJig {
@@ -139,6 +141,7 @@ impl KeyJig {
             mount: mounts::jig(mass)?,
             measuring_point: protocol.measuring_point_on_key(key),
             capstan: key.capstan_contact(),
+            key_ratio_load_g: protocol.key_ratio_load_g,
         })
     }
 
@@ -197,7 +200,7 @@ impl KeyJig {
     /// contact point, grams. Negative, as the source's worked example reads
     /// it: the load is behind the pin, and the front lifts off the roller.
     pub fn key_ratio_reading_g(&self) -> Result<f64, JigRefusal> {
-        self.tared_reading_g(&[self.weight_on_the_capstan(KR_PROTOCOL_LOAD_G)])
+        self.tared_reading_g(&[self.weight_on_the_capstan(self.key_ratio_load_g)])
     }
 
     /// **Key weight ratio**, force convention, dimensionless: the tared
@@ -205,16 +208,16 @@ impl KeyJig {
     /// *"If the scale reads −5.5 the Key Weight Ratio (KR) would be 0.55"*
     /// [V, Stanwood 2000, p. 22].
     pub fn key_ratio(&self) -> Result<f64, JigRefusal> {
-        Ok(-self.key_ratio_reading_g()? / KR_PROTOCOL_LOAD_G)
+        Ok(-self.key_ratio_reading_g()? / self.key_ratio_load_g)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::oracle::KeyWeighing;
-    use super::super::MEASURING_POINT_HALF_INCH;
     use super::*;
     use crate::parts::KeyMass;
+    use crate::test_fixture::{KEY_RATIO_LOAD_G, MEASURING_POINT_HALF_INCH};
 
     /// The key's mass properties from the volume model, as the bench's
     /// composite key takes them.
@@ -226,10 +229,10 @@ mod tests {
         }
     }
 
-    /// The default key weighed whole: `mass_g` grams, and a front weight of
+    /// The composite key weighed whole: `mass_g` grams, and a front weight of
     /// `front_weight_g` grams read 13 mm back from its lip.
     fn weighed(mass_g: f64, front_weight_g: f64) -> MassProps {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         KeyMass::weighed(&key, mass_g, front_weight_g, 0.013)
             .expect("a key's weighing")
             .props(mass_of(&key))
@@ -266,37 +269,38 @@ mod tests {
     fn keys() -> Vec<(KeyDesign, TouchweightProtocol, MassProps)> {
         let protocol = |from_lip: f64| TouchweightProtocol {
             measuring_point_from_lip: from_lip,
+            ..crate::test_fixture::protocol()
         };
-        let default = KeyDesign::default();
+        let default = crate::test_fixture::key();
         let by_volume = |key: KeyDesign, protocol| {
             let mass = mass_of(&key);
             (key, protocol, mass)
         };
         vec![
-            by_volume(default.clone(), TouchweightProtocol::default()),
+            by_volume(default.clone(), crate::test_fixture::protocol()),
             (
                 default.clone(),
-                TouchweightProtocol::default(),
+                crate::test_fixture::protocol(),
                 weighed(141.1, 21.0),
             ),
             (
                 default.clone(),
-                TouchweightProtocol::default(),
+                crate::test_fixture::protocol(),
                 weighed(151.1, -8.1),
             ),
             by_volume(
                 KeyDesign {
                     capstan: -0.110,
-                    ..KeyDesign::default()
+                    ..crate::test_fixture::key()
                 },
-                TouchweightProtocol::default(),
+                crate::test_fixture::protocol(),
             ),
             by_volume(
                 KeyDesign {
                     front_edge: 0.240,
-                    ..KeyDesign::default()
+                    ..crate::test_fixture::key()
                 },
-                TouchweightProtocol::default(),
+                crate::test_fixture::protocol(),
             ),
             by_volume(default.clone(), protocol(0.0)),
             by_volume(default.clone(), protocol(MEASURING_POINT_HALF_INCH)),
@@ -331,7 +335,7 @@ mod tests {
             // that of the larger of them, not of the difference.
             let tared = jig.key_ratio_reading_g().expect("a ratio");
             let with_load = jig
-                .reading_g(&[jig.weight_on_the_capstan(KR_PROTOCOL_LOAD_G)])
+                .reading_g(&[jig.weight_on_the_capstan(KEY_RATIO_LOAD_G)])
                 .unwrap();
             let magnitude = fw.abs().max(with_load.abs()).max(tared.abs());
             assert!(
@@ -341,7 +345,7 @@ mod tests {
             );
             let kr = jig.key_ratio().unwrap();
             assert!(
-                agree(kr, oracle.key_ratio(), magnitude / KR_PROTOCOL_LOAD_G),
+                agree(kr, oracle.key_ratio(), magnitude / KEY_RATIO_LOAD_G),
                 "key ratio: jig {kr}, closed form {}",
                 oracle.key_ratio()
             );
@@ -351,19 +355,22 @@ mod tests {
     /// Level 4: the key ratio is the ratio of the two arms, and lands in the
     /// published band.
     ///
-    /// Worked from the default key's dimensions, not read off the code: the
+    /// Worked from the composite key's dimensions, not read off the code: the
     /// capstan 129.5 mm behind the balance pin, the measuring point 13 mm
     /// back from the covering's lip, which stands 2 mm proud of the key front
     /// at 258 mm, so 247 mm in front. 0.524, inside the 0.50 to 0.60 band of a
     /// natural.
     #[test]
     fn the_key_ratio_is_the_arm_ratio_and_lands_in_the_published_band() {
-        let jig = jig(&KeyDesign::default(), &TouchweightProtocol::default());
+        let jig = jig(
+            &crate::test_fixture::key(),
+            &crate::test_fixture::protocol(),
+        );
         let expected = 0.1295 / (0.258 + 0.002 - 0.013);
         let kr = jig.key_ratio().unwrap();
         let fw = jig.front_weight_g().unwrap();
         assert!(
-            agree(kr, expected, fw.abs() / KR_PROTOCOL_LOAD_G),
+            agree(kr, expected, fw.abs() / KEY_RATIO_LOAD_G),
             "{kr} against {expected}"
         );
         assert!(
@@ -382,13 +389,13 @@ mod tests {
     /// capstan 132 mm behind it, has that ratio; the jig must read −5.5 g.
     #[test]
     fn the_jig_reproduces_the_published_worked_example() {
-        let protocol = TouchweightProtocol::default();
+        let protocol = crate::test_fixture::protocol();
         let key = KeyDesign {
             // The lip 2 mm proud of the key front, the point 13 mm back from
             // the lip: 240 mm.
             front_edge: 0.240 + 0.013 - 0.002,
             capstan: -0.240 * 0.55,
-            ..KeyDesign::default()
+            ..crate::test_fixture::key()
         };
         let jig = jig(&key, &protocol);
         let fw = jig.front_weight_g().unwrap().abs();
@@ -397,11 +404,7 @@ mod tests {
             agree(reading, -5.5, fw),
             "the jig must read −5.5 g, read {reading}"
         );
-        assert!(agree(
-            jig.key_ratio().unwrap(),
-            0.55,
-            fw / KR_PROTOCOL_LOAD_G
-        ));
+        assert!(agree(jig.key_ratio().unwrap(), 0.55, fw / KEY_RATIO_LOAD_G));
     }
 
     /// Level 4: **front weight is read at the protocol's datum, and the datum
@@ -415,10 +418,11 @@ mod tests {
     /// 13 mm.
     #[test]
     fn front_weight_is_read_at_the_protocol_datum_and_the_datum_matters() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let at = |from_lip: f64| {
             let protocol = TouchweightProtocol {
                 measuring_point_from_lip: from_lip,
+                ..crate::test_fixture::protocol()
             };
             let arm = protocol.measuring_point(&key);
             (jig(&key, &protocol).front_weight_g().unwrap(), arm)
@@ -454,8 +458,8 @@ mod tests {
     /// reads nothing, and one behind it lifts the front off the roller.
     #[test]
     fn front_weight_and_key_ratio_are_one_reading() {
-        let protocol = TouchweightProtocol::default();
-        let key = KeyDesign::default();
+        let protocol = crate::test_fixture::protocol();
+        let key = crate::test_fixture::key();
         let jig = jig(&key, &protocol);
         let fw = jig.front_weight_g().unwrap();
 
@@ -492,8 +496,8 @@ mod tests {
     /// and a key nobody weighed, read the same ratio.
     #[test]
     fn the_tare_takes_the_key_out_of_the_ratio() {
-        let protocol = TouchweightProtocol::default();
-        let key = KeyDesign::default();
+        let protocol = crate::test_fixture::protocol();
+        let key = crate::test_fixture::key();
         let light = jig(&key, &protocol);
         let heavy = KeyJig::new(
             &key,
@@ -507,7 +511,7 @@ mod tests {
         let unweighed = KeyJig::new(&key, &protocol, None).unwrap();
 
         let kr = light.key_ratio().unwrap();
-        let magnitude = heavy.front_weight_g().unwrap().abs() / KR_PROTOCOL_LOAD_G;
+        let magnitude = heavy.front_weight_g().unwrap().abs() / KEY_RATIO_LOAD_G;
         assert!(agree(heavy.key_ratio().unwrap(), kr, magnitude));
         assert!(agree(unweighed.key_ratio().unwrap(), kr, magnitude));
         assert_eq!(unweighed.front_weight_g(), Err(JigRefusal::KeyNotWeighed));
@@ -518,7 +522,7 @@ mod tests {
     /// angle zero.
     #[test]
     fn level_on_the_jig_is_the_covering_horizontal() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         let mut parts = Vec::new();
         let ranges = key.parts(crate::mechanism::BodyId(1), &mut parts);
         // From the lip anchor back along the keytop's top: named points, the
@@ -536,10 +540,11 @@ mod tests {
     /// reading is refused, never divided by a zero arm.
     #[test]
     fn a_scale_not_in_front_of_the_pin_is_refused() {
-        let key = KeyDesign::default();
+        let key = crate::test_fixture::key();
         for from_lip in [key.lip(), key.lip() + 0.010] {
             let protocol = TouchweightProtocol {
                 measuring_point_from_lip: from_lip,
+                ..crate::test_fixture::protocol()
             };
             assert_eq!(
                 jig(&key, &protocol).front_weight_g(),

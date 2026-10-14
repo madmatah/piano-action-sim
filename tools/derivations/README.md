@@ -4,14 +4,22 @@ Every number marked `[E]` in `docs/FOUNDATIONS.md` comes from a script here, and
 its marker names the script by number: `[E, 10]` is
 `10-hirschkorn-assembled-at-rest.py`. A number whose derivation lives only
 in prose is not reproducible, so a computed number without a script here does
-not carry `[E]`.
+not carry `[E]`. A value an instrument starts from that is derived by a rule
+short enough to check in one's head (the composite key's tail end, its key's
+overall length laid back from its lip) states the rule beside it, in its
+record or its profile (`data/profiles/`), marked `E`; one a reader could not
+check that way is a script here, which the record or the profile names.
 
 The scripts are pure arithmetic on the standard library, so each runs anywhere
-with `python3 -I <script>`. Each one states its sources at the top. Script 10
-reads every value of Hirschkorn's it uses from
+with `python3 -I <script>`. Each one states its sources at the top. Scripts 10
+and 11 read every value of Hirschkorn's they use from
 `data/params/hirschkorn-boston-gp178-note52.json`, with `json`, by a path
-relative to itself, so the record and the script cannot drift apart; the other
-scripts type their inputs.
+relative to themselves, so the record and the scripts cannot drift apart;
+script 11 reads the pixels it fits from `data/params/hirschkorn-key-outline.json`
+and his profile from `data/profiles/hirschkorn.json` the same way, and fails
+where the numbers that record gives are not the ones its pixels give, or the
+numbers that profile states by a rule are not the ones the rule gives; the
+other scripts type their inputs.
 
 | Script | What it establishes |
 |---|---|
@@ -21,7 +29,8 @@ scripts type their inputs.
 | `06-alpha31-argument-check.py` | three figures of the research annexes, recomputed: hammer travel from a constant ratio once aftertouch is taken off the dip; the annex's friction sum, which leaves out two of the five pivots; and two compute-cost figures that cannot both hold |
 | `07-regularized-friction-check.py` | what a regularized joint friction costs (a non-physical threshold speed, and a tiny step only if integrated explicitly); that with one damping constant the additive and the multiplicative contact damping disagree away from the penetration it was calibrated at, so the clamp is the remedy; and the static friction peaks of Hirschkorn's sliding contacts, found by maximising his law |
 | `08-peak-force-plausibility.py` | the hammer-head acceleration a given force at the jack/knuckle implies, with the arm taken as the moment arm of the contact normal |
-| `10-hirschkorn-assembled-at-rest.py` | Hirschkorn's action assembled at rest with every frame origin at its own pivot: the rest pose that closes, every gap there, the mass matrix, the lever arms, the effective mass along each contact normal, the reflected masses on the two sides of the jack/knuckle contact, and the highest linearised mode at assumed contact forces |
+| `10-hirschkorn-assembled-at-rest.py` | Hirschkorn's action assembled at rest with every frame origin at its own pivot: the rest pose that closes, every gap there, the mass matrix, the lever arms, the effective mass along each contact normal, the reflected masses on the two sides of the jack/knuckle contact, the highest linearised mode at assumed contact forces, and the key between its two stops on his rigid frame, its attitudes at rest and at the bottom and the dip at Pk2, which the bench's cross-implementation test reads |
+| `11-hirschkorn-key-outline.py` | Hirschkorn's key traced from his Figure A.1: the similarity fitted on Pg1, Pk2 and Pk5, the residuals at the other markers as the trace's uncertainty, every feature of the key's outline in his key frame and the numbers his profile binds from them (`[E, 11]`); the figure's centre-of-mass marker against Table A.1, which governs the mass, and Pk4's marker along its line; the front weight, key weight ratio and key friction weight his numbers give in closed form at the bench's measuring point; his frame between its stops on his rounds and on the flat felts his profile draws, which reproduce his dip at Pk2 to 0.105 mm; and the rail heights and the front mortise's place his profile states by a rule from his frame, which it fails on where they are not its own |
 
 ## The trap this directory exists to avoid
 

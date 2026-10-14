@@ -68,7 +68,7 @@
       "unit": "mm",
       "reliability": "V",
       "what_for": "Something for the back check wire to be driven into, where the hammer's tail arrives.",
-      "note": "Its length is measured; its place along the key is not. The engine places the block from the balance pin, because the action fixes where the hammer's tail falls and the key's length does not: a key lengthened at the back keeps its block where it stands. The default key's block has its back end 220 mm behind the balance pin, where the tail measured on this key ends (the tail beginning immediately behind the block, tail_length below): 500 mm from the key's end to the covering's lip, the lip 260 mm in front of the pin, put the key's end 240 mm behind it, and 20 mm of tail end 220 mm behind it. Derived, not measured, and the 260 mm rests on the default key front of 258 mm, which has no record (README.md)."
+      "note": "Its length is measured; its place along the key is not. The engine places the block from the balance pin, because the action fixes where the hammer's tail falls and the key's length does not: a key lengthened at the back keeps its block where it stands. The composite key's block has its back end 220 mm behind the balance pin, where the tail measured on this key ends (the tail beginning immediately behind the block, tail_length below): 500 mm from the key's end to the covering's lip, the lip 260 mm in front of the pin, put the key's end 240 mm behind it, and 20 mm of tail end 220 mm behind it. Derived, not measured, and the 260 mm rests on the composite key front of 258 mm, which has no record: data/profiles/composite.json states it as an assumption."
     },
     {
       "name": "back_check_block_height",
@@ -83,7 +83,7 @@
       "unit": "mm",
       "reliability": "V",
       "what_for": "The tail is cut down to set the height the damper system bears at. It begins immediately behind the back check block.",
-      "note": "Immediately behind the block is what this key shows, and the default key keeps it. It is not a rule of the engine: a key whose tail ends further back carries the keystick's full height between the tail and the block, and a tail running on under the block is refused."
+      "note": "Immediately behind the block is what this key shows, and the composite key keeps it. It is not a rule of the engine: a key whose tail ends further back carries the keystick's full height between the tail and the block, and a tail running on under the block is refused."
     },
     {
       "name": "tail_thickness",
@@ -155,9 +155,9 @@
   ],
   "still_to_measure": [
     "Where the capsule sits along the key. It depends on whether the key is a natural or a sharp, and belongs with the balance rail rather than here.",
-    "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. This is now the measurement worth taking, and the one to ask for first. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the default key beds flat, and the default currently holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
+    "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. This is now the measurement worth taking, and the one to ask for first. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the composite key beds flat, and the composite key holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
     "The front mortise: how far back from the key's front end it is cut, and how long the slot is along the key. Both are [E] above, and the second is the tolerance a frame design is judged against.",
-    "Where the back check block stands along the key, as a distance from the balance pin to its back end. The default's 220 mm is where the measured tail ends, derived and not measured.",
+    "Where the back check block stands along the key, as a distance from the balance pin to its back end. The composite key's 220 mm is where the measured tail ends, derived and not measured.",
     "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm the key bears at and meets the targets on each, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.049 degrees and leaves key height and dip on their targets, within the paper the drawer lays them in: a back rail's position is forgiving. The bound is real and the number is not critical."
   ],
   "not_weighed_on_purpose": "A single key's mass would not transfer: the owner notes that keys differ across the keyboard in shape and in how much wood they carry. So the model's mass follows from the profile, and the profile is still missing the hollow - which makes the figure an over-estimate by exactly the wood not yet taken out."

@@ -14,7 +14,9 @@
         "!.turbo/**",
         "$TURBO_ROOT$/Cargo.toml",
         "$TURBO_ROOT$/Cargo.lock",
-        "$TURBO_ROOT$/rust-toolchain.toml"
+        "$TURBO_ROOT$/rust-toolchain.toml",
+        "$TURBO_ROOT$/data/params/**",
+        "$TURBO_ROOT$/data/profiles/**"
       ],
       "outputs": ["pkg/**"]
     },
