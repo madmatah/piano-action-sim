@@ -13,6 +13,13 @@
 //! | key friction weight, zeroed on the jig | Stanwood's: the front weight zeroed on the levelled jig by a temporary weight, the key back on its frame, D | up to the gram |
 //! | key friction weight, zeroed on the frame | the temporary weight cancelling the key's balance where it rests on its frame, D | up to the gram |
 //!
+//! The band is read apart from the sheet, when it is shown
+//! ([`Weighing::band`]): the driven sweep from the top seat to the bottom
+//! one and back ([`super::sweep`]), and on it the down weight, the greatest
+//! force of its down curve, up to the gram, and the up weight, the least of
+//! its up curve, down to it: D and U a second time, by a procedure that
+//! shares nothing with the walk but the seats and the static solve.
+//!
 //! # The two key friction weights
 //!
 //! Stanwood zeroes the front weight on the levelled jig, with temporary
@@ -49,10 +56,11 @@
 
 use super::jig::{JigRefusal, KeyJig};
 use super::measurement::{
-    Bases, Conditions, Measurement, Mount, Preparation, ProcedureId, Rounding, TemporaryWeight,
-    Trust, Unit, Walked, Zeroed,
+    Bases, Conditions, Measurement, Mount, Preparation, ProcedureId, Rounding, Swept,
+    TemporaryWeight, Trust, Unit, Walked, Zeroed,
 };
 use super::seat::{SeatRefusal, Seating, Seats, SEAT_MARGIN};
+use super::sweep::{Band, Sample, SweepRefusal};
 use super::walk::{Breakaway, Stroke, WalkRefusal, HALVINGS, ROUNDING_TOLERANCE_G, STEP_G};
 use crate::geometry::Point;
 use crate::mechanism::{AxisFriction, MaterialPoint, PointLoad, Problem};
@@ -103,6 +111,8 @@ pub enum Refused {
     Seat(SeatRefusal),
     /// The walk cannot be taken to the end of the key's stroke.
     Walk(WalkRefusal),
+    /// The sweep cannot be taken through the key's stroke.
+    Sweep(SweepRefusal),
     /// No top of the key stands where the temporary weight goes, metres
     /// along the key.
     NoKeyTopAtTheStation {
@@ -154,6 +164,18 @@ impl Sheet {
             .find(|r| r.procedure == procedure)
             .map(|r| &r.result)
     }
+}
+
+/// The band, and the down and up weights read on it ([`Weighing::band`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Banded {
+    /// The band: the force on the measuring point through the stroke, down
+    /// and back.
+    pub band: Band,
+    /// The down weight read on it, [`ProcedureId::DownWeightOnTheBand`].
+    pub down_weight: Measurement,
+    /// The up weight read on it, [`ProcedureId::UpWeightOnTheBand`].
+    pub up_weight: Measurement,
 }
 
 /// The bushings a key friction weight reads on ([`Weighing::bushings_reading`]).
@@ -528,6 +550,68 @@ impl Weighing<'_> {
             },
             seats.top.report.and(seats.bottom.report).and(walk.report),
         )
+    }
+
+    /// **The band**: the key seated, then swept from its top seat to its
+    /// bottom one and back ([`super::sweep`]), and on it the **down weight**,
+    /// the greatest force of the down curve, up to the gram, and the **up
+    /// weight**, the least of the up curve, down to it: read as the walk's
+    /// are, a value within a walk's bracket of a whole gram read as that
+    /// gram, so that the two procedures are read alike. A key nobody has
+    /// weighed is refused, as the walks are. Its solves are the seats' and
+    /// the sweep's.
+    pub fn band(&self, statics: &mut Statics) -> Result<Banded, Refused> {
+        self.weighed()?;
+        let seating = self.seating(&[]);
+        let seats = seating.seats(statics).map_err(Refused::Seat)?;
+        let band = seating.sweep(statics, &seats).map_err(Refused::Sweep)?;
+        let samples = u32::try_from(band.down.len()).unwrap_or(u32::MAX);
+        let report = seats.top.report.and(seats.bottom.report).and(band.report);
+        let read = |procedure, extreme: &Sample, rounding, held_by: &[_], press_n| {
+            self.measured(
+                procedure,
+                extreme.grams,
+                Unit::Gram,
+                1.0,
+                1.0,
+                rounding,
+                ROUNDING_TOLERANCE_G,
+                Conditions {
+                    held_by: held_by.to_vec(),
+                    preparation: Some(Preparation {
+                        capstan_load_n: seats.capstan_load,
+                        press_n,
+                    }),
+                    sweep: Some(Swept {
+                        step: band.step,
+                        samples,
+                        window: band.window,
+                        at: extreme.travel,
+                    }),
+                    ..self.on_its_frame()
+                },
+                report,
+            )
+        };
+        let down_weight = read(
+            ProcedureId::DownWeightOnTheBand,
+            &band.down_weight,
+            Rounding::Up,
+            &seats.top.held_by,
+            0.0,
+        );
+        let up_weight = read(
+            ProcedureId::UpWeightOnTheBand,
+            &band.up_weight,
+            Rounding::Down,
+            &seats.bottom.held_by,
+            seats.press,
+        );
+        Ok(Banded {
+            band,
+            down_weight,
+            up_weight,
+        })
     }
 
     /// **Key friction weight, zeroed on the jig**: Stanwood's protocol. The
@@ -1464,6 +1548,11 @@ mod tests {
                 "{p:?}"
             );
         }
+        assert_eq!(
+            b.weighing().band(&mut Statics::new()),
+            Err(Refused::KeyNotWeighed),
+            "the band reads the key's own weight, as the walks do"
+        );
     }
 
     /// Level 0, consistency: **every reader of the measuring point follows
@@ -1471,9 +1560,12 @@ mod tests {
     /// that a reading still taken at a stale 13 mm cannot pass by agreeing
     /// with the default: the jig's front weight is the key's moment over the
     /// arm to the covering's lip less half an inch, the ratio the capstan's
-    /// arm over the same; and D is the band's edge at the top seat with the
+    /// arm over the same; D is the band's edge at the top seat with the
     /// weight centred there, by hand, the point worked from the key's own
-    /// fields.
+    /// fields; and the band's sweep reads its first step off the top seat
+    /// there too, by hand at the attitude it holds, to rounding: a few
+    /// products of the key's weight and arms under 0.3 m, over an arm of at
+    /// least 0.2 m, 64 units in their last place.
     #[test]
     fn every_reader_of_the_measuring_point_follows_the_protocol() {
         let mut a = regulated();
@@ -1504,6 +1596,29 @@ mod tests {
             (d - by_hand.down_g).abs() <= resolution(),
             "D {d} g, by hand at the half inch {} g",
             by_hand.down_g
+        );
+        let banded = b
+            .weighing()
+            .band(&mut Statics::new())
+            .expect("the band is drawn");
+        let first = banded.band.down[0];
+        let by_hand = band_at(
+            &[(mass.mass, mass.com)],
+            point,
+            b.friction.bound_n_m,
+            first.angle,
+        );
+        let rounding =
+            64.0 * f64::EPSILON * 1000.0 * (mass.mass * G * 0.3 + b.friction.bound_n_m) / (G * 0.2);
+        assert!(
+            (first.grams - by_hand.down_g).abs() <= rounding,
+            "the band's first step {} g, by hand at the half inch {} g",
+            first.grams,
+            by_hand.down_g
+        );
+        assert_eq!(
+            banded.down_weight.conditions.measuring_point_from_lip_m,
+            MEASURING_POINT_HALF_INCH
         );
     }
 

@@ -87,3 +87,19 @@ papers.front.2 8e-5 0x3f14f8b588e368f1
 pose.sin_angle 8.888888877182992e-5 0x3f174d3b7b238c34
 pose.measuring_point.x 0.2470023101353056 0x3fcf9dc58e08a6b0
 pose.measuring_point.y 0.05477804434175731 0x3fac0bde29f92ed7
+band.down_weight_on_the_band.value -0.21986906456860036 0xbfcc24ab64dcb441
+band.down_weight_on_the_band.shown 0.0 0x0000000000000000
+band.down_weight_on_the_band.unit g
+band.down_weight_on_the_band.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
+band.down_weight_on_the_band.fingerprint statics/1
+band.down_weight_on_the_band.sweep.samples 195
+band.down_weight_on_the_band.sweep.window 0.009775470551257354 0x3f8405297290b6f0
+band.down_weight_on_the_band.sweep.at 4.999999999999449e-5 0x3f0a36e2eb1c4000
+band.up_weight_on_the_band.value -12.480905462324545 0xc028f6393da24da9
+band.up_weight_on_the_band.shown -13.0 0xc02a000000000000
+band.up_weight_on_the_band.unit g
+band.up_weight_on_the_band.trust indicative key_mass,centre_of_mass_height,key_friction,geometry
+band.up_weight_on_the_band.fingerprint statics/1
+band.up_weight_on_the_band.sweep.samples 195
+band.up_weight_on_the_band.sweep.window 0.009775470551257354 0x3f8405297290b6f0
+band.up_weight_on_the_band.sweep.at 0.009749999999999995 0x3f83f7ced9168728

@@ -20,6 +20,7 @@
 //! | [`measure::jig`] | Stanwood's front weight jig, run on the mechanism |
 //! | [`measure::seat`] | the seated pose, from which key height and dip are read |
 //! | [`measure::walk`] | the breakaway walk, from which down and up weight are read |
+//! | [`measure::sweep`] | the driven sweep, the key's angle held through its stroke down and back: the band, and down and up weight read on it a second way |
 //! | [`measure::weighing`] | every reading of the weighing sheet, by its procedure, and the bushings a typed key friction weight reads on, by Stanwood's protocol inverted |
 //! | [`measure::measurement`] | a reading with its value, what the trade reads it as, its conditions and its trust |
 //! | [`regulation`] | the regulation solve: key height and dip targets to the papers laid on the two punchings, by the seated pose itself |
@@ -47,9 +48,9 @@
 //!    they give beside the targets, or the target refused with what keeps it
 //!    out of reach.
 //! 3. **Every reading is a protocol run on the model**: the jig, the seated
-//!    pose and the breakaway walk ([`measure::weighing`]), each coming back
-//!    as a [`measure::measurement::Measurement`] or refused with its reason.
-//!    Their closed forms are test oracles only.
+//!    pose, the breakaway walk and the driven sweep ([`measure::weighing`]),
+//!    each coming back as a [`measure::measurement::Measurement`] or refused
+//!    with its reason. Their closed forms are test oracles only.
 //! 4. **Dry friction at the key's centres is set-valued**: an interval of
 //!    admissible torque, never a regularized law, a box row of the static
 //!    solve ([`solve::statics`]), stored as a torque with the radius it was

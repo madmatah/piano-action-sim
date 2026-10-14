@@ -282,6 +282,28 @@ impl Mounted {
         loads: &[PointLoad],
         friction: Friction,
     ) -> Result<Equilibrium, Refusal> {
+        self.solve_held(statics, from, loads, &[], friction)
+    }
+
+    /// One load increment of the key from `from`, under `loads`, with the
+    /// coordinates `held` prescribed at their values, friction on or off:
+    /// [`Self::solve`], which is this with nothing held, with a coordinate
+    /// held as a procedure holds it, the key's angle driven through its
+    /// stroke by the band's sweep ([`crate::measure::sweep`]). On its
+    /// punching, the key held there is tried first, the slide held besides;
+    /// the punching is released and the full problem solved, the slide free,
+    /// where it would have to pull. Each held coordinate's reaction is in the
+    /// equilibrium's; its friction, which no solve can set while it is held,
+    /// is the caller's. `held` does not hold the slide: the slide is what
+    /// tells a key on its punching from one lifted off it.
+    pub fn solve_held(
+        &self,
+        statics: &mut Statics,
+        from: &[f64],
+        loads: &[PointLoad],
+        held: &[Prescribed],
+        friction: Friction,
+    ) -> Result<Equilibrium, Refusal> {
         if let Some(lift) = &self.lift {
             if self.leaves_its_pin().is_some_and(|room| room < 0.0) {
                 return Err(Refusal::NoEquilibrium {
@@ -294,11 +316,12 @@ impl Mounted {
             if let Some(turning) = &lift.turning {
                 let c = lift.coord.0;
                 if (from[c] - lift.on_punching).abs() <= GAP_TOLERANCE {
-                    let held = [Prescribed {
+                    let mut on_it = vec![Prescribed {
                         coord: lift.coord,
                         value: lift.on_punching,
                     }];
-                    match statics.solve(turning, from, loads, &held, friction) {
+                    on_it.extend_from_slice(held);
+                    match statics.solve(turning, from, loads, &on_it, friction) {
                         Ok(eq) if eq.reactions[c] >= 0.0 => return Ok(eq),
                         Ok(_) => {}
                         Err(Refusal::NoEquilibrium { on })
@@ -313,24 +336,25 @@ impl Mounted {
                 }
             }
         }
-        self.solve_free(statics, from, loads, friction)
+        self.solve_free(statics, from, loads, held, friction)
     }
 
-    /// The full problem, the key free to lift, from `from`: [`Statics::solve`]
-    /// on the mechanism, going on from where it stopped at its cap, up to
-    /// [`FREE_PIECES`] pieces in all, as one increment along its path; its
-    /// report one increment's, its steps all the pieces'.
+    /// The full problem, the key free to lift, from `from`, `held` prescribed:
+    /// [`Statics::solve`] on the mechanism, going on from where it stopped at
+    /// its cap, up to [`FREE_PIECES`] pieces in all, as one increment along
+    /// its path; its report one increment's, its steps all the pieces'.
     fn solve_free(
         &self,
         statics: &mut Statics,
         from: &[f64],
         loads: &[PointLoad],
+        held: &[Prescribed],
         friction: Friction,
     ) -> Result<Equilibrium, Refusal> {
         let mut start = from.to_vec();
         let mut before = SolveReport::NOTHING;
         for piece in 1..=FREE_PIECES {
-            match statics.solve(&self.mechanism, &start, loads, &[], friction) {
+            match statics.solve(&self.mechanism, &start, loads, held, friction) {
                 Err(Refusal::NotConverged { .. }) if piece < FREE_PIECES => {
                     let (at, report) = statics.stopped();
                     start = at.to_vec();

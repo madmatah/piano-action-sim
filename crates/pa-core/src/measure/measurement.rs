@@ -58,6 +58,12 @@ pub enum ProcedureId {
     /// Key friction weight with the temporary weight chosen to zero the
     /// key's balance where it rests on its frame, then the down weight.
     KeyFrictionWeightZeroedOnTheFrame,
+    /// Down weight read on the band: the greatest force the driven sweep
+    /// needs on its way down.
+    DownWeightOnTheBand,
+    /// Up weight read on the band: the least force the driven sweep holds on
+    /// its way up.
+    UpWeightOnTheBand,
 }
 
 impl ProcedureId {
@@ -75,6 +81,10 @@ impl ProcedureId {
         Self::KeyFrictionWeightZeroedOnTheFrame,
     ];
 
+    /// The readings of the band, which the driven sweep takes when the band
+    /// is shown and the sheet does not: down weight and up weight read on it.
+    pub const BAND: [Self; 2] = [Self::DownWeightOnTheBand, Self::UpWeightOnTheBand];
+
     /// The reading's identifier, English `snake_case`.
     pub fn code(self) -> &'static str {
         match self {
@@ -88,6 +98,8 @@ impl ProcedureId {
             Self::FrictionWeight => "friction_weight",
             Self::KeyFrictionWeightZeroedOnTheJig => "key_friction_weight_zeroed_on_the_jig",
             Self::KeyFrictionWeightZeroedOnTheFrame => "key_friction_weight_zeroed_on_the_frame",
+            Self::DownWeightOnTheBand => "down_weight_on_the_band",
+            Self::UpWeightOnTheBand => "up_weight_on_the_band",
         }
     }
 
@@ -110,7 +122,9 @@ impl ProcedureId {
             | Self::UpWeight
             | Self::BalanceWeight
             | Self::FrictionWeight
-            | Self::KeyFrictionWeightZeroedOnTheJig => &[
+            | Self::KeyFrictionWeightZeroedOnTheJig
+            | Self::DownWeightOnTheBand
+            | Self::UpWeightOnTheBand => &[
                 Input::KeyMass,
                 Input::CentreOfMassHeight,
                 Input::KeyFriction,
@@ -345,6 +359,21 @@ pub struct Walked {
     pub halvings: u32,
 }
 
+/// How a driven sweep went, for a reading taken on the band.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Swept {
+    /// How far the measuring point travelled between two readings, metres.
+    pub step: f64,
+    /// The readings each way: every whole step strictly inside the window.
+    pub samples: u32,
+    /// The window: how far the measuring point travels from the top seat
+    /// to the bottom one, metres.
+    pub window: f64,
+    /// Where on the stroke the reading fell: how far the measuring point
+    /// stood below the top seat, metres.
+    pub at: f64,
+}
+
 /// Which way a temporary weight was chosen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Zeroed {
@@ -384,6 +413,8 @@ pub struct Conditions {
     pub preparation: Option<Preparation>,
     /// The breakaway walk, where the reading is one.
     pub walk: Option<Walked>,
+    /// The driven sweep, where the reading is taken on the band.
+    pub sweep: Option<Swept>,
     /// The temporary weight standing on the key, where there is one.
     pub temporary_weight: Option<TemporaryWeight>,
     /// The readings it is computed from, where it is computed.
@@ -400,6 +431,7 @@ impl Conditions {
             held_by: Vec::new(),
             preparation: None,
             walk: None,
+            sweep: None,
             temporary_weight: None,
             from: Vec::new(),
         }
@@ -553,9 +585,13 @@ mod tests {
     /// Every reading has its own identifier.
     #[test]
     fn every_reading_has_its_own_code() {
-        let mut codes: Vec<&str> = ProcedureId::ALL.iter().map(|p| p.code()).collect();
+        let all = ProcedureId::ALL.iter().chain(&ProcedureId::BAND);
+        let mut codes: Vec<&str> = all.map(|p| p.code()).collect();
         codes.sort_unstable();
         codes.dedup();
-        assert_eq!(codes.len(), ProcedureId::ALL.len());
+        assert_eq!(
+            codes.len(),
+            ProcedureId::ALL.len() + ProcedureId::BAND.len()
+        );
     }
 }

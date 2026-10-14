@@ -19,7 +19,7 @@
 //! error, and one mapped here and not worded there fails the interface's
 //! type-check.
 //!
-//! # Six documents, apart, and two calls
+//! # Seven documents, apart, and two calls
 //!
 //! [`Settings`] are always valid, whatever the frame does, nested as the
 //! paths are: every control reads its value at its path, so a frame that
@@ -31,8 +31,9 @@
 //! cannot seat its key reads its jig and refuses the rest line by line.
 //! [`Diagnostics`] say how the key stands and why, and the last edit
 //! refused; [`State`] where each body stands and the contacts the view
-//! marks, each with its normal and the force it carries; and [`Scene`] what
-//! is drawn, each part in its own body's frame. An interface changes the
+//! marks, each with its normal and the force it carries; [`Scene`] what is
+//! drawn, each part in its own body's frame; and [`Band`] the band, taken only
+//! when an interface asks for it, as it shows it. An interface changes the
 //! instrument by two calls, [`set`] a path to a value and [`act`] an
 //! [`Action`], each answering [`Acted`].
 //!
@@ -57,7 +58,8 @@ use pa_core::measure::measurement::{
     Trust as CoreTrust, Unit as CoreUnit, Zeroed,
 };
 use pa_core::measure::seat::SeatRefusal;
-use pa_core::measure::walk::{WalkRefusal, CAP, STEP_G};
+use pa_core::measure::sweep::{Sample, SweepRefusal};
+use pa_core::measure::walk::{Stroke as CoreStroke, WalkRefusal, CAP, STEP_G};
 use pa_core::measure::weighing::{BushingsRefusal, Refused, FRICTION_SEARCH_G};
 use pa_core::parts::faults::Fault as CoreFault;
 use pa_core::parts::frame::{Drawer, PAPER};
@@ -213,6 +215,11 @@ pub enum Procedure {
     KeyFrictionWeightZeroedOnTheJig,
     /// Key friction weight zeroed where the key rests on its frame.
     KeyFrictionWeightZeroedOnTheFrame,
+    /// Down weight read on the band: the greatest force of the driven
+    /// sweep's down curve.
+    DownWeightOnTheBand,
+    /// Up weight read on the band: the least force of its up curve.
+    UpWeightOnTheBand,
 }
 
 impl From<ProcedureId> for Procedure {
@@ -230,6 +237,8 @@ impl From<ProcedureId> for Procedure {
             ProcedureId::KeyFrictionWeightZeroedOnTheFrame => {
                 Self::KeyFrictionWeightZeroedOnTheFrame
             }
+            ProcedureId::DownWeightOnTheBand => Self::DownWeightOnTheBand,
+            ProcedureId::UpWeightOnTheBand => Self::UpWeightOnTheBand,
         }
     }
 }
@@ -265,6 +274,28 @@ pub enum Solve {
     Seat,
     /// A step of a breakaway walk, on the key's way down or up.
     Walk,
+    /// A step of the band's sweep, on the key's way down or up.
+    Sweep,
+}
+
+/// Which way the key goes: a walk's or a sweep's stroke.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum Stroke {
+    /// From the top seat down.
+    Down,
+    /// From the bottom seat up.
+    Up,
+}
+
+impl From<CoreStroke> for Stroke {
+    fn from(s: CoreStroke) -> Self {
+        match s {
+            CoreStroke::Down => Self::Down,
+            CoreStroke::Up => Self::Up,
+        }
+    }
 }
 
 /// Why a reading cannot be taken, or why the key cannot be seated on its
@@ -333,6 +364,23 @@ pub enum Refusal {
     /// A weight the walk put on the measuring point lifts the key off its
     /// frame.
     WalkLiftsOffItsFrame,
+    /// A step of the band's sweep would lift the key off its balance
+    /// punching: under the force a finger at the measuring point would need
+    /// there, the punching would carry nothing, or a stop would hold the key
+    /// off it.
+    SweepLiftsOffItsPunching {
+        /// On the way down or up.
+        stroke: Stroke,
+        /// How far the measuring point stood below the top seat,
+        /// millimetres.
+        travel_mm: f64,
+        /// The force the finger would need there, grams, positive pressing
+        /// down.
+        force_g: f64,
+    },
+    /// A step of the band's sweep took the key off its balance pin, and off
+    /// its frame.
+    SweepLiftsOffItsFrame,
     /// No top of the key stands where the temporary weight goes.
     NoKeyTopAtTheStation {
         /// Where it goes, millimetres from the balance pin, positive in
@@ -401,6 +449,30 @@ impl Refusal {
                     residual_n: *residual,
                 },
                 WalkRefusal::Mechanism(_) => Self::GeometryDegenerate,
+            },
+            Refused::Sweep(sweep) => match sweep {
+                SweepRefusal::NoTravel => Self::NoTravel { riding },
+                SweepRefusal::NoLever => Self::NoLever,
+                SweepRefusal::LiftsOffItsPunching {
+                    stroke,
+                    travel,
+                    grams,
+                } => Self::SweepLiftsOffItsPunching {
+                    stroke: (*stroke).into(),
+                    travel_mm: mm(*travel),
+                    force_g: *grams,
+                },
+                SweepRefusal::LiftsOffItsFrame => Self::SweepLiftsOffItsFrame,
+                SweepRefusal::NoEquilibrium { on } => Self::NoEquilibrium { on: contacts(on) },
+                SweepRefusal::NotConverged {
+                    iterations,
+                    residual,
+                } => Self::NotConverged {
+                    solve: Solve::Sweep,
+                    iterations: *iterations,
+                    residual_n: *residual,
+                },
+                SweepRefusal::Mechanism(_) => Self::GeometryDegenerate,
             },
             Refused::NoKeyTopAtTheStation { station_m } => Self::NoKeyTopAtTheStation {
                 station_mm: mm(*station_m),
@@ -1269,6 +1341,23 @@ pub struct Walk {
     pub halvings: u32,
 }
 
+/// A driven sweep, as it went, for a reading taken on the band.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct Swept {
+    /// How far the measuring point travelled between two readings,
+    /// millimetres.
+    pub step_mm: f64,
+    /// The readings each way.
+    pub samples: u32,
+    /// How far the measuring point travels from the top seat to the bottom
+    /// one, millimetres.
+    pub window_mm: f64,
+    /// Where on the stroke the reading fell: how far the measuring point
+    /// stood below the top seat, millimetres.
+    pub at_mm: f64,
+}
+
 /// What a temporary weight zeroes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(test, derive(TS))]
@@ -1304,6 +1393,8 @@ pub struct Conditions {
     pub held_by: Vec<Contact>,
     /// The breakaway walk, where the reading is one.
     pub walk: Option<Walk>,
+    /// The driven sweep, where the reading is taken on the band.
+    pub sweep: Option<Swept>,
     /// The temporary weight standing on the key, where there is one.
     pub temporary_weight: Option<TemporaryWeight>,
     /// The readings it is computed from, where it is computed.
@@ -1334,7 +1425,9 @@ pub enum Reading {
         /// How far it can be trusted.
         trust: Trust,
         /// What it needs beside its number.
-        conditions: Conditions,
+        // Boxed: a reading read would stand several times the size of one
+        // refused.
+        conditions: Box<Conditions>,
         /// The static solves it took, increments.
         increments: u32,
         /// The static solves it took, steps.
@@ -1368,7 +1461,7 @@ impl Reading {
             resolution: m.resolution * scale,
             rounding: m.rounding.into(),
             trust: (&m.trust).into(),
-            conditions: Conditions {
+            conditions: Box::new(Conditions {
                 mount: c.mount.into(),
                 measuring_point_from_lip_mm: mm(c.measuring_point_from_lip_m),
                 held_by: contacts(&c.held_by),
@@ -1379,6 +1472,12 @@ impl Reading {
                     stalls: w.stalls,
                     halvings: w.halvings,
                 }),
+                sweep: c.sweep.map(|w| Swept {
+                    step_mm: mm(w.step),
+                    samples: w.samples,
+                    window_mm: mm(w.window),
+                    at_mm: mm(w.at),
+                }),
                 temporary_weight: c.temporary_weight.map(|t| TemporaryWeight {
                     mass_g: t.mass_g,
                     at_mm: mm(t.station.x),
@@ -1388,7 +1487,7 @@ impl Reading {
                     },
                 }),
                 from: c.from.iter().map(|&p| p.into()).collect(),
-            },
+            }),
             increments: m.report.increments,
             iterations: m.report.iterations,
             fingerprint: m.fingerprint.to_owned(),
@@ -1432,6 +1531,94 @@ impl Sheet {
                     },
                 })
                 .collect(),
+        }
+    }
+}
+
+// ---- the band --------------------------------------------------------------
+
+/// One reading of a curve of the band.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct BandPoint {
+    /// How far the measuring point stands below where it stands at the top
+    /// seat, millimetres.
+    pub travel_mm: f64,
+    /// The force on the measuring point that drives the key through that
+    /// travel, grams, positive pressing down.
+    pub force_g: f64,
+}
+
+impl From<&Sample> for BandPoint {
+    fn from(s: &Sample) -> Self {
+        Self {
+            travel_mm: mm(s.travel),
+            force_g: s.grams,
+        }
+    }
+}
+
+/// The two curves of the band.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct Curves {
+    /// How far the measuring point travels from the top seat to the bottom
+    /// one, millimetres: the window both curves lie in.
+    pub window_mm: f64,
+    /// How far it travels between two readings, millimetres.
+    pub step_mm: f64,
+    /// The down curve, from the first step off the top seat down.
+    pub down: Vec<BandPoint>,
+    /// The up curve, from the first step off the bottom seat up.
+    pub up: Vec<BandPoint>,
+}
+
+/// The band: the force on the measuring point through the key's stroke,
+/// down and back, the driven sweep's, and the down and up weights read on
+/// it; or why it cannot be drawn. Taken when an interface asks for it, as it
+/// shows the band, never with every edit.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct Band {
+    /// The down weight and the up weight read on the band, each read or
+    /// refused with why.
+    pub readings: Vec<Reading>,
+    /// The two curves; `null` where the sweep is refused.
+    pub curves: Option<Curves>,
+}
+
+impl Band {
+    /// The band of `instrument`.
+    pub fn of(instrument: &Instrument) -> Self {
+        match instrument.band() {
+            Ok(banded) => Self {
+                readings: vec![
+                    Reading::read(&banded.down_weight),
+                    Reading::read(&banded.up_weight),
+                ],
+                curves: Some(Curves {
+                    window_mm: mm(banded.band.window),
+                    step_mm: mm(banded.band.step),
+                    down: banded.band.down.iter().map(BandPoint::from).collect(),
+                    up: banded.band.up.iter().map(BandPoint::from).collect(),
+                }),
+            },
+            Err(why) => {
+                let riding = matches!(why, Refused::Sweep(SweepRefusal::NoTravel))
+                    .then(|| instrument.riding().map(Riding::from))
+                    .flatten();
+                let why = Refusal::reading(&why, riding);
+                Self {
+                    readings: ProcedureId::BAND
+                        .iter()
+                        .map(|&p| Reading::Refused {
+                            procedure: p.into(),
+                            why: why.clone(),
+                        })
+                        .collect(),
+                    curves: None,
+                }
+            }
         }
     }
 }
@@ -1569,6 +1756,11 @@ pub struct Touch {
     /// The gap at the back rail cloth, millimetres; `null` where no feature
     /// of the two can meet.
     pub gap_back_mm: Option<f64>,
+    /// How far the measuring point stands below where it stands with the
+    /// key seated at the top of its stroke, millimetres: where the weight
+    /// has left the key on the band's travel; `null` where the key cannot
+    /// be seated at the top.
+    pub travel_mm: Option<f64>,
 }
 
 /// How the key bears on its back rail cloth at the top of its stroke.
@@ -1681,6 +1873,7 @@ impl Diagnostics {
                 verdict: (&t.verdict).into(),
                 gap_front_mm: t.gap_front_mm,
                 gap_back_mm: t.gap_back_mm,
+                travel_mm: t.travel_mm,
             }),
             edge_overlaps: instrument
                 .edge_overlaps()
@@ -2731,6 +2924,7 @@ mod types {
         generate.visit::<Settings>();
         generate.visit::<Registry>();
         generate.visit::<Sheet>();
+        generate.visit::<Band>();
         generate.visit::<Diagnostics>();
         generate.visit::<State>();
         generate.visit::<Scene>();
@@ -3575,6 +3769,94 @@ mod tests {
         };
         assert_eq!(touching, vec![Contact::BackRailCloth]);
         assert!(needs_friction);
+    }
+
+    /// Consistency: **the band crosses as codes and numbers.** Its two
+    /// readings by their procedures, read as the sheet's walks are read to
+    /// the gram, with the sweep that took them; its curves in millimetres of
+    /// travel and grams, the down curve from the first step off the top seat
+    /// down and the up curve from the first step off the bottom seat up,
+    /// inside the window; and where the key has no stroke, both readings
+    /// refused for it, saying how the key rides, and no curves. The touch's
+    /// travel puts the key at the bottom of the window where the weight on
+    /// it takes it down, and at its top seat where a pull brings it back,
+    /// within a millionth of a millimetre.
+    #[test]
+    fn the_band_crosses_as_codes_and_numbers() {
+        let bench = Instrument::standard();
+        let band = Band::of(&bench);
+        let curves = band.curves.as_ref().expect("the band is drawn");
+        let procedures: Vec<Procedure> = band
+            .readings
+            .iter()
+            .map(|r| match r {
+                Reading::Read { procedure, .. } | Reading::Refused { procedure, .. } => *procedure,
+            })
+            .collect();
+        assert_eq!(
+            procedures,
+            vec![Procedure::DownWeightOnTheBand, Procedure::UpWeightOnTheBand]
+        );
+        let json = written(&band);
+        assert!(
+            json.contains(r#""procedure":"down_weight_on_the_band""#),
+            "{json}"
+        );
+        let Reading::Read {
+            unit, conditions, ..
+        } = &band.readings[0]
+        else {
+            panic!("D is read on the band")
+        };
+        assert_eq!(*unit, Unit::Gram);
+        let swept = conditions.sweep.as_ref().expect("the sweep it was read by");
+        assert_eq!(swept.step_mm, curves.step_mm);
+        assert_eq!(swept.window_mm, curves.window_mm);
+        assert_eq!(swept.samples as usize, curves.down.len());
+        assert_eq!(curves.down.len(), curves.up.len());
+        let first = |c: &[BandPoint]| c.first().map(|p| p.travel_mm).unwrap_or(f64::NAN);
+        let last = |c: &[BandPoint]| c.last().map(|p| p.travel_mm).unwrap_or(f64::NAN);
+        assert!((first(&curves.down) - curves.step_mm).abs() < 1e-9);
+        assert!(last(&curves.down) < curves.window_mm);
+        assert_eq!(first(&curves.up), last(&curves.down));
+        assert!(curves
+            .down
+            .iter()
+            .zip(curves.up.iter().rev())
+            .all(|(d, u)| d.force_g > u.force_g));
+
+        let rides = Band::of(&wedged());
+        assert!(rides.curves.is_none());
+        for r in &rides.readings {
+            let Reading::Refused {
+                why: Refusal::NoTravel { riding: Some(_) },
+                ..
+            } = r
+            else {
+                panic!("a riding key has no band: {r:?}")
+            };
+        }
+
+        let travel = |weight_g: f64| {
+            let mut b = Instrument::standard();
+            b.set(path::WEIGHT, weight_g).expect("a weight");
+            Diagnostics::of(&b)
+                .touch
+                .and_then(|t| t.travel_mm)
+                .expect("seated")
+        };
+        // The composite key goes down on its own, D being under nothing; a
+        // pull past U brings it back up to its top seat.
+        let (bottom, top) = (travel(0.0), travel(-15.0));
+        assert!(
+            (bottom - curves.window_mm).abs() < 1e-6,
+            "nothing on it, the key goes to the bottom of its window: {bottom} mm of {} mm",
+            curves.window_mm
+        );
+        assert!(
+            top.abs() < 1e-6,
+            "a pull of 15 g lifts it to its top seat: {top} mm"
+        );
     }
 
     /// Consistency: the targets crossing are the targets regulated to.

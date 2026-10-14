@@ -495,6 +495,35 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   friction read through the two seats' arms, with what the key's balance does
   between them: 6.13 g on the default bushings, which hold 6 g at the
   measuring point with the key level.
+- **The band** is the driven sweep, a second procedure for D and U and the
+  force curve the bench draws: the static form of driving in position and
+  comparing forces (§5.1). The key is seated at the top and at the bottom of
+  its stroke; from the top seat its angle is held where the measuring point
+  stands 0.05 mm lower, then twice that, through every whole step strictly
+  inside the window between the two seats, each step solved from where the
+  last left the key, its lift off its balance punching free; then back from
+  the bottom seat through the same travels. The angle a travel is held at is
+  exact, the measuring point turning on a circle about the key's bearing. At
+  each step the angle's reaction, read through the measuring point's arm at
+  that step, is the force a finger there would apply to hold the key: with
+  the bushings' friction at its bound against the motion, the down curve on
+  the way down and the up curve on the way back; between the two the key
+  stays where it is, their distance apart its friction and their middle its
+  balance. D is the greatest force of the down curve and U the least of the
+  up curve, read to the gram as the walk's are. A torque on the angle and a
+  force at the measuring point turn the key alike and do not press it on its
+  punching alike, so at every step the punching's load under the finger's
+  force is checked, and a sweep under which it would carry nothing, a pull
+  past the key's weight, is refused with where and how hard. At a seat the
+  stop takes whatever the finger leaves, so the curves start a step inside
+  each seat, and where an extreme lies at a seat, as on both shipped keys,
+  the band reads it within the curve's change over that step of the walk's:
+  on the default key D −0.2199 g against the walk's −0.2185 g a step off the
+  top seat, U −12.4809 g against −12.4814 g half a step off the bottom one,
+  195 readings each way. Every step is the band by hand at the
+  attitude it holds, `(±b − M(θ)) / (g a(θ))`, to rounding. The step is one
+  of the solver's frozen numbers (§4.4). The sweep runs when the band is
+  shown, never with the sheet; `pa-cli band` prints it.
 - **Read as gram weights give them**, the owner's reading: D and the key
   friction weights rounded up to the gram, U down, BW and F from those two
   readings, the value in full shown small beside each. A technician stacking
@@ -702,11 +731,24 @@ moved where no key could be built is refused, the slider back where the
 setting stands and the page saying why right under it, with the limiting
 dimension and the shortfall (§7.3); the target and weighing fields hold what
 is typed until it is sent.
+In place of the section and the solid the view draws the band (§2.2): force
+on the measuring point in grams against the key's travel there in
+millimetres, the down curve and the up curve, the two seats at the window's
+ends, D and U marked where they fall with what the trade reads them as and
+their values in full, the weight on the measuring point drawn across it and a
+dot where that weight has left the key; the pointer reads both curves at the
+travel nearest it, and a table carries every step for a reader without the
+chart. The engine sweeps the key when the band is chosen and not with each
+edit: an edit of the key, its frame, its bushings or the protocol leaves the
+band drawn faded and saying so until it is chosen again, and the weight on the
+measuring point, which the band does not read, moves only its line and dot. A
+key with no stroke has no band, and the view says why.
 Faults are listed in millimetres, every number on the page is computed in
 Rust, and every sentence is the English catalogue's, composed from the codes the
 engine sends (§3.12).
 `pa-cli weigh` prints every reading with its procedure, its trust and the static
-solves it took.
+solves it took; `pa-cli band` prints the band, its D and U beside the walk's,
+and both curves step by step.
 
 ## 3. Decisions that stand
 
@@ -1189,7 +1231,9 @@ complete model [V, Thorin 2017 §5, after Thorin, Boutillon and Lozada 2014]. So
 the dynamics are validated by driving the key in position and comparing the
 reaction force at the finger, the curve a technician reads, and the **Bad-Model
 guard** belongs in the suite: stiffen the felts, and if validation still passes,
-the validation is worthless. Planned.
+the validation is worthless. Planned for the dynamics; its static form is built,
+the band (§2.2), which drives the key through its stroke in position and reads
+the force that holds it there.
 
 ### 5.2 Validation instruments
 
@@ -1272,7 +1316,7 @@ traps (§6.3).
 | 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
 | 3 | published data, §5.2 (b) and (c) | validation | planned |
-| 4 | the trade's protocols run on the model: the jig, reading a key weighed whole back where its front weight was read and by the lever elsewhere, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
+| 4 | the trade's protocols run on the model: the jig, reading a key weighed whole back where its front weight was read and by the lever elsewhere, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, the driven sweep that draws the band, every step against the band by hand at the attitude it holds and its extremes against the walk's D and U within the walk's resolution and the curve's change over one step, a step half as long within the same, on both shipped keys, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
 | 4 | let-off, drop, checking, aftertouch and blow distance as the trade measures them; §5.2 (a) | consistency, and validation where the measurement is independent | planned |
 | 5 | sensitivities by finite differences: what moves when a setting changes | consistency | planned |
 
@@ -1285,7 +1329,14 @@ hold but for the tilt between the key's two seats, where D and U are read: a few
 thousandths of a gram of F for the gram of mass, a few hundredths of BW for the
 friction, each tolerance derived from the two seats' arms and the walk's
 resolution, never widened. They guard against coding mix-ups until friction
-depends on load.
+depends on load. Both are run through the band too: the gram moves its middle
+at every travel by its moment there over the measuring point's arm, and its
+width by nothing; its extremes' middle moves by the mean of that at the two
+attitudes they are read at, and their width by the difference, a few
+thousandths of a gram; tighter bushings widen it at every travel by the extra
+bound over the measuring point's arm and leave its middle, its extremes' middle
+moving by half the difference of that extra at their two attitudes, under a
+hundredth of a gram.
 
 **Sensitivities.** Spurlock's rule, +1 g of hammer weight for +5 to +7 g on both
 down weight and up weight [V, Spurlock], checks the lever chain's consistency:
@@ -1510,7 +1561,7 @@ data/params        the records, each value with its source
 data/profiles      what each instrument starts from, every number a record or a
                    stated assumption (§3.8)
 crates/pa-wasm     the browser's adapter of pa-app; the only crate that knows JavaScript
-crates/pa-cli      the shell's adapter of pa-app: `weigh`, `golden`
+crates/pa-cli      the shell's adapter of pa-app: `weigh`, `band`, `golden`
 apps/bench         the bench page: React, react-three-fiber
 tools/smoke        drives the real page over the Chrome DevTools protocol
 scripts/verify.sh  every gate, run locally by `pnpm verify`
@@ -1530,7 +1581,9 @@ the front pin in its mortise, a key shortened under its frame) in full bits, in
 `crates/pa-app/tests/golden/`: each reading of the weighing sheet, its value in
 full and as the trade reads it, its trust, the walk's start and the temporary
 weight, or why it is refused; then what holds the key, how it rides where its
-stops fight, the faults, the papers and the pose. `pa-cli golden` writes it and
+stops fight, the faults, the papers and the pose; last, D and U read on the
+band, with the sweep's window and where each fell, or why the band cannot be
+drawn. `pa-cli golden` writes it and
 `cargo test` compares the engine with it, so a change shows every number it
 moves; one that means to move a number rewrites the sheet and says why. A Node
 test in `pnpm test` loads the WebAssembly module the browser loads and holds it
@@ -1573,10 +1626,10 @@ key's always measured (§2.3).
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
 double mount cannot construct two engines) and reads six JSON documents, each
-apart (`crates/pa-app/src/boundary.rs`). The **registry**: every setting's
-path, its unit in its name (`frame.front_rail.pin_height_mm`), what it
-measures, its layer, the range it admits and how it moves, and whether `set`
-reaches it or an action does; and the page that presents them, panel by
+apart (`crates/pa-app/src/boundary.rs`), and a seventh when it shows the band.
+The **registry**: every setting's path, its unit in its name
+(`frame.front_rail.pin_height_mm`), what it measures, its layer, the range it
+admits and how it moves, and whether `set` reaches it or an action does; and the page that presents them, panel by
 panel, each control with the code its label is worded by and the range its
 slider offers (§7.3). The **settings**: every value the controls set, nested
 as the paths are, so the value at a path is read at that path, the key's
@@ -1600,8 +1653,13 @@ carried in the last equilibrium, one admissible split of the loads where
 friction or redundant rows share them (§2.1), never read as a verdict. The
 **scene**: every part's outline in its own body's frame, in millimetres, with
 its material and the provenance of each stretch, which the page keeps while
-the geometry does not change. Every number in a trade unit carries it in its
-name. Faults, verdicts, refusals and problems cross as codes with their
+the geometry does not change. The **band**, asked for only when the page shows
+it: D and U read on it, each read like a reading of the sheet, with the sweep
+it was read by, its step, its window and where on the stroke it fell, or
+refused with why; and the two curves, each step's travel in millimetres and
+force in grams. The touch's diagnostics carry where the weight has left the
+key on the band's travel, so the dot follows the weight without the band
+being swept again. Every number in a trade unit carries it in its name. Faults, verdicts, refusals and problems cross as codes with their
 parameters in the trade's units, each unit in its parameter's name
 (`{"code":"pin_outside_mortise","by_mm":16.5}`); they mirror the domain's
 enums through matches with no catch-all arm, so a refusal added in `pa-core`
@@ -1784,7 +1842,7 @@ on a number the owner can judge by the trade's protocol.
 |---|---|---|---|---|
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), and the profiles that bind every number it starts from to a record or a stated assumption (§3.8), Hirschkorn's key on his printed frame among them, chosen on the bench, every drawn line marked by how its number is known (§5.2 b, §7.3), built; the rest planned |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2.3); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalogue (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), and the profiles that bind every number it starts from to a record or a stated assumption (§3.8), Hirschkorn's key on his printed frame among them, chosen on the bench, every drawn line marked by how its number is known (§5.2 b, §7.3), and the band, drawn by the driven sweep that reads D and U a second way (§2.2, §2.4), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |

@@ -8,7 +8,8 @@
 //! a punching, a weighing, a target — which is at human speed, a few times a
 //! second at most. They cross as JSON, each on its own: the registry, the
 //! settings, the weighing sheet, the diagnostics, where each body stands and
-//! what is drawn ([`pa_app::boundary`]). Each is in codes and numbers, never
+//! what is drawn ([`pa_app::boundary`]); and the band, asked for only when it
+//! is shown. Each is in codes and numbers, never
 //! sentences: the page words them from its catalogue, in the reader's
 //! language. The page changes the bench by two generic calls, `set` a path
 //! to a value and `act` an action, so a second application reuses this
@@ -27,7 +28,7 @@
 //! number is wrong, it is wrong in the domain, and fixing it here would put
 //! the engine and the browser permanently out of step.
 
-use pa_app::boundary::{self, json, Sheet};
+use pa_app::boundary::{self, json, Band, Sheet};
 use pa_app::golden;
 use pa_app::instrument::Instrument;
 use wasm_bindgen::prelude::*;
@@ -66,6 +67,15 @@ impl Bench {
     /// with its reason, whether or not the key can be seated.
     pub fn sheet(&self) -> String {
         json(&Sheet::of(&self.inner))
+    }
+
+    /// The band, as JSON (`Band`): the key swept through its stroke, down
+    /// and back, the force on the measuring point at every step, and the
+    /// down and up weights read on it; or why it cannot be drawn. Taken when
+    /// it is asked for, so a page asks for it when it shows the band and not
+    /// with every edit.
+    pub fn band(&self) -> String {
+        json(&Band::of(&self.inner))
     }
 
     /// How the key stands on its frame and why, and the last edit refused,

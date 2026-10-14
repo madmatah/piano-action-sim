@@ -111,3 +111,24 @@ export const LIGHTS = {
     { position: [300, 140, -250] as [number, number, number], intensity: 0.9 },
   ],
 } as const
+
+/**
+ * The band's colours. The down curve and the up curve are the two series a
+ * reader must tell apart, so they take two hues that read as different for
+ * every reader, one cool and one warm, both dark enough to stand three to
+ * one against the sheet they are drawn on; `palette.test.ts` holds the
+ * distances. Everything else is ink: the band between them a wash of it,
+ * the weight on the measuring point and where it has left the key the ink
+ * itself, the grid and the stops a hairline of the rule. The sheet is the
+ * page's paper, so the band reads as one more sheet beside the weighing
+ * sheet.
+ */
+export const BAND_COLOUR = {
+  surface: '#fbfaf7',
+  down: '#2a78d6',
+  up: '#d0541c',
+  held: 'rgba(35, 32, 27, 0.07)',
+  ink: '#23201b',
+  muted: '#6b6559',
+  rule: '#d8d2c4',
+} as const

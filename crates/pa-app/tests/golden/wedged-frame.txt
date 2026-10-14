@@ -56,3 +56,4 @@ papers.front.2 8e-5 0x3f14f8b588e368f1
 pose.sin_angle 0.010188669567614623 0x3f84ddcc14a9472a
 pose.measuring_point.x 0.24725208466605883 0x3fcfa5f4d0c11807
 pose.measuring_point.y 0.054554618715404915 0x3fabee953e74f2a2
+band refused Sweep(NoTravel)

@@ -1,6 +1,7 @@
 import type { How } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
 import {
+  BAND_COLOUR,
   EDGE,
   HOW_COLOUR,
   KEYBED,
@@ -188,6 +189,31 @@ describe('the provenance marks', () => {
           ).toBeGreaterThanOrEqual(5)
         }
       }
+    }
+  })
+})
+
+// ---- the band ------------------------------------------------------------------
+
+/** WCAG's contrast ratio between two colours. */
+const contrast = (a: string, b: string) => {
+  const luminance = (hex: string) => dot([0.2126, 0.7152, 0.0722], linear(hex))
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p) as [number, number]
+  return (x + 0.05) / (y + 0.05)
+}
+
+describe('the band', () => {
+  it('tells its down curve from its up curve, colour-blind too', () => {
+    const { down, up } = BAND_COLOUR
+    expect(distance(down, up)).toBeGreaterThanOrEqual(15)
+    for (const vision of ['protan', 'deutan'] as const) {
+      expect(distance(down, up, vision), vision).toBeGreaterThanOrEqual(8)
+    }
+  })
+
+  it('draws both curves and its ink three to one against its sheet', () => {
+    for (const colour of [BAND_COLOUR.down, BAND_COLOUR.up, BAND_COLOUR.ink, BAND_COLOUR.muted]) {
+      expect(contrast(colour, BAND_COLOUR.surface), colour).toBeGreaterThanOrEqual(3)
     }
   })
 })

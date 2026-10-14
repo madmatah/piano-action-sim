@@ -21,7 +21,9 @@
 //! Then every field of [`BenchReadout`] (or that there is none, when the
 //! bench cannot seat its key), the reason it cannot, how the key rides on
 //! its stops where they fight (written only there), the faults, where the
-//! key is drawn and the papers on both punchings. Numbers are written as the
+//! key is drawn and the papers on both punchings; last, the down and up
+//! weights read on the band, the driven sweep's, where the sweep travelled
+//! and where each fell, or why the band cannot be drawn. Numbers are written as the
 //! shortest decimal that reads back to the same double, then as its bit
 //! pattern.
 //!
@@ -164,6 +166,7 @@ pub fn sheet(fixture: &Fixture) -> String {
     write_readout(&mut out, &bench);
     write_frame(&mut out, &bench);
     write_pose(&mut out, &bench);
+    write_band(&mut out, &bench);
     out
 }
 
@@ -235,6 +238,15 @@ fn write_measurement(out: &mut String, name: &str, m: &Measurement) {
     line(out, &format!("{name}.fingerprint"), fingerprint);
     if let Some(walk) = conditions.walk {
         number(out, &format!("{name}.walk.from_g"), walk.from_g);
+    }
+    if let Some(sweep) = conditions.sweep {
+        line(
+            out,
+            &format!("{name}.sweep.samples"),
+            &sweep.samples.to_string(),
+        );
+        number(out, &format!("{name}.sweep.window"), sweep.window);
+        number(out, &format!("{name}.sweep.at"), sweep.at);
     }
     if let Some(t) = conditions.temporary_weight {
         number(out, &format!("{name}.temporary_weight.mass_g"), t.mass_g);
@@ -368,6 +380,20 @@ fn write_frame(out: &mut String, bench: &Instrument) {
         for (i, paper) in papers.iter().enumerate() {
             number(out, &format!("papers.{name}.{i}"), *paper);
         }
+    }
+}
+
+/// The down and up weights read on the band, which the driven sweep takes
+/// apart from the sheet: last, so that a sheet written before the band was
+/// drawn reads as it did, line for line.
+fn write_band(out: &mut String, bench: &Instrument) {
+    match bench.band() {
+        Ok(banded) => {
+            for m in [&banded.down_weight, &banded.up_weight] {
+                write_measurement(out, &format!("band.{}", m.procedure.code()), m);
+            }
+        }
+        Err(why) => line(out, "band", &format!("refused {why:?}")),
     }
 }
 

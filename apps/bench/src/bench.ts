@@ -10,7 +10,8 @@
  * The engine answers in documents, each apart: the registry, every path with
  * what it admits and the page that presents it; the settings, always valid,
  * nested as the paths are; the weighing sheet, every reading read or refused
- * with its reason; the diagnostics; where each body stands; what is drawn.
+ * with its reason; the diagnostics; where each body stands; what is drawn;
+ * and the band, asked for only when it is shown.
  * It is changed by two calls, a path set to a value and an action taken, each
  * answering what was done or why not. They are codes and numbers, never
  * sentences, and their types are generated from the Rust ones
@@ -21,6 +22,7 @@ import init, { Bench } from '@pas/wasm'
 import type {
   Acted,
   ActionCode,
+  Band,
   Diagnostics,
   Procedure,
   Reading,
@@ -98,6 +100,16 @@ export function settings(b: Bench): Settings {
 /** The weighing sheet: every reading, read or refused with its reason. */
 export function sheet(b: Bench): Sheet {
   return parse(b.sheet())
+}
+
+/**
+ * The band: the key driven through its stroke, down and back, the force on
+ * the measuring point at every step, and the down and up weights read on
+ * it. The engine takes it only when it is asked for, so the page asks when
+ * it shows the band, never with every edit.
+ */
+export function band(b: Bench): Band {
+  return parse(b.band())
 }
 
 /** How the key stands on its frame and why, and the last edit refused. */

@@ -17,6 +17,7 @@ import type {
   Riding,
   SettingUnit,
   Solve,
+  Stroke,
   Target,
   TemporaryWeight,
   Verdict,
@@ -121,6 +122,13 @@ const TARGET: Named<Target> = {
 const NOT_CONVERGED: Named<Solve> = {
   seat: "the key could not be seated within the static solve's cap of steps.",
   walk: "the static solve reached its cap of steps on the key's way down or up.",
+  sweep: "the static solve reached its cap of steps on a step of the band's sweep.",
+}
+
+/** Which way the key was going. */
+const STROKE: Named<Stroke> = {
+  down: 'on the way down',
+  up: 'on the way up',
 }
 
 /** Why a reading is refused, or why the key cannot be seated. */
@@ -152,6 +160,10 @@ const refusal: Catalogue['refusal'] = {
   no_equilibrium: () => 'the key found no equilibrium on its way down or up: its stops fight.',
   walk_lifts_off_its_frame: () =>
     'a weight the walk put on the measuring point lifts the key off its frame.',
+  sweep_lifts_off_its_punching: ({ stroke, travel_mm, force_g }) =>
+    `${fixed(travel_mm, 2)} mm into the stroke ${STROKE[stroke]}, a finger would have to ${force_g < 0 ? 'pull' : 'press'} ${fixed(Math.abs(force_g), 0)} g at the measuring point, and the balance punching would carry nothing under it: the key would lift off its punching instead of turning, so the force would not be the one read.`,
+  sweep_lifts_off_its_frame: () =>
+    "a step of the band's sweep took the key off its balance pin, and off its frame.",
   no_key_top_at_the_station: ({ station_mm: at }) =>
     `no top of the key stands ${fixed(Math.abs(at), 0)} mm ${at < 0 ? 'behind' : 'in front of'} the balance pin, where the temporary weight goes.`,
   from_a_refused_reading: ({ reading }) =>
@@ -391,6 +403,7 @@ export const en: Catalogue = {
     bears: 'bears',
     open: 'open, under 1 mm',
     overlapping: 'drawn parts overlap',
+    band: 'band',
     provenance: 'where each line comes from',
     how: {
       measured: 'measured',
@@ -508,6 +521,8 @@ export const en: Catalogue = {
     friction_weight: 'friction weight F',
     key_friction_weight_zeroed_on_the_jig: 'key friction weight KF, zeroed on the jig',
     key_friction_weight_zeroed_on_the_frame: 'key friction weight KF, zeroed on the frame',
+    down_weight_on_the_band: 'down weight D, on the band',
+    up_weight_on_the_band: 'up weight U, on the band',
   },
   because: {
     key_mass:
@@ -584,6 +599,33 @@ export const en: Catalogue = {
       "And where the two outer rails **stand** along the key. These are the frame's own numbers, not the key's: a rail is screwed to the keybed, so lengthening a key moves its mortise and its chamfer and leaves the rails behind. That is a design worth seeing go wrong, which is why nothing here corrects itself — the sheet names the miss instead.",
     placeNote:
       'Moves the rails and **nothing else**. The key bears on the cloth at a new arm afterwards, so the key height and the dip will have drifted off their targets and the sheet will show it — shimming is a separate operation on a real bench too.',
+  },
+
+  band: {
+    title: 'The band',
+    caption: (stepMm) =>
+      `The key driven slowly through its stroke, down and back, as a finger driving it would: at every ${stepMm} mm of travel at the measuring point, the force that holds it there. Between the two curves the key stays wherever it is, held by its friction: their distance apart is the friction, their middle the key’s balance. **D** is the most the way down needs anywhere, **U** the least the way up holds, read as gram weights read them.`,
+    travel: 'travel at the measuring point, below the top seat (mm)',
+    force: 'force on the measuring point, pressing down (g)',
+    down: 'down curve: what drives the key down',
+    up: 'up curve: what lets it rise',
+    held: 'held by friction',
+    weight: 'weight on the measuring point',
+    key: 'where it has left the key',
+    topSeat: 'top seat',
+    bottomSeat: 'bottom seat',
+    downMarker: (shown, exact) => `D ${shown} g (${exact})`,
+    upMarker: (shown, exact) => `U ${shown} g (${exact})`,
+    weightLine: (grams) => `${grams} g`,
+    readout: (travelMm, downG, upG) => `${travelMm} mm · down ${downG} g · up ${upG} g`,
+    seatsNote:
+      'At a seat the stop takes whatever the finger leaves, so the curves start a step inside each seat; D and U are read there, a few thousandths of a gram from the sheet’s, which walks gram weights from the seats themselves.',
+    stale: 'The key has changed since this band was drawn: choose **band** to draw it again.',
+    staleRefusal:
+      'The key has changed since the band was refused: choose **band** to try it again.',
+    refused: (why) => `The band cannot be drawn: ${why}`,
+    table:
+      'The band, step by step: travel at the measuring point, and the force on the way down and on the way up',
   },
 
   touch: {

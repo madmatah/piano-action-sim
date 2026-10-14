@@ -3,4 +3,4 @@
 /**
  * Which static solve stopped on its cap.
  */
-export type Solve = "seat" | "walk";
+export type Solve = "seat" | "walk" | "sweep";

@@ -3,6 +3,7 @@ import type { Contact } from "./Contact";
 import type { Procedure } from "./Procedure";
 import type { Riding } from "./Riding";
 import type { Solve } from "./Solve";
+import type { Stroke } from "./Stroke";
 
 /**
  * Why a reading cannot be taken, or why the key cannot be seated on its
@@ -43,7 +44,21 @@ cap_g: number, } | { "code": "no_equilibrium",
 /**
  * The stops that fight; empty where the key leans on a limit.
  */
-on: Array<Contact>, } | { "code": "walk_lifts_off_its_frame" } | { "code": "no_key_top_at_the_station", 
+on: Array<Contact>, } | { "code": "walk_lifts_off_its_frame" } | { "code": "sweep_lifts_off_its_punching", 
+/**
+ * On the way down or up.
+ */
+stroke: Stroke, 
+/**
+ * How far the measuring point stood below the top seat,
+ * millimetres.
+ */
+travel_mm: number, 
+/**
+ * The force the finger would need there, grams, positive pressing
+ * down.
+ */
+force_g: number, } | { "code": "sweep_lifts_off_its_frame" } | { "code": "no_key_top_at_the_station", 
 /**
  * Where it goes, millimetres from the balance pin, positive in
  * front.

@@ -30,8 +30,12 @@ read by running Stanwood's jig on the model, the key a body on a pin held level
 and the scale reading the force that holds it; down weight and up weight are
 walked a gram at a time from the key resting at the top and at the bottom of its
 stroke until it goes all the way, and balance and friction weight are read from
-those two; the key friction weight is read by Stanwood's protocol, zeroed on the
-levelled jig, and by its variant zeroed where the key rests on its frame. A key
+those two; the band is drawn by driving the key through its stroke at the
+measuring point, down and back, the force that holds it there read at every
+step, and D and U read on it a second way, its extremes, within a few
+thousandths of a gram of the walk's; the key friction weight is read by
+Stanwood's protocol, zeroed on the levelled jig, and by its variant zeroed
+where the key rests on its frame. A key
 friction weight is typed as Stanwood's protocol reads it, and the bushings are
 set to the torque at which that protocol, run on the model, reads it back; one
 no bushings read is refused with why. Weights are read as gram weights give
@@ -85,8 +89,8 @@ default bench an indication rather than a measurement.
 | `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
 | `crates/pa-app` | the single-key bench as an instrument, built from a profile, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
 | `data/profiles` | what each instrument starts from, every number bound to a record or a stated assumption |
-| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `golden`: rewrites the golden sheet |
-| `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section and in solid (React, react-three-fiber), from the same Rust compiled to WebAssembly |
+| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `band [PROFILE]`: the band, its D and U beside the walk's and both curves step by step; `golden`: rewrites the golden sheet |
+| `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section, in solid and as the band, force against travel, drawn when it is chosen (React, react-three-fiber), from the same Rust compiled to WebAssembly |
 
 ## What is planned
 
@@ -99,8 +103,8 @@ In this order, each stage with its engine and its view
   contacts over all coordinates, the static solve, every reading of the sheet
   by procedure, a boundary that sends codes and numbers which the page words
   in English, the registry and the validation layer, the profiles that load
-  `data/params/`, Hirschkorn's key as a profile chosen on the bench, are
-  built);
+  `data/params/`, Hirschkorn's key as a profile chosen on the bench, the band
+  drawn by the driven sweep, are built);
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;
@@ -125,8 +129,9 @@ pnpm verify                                # CI's gates, its install aside: Rust
                                            # Biome, type-check, build, tests,
                                            # browser smoke test
 cargo run -p pa-cli -- weigh               # the weighing sheet, no browser
+cargo run -p pa-cli -- band                # the band, step by step
 PATH="$HOME/.cargo/bin:$PATH" pnpm build   # the wasm through wasm-pack, then the bench
-pnpm --filter @pas/app-bench dev           # the bench; add ?view=section for the section
+pnpm --filter @pas/app-bench dev           # the bench; ?view=section or ?view=band
 ```
 
 `wasm-pack` installs into `~/.cargo/bin`; where a shell does not put that on

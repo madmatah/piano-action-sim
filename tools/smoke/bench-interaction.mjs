@@ -1108,6 +1108,208 @@ if (onOwn.borrowed !== 0 || !(onOwn.measured > 0)) {
 console.log(`  ok  his key's section marked ${JSON.stringify(onHis)}`)
 console.log(`  ok  the composite's section marked ${JSON.stringify(onOwn)}`)
 
+// The band, drawn when it is chosen and never with an edit: the key driven
+// through its stroke at the measuring point, down and back, the force that
+// drives it there at every step, D the greatest of the way down and U the
+// least of the way up. On both profiles it is drawn, its two curves inside
+// the window the seats leave, and a technician reads D and U on it as on his
+// scale: the same grams as the sheet's walks, and in full within a hundredth
+// of a gram, the curve's change over the step the sweep reads them from,
+// which the engine's tests derive and hold under that hundredth on both
+// keys. D falls on the first step off the top seat and U within a step of
+// the bottom one. The weight on the measuring point is drawn across it, the
+// page's own weight.
+const bandShown = () =>
+  evaluate(`
+    JSON.stringify((() => {
+      const band = document.querySelector('.band')
+      if (!band) return null
+      return {
+        band: { ...band.dataset },
+        readings: Object.fromEntries([...band.querySelectorAll('.band-reading')].map((g) => [
+          g.dataset.procedure,
+          { shown: Number(g.dataset.shown), exact: Number(g.dataset.exact), atMm: Number(g.dataset.atMm) },
+        ])),
+        curves: [...band.querySelectorAll('path[data-curve]')].map((p) => p.dataset.curve),
+        touch: { ...(band.querySelector('.band-touch')?.dataset ?? {}) },
+      }
+    })())
+  `).then(JSON.parse)
+const BAND_READS = { down_weight_on_the_band: 'down_weight', up_weight_on_the_band: 'up_weight' }
+let bandOn = null
+for (const profile of ['composite', 'hirschkorn']) {
+  if ((await choose(profile)) !== 'ok') fail('no profile choice')
+  await settle()
+  if ((await showView('band')) !== 'ok') fail('no band button')
+  await settle()
+  const b = await bandShown()
+  const windowMm = Number(b?.band.windowMm)
+  const step = Number(b?.band.stepMm)
+  if (
+    b?.band.band !== 'drawn' ||
+    b.band.stale !== 'false' ||
+    !(Number(b.band.samples) > 100) ||
+    JSON.stringify(b.curves) !== JSON.stringify(['down', 'up'])
+  ) {
+    fail(`the band is not drawn on ${profile}: ${JSON.stringify(b)}`)
+  }
+  const read = await measured()
+  for (const [onBand, walked] of Object.entries(BAND_READS)) {
+    const [m, w] = [b.readings[onBand], read[walked]]
+    if (!m || m.shown !== w?.shown || !(Math.abs(m.exact - w.exact) <= 0.01)) {
+      fail(`${onBand} on ${profile}'s band is not the sheet's: ${JSON.stringify([m, w])}`)
+    }
+    console.log(
+      `  ok  ${profile}: ${onBand} ${m.shown} g (${m.exact}) at ${m.atMm.toFixed(2)} mm, the sheet's ${w.shown} g (${w.exact})`,
+    )
+  }
+  const [d, u] = [b.readings.down_weight_on_the_band, b.readings.up_weight_on_the_band]
+  if (!(Math.abs(d.atMm - step) < 1e-9) || !(windowMm - u.atMm <= step)) {
+    fail(`the extremes do not fall a step off each seat: ${JSON.stringify([d, u, windowMm])}`)
+  }
+  if (Number(b.touch.weightG) !== Number((await slider(WEIGHT))?.holds)) {
+    fail(`the weight across the band is not the page's: ${JSON.stringify(b.touch)}`)
+  }
+  // The band is laid out in the view, every step of it in its table too, and
+  // the page stays the window's height, as it is with the key drawn.
+  const grown = await evaluate(`
+    (() => {
+      const page = document.documentElement
+      return page.scrollHeight > page.clientHeight ? [page.scrollHeight, page.clientHeight] : null
+    })()
+  `)
+  if (grown) fail(`the band lengthens the page on ${profile}: ${JSON.stringify(grown)}`)
+  bandOn = b
+}
+
+// The band reads no weight on the measuring point, so moving it leaves the
+// band as it was drawn and moves where the key stands on it: a pull past U
+// brings Hirschkorn's key back to its top seat, the dot to no travel. A
+// change of the key itself leaves the band drawn but marked as the key's
+// before, until the band is chosen again.
+if ((await moveSlider(WEIGHT, -40)) !== 'ok') fail('weight slider missing')
+await settle()
+const pulled = await bandShown()
+if (pulled.band.stale !== 'false' || Number(pulled.touch.weightG) !== -40) {
+  fail(`a weight on the measuring point redrew or staled the band: ${JSON.stringify(pulled)}`)
+}
+if (!(Math.abs(Number(pulled.touch.travelMm)) < 0.001)) {
+  fail(`a pull of 40 g leaves his key ${pulled.touch.travelMm} mm below its top seat`)
+}
+console.log(`  ok  40 g pulled: the band as drawn, the key at its top seat on it`)
+
+// The non-confusion test through the band: tighter bushings widen it and
+// leave its middle, D read a step off the top seat and U a step off the
+// bottom, where the measuring point's arm differs by under one per cent, so
+// the middle moves by under 8 g × 1 % / 2 = 0.04 g as the sheet's balance
+// weight does.
+const looser = bandOn.readings
+if ((await moveFriction(14)) !== 'ok') fail('friction slider missing')
+await settle()
+if ((await bandShown()).band.stale !== 'true') fail('a key changed leaves its band unmarked')
+if ((await showView('band')) !== 'ok') fail('no band button')
+await settle()
+const tighter = await bandShown()
+if (tighter.band.stale !== 'false') fail('the band chosen again is not drawn again')
+const bandMiddle = (r) => (r.down_weight_on_the_band.exact + r.up_weight_on_the_band.exact) / 2
+const bandWidth = (r) => r.down_weight_on_the_band.exact - r.up_weight_on_the_band.exact
+if (!(bandWidth(tighter.readings) > bandWidth(looser) + 1)) {
+  fail(
+    `tighter bushings did not widen the band: ${bandWidth(looser)} -> ${bandWidth(tighter.readings)}`,
+  )
+}
+if (!(Math.abs(bandMiddle(tighter.readings) - bandMiddle(looser)) <= 0.05)) {
+  fail(
+    `tighter bushings moved the band's middle: ${bandMiddle(looser)} -> ${bandMiddle(tighter.readings)}`,
+  )
+}
+console.log(
+  `  ok  tighter bushings widen the band ${bandWidth(looser).toFixed(2)} -> ${bandWidth(tighter.readings).toFixed(2)} g, its middle ${bandMiddle(looser).toFixed(3)} -> ${bandMiddle(tighter.readings).toFixed(3)} g`,
+)
+
+// The other half of the pair: the key weighed a gram heavier at the front
+// moves the band's middle as it moves the sheet's balance weight, and not its
+// width. D and U on the band each stand within the hundredth of a gram held
+// above of the walk's, so the middle moves as the sheet's balance weight in
+// full does to within twice that, 0.02 g. The width is D − U, which the gram
+// moves by under 1 g × 1 %, the two seats' arms apart, and each of its four
+// readings stands within 0.01 g of the walk's: under 0.05 g in all.
+const sheetBefore = await measured()
+const frontBefore = Number(await fieldValue(FRONT_WEIGHT))
+if ((await setField(FRONT_WEIGHT, frontBefore + 1)) !== 'ok') fail('no front weight field')
+await settle()
+if ((await clickAction('weigh_key')) !== 'ok') fail('no button to weigh the key')
+await settle()
+if ((await bandShown()).band.stale !== 'true') fail('a key weighed again leaves its band unmarked')
+if ((await showView('band')) !== 'ok') fail('no band button')
+await settle()
+const heavier = await bandShown()
+const sheetAfter = await measured()
+const middleMoved = bandMiddle(heavier.readings) - bandMiddle(tighter.readings)
+const balanceMoved = sheetAfter.balance_weight.exact - sheetBefore.balance_weight.exact
+const widthMoved = bandWidth(heavier.readings) - bandWidth(tighter.readings)
+if (!(Math.abs(middleMoved) > 0.5) || !(Math.abs(middleMoved - balanceMoved) <= 0.02)) {
+  fail(
+    `a gram at the front moved the band's middle by ${middleMoved} g, the sheet's balance weight by ${balanceMoved} g`,
+  )
+}
+if (!(Math.abs(widthMoved) <= 0.05)) {
+  fail(`a gram at the front moved the band's width by ${widthMoved} g`)
+}
+console.log(
+  `  ok  a gram at the front moves the band's middle ${middleMoved.toFixed(3)} g (the sheet's BW ${balanceMoved.toFixed(3)} g), its width ${widthMoved.toFixed(4)} g`,
+)
+
+// A key with no stroke has no band: on the composite frame with its balance
+// rail 6.6 mm low its stops fight, it rides on them, and the band says why
+// with the sheet's own refusal.
+if ((await choose('composite')) !== 'ok') fail('no profile choice')
+await settle()
+if ((await moveSlider(BALANCE_RAIL, 20)) !== 'ok') fail('balance rail slider missing')
+await settle()
+if ((await showView('band')) !== 'ok') fail('no band button')
+await settle()
+const noBand = await evaluate(`
+  (() => {
+    const b = document.querySelector('.band')
+    return b ? { band: b.dataset.band, refusal: b.dataset.refusal ?? null, text: b.textContent } : null
+  })()
+`)
+if (noBand?.band !== 'refused' || noBand.refusal !== 'no_travel' || !noBand.text) {
+  fail(`a key riding on its stops draws a band: ${JSON.stringify(noBand)}`)
+}
+console.log(`  ok  no band on a key riding on its stops: ${noBand.text}`)
+
+// The frame put back, the key has its stroke again: the refusal stays where
+// it stood, marked as the key's before, as a band drawn would be, and the
+// band chosen again is drawn whole, its plot laid out where the refusal stood.
+if ((await moveSlider(BALANCE_RAIL, balanceRail)) !== 'ok') fail('balance rail slider missing')
+await settle()
+const refusedBefore = await evaluate(`
+  (() => {
+    const b = document.querySelector('.band')
+    return b ? { band: b.dataset.band, stale: b.dataset.stale ?? null } : null
+  })()
+`)
+if (refusedBefore?.band !== 'refused' || refusedBefore.stale !== 'true') {
+  fail(`a refusal for a key since changed is not marked: ${JSON.stringify(refusedBefore)}`)
+}
+console.log(`  ok  the refusal marked as the key's before, once the frame is put back`)
+if ((await showView('band')) !== 'ok') fail('no band button')
+await settle()
+const again = await bandShown()
+const plotted = await evaluate(
+  `document.querySelector('.band-plot svg')?.getBoundingClientRect().width ?? 0`,
+)
+if (
+  again?.band.band !== 'drawn' ||
+  JSON.stringify(again.curves) !== JSON.stringify(['down', 'up']) ||
+  !(plotted > 100)
+) {
+  fail(`the band is not drawn again after a refusal: ${JSON.stringify([again, plotted])}`)
+}
+console.log(`  ok  the band drawn again once the key has its stroke back, ${plotted} px wide`)
+
 if (thrown.length > 0) fail(`the page threw: ${thrown[0].split('\n')[0]}`)
 
 console.log('all interactions reached the engine')

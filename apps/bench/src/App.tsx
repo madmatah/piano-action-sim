@@ -3,7 +3,9 @@
  *
  * Two halves: the sagittal section, which a technician validates by looking,
  * and the weighing sheet, which he validates by reading. Both come from the
- * same engine, so they cannot disagree.
+ * same engine, so they cannot disagree. In place of the section the band can
+ * be drawn, the force on the measuring point through the key's stroke, which
+ * the engine sweeps when it is chosen and not with every edit.
  *
  * The panels and their controls are the engine's description of them
  * (`describe()`, drawn by `Control.tsx`): which panels, in which order, each
@@ -20,10 +22,21 @@
  */
 
 import type { Bench } from '@pas/wasm'
-import type { Panel as PanelCode, Procedure, Registry, Scene, Sheet, State } from '@pas/wasm/types'
+import type {
+  Acted,
+  Band,
+  Panel as PanelCode,
+  Procedure,
+  Registry,
+  Scene,
+  Sheet,
+  State,
+} from '@pas/wasm/types'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { BandView } from './BandView'
 import {
   act,
+  band,
   describe,
   diagnostics,
   reading,
@@ -215,11 +228,19 @@ export function App() {
   // The scene as the engine last wrote it: kept while the geometry does not
   // change, so a weight on the key does not rebuild every part's mesh.
   const drawn = useRef<{ json: string; scene: Scene } | undefined>(undefined)
+  const linked = new URLSearchParams(window.location.search).get('view')
   const [view, setView] = useState<ViewMode>(
     // `?view=section` opens on the flat technical section rather than the
     // solid, so a particular reading can be linked to.
-    new URLSearchParams(window.location.search).get('view') === 'section' ? 'section' : 'solid',
+    linked === 'section' ? 'section' : 'solid',
   )
+  // The band, drawn on demand: when it is chosen, never with every edit.
+  // Kept with whether the key has changed since, which leaves it drawn but
+  // marked until it is chosen again; only the weight on the measuring point,
+  // which the band does not read, leaves it as it is. `?view=band` opens on
+  // it.
+  const [shownBand, setShownBand] = useState(linked === 'band')
+  const [drawnBand, setDrawnBand] = useState<{ band: Band; stale: boolean } | null>(null)
   // Whether every drawn line is marked by how the number that places it is
   // known: a way of looking, the view's alone.
   const [marked, setMarked] = useState(false)
@@ -252,8 +273,30 @@ export function App() {
     }).then((b) => {
       bench.current = b
       setEngine(read(b, describe(b)))
+      if (new URLSearchParams(window.location.search).get('view') === 'band') {
+        setDrawnBand({ band: band(b), stale: false })
+      }
     })
   }, [read])
+
+  /** Draws the band for the key as it is, and shows it. */
+  const showTheBand = () => {
+    const b = bench.current
+    if (!b) return
+    setDrawnBand({ band: band(b), stale: false })
+    setShownBand(true)
+  }
+
+  /** Marks the band drawn as the key's before an edit the engine took, unless
+   * the edit set the weight on the measuring point, which the band does not
+   * read: the experiment's layer, by the registry. */
+  const changesTheBand = (acted: Acted, path: string | null) => {
+    if (acted.outcome === 'refused') return
+    const layer = path === null ? null : engine?.registry.params.find((p) => p.path === path)?.layer
+    if (layer !== 'experiment') {
+      setDrawnBand((drawn) => (drawn === null ? drawn : { ...drawn, stale: true }))
+    }
+  }
 
   /** Runs `f` on the engine, keeps its answer, and re-reads the page. The
    * engine is read here and not inside a state updater, which React's
@@ -270,10 +313,15 @@ export function App() {
   const edits: Edits = {
     set: (path, value) =>
       change((b) => {
-        set(b, path, value)
+        changesTheBand(set(b, path, value), path)
         return null
       }),
-    act: (action, args) => change((b) => ({ action, acted: act(b, action, args) })),
+    act: (action, args) =>
+      change((b) => {
+        const acted = act(b, action, args)
+        changesTheBand(acted, null)
+        return { action, acted }
+      }),
   }
 
   if (!engine) return <div className="booting">{t.booting}</div>
@@ -492,40 +540,66 @@ export function App() {
         data-marked={marked ? 'provenance' : undefined}
       >
         <SagittalView scene={engine.scene} state={engine.state} mode={view} marked={marked} />
+        {shownBand && drawnBand && (
+          <BandView
+            band={drawnBand.band}
+            stale={drawnBand.stale}
+            weightG={s.experiment.weight_g}
+            travelMm={d.touch?.travel_mm ?? null}
+          />
+        )}
         <div className="viewtabs">
           <button
             type="button"
-            className={view === 'section' ? 'on' : ''}
+            className={!shownBand && view === 'section' ? 'on' : ''}
             data-view="section"
-            onClick={() => setView('section')}
+            onClick={() => {
+              setView('section')
+              setShownBand(false)
+            }}
           >
             {t.view.section}
           </button>
           <button
             type="button"
-            className={view === 'solid' ? 'on' : ''}
+            className={!shownBand && view === 'solid' ? 'on' : ''}
             data-view="solid"
-            onClick={() => setView('solid')}
+            onClick={() => {
+              setView('solid')
+              setShownBand(false)
+            }}
           >
             {t.view.solid}
           </button>
           <button
             type="button"
-            className={marked ? 'on' : ''}
-            data-mark="provenance"
-            aria-pressed={marked}
-            onClick={() => setMarked(!marked)}
+            className={shownBand ? 'on' : ''}
+            data-view="band"
+            onClick={showTheBand}
           >
-            {t.view.provenance}
+            {t.view.band}
           </button>
-          <span className="hint">{t.view.hint}</span>
-          <span className="legend">
-            <i style={{ background: CONTACT_COLOUR.closed }} /> {t.view.bears}
-            <i style={{ background: CONTACT_COLOUR.open }} /> {t.view.open}
-            <i style={{ background: CONTACT_COLOUR.overlapping }} /> {t.view.overlapping}
-          </span>
+          {!shownBand && (
+            <>
+              <button
+                type="button"
+                className={marked ? 'on' : ''}
+                data-mark="provenance"
+                aria-pressed={marked}
+                onClick={() => setMarked(!marked)}
+              >
+                {t.view.provenance}
+              </button>
+              <span className="hint">{t.view.hint}</span>
+              <span className="legend">
+                <i style={{ background: CONTACT_COLOUR.closed }} /> {t.view.bears}
+                <i style={{ background: CONTACT_COLOUR.open }} /> {t.view.open}
+                <i style={{ background: CONTACT_COLOUR.overlapping }} /> {t.view.overlapping}
+              </span>
+            </>
+          )}
         </div>
-        {marked && (
+        {marked && !shownBand && (
           <div className="provenance-legend">
             {(Object.keys(HOW_COLOUR) as Array<keyof typeof HOW_COLOUR>).map((how) => (
               <span key={how} data-how={how}>

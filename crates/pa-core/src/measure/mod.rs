@@ -12,7 +12,10 @@
 //! the trade's gestures ([`seat`]); down and up weight by the breakaway walk
 //! from each seat ([`walk`]), balance and friction weight from those two as
 //! read; and the key friction weight by Stanwood's protocol and by its
-//! variant zeroed on the frame. Each comes back as a [`measurement`]: its
+//! variant zeroed on the frame. Apart from the sheet, when the band is shown,
+//! the driven sweep holds the key's angle through its stroke and back and
+//! reads the force that holds it at every step ([`sweep`]): the band, and
+//! down and up weight read on it a second way. Each comes back as a [`measurement`]: its
 //! value in full, what the trade reads it as, its conditions and its trust.
 //! A key friction weight typed is turned into the bushings' torque by
 //! Stanwood's protocol run backwards, the torque at which it reads the typed
@@ -27,6 +30,7 @@ pub(crate) mod oracle;
 pub mod seat;
 #[cfg(test)]
 mod seat_corpus;
+pub mod sweep;
 pub mod walk;
 pub mod weighing;
 

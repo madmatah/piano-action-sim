@@ -120,9 +120,13 @@ trade's own protocols, and come back with the expected values.**
   §5.1), from the dynamics prototype on. *Not mechanically checked.*
 - **Keep the non-confusion tests**: 1 g of mass on the key moves BW, not F;
   axis friction ×1.2 moves F, not BW; through the procedures, within what the
-  tilt between the key's two seats derives, never a tolerance widened to pass.
-  Check: `one_gram_of_mass_moves_balance_weight_*`,
-  `scaling_friction_moves_friction_weight_*`, `tools/smoke/`.
+  tilt between the key's two seats derives, never a tolerance widened to pass;
+  through the band likewise, the gram moving its middle and not its width,
+  friction ×1.2 its width and not its middle. Check:
+  `one_gram_of_mass_moves_balance_weight_*`,
+  `scaling_friction_moves_friction_weight_*`,
+  `one_gram_of_mass_moves_the_bands_middle_and_not_its_width`,
+  `tighter_bushings_widen_the_band_and_leave_its_middle`, `tools/smoke/`.
 - **A validation test says so in its doc comment**; every other test is a
   consistency check, and a round trip through the model's own code never
   validates (FOUNDATIONS §5.1). *Not mechanically checked.*
@@ -168,7 +172,7 @@ crates/pa-app      application: the single-key bench as an Instrument (set by
                    profile), the golden sheet (tests/golden/)
 crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;
                    its package.json lets Turborepo drive wasm-pack
-crates/pa-cli      shell adapter of pa-app: `weigh`, `golden`
+crates/pa-cli      shell adapter of pa-app: `weigh`, `band`, `golden`
 apps/bench         the bench: React, react-three-fiber
 data/params/       parameter records with provenance
 data/profiles/     what each instrument starts from: every number a record or
@@ -190,12 +194,13 @@ cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo build -p pa-wasm --target wasm32-unknown-unknown
 cargo run -p pa-cli -- weigh [PROFILE]   # the weighing sheet, no browser
+cargo run -p pa-cli -- band [PROFILE]    # the band: D and U by the sweep
 cargo run -p pa-cli -- golden        # rewrites the golden sheet: say why
 pnpm check                           # Biome (`pnpm exec biome`, never npx)
 PATH="$HOME/.cargo/bin:$PATH" pnpm typecheck    # builds the wasm, then tsc
 PATH="$HOME/.cargo/bin:$PATH" pnpm build && bash scripts/smoke.sh
 PATH="$HOME/.cargo/bin:$PATH" pnpm test
-pnpm --filter @pas/app-bench dev     # after a build; ?view=section
+pnpm --filter @pas/app-bench dev     # after a build; ?view=section, ?view=band
 ```
 
 Node 26 and Rust 1.99.0 are pinned (`.nvmrc`, `rust-toolchain.toml`) so tools,

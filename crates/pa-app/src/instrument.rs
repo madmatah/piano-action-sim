@@ -55,12 +55,15 @@ pub use pa_core::measure::measurement::{
 /// frame cannot be weighed without reaching past the application layer.
 pub use pa_core::measure::seat::SeatRefusal;
 use pa_core::measure::seat::{Seating, Seats, SEAT_MARGIN, SEAT_OVERLAP};
-/// Why a walk cannot be taken to the end of the key's stroke.
-pub use pa_core::measure::walk::WalkRefusal;
+/// The band the driven sweep draws, and why it cannot be drawn.
+pub use pa_core::measure::sweep::{Band, Sample, SweepRefusal};
+/// Why a walk cannot be taken to the end of the key's stroke, and which way
+/// a walk or a sweep goes.
+pub use pa_core::measure::walk::{Stroke, WalkRefusal};
 use pa_core::measure::weighing::Weighing;
-/// The weighing sheet and why a reading on it is refused, and why no
-/// bushings read a key friction weight typed.
-pub use pa_core::measure::weighing::{BushingsRefusal, Refused, Sheet};
+/// The weighing sheet and why a reading on it is refused, the band and what
+/// is read on it, and why no bushings read a key friction weight typed.
+pub use pa_core::measure::weighing::{Banded, BushingsRefusal, Refused, Sheet};
 use pa_core::measure::TouchweightProtocol;
 use pa_core::mechanism::{
     AxisFriction, BodyId, MassProps, MaterialPoint, Placement, PointLoad,
@@ -225,6 +228,11 @@ pub struct Touch {
     /// The gap at the back rail cloth, millimetres
     /// ([`BenchReadout::gap_back_mm`]).
     pub gap_back_mm: Option<f64>,
+    /// How far the measuring point stands below where it stands with the
+    /// key seated at the top of its stroke, millimetres: where the weight
+    /// has left the key on the band's travel ([`Instrument::band`]). `None`
+    /// where the key cannot be seated at the top.
+    pub travel_mm: Option<f64>,
 }
 
 /// What holds the key where the weight on its measuring point has left it.
@@ -1944,14 +1952,47 @@ impl Instrument {
     /// where nothing holds it ([`Self::finger_verdict`]).
     pub fn touch(&self) -> Option<Touch> {
         let verdict = self.finger_verdict()?;
-        let (gap_front_mm, gap_back_mm) = self
-            .key_on_frame()
-            .map_or((None, None), |mounted| self.gaps_mm(&mounted));
+        let k = self.on_frame().ok();
+        let (gap_front_mm, gap_back_mm) = k
+            .as_ref()
+            .map_or((None, None), |k| self.gaps_mm(&k.mounted));
         Some(Touch {
             verdict,
             gap_front_mm,
             gap_back_mm,
+            travel_mm: k.and_then(|k| self.travel_mm(&k)),
         })
+    }
+
+    /// How far the measuring point stands below where it stands with the
+    /// key seated at the top of its stroke, where the key is drawn,
+    /// millimetres; `None` where the key cannot be seated at the top.
+    fn travel_mm(&self, k: &OnItsFrame) -> Option<f64> {
+        let point = self.protocol.measuring_point_on_key(&self.key);
+        let top = Seating {
+            mounted: &k.mounted,
+            capstan: k.capstan,
+            measuring_point: point,
+            margin: SEAT_MARGIN,
+            standing: &[],
+        }
+        .top(&mut Statics::new())
+        .ok()?;
+        let at = MaterialPoint {
+            body: k.mounted.key,
+            at: point,
+        };
+        let height = |q: &[f64]| k.mounted.mechanism.pose(q).world(at).y;
+        Some((height(&top.q) - height(&self.drawn(&k.mounted))) * 1000.0)
+    }
+
+    /// **The band**: the key swept through its stroke, from its top seat to
+    /// its bottom one and back, the force on the measuring point read at
+    /// every step, and the down and up weights read on it
+    /// ([`Weighing::band`]); or why not. Taken when it is asked for, never
+    /// with the sheet: an interface asks for it when it shows the band.
+    pub fn band(&self) -> Result<Banded, Refused> {
+        self.weigh(|w| w.band(&mut Statics::new()))?
     }
 
     /// What holds the key at `state` under the weight on its measuring
@@ -5144,5 +5185,306 @@ mod edit_tests {
         let frame = pa_core::test_fixture::frame().placed_under(&key);
         let built = read::built(key, frame, targets);
         assert!(built.is_ok(), "{:?}", built.err());
+    }
+}
+
+/// The band on every instrument a profile ships: its extremes against the
+/// walks, a step half as long, and the non-confusion pair through it.
+#[cfg(test)]
+mod band_tests {
+    use super::*;
+    use crate::registry::path;
+    use pa_core::measure::sweep::STEP;
+
+    /// Every shipped profile's instrument, as it arrives.
+    fn shipped() -> Vec<(&'static str, Instrument)> {
+        Profile::names()
+            .map(|name| {
+                let profile = Profile::named(name).expect("a shipped profile");
+                (name, Instrument::of(profile).expect("it builds"))
+            })
+            .collect()
+    }
+
+    /// The band of `b`, which must be drawn.
+    fn band(b: &Instrument) -> Band {
+        b.band().expect("the band is drawn").band
+    }
+
+    /// `b`'s band in steps of `step`, from the seats the sheet reads.
+    fn band_by(b: &Instrument, step: f64) -> Band {
+        let (k, seats) = b.seated().expect("the key seats");
+        Seating {
+            mounted: &k.mounted,
+            capstan: k.capstan,
+            measuring_point: b.measuring_point_on_key(),
+            margin: SEAT_MARGIN,
+            standing: &[],
+        }
+        .sweep_by(&mut Statics::new(), &seats, step)
+        .expect("the band is drawn")
+    }
+
+    /// How far the extreme a curve reads may stand from the extreme of the
+    /// force it samples, grams: the curve's greatest change over one step,
+    /// and twice its greatest change of slope over one. Derived as
+    /// `pa_core::measure::sweep`'s tests derive it: an extreme inside the
+    /// stroke stands within half a step of a reading; one at a seat is read
+    /// a step inside it at most, and the change over that step differs from
+    /// the change over the next by the curve's bend over the two.
+    fn within_a_step(curve: &[Sample]) -> f64 {
+        let g: Vec<f64> = curve.iter().map(|s| s.grams).collect();
+        let step = g
+            .windows(2)
+            .map(|w| (w[1] - w[0]).abs())
+            .fold(0.0_f64, f64::max);
+        let bend = g
+            .windows(3)
+            .map(|w| (w[0] - 2.0 * w[1] + w[2]).abs())
+            .fold(0.0_f64, f64::max);
+        step + 2.0 * bend
+    }
+
+    /// How far a reading of `b` may stand from the same reading worked
+    /// another way by rounding alone, grams: a few products of the key's
+    /// weight times an arm under 0.3 m and the bushings' bound, each rounded
+    /// at its last bit, over the measuring point's arm, at least 0.2 m; 64
+    /// units in the last place of that.
+    fn rounding(b: &Instrument) -> f64 {
+        let mass = b.key_mass_g().expect("a weighed key") * 1e-3;
+        64.0 * f64::EPSILON * 1000.0 * (mass * G * 0.3 + b.friction().bound_n_m) / (G * 0.2)
+    }
+
+    /// The curve's steepest change per radian between two readings, grams.
+    fn per_radian(curve: &[Sample]) -> f64 {
+        curve
+            .windows(2)
+            .map(|w| ((w[1].grams - w[0].grams) / (w[1].angle - w[0].angle)).abs())
+            .fold(0.0_f64, f64::max)
+    }
+
+    /// The measuring point's arm about the pin at attitude `theta`, over its
+    /// level arm.
+    fn tilted(b: &Instrument, theta: f64) -> f64 {
+        let p = b.measuring_point_on_key();
+        1.0 - p.y / p.x * theta.tan()
+    }
+
+    /// Consistency, the second code path, on both shipped keys: **the
+    /// band's extremes are the sheet's down and up weights.** The greatest
+    /// force of the down curve against the walk's D, the least of the up
+    /// curve against its U, within the walk's resolution and the curve's
+    /// change over the step the sweep reads its extreme from, with rounding;
+    /// both read as the trade reads them.
+    #[test]
+    fn the_bands_extremes_are_the_sheets_on_every_shipped_profile() {
+        for (name, b) in shipped() {
+            let banded = b.band().expect("the band is drawn");
+            for (on_band, walked, curve) in [
+                (
+                    &banded.down_weight,
+                    ProcedureId::DownWeight,
+                    &banded.band.down,
+                ),
+                (&banded.up_weight, ProcedureId::UpWeight, &banded.band.up),
+            ] {
+                let sheet = read::measured(&b, walked);
+                let bound = read::resolution() + within_a_step(curve) + rounding(&b);
+                assert!(
+                    (on_band.value - sheet.value).abs() <= bound,
+                    "{name}: {:?} {} g on the band, {} g by the walk, more than {bound} g apart",
+                    on_band.procedure,
+                    on_band.value,
+                    sheet.value
+                );
+                assert!(
+                    bound < 0.01,
+                    "{name}: a step reads under a hundredth of a gram"
+                );
+                assert_eq!(on_band.shown, sheet.shown, "{name}: read alike to the gram");
+                assert_eq!(on_band.trust, sheet.trust, "{name}: trusted alike");
+                assert_eq!(on_band.fingerprint, sheet.fingerprint);
+            }
+        }
+    }
+
+    /// C12, consistency, on both shipped keys: **a step half as long reads
+    /// the same extremes**, within the curve's change over a step of the
+    /// sweep at its own step, with rounding.
+    #[test]
+    fn halving_the_sweeps_step_on_every_shipped_profile() {
+        for (name, b) in shipped() {
+            let (whole, half) = (band_by(&b, STEP), band_by(&b, 0.5 * STEP));
+            assert_eq!(whole, band(&b), "{name}: the sweep the instrument draws");
+            for (w, h, curve) in [
+                (whole.down_weight, half.down_weight, &whole.down),
+                (whole.up_weight, half.up_weight, &whole.up),
+            ] {
+                let bound = within_a_step(curve) + rounding(&b);
+                assert!(
+                    (w.grams - h.grams).abs() <= bound,
+                    "{name}: {} g by whole steps, {} g by half steps, more than {bound} g apart",
+                    w.grams,
+                    h.grams
+                );
+            }
+        }
+    }
+
+    /// Level 0, consistency, the first non-confusion test through the band,
+    /// on both shipped keys, the way the bench changes a key: **weighed with
+    /// its front weight a gram heavier, the band's middle moves and its
+    /// width does not.** The gram is a static moment on the measuring
+    /// point's level arm; at an attitude `θ` it turns the key by its cosine,
+    /// read at the measuring point's arm `x cos θ − y sin θ`, so both curves
+    /// fall by `1 / (1 − (y / x) tan θ)` at every travel: the middle by
+    /// that, the width by nothing. At the extremes, the middle `(D + U) / 2`
+    /// falls by the mean of the two attitudes' and the width `D − U` moves
+    /// by their difference, a few thousandths of a gram. The tolerance is
+    /// rounding, that of the static moment the weighing keeps, 64 `ε` of the
+    /// front weight, and what the reweighed key's seats move each step's
+    /// angle by, read, through the curve's steepest slope per radian, twice
+    /// for its bend.
+    #[test]
+    fn a_front_weight_one_gram_heavier_moves_the_bands_middle_not_its_width() {
+        for (name, before) in shipped() {
+            let mass_g = before.key_mass_g().expect("a weighed key");
+            let front_g = read::value(&before, ProcedureId::FrontWeight);
+            let mut after = before.clone();
+            after
+                .act(Action::WeighKey {
+                    mass_g,
+                    front_weight_g: front_g + 1.0,
+                    from_lip_mm: 1000.0 * before.measuring_point_from_lip(),
+                })
+                .expect("a gram heavier in front is a key's weighing");
+            let (b0, b1) = (band(&before), band(&after));
+            let slope = 2.0 * per_radian(&b0.down).max(per_radian(&b0.up));
+            let fixed = 2.0 * rounding(&before) + 64.0 * f64::EPSILON * front_g.abs();
+            let moved = |s0: &Sample, s1: &Sample| slope * (s1.angle - s0.angle).abs();
+            let fell = |theta: f64| -1.0 / tilted(&before, theta);
+            for (s0, s1) in b0.down.iter().zip(&b1.down).chain(b0.up.iter().zip(&b1.up)) {
+                let by_hand = fell(s0.angle);
+                assert!(
+                    (s1.grams - s0.grams - by_hand).abs() <= fixed + moved(s0, s1),
+                    "{name}: at {} mm the gram moved the curve by {} g, by hand {by_hand} g",
+                    s0.travel * 1000.0,
+                    s1.grams - s0.grams
+                );
+            }
+            for ((d0, u0), (d1, u1)) in b0
+                .down
+                .iter()
+                .zip(b0.up.iter().rev())
+                .zip(b1.down.iter().zip(b1.up.iter().rev()))
+            {
+                let width = (d1.grams - u1.grams) - (d0.grams - u0.grams);
+                let bound = 2.0 * fixed + moved(d0, d1) + moved(u0, u1);
+                assert!(width.abs() <= bound, "{name}: the width moved by {width} g");
+            }
+            let (d0, u0, d1, u1) = (b0.down_weight, b0.up_weight, b1.down_weight, b1.up_weight);
+            let tolerance = 2.0 * fixed + moved(&d0, &d1) + moved(&u0, &u1);
+            let (on_d, on_u) = (fell(d0.angle), fell(u0.angle));
+            let middle = 0.5 * (d1.grams + u1.grams) - 0.5 * (d0.grams + u0.grams);
+            let width = (d1.grams - u1.grams) - (d0.grams - u0.grams);
+            assert!(
+                (middle - 0.5 * (on_d + on_u)).abs() <= tolerance,
+                "{name}: the middle moved by {middle} g, by hand {} g",
+                0.5 * (on_d + on_u)
+            );
+            assert!(
+                (width - (on_d - on_u)).abs() <= tolerance,
+                "{name}: the width moved by {width} g, the tilt between the extremes accounts \
+                 for {} g",
+                on_d - on_u
+            );
+            assert!(middle < -0.99, "{name}: a gram of front weight: {middle}");
+            assert!(
+                width.abs() < 0.01,
+                "{name}: and a few thousandths of width: {width}"
+            );
+        }
+    }
+
+    /// Level 0, consistency, the second non-confusion test through the band,
+    /// on both shipped keys: **bushings 1.2 times as tight widen the band and
+    /// leave its middle.** The bushings' torque set a fifth higher, the
+    /// curves stand that bound over the measuring point's arm either side of
+    /// the key's balance at every travel: the width grows by a fifth, the
+    /// middle moves by rounding alone. At the extremes the width grows by
+    /// the extra bound read at the two attitudes' arms, the middle by half
+    /// their difference, under a hundredth of a gram. Friction does not
+    /// seat the key, so every step holds the same angle, to the bit.
+    #[test]
+    fn bushings_a_fifth_tighter_widen_the_band_and_leave_its_middle() {
+        for (name, base) in shipped() {
+            let mut tighter = base.clone();
+            let torque = base
+                .value(path::FRICTION_TORQUE)
+                .expect("the bushings' torque");
+            tighter
+                .set(path::FRICTION_TORQUE, 1.2 * torque)
+                .expect("tighter bushings");
+            let (b0, b1) = (band(&base), band(&tighter));
+            let tolerance = 2.0 * rounding(&tighter);
+            let level = 1000.0 * (tighter.friction().bound_n_m - base.friction().bound_n_m)
+                / (G * base.measuring_point_on_key().x);
+            let extra = |theta: f64| level / tilted(&base, theta) / theta.cos();
+            for (s0, s1) in b0.down.iter().zip(&b1.down).chain(b0.up.iter().zip(&b1.up)) {
+                assert_eq!(s0.angle.to_bits(), s1.angle.to_bits(), "{name}");
+            }
+            for ((d0, u0), (d1, u1)) in b0
+                .down
+                .iter()
+                .zip(b0.up.iter().rev())
+                .zip(b1.down.iter().zip(b1.up.iter().rev()))
+            {
+                let middle = 0.5 * (d1.grams + u1.grams) - 0.5 * (d0.grams + u0.grams);
+                assert!(
+                    middle.abs() <= tolerance,
+                    "{name}: the middle moved by {middle} g"
+                );
+                let widened = (d1.grams - u1.grams) - (d0.grams - u0.grams);
+                assert!(
+                    (widened - 2.0 * extra(d0.angle)).abs() <= 2.0 * tolerance,
+                    "{name}: at {} mm the band widened by {widened} g, by hand {} g",
+                    d0.travel * 1000.0,
+                    2.0 * extra(d0.angle)
+                );
+            }
+            let (top, bottom) = (b0.down_weight.angle, b0.up_weight.angle);
+            let width = (b1.down_weight.grams - b1.up_weight.grams)
+                - (b0.down_weight.grams - b0.up_weight.grams);
+            let middle = 0.5 * (b1.down_weight.grams + b1.up_weight.grams)
+                - 0.5 * (b0.down_weight.grams + b0.up_weight.grams);
+            assert!(
+                (width - (extra(top) + extra(bottom))).abs() <= 2.0 * tolerance,
+                "{name}: the width moved by {width} g, by hand {} g",
+                extra(top) + extra(bottom)
+            );
+            let tilt = 0.5 * (extra(top) - extra(bottom));
+            assert!(
+                (middle - tilt).abs() <= 2.0 * tolerance,
+                "{name}: the middle moved by {middle} g, the extremes' arms account for {tilt} g"
+            );
+            assert!(tilt.abs() < 0.01, "{name}: under a hundredth of a gram");
+            let was = b0.down_weight.grams - b0.up_weight.grams;
+            assert!(
+                (width / was - 0.2).abs() < 0.01,
+                "{name}: about a fifth wider"
+            );
+        }
+    }
+
+    /// Consistency: **the band is taken when it is asked for, and changes
+    /// nothing**: the instrument's state hash and its sheet are the same
+    /// after it as before, so a page that draws it has not edited the key.
+    #[test]
+    fn drawing_the_band_changes_nothing() {
+        let b = Instrument::standard();
+        let (hash, sheet) = (b.state_hash(), b.sheet());
+        let _ = b.band();
+        assert_eq!(b.state_hash(), hash);
+        assert_eq!(b.sheet(), sheet);
     }
 }

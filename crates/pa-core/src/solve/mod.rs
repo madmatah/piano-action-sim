@@ -26,11 +26,12 @@ pub use statics::{Equilibrium, Friction, Holder, Refusal, Statics, Support};
 /// every saved target will.
 ///
 /// Another solver, or this one with another cap, tolerance, margin, walk
-/// step, count of halvings, station of the temporary weight, protocol load
-/// or reach of a search, may read a key a bit differently; a saved number
-/// re-solved by it must not pass for the same reading. So the frozen numbers
-/// are hashed by a test, `the_fingerprint_names_the_frozen_numbers`, which
-/// fails when one changes and the fingerprint does not.
+/// or sweep step, count of halvings, station of the temporary weight,
+/// protocol load or reach of a search, may read a key a bit differently; a
+/// saved number re-solved by it must not pass for the same reading. So the
+/// frozen numbers are hashed by a test,
+/// `the_fingerprint_names_the_frozen_numbers`, which fails when one changes
+/// and the fingerprint does not.
 pub const SOLVER_FINGERPRINT: &str = "statics/1";
 
 #[cfg(test)]
@@ -63,8 +64,9 @@ mod tests {
     /// bushings a key friction weight reads on and its halvings, the jig's
     /// level, gravity, which turns every gram the procedures put on a key
     /// into newtons and every torque they read back into grams, the slack of
-    /// a contact row's sector test, and how flat a key's bearing on its cloth
-    /// counts as flat.
+    /// a contact row's sector test, how flat a key's bearing on its cloth
+    /// counts as flat, and the step the band's sweep drives the measuring
+    /// point by.
     ///
     /// Not here, because each reading carries it or its record holds it: the
     /// measuring point, a setting every reading names in its conditions; the
@@ -75,7 +77,7 @@ mod tests {
     /// its pin, which the drawn pin gives. Nor the numbers the bench draws
     /// with and reads nothing by.
     fn frozen() -> Vec<u64> {
-        use crate::measure::{jig, seat, walk, weighing};
+        use crate::measure::{jig, seat, sweep, walk, weighing};
         use crate::parts::{frame, mounts, verdicts};
         use crate::regulation;
         let mut words = vec![
@@ -122,6 +124,7 @@ mod tests {
             crate::G.to_bits(),
             crate::geometry::signed::SECTOR_SLACK.to_bits(),
             crate::contact::FLAT_WITHIN.to_bits(),
+            sweep::STEP.to_bits(),
         ]);
         words
     }
@@ -135,7 +138,7 @@ mod tests {
         let hash = fnv1a(&frozen());
         assert_eq!(
             (SOLVER_FINGERPRINT, hash),
-            ("statics/1", 0xe3b2_ab79_45c8_0905),
+            ("statics/1", 0x0891_4d79_7b51_9fb7),
             "a frozen number changed: the hash is now {hash:#018x}. Give the solver a new \
              fingerprint and record the hash beside it."
         );
@@ -150,9 +153,10 @@ mod tests {
     /// checkpoints, and the hash alone answers for it.
     #[test]
     fn the_procedures_numbers_are_hashed() {
-        use crate::measure::{jig, walk, weighing};
+        use crate::measure::{jig, sweep, walk, weighing};
         let words = frozen();
         for (name, x) in [
+            ("sweep::STEP", sweep::STEP),
             ("STATION_BEHIND", weighing::STATION_BEHIND),
             ("STATION_IN_FRONT", weighing::STATION_IN_FRONT),
             ("FRICTION_SEARCH_G", weighing::FRICTION_SEARCH_G),

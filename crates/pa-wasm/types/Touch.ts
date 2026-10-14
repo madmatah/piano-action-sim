@@ -19,4 +19,11 @@ gap_front_mm: number | null,
  * The gap at the back rail cloth, millimetres; `null` where no feature
  * of the two can meet.
  */
-gap_back_mm: number | null, };
+gap_back_mm: number | null, 
+/**
+ * How far the measuring point stands below where it stands with the
+ * key seated at the top of its stroke, millimetres: where the weight
+ * has left the key on the band's travel; `null` where the key cannot
+ * be seated at the top.
+ */
+travel_mm: number | null, };

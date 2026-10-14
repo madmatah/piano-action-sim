@@ -2,6 +2,7 @@
 import type { Contact } from "./Contact";
 import type { Mount } from "./Mount";
 import type { Procedure } from "./Procedure";
+import type { Swept } from "./Swept";
 import type { TemporaryWeight } from "./TemporaryWeight";
 import type { Walk } from "./Walk";
 
@@ -25,6 +26,10 @@ held_by: Array<Contact>,
  * The breakaway walk, where the reading is one.
  */
 walk: Walk | null, 
+/**
+ * The driven sweep, where the reading is taken on the band.
+ */
+sweep: Swept | null, 
 /**
  * The temporary weight standing on the key, where there is one.
  */

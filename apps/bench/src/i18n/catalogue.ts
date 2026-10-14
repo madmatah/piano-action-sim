@@ -99,6 +99,8 @@ export interface Catalogue {
     readonly bears: string
     readonly open: string
     readonly overlapping: string
+    /** The view that draws the band instead of the key. */
+    readonly band: string
     /** The toggle that marks each drawn line by where its number comes
      * from. */
     readonly provenance: string
@@ -221,6 +223,51 @@ export interface Catalogue {
   readonly frame: {
     readonly railsNote: string
     readonly placeNote: string
+  }
+
+  /** The band, drawn: the force on the measuring point through the key's
+   * stroke, down and back. */
+  readonly band: {
+    readonly title: string
+    /** What the band is, and how D and U are read on it, given the step
+     * it is swept by. */
+    caption(stepMm: string): string
+    /** The horizontal axis, its unit named. */
+    readonly travel: string
+    /** The vertical axis, its unit named. */
+    readonly force: string
+    /** The down curve, as the legend names it. */
+    readonly down: string
+    /** The up curve. */
+    readonly up: string
+    /** The band between them. */
+    readonly held: string
+    /** The weight on the measuring point, as the legend names its line. */
+    readonly weight: string
+    /** Where the weight has left the key, as the legend names its dot. */
+    readonly key: string
+    /** The ends of the window, under the axis. */
+    readonly topSeat: string
+    readonly bottomSeat: string
+    /** The down weight marked on the band: what the trade reads it as, and
+     * its value in full. */
+    downMarker(shown: string, exact: string): string
+    /** The up weight marked on the band. */
+    upMarker(shown: string, exact: string): string
+    /** The weight on the measuring point, beside its line. */
+    weightLine(grams: string): string
+    /** The two forces at one travel, where the pointer is. */
+    readout(travelMm: string, downG: string, upG: string): string
+    /** Why D and U on the band stand a step inside each seat. */
+    readonly seatsNote: string
+    /** The band drawn before the last edit that changed it. */
+    readonly stale: string
+    /** The band refused before the last edit that changed the key. */
+    readonly staleRefusal: string
+    /** Why the band cannot be drawn. */
+    refused(why: string): string
+    /** The table that carries every step, for a reader without the chart. */
+    readonly table: string
   }
 
   readonly touch: {

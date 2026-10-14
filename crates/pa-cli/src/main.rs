@@ -1,11 +1,12 @@
 //! Command-line adapter of `pa-app`.
 //!
 //! The same instrument that runs in the browser runs here natively, changed
-//! by the same calls. Two commands:
+//! by the same calls. Three commands:
 //! `weigh [PROFILE]` prints the key weighing sheet of the standard
 //! instrument, or of the shipped profile named, so that the numbers can be
-//! read and checked without a browser in the way; `golden` writes the golden
-//! sheet,
+//! read and checked without a browser in the way; `band [PROFILE]` prints the
+//! band the driven sweep draws, its down and up curves and the down and up
+//! weights read on it beside the walk's; `golden` writes the golden sheet,
 //! every reading of the default bench and of the fixture benches in full bits,
 //! which `crates/pa-app/tests/golden.rs` compares the engine against.
 //!
@@ -27,6 +28,7 @@ fn main() {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
         Some("weigh") | None => weigh(args.next().as_deref()),
+        Some("band") => band(args.next().as_deref()),
         Some("golden") => {
             let dir = args
                 .next()
@@ -37,7 +39,10 @@ fn main() {
             }
         }
         Some(other) => {
-            eprintln!("pa-cli: unknown command {other:?}. Try: weigh [PROFILE], golden [DIR]");
+            eprintln!(
+                "pa-cli: unknown command {other:?}. Try: weigh [PROFILE], band [PROFILE], \
+                 golden [DIR]"
+            );
             std::process::exit(2);
         }
     }
@@ -64,28 +69,107 @@ fn write_golden(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Weighs the key of the standard bench, or of the shipped profile named,
-/// as it arrives, then re-weighed with its front weight a gram heavier, and
-/// prints both.
-fn weigh(profile: Option<&str>) {
-    let mut bench = match profile {
+/// The standard instrument, or the shipped profile named, as it arrives;
+/// the command `command` says it cannot be built otherwise, and exits.
+fn instrument(command: &str, profile: Option<&str>) -> Instrument {
+    match profile {
         None => Instrument::standard(),
         Some(name) => match Profile::named(name).map(Instrument::of) {
             Some(Ok(bench)) => bench,
             Some(Err(why)) => {
-                eprintln!("pa-cli weigh: the profile {name:?} builds no instrument: {why:?}");
+                eprintln!("pa-cli {command}: the profile {name:?} builds no instrument: {why:?}");
                 std::process::exit(1);
             }
             None => {
                 let names: Vec<&str> = Profile::names().collect();
                 eprintln!(
-                    "pa-cli weigh: no profile {name:?}. Shipped: {}",
+                    "pa-cli {command}: no profile {name:?}. Shipped: {}",
                     names.join(", ")
                 );
                 std::process::exit(2);
             }
         },
+    }
+}
+
+/// Draws the band of the standard bench, or of the shipped profile named:
+/// the down and up weights read on it beside the walk's, where each falls
+/// on the stroke, the sweep's solves and how long it took, then both curves
+/// a reading a line, travel and force, for a plot.
+fn band(profile: Option<&str>) {
+    let bench = instrument("band", profile);
+    let sheet = bench.sheet();
+    let started = std::time::Instant::now();
+    let banded = bench.band();
+    let took = started.elapsed();
+    println!("  THE BAND");
+    println!("  the key driven through its stroke at the measuring point, down and back,");
+    println!(
+        "  the measuring point {:.1} mm back from the front lip of the key;",
+        bench.measuring_point_from_lip() * 1000.0
+    );
+    println!("  the force that drives it there, in grams, at every step.");
+    println!();
+    println!("  profile: {}", bench.profile().name);
+    let banded = match banded {
+        Ok(banded) => banded,
+        Err(why) => {
+            println!(
+                "  the band is refused: {}",
+                json(&Refusal::reading(&why, bench.riding().map(Riding::from)))
+            );
+            return;
+        }
     };
+    let b = &banded.band;
+    let walked = |p: ProcedureId| match sheet.get(p) {
+        Some(Ok(m)) => format!("{:>3} g {:>10.4}", shown(m.shown), m.value),
+        _ => "refused".to_owned(),
+    };
+    for (m, walk) in [
+        (&banded.down_weight, ProcedureId::DownWeight),
+        (&banded.up_weight, ProcedureId::UpWeight),
+    ] {
+        let at = m.conditions.sweep.map_or(f64::NAN, |s| s.at * 1000.0);
+        println!(
+            "  {:<22}{:>3} g {:>10.4}   at {at:6.2} mm of travel; by the walk {}",
+            label(m.procedure),
+            shown(m.shown),
+            m.value,
+            walked(walk)
+        );
+    }
+    let (d, u) = (banded.down_weight.value, banded.up_weight.value);
+    println!(
+        "  {:<22}{:>10.4} g   its middle, (D + U) / 2",
+        "",
+        0.5 * (d + u)
+    );
+    println!("  {:<22}{:>10.4} g   its width, D - U", "", d - u);
+    println!(
+        "  window {:.3} mm, a reading every {:.2} mm, {} each way; {} static solves, {} steps, \
+         in {:.2} ms",
+        b.window * 1000.0,
+        b.step * 1000.0,
+        b.down.len(),
+        b.report.increments,
+        b.report.iterations,
+        took.as_secs_f64() * 1000.0
+    );
+    println!();
+    println!("  stroke  travel_mm  force_g");
+    for (stroke, curve) in [("down", &b.down), ("up", &b.up)] {
+        for s in curve {
+            println!("  {stroke:<6} {:>10.4} {:>8.4}", s.travel * 1000.0, s.grams);
+        }
+    }
+}
+
+/// Weighs the key of the standard bench, or of the shipped profile named,
+/// as it arrives, then re-weighed with its front weight a gram heavier, and
+/// prints both.
+fn weigh(profile: Option<&str>) {
+    let mut bench = instrument("weigh", profile);
     let before = bench.sheet();
 
     println!("  KEY WEIGHING SHEET");
@@ -170,6 +254,8 @@ fn label(p: ProcedureId) -> &'static str {
         ProcedureId::FrictionWeight => "friction weight   F",
         ProcedureId::KeyFrictionWeightZeroedOnTheJig => "key friction KF, jig",
         ProcedureId::KeyFrictionWeightZeroedOnTheFrame => "key friction KF, frame",
+        ProcedureId::DownWeightOnTheBand => "down weight, band  D",
+        ProcedureId::UpWeightOnTheBand => "up weight, band    U",
     }
 }
 
