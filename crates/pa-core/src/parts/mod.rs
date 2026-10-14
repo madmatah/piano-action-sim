@@ -443,7 +443,23 @@ pub struct KeyDesign {
     /// into — which is why it sits where the hammer's tail arrives and nowhere
     /// else.
     pub back_check_block_height: f64,
-    /// Length of that block along the key, metres.
+    /// Back end of that block, metres from the balance pin (negative: behind
+    /// it).
+    ///
+    /// From the balance pin, and not from the key's end, because the
+    /// **action** places the block: it stands where the hammer's tail falls
+    /// as the back check catches it, and that is fixed by where the hammer
+    /// stands over the key, not by how long the key is. Lengthen a key at the
+    /// back and the block stays under the hammer's tail, the keystick running
+    /// at its full height between the block and the thinned tail; measured
+    /// from the key's end, a longer key would carry its block away from the
+    /// hammer it is there to check.
+    ///
+    /// The thinned tail ends at or behind it, and the capstan stands in front
+    /// of the block ([`crate::validate`]).
+    pub back_check_block_back: f64,
+    /// Length of that block along the key, metres, forward from its back end
+    /// ([`Self::back_check_block_back`]).
     pub back_check_block_length: f64,
     /// Thickness of the key's thinned tail, metres, above the underside.
     ///
@@ -451,7 +467,11 @@ pub struct KeyDesign {
     /// can bear on it: the felt on top of it is the contact, and the wood is
     /// taken away to put that contact at the height the damper lever wants.
     pub tail_height: f64,
-    /// Length of that thinned tail along the key, metres.
+    /// Length of that thinned tail along the key, metres, forward from the
+    /// key's end ([`Self::tail_end`]).
+    ///
+    /// It ends at or behind the back check block's back end. Where it ends
+    /// behind it, the keystick runs at its full height between the two.
     pub tail_length: f64,
     /// Thickness of the felt on the tail, metres. Hard felt, not punching felt.
     pub damper_felt: f64,
@@ -616,10 +636,11 @@ impl KeyDesign {
         let capsule_front = self.capsule_length * 0.5;
         let capsule_back = -self.capsule_length * 0.5;
         let tail_front = self.tail_end + self.tail_length;
-        let block_front = tail_front + self.back_check_block_length;
+        let block_back = self.back_check_block_back;
+        let block_front = block_back + self.back_check_block_length;
         let rise_from = self.tail_end + self.tail_rise_run;
 
-        vec![
+        let mut outline = vec![
             // The underside, in two straight faces. The flat carries the
             // balance punching and the front punching; the last 77 mm of the
             // tail is relieved by 2.5 mm so that the key beds flat on its back
@@ -650,12 +671,23 @@ impl KeyDesign {
             // The block that carries the back check.
             Point::new(block_front, top),
             Point::new(block_front, top + self.back_check_block_height),
-            Point::new(tail_front, top + self.back_check_block_height),
+            Point::new(block_back, top + self.back_check_block_height),
+        ];
+        // Where the tail begins right behind the block, the block's back face
+        // and the tail's front are one face, with no corner at the keystick's
+        // top. Where it begins further back, the keystick's full height runs
+        // between them; a tail run on under the block is refused
+        // ([`crate::validate`]).
+        if block_back.to_bits() != tail_front.to_bits() {
+            outline.extend([Point::new(block_back, top), Point::new(tail_front, top)]);
+        }
+        outline.extend([
             // And the tail: cut down to put the damper's contact at the right
             // height, with its hard felt on top.
             Point::new(tail_front, self.tail_height + self.damper_felt),
             Point::new(self.tail_end, self.tail_height + self.damper_felt),
-        ]
+        ]);
+        outline
     }
 
     /// Height of the keystick's top where the capstan is screwed in, metres.
@@ -751,7 +783,11 @@ impl Default for KeyDesign {
     ///
     /// The section is measured too: 24.5 mm of wood, a 1.5 mm covering
     /// 155 mm long over a 2 mm key front, and the capsule, back check block
-    /// and thinned tail on it. [V] — `data/params/key-section.json`.
+    /// and thinned tail on it. [V] — `data/params/key-section.json`. The
+    /// back check block's back end is placed 220 mm behind the balance pin,
+    /// where the measured tail ends on this key, the tail beginning right
+    /// behind the block as measured; the block's own distance from the pin
+    /// is not measured (`data/params/README.md`).
     ///
     /// What stays [E] is where the rails bear along the key, the wood's
     /// density, and the position of the capsule, which depends on whether the
@@ -768,6 +804,10 @@ impl Default for KeyDesign {
             capsule_height: 0.0060,
             capsule_length: 0.062,
             back_check_block_height: 0.0080,
+            // Where the measured thinned tail ends on this key, `tail_end +
+            // tail_length`: −0.240 + 0.020 is −0.220 to the bit. The block's
+            // own place along the key is not measured.
+            back_check_block_back: -0.220,
             back_check_block_length: 0.027,
             tail_height: 0.0070,
             tail_length: 0.020,

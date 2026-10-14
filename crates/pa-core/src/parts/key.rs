@@ -103,7 +103,8 @@ impl KeyDesign {
         let button_front = self.capsule_length * 0.5;
         let button_back = -self.capsule_length * 0.5;
         let tail_front = self.tail_end + self.tail_length;
-        let block_front = tail_front + self.back_check_block_length;
+        let block_back = self.back_check_block_back;
+        let block_front = block_back + self.back_check_block_length;
         let kink = self.tail_end + self.tail_rise_run;
         let (mortise_back, mortise_front) = self.front_mortise_span();
         let mut push = |part: Part| {
@@ -123,7 +124,9 @@ impl KeyDesign {
 
         // The keystick: the underside from the tail forward, split at the
         // mortise's edges where they fall on the flat, then the end grain the
-        // key front covers, the top, and the tail cut down for the damper.
+        // key front covers, the top at its full height back to the tail's
+        // front, under the back check block and behind it, and the tail cut
+        // down for the damper.
         let mut underside = vec![
             Point::new(self.tail_end, self.tail_rise),
             Point::new(kink, 0.0),
@@ -216,13 +219,16 @@ impl KeyDesign {
             Provenance::Measured(SECTION),
         ));
 
+        // The back check block, where the action puts it: placed from the
+        // balance pin, it stays under the hammer's tail whatever the key's
+        // length.
         let back_check_block = push(solid(
             PartCode::BackCheckBlock,
             polygon(&[
-                Point::new(tail_front, top),
+                Point::new(block_back, top),
                 Point::new(block_front, top),
                 Point::new(block_front, top + self.back_check_block_height),
-                Point::new(tail_front, top + self.back_check_block_height),
+                Point::new(block_back, top + self.back_check_block_height),
             ]),
             Material::BlockWood,
             Provenance::Measured(SECTION),
@@ -500,27 +506,173 @@ mod tests {
     /// Consistency: the drawn key tiles the volume model's polygon, so the key
     /// a reader sees is the key the composite key's mass is integrated over.
     /// The capstan is turned, and in neither; the mortise is a cut, which the
-    /// volume model does not take out.
+    /// volume model does not take out. The two enclose the same area with the
+    /// same first moments along and across the key, so a part drawn in one
+    /// place and integrated in another, as a block slid along the key's top,
+    /// is caught where the area alone would not see it.
     ///
-    /// The bound is derived: each shoelace sum rounds once per vertex, on
-    /// terms no larger than the reach squared, and there are under 40 of them.
+    /// Tiled on the default key, whose tail begins right behind its back
+    /// check block, and on a key lengthened at the back by 30 mm, with the
+    /// keystick's full height between the two.
+    ///
+    /// The bounds are derived: each shoelace sum rounds once per vertex, on
+    /// terms no larger than the reach squared, and there are under 40 of them;
+    /// each first moment's term is rounded at most four times, on terms no
+    /// larger than twice the reach cubed.
     #[test]
     fn the_drawn_key_tiles_the_polygon_its_mass_is_integrated_over() {
-        let key = KeyDesign::default();
-        let (parts, _) = built(&key);
-        let drawn: f64 = parts
+        for key in [KeyDesign::default(), lengthened_at_the_back(0.030)] {
+            let (parts, _) = built(&key);
+            let drawn = parts
+                .iter()
+                .filter(|p| p.role != Role::Cut && matches!(p.sweep, Sweep::Extruded { .. }))
+                .map(|p| moments(&vertices(p)))
+                .fold([0.0; 3], |sum, m| {
+                    [sum[0] + m[0], sum[1] + m[1], sum[2] + m[2]]
+                });
+            let volume = moments(&key.outline_vertices());
+            let reach = key.front_edge - key.tail_end;
+            assert!(
+                (drawn[0] - volume[0]).abs() <= 40.0 * f64::EPSILON * reach * reach,
+                "the parts enclose {} m², the volume model {} m²",
+                drawn[0],
+                volume[0]
+            );
+            for axis in [1, 2] {
+                assert!(
+                    (drawn[axis] - volume[axis]).abs()
+                        <= 40.0 * 4.0 * f64::EPSILON * 2.0 * reach * reach * reach,
+                    "first moment {axis}: the parts {} m³, the volume model {} m³",
+                    drawn[axis],
+                    volume[axis]
+                );
+            }
+            let mass = polygon_mass_properties(&key.outline_vertices(), key.width, key.density);
+            assert!(mass.is_some(), "and that polygon weighs something");
+        }
+    }
+
+    /// Twice a polygon's signed area, and six times its first moments about
+    /// the `y` axis and the `x` axis: the shoelace sums an extruded part's
+    /// mass and centre of mass are integrated from.
+    fn moments(points: &[Point]) -> [f64; 3] {
+        (0..points.len()).fold([0.0; 3], |[area, along, across], i| {
+            let (p, q) = (points[i], points[(i + 1) % points.len()]);
+            let cross = p.x * q.y - q.x * p.y;
+            [
+                area + cross,
+                along + (p.x + q.x) * cross,
+                across + (p.y + q.y) * cross,
+            ]
+        })
+    }
+
+    /// The default key with its tail end taken `by` metres further back, its
+    /// back check block left where the action puts it.
+    fn lengthened_at_the_back(by: f64) -> KeyDesign {
+        let mut key = KeyDesign::default();
+        key.tail_end -= by;
+        key
+    }
+
+    /// The back check block's two ends, from its outline, as drawn.
+    fn block_ends(parts: &[Part], r: &KeyRanges) -> (f64, f64) {
+        vertices(&parts[r.back_check_block.index()])
             .iter()
-            .filter(|p| p.role != Role::Cut && matches!(p.sweep, Sweep::Extruded { .. }))
-            .map(|p| twice_area(&vertices(p)))
-            .sum();
-        let volume = twice_area(&key.outline_vertices());
-        let reach = key.front_edge - key.tail_end;
+            .fold((f64::MAX, f64::MIN), |(lo, hi), p| {
+                (lo.min(p.x), hi.max(p.x))
+            })
+    }
+
+    /// Consistency: **on the default key the tail begins right behind the
+    /// back check block**, where the measured tail ends, and the block's
+    /// back face runs straight down to the tail's felt: the volume model's
+    /// outline closes on the block's back top corner, the tail's front at
+    /// the felt and the tail's end, the same points as the tail's front
+    /// computed from the key's end, to the bit, and no corner at the
+    /// keystick's top between them; the drawn block runs from the tail's
+    /// front.
+    #[test]
+    fn on_the_default_key_the_tail_begins_right_behind_the_block() {
+        let key = KeyDesign::default();
+        let tail_front = key.tail_end + key.tail_length;
+        assert_eq!(key.back_check_block_back.to_bits(), tail_front.to_bits());
+        let top = key.stick_height;
+        let block_front = tail_front + key.back_check_block_length;
+        let felt = key.tail_height + key.damper_felt;
+        let outline = key.outline_vertices();
+        assert_eq!(outline.len(), 18);
+        let tail = [
+            Point::new(block_front, top),
+            Point::new(block_front, top + key.back_check_block_height),
+            Point::new(tail_front, top + key.back_check_block_height),
+            Point::new(tail_front, felt),
+            Point::new(key.tail_end, felt),
+        ];
+        for (got, want) in outline[outline.len() - tail.len()..].iter().zip(tail) {
+            assert!(same(*got, want), "{got:?} is not {want:?}");
+        }
+        let (parts, r) = built(&key);
+        let block = vertices(&parts[r.back_check_block.index()]);
+        assert!(same(block[0], Point::new(tail_front, top)));
+        assert!(same(block[1], Point::new(block_front, top)));
+    }
+
+    /// Consistency: **a key lengthened at the back keeps its back check block
+    /// where the action puts it.** 30 mm longer, the block's two ends stand
+    /// where the default key's do, to the bit, drawn and in the volume
+    /// model; the thinned tail keeps its 20 mm, now 30 mm behind the block;
+    /// and the key's top over those 30 mm is the keystick's full height, the
+    /// felt's height behind them. The volume model steps down at the block's
+    /// back end, runs along the keystick's top to the tail's front, and
+    /// drops to the felt there.
+    #[test]
+    fn a_key_lengthened_at_the_back_keeps_its_block_where_it_was() {
+        let standard = KeyDesign::default();
+        let (parts, r) = built(&standard);
+        let (back, front) = block_ends(&parts, &r);
+        let key = lengthened_at_the_back(0.030);
+        let (parts, r) = built(&key);
+        let (lengthened_back, lengthened_front) = block_ends(&parts, &r);
+        assert_eq!(lengthened_back.to_bits(), back.to_bits());
+        assert_eq!(lengthened_front.to_bits(), front.to_bits());
+
+        let tail_front = key.tail_end + key.tail_length;
+        // Two roundings, each within half an ulp of the 270 mm they are
+        // taken at.
+        let rounding = 2.0 * f64::EPSILON * 0.270;
         assert!(
-            (drawn - volume).abs() <= 40.0 * f64::EPSILON * reach * reach,
-            "the parts enclose {drawn} m², the volume model {volume} m²"
+            (back - tail_front - 0.030).abs() <= rounding,
+            "{} m of wood between the block and the tail",
+            back - tail_front
         );
-        let mass = polygon_mass_properties(&key.outline_vertices(), key.width, key.density);
-        assert!(mass.is_some(), "and that polygon weighs something");
+        let top = key.stick_height;
+        let felt = key.tail_height + key.damper_felt;
+        let micrometre = 1e-6;
+        for (x, height) in [
+            (back - micrometre, top),
+            (0.5 * (back + tail_front), top),
+            (tail_front + micrometre, top),
+            (tail_front - micrometre, felt),
+        ] {
+            let at = r.top_at(&parts, x).expect("the key stands there");
+            assert_eq!(at.y.to_bits(), height.to_bits(), "at {x} m");
+        }
+
+        let outline = key.outline_vertices();
+        let tail = [
+            Point::new(front, top),
+            Point::new(front, top + key.back_check_block_height),
+            Point::new(back, top + key.back_check_block_height),
+            Point::new(back, top),
+            Point::new(tail_front, top),
+            Point::new(tail_front, felt),
+            Point::new(key.tail_end, felt),
+        ];
+        assert_eq!(outline.len(), 20);
+        for (got, want) in outline[outline.len() - tail.len()..].iter().zip(tail) {
+            assert!(same(*got, want), "{got:?} is not {want:?}");
+        }
     }
 
     /// The corners of the underside the key's fields put it on, from the

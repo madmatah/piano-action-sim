@@ -4526,14 +4526,14 @@ mod edit_tests {
     /// log, to the bit. A key front brought back to 170 mm runs its covering
     /// 14 mm into its key button (the audit's RUST-6); a capstan 200 mm
     /// behind the pin stands 9.5 mm in the back check block, 20 mm behind
-    /// it in the key button, and 230 mm behind it, on the thinned tail, off
-    /// the keystick; a front mortise 30 mm deep is cut through the 24.5 mm
-    /// of the keystick; a measuring point 160 mm back from the lip is off a
-    /// 155 mm covering; a felt thinner than nothing is out of range; a key
-    /// weighed at no mass, or less, is no key (the audit's BWA-3); a paper
-    /// no drawer holds is no paper; a paper not on its stack cannot be
-    /// lifted; a path the instrument has not, or one an action sets, is
-    /// named so.
+    /// it in the key button, and 230 mm behind it, on the thinned tail,
+    /// behind the back check block, 39.5 mm short of clearing it; a front
+    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick; a
+    /// measuring point 160 mm back from the lip is off a 155 mm covering; a
+    /// felt thinner than nothing is out of range; a key weighed at no mass,
+    /// or less, is no key (the audit's BWA-3); a paper no drawer holds is no
+    /// paper; a paper not on its stack cannot be lifted; a path the
+    /// instrument has not, or one an action sets, is named so.
     #[test]
     fn each_problem_is_refused_and_leaves_the_instrument_as_it_was() {
         let mut b = Instrument::standard();
@@ -4560,13 +4560,9 @@ mod edit_tests {
             )
         });
         refuses(&mut b, set(path::CAPSTAN_BEHIND, 230.0), &|w| {
-            matches!(
-                w,
-                EditRefusal::Problem(Problem::FeatureOutsideKeystick {
-                    part: PartCode::Capstan,
-                    ..
-                })
-            )
+            matches!(w, EditRefusal::Problem(Problem::CapstanBehindBackCheckBlock {
+                by,
+            }) if (by - 0.0395).abs() < 1e-12)
         });
         refuses(&mut b, set(path::FRONT_MORTISE_DEPTH, 30.0), &|w| {
             *w == EditRefusal::Problem(Problem::MortiseThroughKeyTop {
@@ -5000,7 +4996,11 @@ mod edit_tests {
     /// Consistency, the validation layer on load: **an instrument is not
     /// built from a design no part could be built as**, any more than it
     /// is edited into one: a felt thinner than nothing, a capstan screwed
-    /// down to a millimetre, a key front in its key button.
+    /// down to a millimetre, a key front in its key button, a key shortened
+    /// at the back by 10 mm, its back check block left where the action
+    /// puts it, which runs its thinned tail 10 mm under the block. Lengthened
+    /// at the back by 30 mm instead, on a frame placed under it, the key is
+    /// built, and regulated to the standard targets.
     #[test]
     fn a_design_no_part_could_be_built_as_is_refused_on_load() {
         let targets = Instrument::standard().targets();
@@ -5030,5 +5030,20 @@ mod edit_tests {
             Instrument::new(key, FrameDesign::default(), targets),
             Err(EditRefusal::Problem(Problem::OutlineCrossesItself { .. }))
         ));
+        let mut key = KeyDesign::default();
+        key.tail_end += 0.010;
+        assert!(matches!(
+            Instrument::new(key, FrameDesign::default(), targets),
+            Err(EditRefusal::Problem(Problem::OutlineCrossesItself {
+                back: PartCode::KeyTailFelt,
+                front: PartCode::BackCheckBlock,
+                by,
+            })) if (by - 0.010).abs() < 1e-12
+        ));
+        let mut key = KeyDesign::default();
+        key.tail_end -= 0.030;
+        let frame = FrameDesign::default().placed_under(&key);
+        let built = Instrument::new(key, frame, targets);
+        assert!(built.is_ok(), "{:?}", built.err());
     }
 }

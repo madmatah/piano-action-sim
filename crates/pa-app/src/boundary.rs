@@ -2192,14 +2192,17 @@ pub enum Problem {
         /// The mass typed, grams.
         mass_g: f64,
     },
-    /// Two parts on the key's top overlap, or its chamfer runs past its
-    /// front: the outline crosses itself.
+    /// Two parts on the key's top overlap, its thinned tail runs on under
+    /// its back check block, or its chamfer runs past its front: the outline
+    /// crosses itself.
     OutlineCrossesItself {
         /// The part behind.
         back: Part,
         /// The part in front.
         front: Part,
-        /// How far they overlap along the key, millimetres.
+        /// How far the front end of the part behind stands in front of the
+        /// back end of the part in front, millimetres along the key: how far
+        /// they overlap, where neither runs past the other's far end.
         by_mm: f64,
     },
     /// A feature off the keystick's wood where it must stand.
@@ -2207,6 +2210,12 @@ pub enum Problem {
         /// The feature.
         part: Part,
         /// How far off, millimetres along the key.
+        by_mm: f64,
+    },
+    /// The capstan stands wholly behind the back check block.
+    CapstanBehindBackCheckBlock {
+        /// How far forward it must come to clear the block, millimetres
+        /// along the key.
         by_mm: f64,
     },
     /// The capstan stands in a glued block.
@@ -2298,6 +2307,9 @@ impl Problem {
                 part: part.into(),
                 by_mm: mm(by),
             },
+            CoreProblem::CapstanBehindBackCheckBlock { by } => {
+                Self::CapstanBehindBackCheckBlock { by_mm: mm(by) }
+            }
             CoreProblem::CapstanInBlock { block, by } => Self::CapstanInBlock {
                 block: block.into(),
                 by_mm: mm(by),
@@ -2772,6 +2784,22 @@ mod tests {
                 }
             ))),
             r#"{"code":"capstan_in_block","block":"back_check_block","by_mm":9.5}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::CapstanBehindBackCheckBlock { by: 0.0395 }
+            ))),
+            r#"{"code":"capstan_behind_back_check_block","by_mm":39.5}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::OutlineCrossesItself {
+                    back: PartCode::KeyTailFelt,
+                    front: PartCode::BackCheckBlock,
+                    by: 0.0125,
+                }
+            ))),
+            r#"{"code":"outline_crosses_itself","back":"key_tail_felt","front":"back_check_block","by_mm":12.5}"#
         );
         assert_eq!(
             written(&Problem::of(&CoreProblem::OutOfRange {

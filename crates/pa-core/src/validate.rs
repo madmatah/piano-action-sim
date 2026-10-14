@@ -9,9 +9,10 @@
 //! that is not a number, one outside its setting's hard range
 //! ([`crate::registry::ParamSpec`]), a key weighed at no mass, and a key
 //! whose drawn parts could not be cut from wood: its covering run into its
-//! key button, its capstan in a glued block or off the full-height keystick,
-//! its front mortise cut through the top of the key, its measuring point off
-//! its covering. Everything an assembled keyboard can be, however badly
+//! key button, its thinned tail run on under its back check block, its
+//! capstan in a glued block or behind the back check block, its front
+//! mortise cut through the top of the key, its measuring point off its
+//! covering. Everything an assembled keyboard can be, however badly
 //! regulated, is **computed and reported**: a frame placed for another key,
 //! stops that fight, a pin standing proud of its mortise, a key regulated
 //! into jamming are states, which the faults, the verdicts and the sheet's
@@ -62,24 +63,34 @@ pub enum Problem {
         mass: f64,
     },
     /// The key's outline crosses itself: two parts glued on the keystick
-    /// overlapping along its top, or the underside's chamfer running past
-    /// the key front.
+    /// overlapping along its top, the thinned tail and its felt run on under
+    /// the back check block, or the underside's chamfer running past the key
+    /// front.
     OutlineCrossesItself {
         /// The part behind, whose front end stands too far forward.
         back: PartCode,
         /// The part in front, whose back end stands too far back.
         front: PartCode,
-        /// How far the two overlap, metres along the key.
+        /// How far the front end of the part behind stands in front of the
+        /// back end of the part in front, metres along the key: how far the
+        /// two overlap, where neither runs past the other's far end.
         by: f64,
     },
-    /// A feature that stands off the keystick's wood where it must be cut
-    /// or screwed: the capstan behind the back check block, on the thinned
-    /// tail or past the key's end; the front mortise off the flat of the
-    /// underside.
+    /// A feature that stands off the keystick's wood where it must be cut:
+    /// the front mortise off the flat of the underside.
     FeatureOutsideKeystick {
         /// The feature.
         part: PartCode,
         /// How far off, metres along the key.
+        by: f64,
+    },
+    /// The capstan stands wholly behind the back check block: on the
+    /// keystick's full height between the block and the thinned tail, on the
+    /// thinned tail, or past the key's end. It stands between the key button
+    /// and the back check block.
+    CapstanBehindBackCheckBlock {
+        /// How far forward it must come for its head to clear the block,
+        /// metres along the key.
         by: f64,
     },
     /// The capstan stands in a block glued on the keystick: the key button
@@ -126,8 +137,9 @@ pub struct Design<'a> {
 /// Whether `d` is a design parts could be built as; the first problem found
 /// where it is not, in this order: every number finite, every setting within
 /// its hard range, every paper one the drawer holds, a weighed mass, the
-/// key's outline, the capstan and the front mortise on the keystick, the
-/// mortise under the key's top, and the measuring point on the covering.
+/// key's outline, the capstan between its blocks, the front mortise on the
+/// flat of the underside and under the key's top, and the measuring point
+/// on the covering.
 pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     for (param, value) in numbers(d) {
         if !value.is_finite() {
@@ -171,19 +183,28 @@ pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     Ok(())
 }
 
-/// The key's outline along its top and its underside, back to front: each
-/// part glued on the keystick ends before the next begins, and the chamfer
-/// under the tail runs out before the key front. Two that overlap are the
-/// outline crossing itself, by how far they overlap.
+/// The key's outline along its top and its underside, back to front: the
+/// thinned tail, with its felt, ends at or behind the back check block, which
+/// stands on the keystick's full height; each part glued on the keystick ends
+/// before the next begins; and the chamfer under the tail runs out before the
+/// key front. Two that overlap are the outline crossing itself, by how far
+/// they overlap.
 fn outline(key: &KeyDesign) -> Result<(), Problem> {
     let tail_front = key.tail_end + key.tail_length;
-    let block_front = tail_front + key.back_check_block_length;
+    let block_back = key.back_check_block_back;
+    let block_front = block_back + key.back_check_block_length;
     let button_back = -key.capsule_length * 0.5;
     let button_front = key.capsule_length * 0.5;
     let keytop_back = key.lip() - key.keytop_length;
     let wood_front = key.front_edge - key.front_board;
     let chamfer_end = key.tail_end + key.tail_rise_run;
     for (back, ends, front, begins) in [
+        (
+            PartCode::KeyTailFelt,
+            tail_front,
+            PartCode::BackCheckBlock,
+            block_back,
+        ),
         (
             PartCode::BackCheckBlock,
             block_front,
@@ -225,13 +246,14 @@ fn capstan_radius(key: &KeyDesign) -> f64 {
 /// The capstan stands on the keystick's full height between the back check
 /// block and the key button, where nothing is glued on top: its head in
 /// either block is the capstan in that block, by how far it stands in; the
-/// whole of it behind the block, on the thinned tail or past the key's end,
-/// is off the keystick, by how far it must come forward to clear the block.
+/// whole of it behind the back check block, wherever the key's wood runs
+/// there, is behind the block, by how far it must come forward to clear it.
+/// The limit is the block's, which the action places, and not the key's end.
 fn capstan(key: &KeyDesign) -> Result<(), Problem> {
     let r = capstan_radius(key);
     let (back, front) = (key.capstan - r, key.capstan + r);
-    let tail_front = key.tail_end + key.tail_length;
-    let block_front = tail_front + key.back_check_block_length;
+    let block_back = key.back_check_block_back;
+    let block_front = block_back + key.back_check_block_length;
     let button_back = -key.capsule_length * 0.5;
     let button_front = key.capsule_length * 0.5;
     if front > button_back && back < button_front {
@@ -240,9 +262,8 @@ fn capstan(key: &KeyDesign) -> Result<(), Problem> {
             by: front - button_back,
         });
     }
-    if front <= tail_front {
-        return Err(Problem::FeatureOutsideKeystick {
-            part: PartCode::Capstan,
+    if front <= block_back {
+        return Err(Problem::CapstanBehindBackCheckBlock {
             by: block_front - back,
         });
     }
@@ -298,6 +319,7 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         capsule_height,
         capsule_length,
         back_check_block_height,
+        back_check_block_back,
         back_check_block_length,
         tail_height,
         tail_length,
@@ -337,6 +359,7 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         ("capsule_height", *capsule_height),
         ("capsule_length", *capsule_length),
         ("back_check_block_height", *back_check_block_height),
+        ("back_check_block_back", *back_check_block_back),
         ("back_check_block_length", *back_check_block_length),
         ("tail_height", *tail_height),
         ("tail_length", *tail_length),
@@ -623,10 +646,10 @@ mod tests {
     /// Consistency: **the capstan stands on the keystick between its two
     /// blocks**: 200 mm behind the pin its head stands 9.5 mm into the back
     /// check block, 20 mm behind it into the key button by 13.5 mm, and
-    /// 230 mm behind it, on the thinned tail, it is off the keystick, 39.5 mm
-    /// short of clearing the block.
+    /// 230 mm behind it, on the thinned tail, it is behind the back check
+    /// block, 39.5 mm short of clearing it.
     #[test]
-    fn a_capstan_in_a_block_or_off_the_keystick_is_refused() {
+    fn a_capstan_in_a_block_or_behind_the_back_check_block_is_refused() {
         let mut s = Standard::new();
         for (x, problem) in [
             (
@@ -643,13 +666,7 @@ mod tests {
                     by: 0.0135,
                 },
             ),
-            (
-                -0.230,
-                Problem::FeatureOutsideKeystick {
-                    part: PartCode::Capstan,
-                    by: 0.0395,
-                },
-            ),
+            (-0.230, Problem::CapstanBehindBackCheckBlock { by: 0.0395 }),
         ] {
             s.key.capstan = x;
             match (s.validate(), problem) {
@@ -664,18 +681,177 @@ mod tests {
                     assert!((by - want_by).abs() < 1e-12, "{x}: {by}");
                 }
                 (
-                    Err(Problem::FeatureOutsideKeystick { part, by }),
-                    Problem::FeatureOutsideKeystick {
-                        part: want,
-                        by: want_by,
-                    },
+                    Err(Problem::CapstanBehindBackCheckBlock { by }),
+                    Problem::CapstanBehindBackCheckBlock { by: want_by },
                 ) => {
-                    assert_eq!(part, want, "{x}");
                     assert!((by - want_by).abs() < 1e-12, "{x}: {by}");
                 }
                 (got, _) => panic!("{x}: {got:?}"),
             }
         }
+    }
+
+    /// What a few sums and differences of lengths under 300 mm round to:
+    /// each operation within half an ulp of 300 mm, and none of these
+    /// probes takes more than eight.
+    const ROUNDING: f64 = 8.0 * f64::EPSILON * 0.300;
+
+    /// Consistency: **the capstan's limit behind the pin is the back check
+    /// block's, not the key's end.** On the default key and on keys
+    /// lengthened at the back by 30 and 60 mm, the block stays from 220 to
+    /// 193 mm behind the pin, and so does the limit: a micrometre either
+    /// side of the capstan's head clearing the block's front, it stands
+    /// clear or a micrometre into the block; a micrometre either side of its
+    /// head touching the block's back, a micrometre into it or behind it.
+    /// Behind the block it is refused as behind it wherever it stands, each
+    /// by how far it must come forward to clear the block: on the
+    /// keystick's full height between the block and the lengthened tail
+    /// (235 mm behind the pin), on the thinned tail (260 mm), past the key's
+    /// end (285 mm).
+    #[test]
+    fn the_capstans_limit_behind_the_pin_follows_the_block_not_the_keys_end() {
+        let micrometre = 1e-6;
+        for longer in [0.0, 0.030, 0.060] {
+            let mut s = Standard::new();
+            s.key.tail_end -= longer;
+            assert_eq!(s.validate(), Ok(()), "{longer}");
+            let r = capstan_radius(&s.key);
+            let block_back = s.key.back_check_block_back;
+            let block_front = block_back + s.key.back_check_block_length;
+            assert!((block_front + 0.193).abs() <= ROUNDING, "{block_front}");
+            let into_block = |s: &Standard, want: f64| match s.validate() {
+                Err(Problem::CapstanInBlock {
+                    block: PartCode::BackCheckBlock,
+                    by,
+                }) => assert!((by - want).abs() <= ROUNDING, "{longer}: {by}"),
+                got => panic!("{longer}, {}: {got:?}", s.key.capstan),
+            };
+
+            s.key.capstan = block_front + r + micrometre;
+            assert_eq!(s.validate(), Ok(()), "{longer}");
+            s.key.capstan = block_front + r - micrometre;
+            into_block(&s, micrometre);
+
+            s.key.capstan = block_back - r + micrometre;
+            into_block(&s, block_front - block_back + 2.0 * r - micrometre);
+            s.key.capstan = block_back - r - micrometre;
+            match s.validate() {
+                Err(Problem::CapstanBehindBackCheckBlock { by }) => {
+                    let want = block_front - block_back + 2.0 * r + micrometre;
+                    assert!((by - want).abs() <= ROUNDING, "{longer}: {by}");
+                }
+                got => panic!("{longer}: {got:?}"),
+            }
+        }
+
+        let mut s = Standard::new();
+        s.key.tail_end = -0.270;
+        let tail_front = s.key.tail_end + s.key.tail_length;
+        let r = capstan_radius(&s.key);
+        for (x, on) in [
+            (-0.235, "the full height behind the block"),
+            (-0.260, "the thinned tail"),
+            (-0.285, "past the key's end"),
+        ] {
+            s.key.capstan = x;
+            let where_it_stands = if x - r > tail_front {
+                "the full height behind the block"
+            } else if x + r < tail_front && x - r > s.key.tail_end {
+                "the thinned tail"
+            } else if x + r < s.key.tail_end {
+                "past the key's end"
+            } else {
+                "astride a step"
+            };
+            assert_eq!(where_it_stands, on, "{x}");
+            match s.validate() {
+                Err(Problem::CapstanBehindBackCheckBlock { by }) => {
+                    assert!((by - (-0.193 - (x - r))).abs() <= ROUNDING, "{x}: {by}");
+                }
+                got => panic!("{x}, on {on}: {got:?}"),
+            }
+        }
+    }
+
+    /// Consistency: **the thinned tail ends at or behind the back check
+    /// block**, which is glued on the keystick's full height: on the default
+    /// key it begins right behind the block, and passes; a micrometre
+    /// longer, it runs that far under the block and the outline crosses
+    /// itself. On a key lengthened at the back by 30 mm, the tail may grow
+    /// by the 30 mm of full-height wood and no more; and a key shortened at
+    /// the back by 10 mm, its block left where the action puts it, runs its
+    /// tail 10 mm under the block. Shortened by 40 mm, more than its tail's
+    /// 20 mm, the block hangs 20 mm off the key's end and the two overlap by
+    /// 7 mm, but the tail's front stands 40 mm in front of the block's back
+    /// end, and that is what is said: how far one must move for the key to
+    /// be cut.
+    #[test]
+    fn a_tail_run_under_the_back_check_block_crosses_the_outline() {
+        let micrometre = 1e-6;
+        let under = |s: &Standard, want: f64| match s.validate() {
+            Err(Problem::OutlineCrossesItself {
+                back: PartCode::KeyTailFelt,
+                front: PartCode::BackCheckBlock,
+                by,
+            }) => assert!((by - want).abs() <= ROUNDING, "{by}"),
+            got => panic!("{got:?}"),
+        };
+        let mut s = Standard::new();
+        assert_eq!(
+            (s.key.tail_end + s.key.tail_length).to_bits(),
+            s.key.back_check_block_back.to_bits(),
+            "the default tail begins right behind the block"
+        );
+        assert_eq!(s.validate(), Ok(()));
+        s.key.tail_length += micrometre;
+        under(&s, micrometre);
+
+        for (tail_length, refused) in [(0.050 - micrometre, false), (0.050 + micrometre, true)] {
+            let mut s = Standard::new();
+            s.key.tail_end = -0.270;
+            s.key.tail_length = tail_length;
+            if refused {
+                under(&s, micrometre);
+            } else {
+                assert_eq!(s.validate(), Ok(()), "{tail_length}");
+            }
+        }
+
+        for (tail_end, by) in [(-0.230, 0.010), (-0.200, 0.040)] {
+            let mut s = Standard::new();
+            s.key.tail_end = tail_end;
+            under(&s, by);
+        }
+    }
+
+    /// Consistency: **a back check block pushed forward runs into the key
+    /// button**, by how far it overlaps it: a micrometre into it, the outline
+    /// crosses itself by that micrometre; a micrometre short of it, the
+    /// outline is whole, and the capstan, 129.5 mm behind the pin, is behind
+    /// the block.
+    #[test]
+    fn a_back_check_block_pushed_into_the_key_button_crosses_the_outline() {
+        let micrometre = 1e-6;
+        let mut s = Standard::new();
+        let button_back = -s.key.capsule_length * 0.5;
+        s.key.back_check_block_back = button_back - s.key.back_check_block_length + micrometre;
+        match s.validate() {
+            Err(Problem::OutlineCrossesItself {
+                back: PartCode::BackCheckBlock,
+                front: PartCode::KeyButton,
+                by,
+            }) => assert!((by - micrometre).abs() <= ROUNDING, "{by}"),
+            got => panic!("{got:?}"),
+        }
+        s.key.back_check_block_back -= 2.0 * micrometre;
+        assert!(
+            matches!(
+                s.validate(),
+                Err(Problem::CapstanBehindBackCheckBlock { .. })
+            ),
+            "{:?}",
+            s.validate()
+        );
     }
 
     /// Consistency: **a front mortise cut through the key top, or off the

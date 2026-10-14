@@ -194,6 +194,31 @@ describe('a problem', () => {
       }),
     ).toBe('the capstan would stand 9.5 mm into the back check block.')
     expect(
+      word(t.editRefusal, 'capstan_behind_back_check_block', {
+        code: 'capstan_behind_back_check_block',
+        by_mm: 39.5,
+      }),
+    ).toBe(
+      'the capstan would stand behind the back check block: its place is between the block and the key button, and it clears the block 39.5 mm further forward.',
+    )
+    expect(
+      word(t.editRefusal, 'outline_crosses_itself', {
+        code: 'outline_crosses_itself',
+        back: 'key_tail_felt',
+        front: 'back_check_block',
+        by_mm: 10,
+      }),
+    ).toBe(
+      "the key's thinned tail and its felt would end 10.0 mm in front of the back check block's back end, and the block is glued on the keystick's full height: no key is cut like that.",
+    )
+    expect(
+      word(t.editRefusal, 'feature_outside_keystick', {
+        code: 'feature_outside_keystick',
+        part: 'front_mortise',
+        by_mm: 2,
+      }),
+    ).toBe("the front mortise would stand off the flat of the key's underside, by 2.0 mm.")
+    expect(
       word(t.editRefusal, 'mortise_through_key_top', {
         code: 'mortise_through_key_top',
         depth_mm: 30,

@@ -241,12 +241,14 @@ const weighingWhy: Worded<WeighingRefusal> = {
     `that front weight on that mass stands the key's centre of mass ${fixed(Math.abs(at_mm), 0)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
 }
 
-/** Where a part runs, as a problem names it, the capstan's off the keystick
- * said where it would stand. */
-const OFF_THE_KEYSTICK = (part: Part): string =>
-  part === 'capstan'
-    ? "the capstan would stand behind the back check block, on the key's thinned tail or past its end, off the keystick's full height"
-    : `the ${PART[part]} would stand off the flat of the key's underside`
+/** Two parts that would overlap along the key, as a problem names them. The
+ * thinned tail, which ends at or behind the back check block, is said by how
+ * far in front of the block's back end it would end: on a key shortened at the
+ * back by more than its tail's length, further than the two overlap. */
+const OVERLAP = (back: Part, front: Part, by: string): string =>
+  back === 'key_tail_felt'
+    ? `the key's thinned tail and its felt would end ${by} mm in front of the ${PART[front]}'s back end, and the block is glued on the keystick's full height`
+    : `the ${PART[back]} and the ${PART[front]} would overlap by ${by} mm along the key`
 
 /** A setting's unit, as a value in it is written. */
 const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
@@ -272,9 +274,11 @@ const problem: Worded<Problem> = {
     `no drawer holds a ${fixed(thickness_mm, 2)} mm paper: it holds ${list(drawer_mm.map((mm) => fixed(mm, 2)))} mm.`,
   mass_not_positive: () => 'a key weighs more than nothing.',
   outline_crosses_itself: ({ back, front, by_mm }) =>
-    `the ${PART[back]} and the ${PART[front]} would overlap by ${fixed(by_mm, 1)} mm along the key: no key is cut like that.`,
+    `${OVERLAP(back, front, fixed(by_mm, 1))}: no key is cut like that.`,
   feature_outside_keystick: ({ part, by_mm }) =>
-    `${OFF_THE_KEYSTICK(part)}, by ${fixed(by_mm, 1)} mm.`,
+    `the ${PART[part]} would stand off the flat of the key's underside, by ${fixed(by_mm, 1)} mm.`,
+  capstan_behind_back_check_block: ({ by_mm }) =>
+    `the capstan would stand behind the back check block: its place is between the block and the key button, and it clears the block ${fixed(by_mm, 1)} mm further forward.`,
   capstan_in_block: ({ block, by_mm }) =>
     `the capstan would stand ${fixed(by_mm, 1)} mm into the ${PART[block]}.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>

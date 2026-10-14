@@ -112,12 +112,17 @@ what is glued to it or cut from it (the covering; the key front over the end
 grain, the covering's lip overhanging it; the capsule where the balance mortise
 is cut; the back check block; the thinned tail and its damper felt; the chamfer
 that lets the tail bed flat on its cloth) [V, `data/params/key-section.json`].
-The capstan is a turned steel part, integrated as a solid of revolution. No lead
-is modelled: a key's leads are in its weighing (below). Each piece
-is a part of its own, with its own material, on the key's body: the covering
-and the key front are of their own materials, the capsule and the back check
-block of one wood that is not the keystick's, and the front mortise is a cut,
-a void in the keystick open at its underside.
+The back check block stands where the action puts the hammer's tail, so it is
+placed from the balance pin and not from the key's end: a key lengthened at the
+back keeps its block in place, the keystick running at its full height between
+the block and the thinned tail. On the default key its back end stands 220 mm
+behind the pin, where the measured tail ends, a place derived and not measured
+(`data/params/README.md`). The capstan is a turned steel part, integrated as a
+solid of revolution. No lead is modelled: a key's leads are in its weighing
+(below). Each piece is a part of its own, with its own material, on the key's
+body: the covering and the key front are of their own materials, the capsule and
+the back check block of one wood that is not the keystick's, and the front
+mortise is a cut, a void in the keystick open at its underside.
 
 **The key is weighed whole**, as a key that arrives leaded is weighed, its leads
 in it and their masses unknown: its mass on a scale, and its front weight on
@@ -1586,25 +1591,26 @@ a list on each punching, held once in the frame and changed only by laying or
 lifting a paper; ratios have no path (rule 11).
 
 `validate` (`pa_core::validate`) runs on every edit and on every design an
-instrument is built from, before any solve, and refuses what no part could
-be built as, naming the limiting dimension and the shortfall: a value that is
-not a number or an infinity, anywhere in the design; a value outside its
-setting's range; a paper no drawer holds; a key weighed at no mass; an
-outline crossing itself, a glued part run into the next along the key's top
-(a key front brought back until its covering runs into the key button) or the
-chamfer past the key front; the capstan in a glued block, or behind the back
-check block off the keystick's full height; the front mortise off the flat of
-the underside, or cut through the top of the keystick; the measuring point
-off the covering. A refused edit leaves the instrument as it was, to the bit
-of its state hash, and the diagnostics keep it. Everything an assembled
-keyboard can be, however badly regulated, is computed and reported, not
-refused: a pin standing proud of its mortise is a state, the key riding on
-it; an action regulated into jamming is a state to report, not an error.
+instrument is built from, before any solve, and refuses what no part could be
+built as, naming the limiting dimension and the shortfall: a value that is not a
+number or an infinity, anywhere in the design; a value outside its setting's
+range; a paper no drawer holds; a key weighed at no mass; an outline crossing
+itself, a glued part run into the next along the key's top (a key front brought
+back until its covering runs into the key button), the thinned tail run on under
+the back check block, or the chamfer past the key front; the capstan in a glued
+block, or wholly behind the back check block; the front mortise off the flat of
+the underside, or cut through the top of the keystick; the measuring point off
+the covering. A refused edit leaves the instrument as it was, to the bit of its
+state hash, and the diagnostics keep it. Everything an assembled keyboard can
+be, however badly regulated, is computed and reported, not refused: a pin
+standing proud of its mortise is a state, the key riding on it; an action
+regulated into jamming is a state to report, not an error.
 
 **Planned.** The defaults loaded from `data/params/` with a test that each has
 a record, and each setting's provenance beside it; the paths a profile needs
-beyond the bench's page, the tail's end, the front mortise's place and
-length, the key's row, with the profiles that set them; the rails checked
+beyond the bench's page, the tail's end, the back check block's place, the
+front mortise's place and length, the key's row, with the profiles that set
+them; the rails checked
 against one another and the capstan's thread against its hole (§2.3).
 
 ### 7.4 Persistence

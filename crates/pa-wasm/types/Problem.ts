@@ -51,7 +51,9 @@ back: Part,
  */
 front: Part, 
 /**
- * How far they overlap along the key, millimetres.
+ * How far the front end of the part behind stands in front of the
+ * back end of the part in front, millimetres along the key: how far
+ * they overlap, where neither runs past the other's far end.
  */
 by_mm: number, } | { "code": "feature_outside_keystick", 
 /**
@@ -60,6 +62,11 @@ by_mm: number, } | { "code": "feature_outside_keystick",
 part: Part, 
 /**
  * How far off, millimetres along the key.
+ */
+by_mm: number, } | { "code": "capstan_behind_back_check_block", 
+/**
+ * How far forward it must come to clear the block, millimetres
+ * along the key.
  */
 by_mm: number, } | { "code": "capstan_in_block", 
 /**

@@ -1547,15 +1547,21 @@ mod part_tests {
     /// relation that only holds at the value it was derived from is not a
     /// relation. A 300 mm key is a long natural; a 180 mm one is shorter than
     /// anything in a piano, and the rule still has to produce a frame that
-    /// goes together.
+    /// goes together. A key 40 mm shorter at the back is built for an action
+    /// whose back check block stands right in front of its tail, as the
+    /// default key's does; a longer one keeps the default's block.
     #[test]
     fn placing_the_frame_follows_the_key_it_is_built_for() {
         for front_edge in [0.180_f64, 0.220, 0.258, 0.300] {
             for tail_end in [-0.200_f64, -0.240, -0.280] {
+                let standard = KeyDesign::default();
                 let key = KeyDesign {
                     front_edge,
                     tail_end,
-                    ..KeyDesign::default()
+                    back_check_block_back: standard
+                        .back_check_block_back
+                        .max(tail_end + standard.tail_length),
+                    ..standard
                 };
                 let frame = FrameDesign::default().placed_under(&key);
                 let (mortise_back, mortise_front) = key.front_mortise_span();
