@@ -233,8 +233,8 @@ impl FrameDesign {
     /// Running this is how a frame is **built**, and it is the right default:
     /// nobody should have to type a coordinate to get a keyboard that goes
     /// together. What it is not is how a frame is **maintained**. Change a key
-    /// afterwards and the frame stays where it is — rails are bolted to a
-    /// keybed and do not follow — so the mismatch appears, and
+    /// afterwards and the frame stays where it is — rails are part of the
+    /// key frame and do not follow — so the mismatch appears, and
     /// [`super::faults::faults`] names it. That is the project's standing
     /// rule that upstream settings drift rather than cascade, applied to
     /// geometry: a frame that silently re-placed itself would hide exactly the
