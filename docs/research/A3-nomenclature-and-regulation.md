@@ -62,17 +62,17 @@ own, modelled as a surface).
 | Barre d'échappement (barre des boutons d'échappement) | let-off rail / regulating rail | Carries the let-off buttons | 0 adjustable | Overall height |
 | Barre de repos des marteaux | hammer rest rail / cushion | Rest for the shanks | 0 adjustable | Kawai: **5 mm below the shanks at rest** [V, Kawai, p. 16]; compliance of the felt |
 | Barre de butée des étouffoirs | damper (up)stop rail | Limits the lift of the dampers | 0 adjustable | §2.2 |
-| Barre de guidage des étouffoirs + garnitures | damper guide rail + bushings | Guides the damper wires | 0 | Bore Ø (**~3 mm** for a **~1 mm** wire in Igrec's example [V, Igrec, p. 184]), friction, deliberate off-centring of the wire |
+| Galerie des étouffoirs + coulisseaux | damper guide rail + bushings | Guides the damper wires | 0 | Bore Ø (**~3 mm** for a **~1 mm** wire in Igrec's example [V, Igrec, p. 184]), friction, deliberate off-centring of the wire |
 
 > **Settled.** « Limbe » is not the trade term for the *action frame or rails*.
 > Standard French usage is: **plateau** (keybed), **châssis de clavier** (key
 > frame), **barres de mécanique** (action rails: *barre des marteaux*, *barre des
-> chevalets*, *barre des boutons d'échappement*) and **montants de mécanique**
-> (action brackets). **Beware of « sommier »**: on a grand it is the **pinblock**,
-> never an action rail. Using it for the wippen or hammer rail is the error to
-> avoid, and a common one. Whether « sommier des bascules », for the frame the
-> damper under-levers pivot on, is accepted usage is an open question
-> (`docs/vocabulary-worksheet.md`).
+> chevalets*, *barre d'échappement*) and **montants de mécanique**
+> (action brackets). **The rails are « barres »**: *barre des marteaux*, *barre
+> des chevalets*, *barre des bascules d'étouffoir*. An older usage, still in
+> print, calls them « sommier des marteaux », « sommier des chevalets »,
+> « sommier d'étouffoirs » or « sommier des bascules »; the trade says « barre »
+> today, and the interface keeps **sommier** for the **pinblock** alone.
 
 ### 1.2 Key
 
@@ -85,7 +85,7 @@ own, modelled as a surface).
 | Patin ("shoe") de balancier | key shoe | Extra thickness under the key (older pianos) | 0 | Typically **4–6 mm**; only an **external** shoe counts in the geometry [V, Reyburn, p. 4] |
 | Plombs de touche | key leads | Counterbalance the hammers | 0 | Ø ½" or ⅜" (12.7 or 9.5 mm) usual, 10 and 12 mm in the French edition [V, Spurlock, p. 8; Spurlock FR, p. 10]; position and number, which with the key's own mass set its front weight. The bench models no lead: a key is weighed whole, its leads in it, its mass and front weight typed (FOUNDATIONS §2.1, §2.3) |
 | Pilote (de touche) | capstan (screw) | Transmits to the wippen heel | 0 adjustable (screwing) | **Height**, which sets the blow distance [V, Steinway ch. 2, p. 6]; longitudinal position, which sets the ratio [V, Spurlock, p. 3]; straight or angled [V, Reyburn, p. 4]; surface condition (friction) |
-| Talon (queue) de touche | key end / tail | Lifts the damper under-lever | C | Key-end felt |
+| Bout de touche | key end / tail | Lifts the damper under-lever | C | Key-end felt |
 | Revêtement | key covering / keytop | — | 0 | Thickness; height of the sharps |
 | Fronton | key front | — | 0 | — |
 
@@ -99,15 +99,16 @@ own, modelled as a surface).
 | Bâton (ou doigt) d'échappement | jack / fly (Steinway) | Pushes the knuckle, then lets off | **R** on the wippen | Length, mass; fore-and-aft position under the knuckle; WNG standard, repetition flange centre to jack centre, 99 ± 1 mm [?, not in the WNG document of the corpus] |
 | Pied du bâton d'échappement | jack tender / jack heel | Meets the let-off button | C | Position; angle of the tender (WNG uses a "low angle tender" matched to its regulating rail [V, WNG, p. 3]) |
 | Ressort de bâton / ressort combiné | jack spring / combination spring | Returns the jack | — | Stiffness, preload |
-| Bouton d'échappement (aussi *pilote d'échappement*, *poupée*) | let-off button / regulating button | **Triggers the let-off** | 0 adjustable | **Height**; compliance of the felt or cloth |
+| Bouton d'échappement | let-off button / regulating button | **Triggers the let-off** | 0 adjustable | **Height**; compliance of the felt or cloth |
 | Levier de répétition | repetition lever / balancier (Steinway) | Carries the knuckle after let-off, lifts the hammer back up | **R** on the wippen | Mass, inertia; **height relative to the jack** |
 | Vis de chute | drop screw | Stop for the repetition lever: sets the **drop** | 0 adjustable | Height |
+| Vis de réglage de la hauteur du levier de répétition | repetition lever height screw | Sets the lever's height against the top of the jack, taking out the lost motion between jack and knuckle | 0 adjustable | Height; at the back of a wippen with a chevron spring, towards the middle of one with a Schwander-type spring |
 | Ressort de répétition | repetition spring | Lifts the repetition lever and helps the key return [V, Steinway ch. 2, p. 14] | — | **Preload/stiffness**, adjusted through the coil, never the curve [V, Kawai, p. 12; Steinway ch. 2, p. 14]; graduated, slower in the bass, faster towards the treble [V, Steinway ch. 2, p. 15] |
-| Vis de tension du ressort | repetition spring tension screw | Screwed variant (some actions) | 0 adjustable | — |
+| Vis de tension du ressort | repetition spring tension screw | Screwed variant: at the back of a wippen with a Schwander-type spring, at the top of the chevron on a chevron spring that has one; a chevron spring without one is bent | 0 adjustable | — |
 | Attrape + garniture (peau/cuir) | back check + leather | Catches the hammer tail | 0 adjustable (bent wire) | **Height, angle ("slope"), lateral alignment, squaring**; friction coefficient of the leather |
 | Fil d'attrape | back check wire | Support, adjusted by bending | 0 adjustable | — |
 | Coussin de chevalet / coussin de repos | wippen cushion / rest cushion | Rest for the wippen or for the lever | C | Compliance; WNG offers a "rest rail" **or** a "cushion" variant [V, WNG, p. 2] |
-| Ressort auxiliaire de chevalet | wippen assist / helper spring | Lowers the down weight without the inertia of added lead [V, Spurlock, p. 3] | — | Preload; WNG sells a helper spring kit of **90 springs** [V, WNG, p. 6] |
+| Ressort auxiliaire de chevalet | wippen support spring (assist / helper spring) | Lowers the down weight without the inertia of added lead [V, Spurlock, p. 3] | — | Preload; WNG sells a helper spring kit of **90 springs** [V, WNG, p. 6] |
 
 ### 1.4 Hammer
 
@@ -116,7 +117,7 @@ own, modelled as a surface).
 | Ensemble marteau (olive + manche + tête) | hammer assembly | Strikes the string | **R** | Mass, inertia, centre of mass |
 | Olive (du manche de marteau) | hammer shank flange | Fixed part hinged on the rail | 0 | Width 12 mm, Renner type [?, not in the corpus]; travelling paper under it [V, Steinway ch. 1, p. 20] |
 | Manche de marteau | hammer shank | Flexible lever arm | — | **Thickness at the centre: 6 mm** [V, Reyburn, p. 6]; **stiffness**: WNG grades three, *Flex 1* the stiffest wooden shank, *Flex 2* the stiffest Renner, *Flex 3* the Renner average, from over 100 sets measured [?, not in the WNG document of the corpus]. **Do not use** 260 Hz or 280 Hz as the hammer's first mode: neither figure is in the corpus, and the first bending mode of the hammer is 39 Hz [V, Thorin 2017, §2.1 and Appendix] (FOUNDATIONS §4.5) |
-| Rouleau (= noix de manche **[?]**) | knuckle | Interface between jack or lever and hammer | C | **Distance from the centre pin: 17.0 mm on most modern parts, also 16.2, 16.0 or 15.5 mm** [V, Reyburn, p. 6]; WNG 15 to 19 mm in 0.5 mm steps [V, WNG, p. 3]; **Ø 10.0 mm, also 9.5 mm** [V, Reyburn, p. 8]; WNG 8, 9, 10 or 11 mm [V, WNG, p. 3]; leather and buckskin, lubricated with talc or PTFE powder [V, Spurlock, p. 6] |
+| Rouleau | knuckle | Interface between jack or lever and hammer | C | **Distance from the centre pin: 17.0 mm on most modern parts, also 16.2, 16.0 or 15.5 mm** [V, Reyburn, p. 6]; WNG 15 to 19 mm in 0.5 mm steps [V, WNG, p. 3]; **Ø 10.0 mm, also 9.5 mm** [V, Reyburn, p. 8]; WNG 8, 9, 10 or 11 mm [V, WNG, p. 3]; leather and buckskin, lubricated with talc or PTFE powder [V, Spurlock, p. 6] |
 | Tête de marteau + feutre | hammer head + felt | Striking mass | — | Mass; bore (strike distance) and hang distance (§3.1); Shore A hardness; moulding wood, mahogany, walnut or soft maple being lighter choices than birch, hard maple or hornbeam [V, Spurlock, p. 5] |
 | Queue de marteau | hammer tail | Checking surface | C | Profile, friction |
 | Manchon / garniture de l'axe | center pin bushing | Bearing | C | Friction (§2.5) |
@@ -129,35 +130,41 @@ own, modelled as a surface).
 | Fourche de bascule + fourche supérieure | underlever flange + top flange | Axes | 0 | Friction (§2.5) |
 | Pilote/vis de bascule d'étouffoir | underlever capstan | Aligns the **line** of the under-levers | 0 adjustable | Height; **not** the means of the collective lift [V, Redekop, p. 2; Kawai, p. 24] |
 | "Cuillère" de bascule | underlever spoon | Interface with the lift rail | C | Centre to tip: WNG **73.6 / 76.6 / 81.6 mm** [V, WNG, p. 9] |
-| Languette de sostenuto | sostenuto tab / lip | Caught by the sostenuto rod | 0 | Height (WNG makes two: the tall one replaces American Steinway parts, whose sostenuto is mounted on the action frame [V, WNG, p. 9]) |
-| Fil d'étouffoir | damper wire | Carries the damper head | 0 adjustable (4 bends) | Bends 1 and 2 take up the misalignment between under-lever and guide rail bushing, 3 and 4 set the head vertical and centred [V, Igrec, p. 184; Steinway ch. 3, pp. 4–5]; the wire bears lightly on one side of its bushing, bass wires on the treble side and treble wires on the bass side [V, Steinway ch. 3, p. 4], which halves the head's side-to-side motion in Igrec's bass-string example [V, Igrec, p. 184] |
-| Bloc / bouton d'étouffoir + vis | damper block / stem block + damper wire screw | Holds the wire in the under-lever at a set depth: **individual lift timing** | 0 adjustable | **The damper-timing parameter** [V, Steinway ch. 3, p. 3] |
+| Bec de sostenuto | sostenuto tab | Caught by the sostenuto rod | 0 | Height (WNG makes two: the tall one replaces American Steinway parts, whose sostenuto is mounted on the action frame [V, WNG, p. 9]) |
+| Tige d'étouffoir | damper wire | Carries the damper head | 0 adjustable (4 bends) | Bends 1 and 2 take up the misalignment between under-lever and guide rail bushing, 3 and 4 set the head vertical and centred [V, Igrec, p. 184; Steinway ch. 3, pp. 4–5]; the wire bears lightly on one side of its bushing, bass wires on the treble side and treble wires on the bass side [V, Steinway ch. 3, p. 4], which halves the head's side-to-side motion in Igrec's bass-string example [V, Igrec, p. 184] |
+| Noix d'étouffoir + vis | damper block + damper wire screw | Holds the wire in the under-lever at a set depth: **individual lift timing** | 0 adjustable | **The damper-timing parameter** [V, Steinway ch. 3, p. 3] |
 | Tête d'étouffoir + feutres | damper head + felts | Damps | — | Wedge felts on the trichords, combined with flat felt [V, Steinway ch. 3, p. 7]; flat ("block") dampers [V, Redekop, p. 5]; which notes get which head [?, the corpus gives no rule] |
-| Barre/plateau de levée des étouffoirs **[?]** | damper lift rail / underlever tray | Collective lift (damper pedal) | **T**/R | Rest height, lost motion |
-| Tige de sostenuto | sostenuto rod / blade | Holds the tabs | **R** (rotation of the rod) | Height, distance to the tabs, rotation (angle of the blade) |
+| Barre de forte (also *barre de levée des étouffoirs*) | damper lift rail / underlever tray | Collective lift (damper pedal) | **T**/R | Rest height, lost motion |
+| Barre de sostenuto | sostenuto rod / blade | Holds the tabs | **R** (rotation of the rod) | Height, distance to the tabs, rotation (angle of the blade) |
 | Ressort d'étouffoir (optionnel sur queue) | damper assist spring | Assists the fall | — | Preload; a WNG option, needing the thick damper flange rail [V, WNG, p. 10] |
 
-> The rail that lifts all the under-levers is the **barre de forte** (§7.1).
-> Whether « barre de levée des étouffoirs » and « plateau de levée » name the same
-> rail or the whole lifting assembly is an open question
-> (`docs/vocabulary-worksheet.md`). « Tringle de forte » names the upright's damper
-> lift rod.
+> The rail that lifts all the under-levers is the **barre de forte**; « barre de
+> levée des étouffoirs » is a second name for the same rail. Where the lift rail
+> and the rail the under-levers are fixed to are one unit, pivoting together, as
+> on Steinway, the unit is the **châssis (des bascules)**; « barre de forte » names
+> a lift rail pivoted on its own. « Plateau de levée », a rendering of the English
+> "lift tray", is not said. « Tringle de forte » names the upright's damper lift
+> rod.
 
 ### 1.6 Pedals, lyre, trapwork
 
 | FR | EN | Role | DOF | To be parameterised |
 |---|---|---|---|---|
 | Lyre + balustres | lyre + lyre braces | Support | 0 | — |
-| Pédale forte (droite) | damper / sustaining pedal | Lifts all the dampers | **R** | Travel; the pedal lifts the dampers at one third of its travel [V, Redekop, pp. 3–4]; lost motion |
-| Pédale de sostenuto (milieu) | sostenuto pedal | Holds the dampers already lifted | **R** | Travel, set by a felt block between the sostenuto trapwork lever and the keybed [V, Steinway ch. 3, p. 10] |
-| Pédale una corda / de décalage **[?]** | soft / shift / una corda pedal | **Shifts the key frame** | **R** → T | Travel; its stop is a screw on the treble side (§2.1, row 24) |
+| Pédale forte (droite; also *pédale des étouffoirs*) | damper / sustaining pedal | Lifts all the dampers | **R** | Travel; the pedal lifts the dampers at one third of its travel [V, Redekop, pp. 3–4]; lost motion |
+| Pédale sostenuto (pédale centrale) | sostenuto pedal | Holds the dampers already lifted | **R** | Travel, set by a felt block between the sostenuto trapwork lever and the keybed [V, Steinway ch. 3, p. 10] |
+| Pédale douce (gauche; also *pédale una corda*) | soft / shift / una corda pedal | **Shifts the key frame**: the *transposition* | **R** → T | Travel; its stop is a screw on the treble side (§2.1, row 24) |
 | Tringles / mouvements / bascules de pédalier | pedal rods / trapwork levers | Transmission | R/T | Lengths, clearances, blocking felts |
-| Tête de tringle (capstan) | pedal rod head / capstan | Fine adjustment of the travel | 0 adjustable | Thread; sets the pedal's lost motion [V, Kawai, p. 25] |
-| Pitman / goupille de sostenuto | pitman | Vertical transmission | T | Clearance: Kawai puts a **2 mm** paper punching between the pitman and the damper lift rail while setting the dampers [V, Kawai, p. 23] |
+| Écrou de réglage de tige de pédale | pedal rod head / capstan | Fine adjustment of the travel | 0 adjustable | Thread; sets the pedal's lost motion [V, Kawai, p. 25] |
+| Prisonnier | pitman | Vertical transmission, from the damper pedal's lever to the barre de forte | T | Clearance: Kawai puts a **2 mm** paper punching between the pitman and the damper lift rail while setting the dampers [V, Kawai, p. 23] |
 
-> The una corda pedal's French name is an open question
-> (`docs/vocabulary-worksheet.md`): « pédale de transposition », « pédale de
-> décalage », « petite pédale » or « pédale douce ».
+> The left pedal is the **pédale douce**, the name the interface shows, whatever
+> its mechanism; also **pédale una corda**. On a grand it shifts the key frame and
+> the action sideways: that motion is the **transposition** (« régler la
+> transposition », « châssis de clavier transposable »), and « pédale de
+> transposition » is said too. On some old grands and on uprights the left pedal
+> raises the hammers closer to the strings instead. « Pédale de décalage » and
+> « petite pédale » are not said.
 
 ---
 
@@ -190,10 +197,10 @@ own, modelled as a surface).
 | 21 | Tension des ressorts de répétition | repetition spring tension | Strike the key, let the hammer check, release the key **slowly**: the hammer rises until the lever is stopped by the drop screw [V, Steinway ch. 2, p. 14] | No number in the trade sources; the criterion is a rise "steady and quick, but not snappy" [V, Steinway ch. 2, p. 15], "without jumping or catching" [V, Kawai, p. 12]. Measured spring laws of single actions are in FOUNDATIONS §6.1 | **graduated**: slower in the bass, progressively faster in the treble [V, Steinway ch. 2, p. 15]; whether the bass should rise much more slowly or at nearly the treble's speed is a question for the owner (FOUNDATIONS §9) | Adjusted through the **coil** only [V, Kawai, p. 12]; re-checked **after** the backchecks [V, Kawai, p. 20] and **in the piano** [V, Steinway ch. 2, p. 15; Kawai, p. 12] |
 | 22 | Vis de réglage de portée du châssis | balance rail studs / glides | Knock test: turn the stud down until the knocking starts, then stops [V, Steinway ch. 1, p. 12]; re-check after pressing the shift pedal three or four times [V, Steinway ch. 1, p. 12] and with the damper pedal down [V, Kawai, p. 21] | just touching, **never lifting** the rail [V, Kawai, p. 21; Steinway ch. 1, p. 13] | — | Kawai's order: the tenor break, then the bass end, re-check, then towards the treble [V, Kawai, p. 21]; **never used to add key dip** [V, Steinway ch. 1, p. 13] |
 | 23 | Barre de contre-touche | key stop rail | Clearance above the keys | Steinway **~1/16" = 1.59 mm** [V, Steinway ch. 1, p. 17] | — | — |
-| 24 | Décalage una corda | shift / keyframe shift | Shift screw on the treble side of the rim, or in the treble keyblock on older Steinways [V, Steinway ch. 2, p. 16]; in the right cheekblock [V, Kawai, p. 27] | Kawai: only **2 strings of 3** struck, the left one missed [V, Kawai, p. 27]; Steinway Hamburg: "only two strings should be struck" [V, Steinway ch. 1, p. 30]; Steinway New York: a partial shift is acceptable, changing the colour rather than the volume [V, Steinway ch. 2, p. 16]; Yamaha, the hammer's left side grazing the left string [?, not in the corpus] | trichords, tenor and treble [V, Kawai, p. 27] | No dimension in millimetres in the corpus: the shift is set by where the hammers strike (row 26) |
+| 24 | Distance de transposition | shift / keyframe shift | Shift screw on the treble side of the rim, or in the treble keyblock on older Steinways [V, Steinway ch. 2, p. 16]; in the right cheekblock [V, Kawai, p. 27] | Kawai: only **2 strings of 3** struck, the left one missed [V, Kawai, p. 27]; Steinway Hamburg: "only two strings should be struck" [V, Steinway ch. 1, p. 30]; Steinway New York: a partial shift is acceptable, changing the colour rather than the volume [V, Steinway ch. 2, p. 16]; Yamaha, the hammer's left side grazing the left string [?, not in the corpus] | trichords, tenor and treble [V, Kawai, p. 27] | No dimension in millimetres in the corpus: the shift is set by where the hammers strike (row 26) |
 | 25 | Point de frappe / position du châssis | strike point / keyframe position | Kawai: hammer 88 strikes **2.16–3.0 mm** from the capo bar, the final position chosen **by ear** [V, Kawai, p. 4] | 2.16–3.0 mm | — | A shim glued to the block behind the key frame, or the block filed [V, Kawai, p. 4] |
 | 26 | Jours / mise des marteaux sur les cordes | spacing hammers to strings | Kawai: on the trichords the hammer's bass side overlaps the left string by **1 mm** [V, Kawai, p. 10]; Steinway: off centre towards the treble, **about twice as much felt exposed on the treble side** [V, Steinway ch. 1, p. 22], a third on the left and two thirds on the right in Hamburg [V, Steinway ch. 1, p. 29] | — | unichords centred; bichords centred [V, Kawai, p. 9] or slightly favouring the bass [V, Steinway ch. 1, p. 23] | Conditions the una corda voicing [V, Steinway ch. 1, p. 22] |
-| 27 | Défauchage / fauchage | traveling / burning shanks | Lift a group with a straightedge and watch the sideways drift; travelling paper under the shank flange [V, Steinway ch. 1, p. 20; Kawai, p. 8]; heat the shank and twist it [V, Steinway ch. 1, p. 21] | a straight, vertical path | — | A prerequisite to the rest |
+| 27 | Défauchage ; chauffage des manches | traveling ; burning shanks | Défauchage: lift a group with a straightedge and watch the sideways drift, then shim the flange on one side of its screw with a paper (*cale de défauchage*) [V, Steinway ch. 1, p. 20; Kawai, p. 8]; wippens are « défauchés » the same way, at their flanges. Chauffage: heat the shank and twist it, so that the hammer head stands parallel to the plane it swings in [V, Steinway ch. 1, p. 21] | a straight, vertical path; a hammer that does not lean | — | A prerequisite to the rest |
 | 28 | Portée du châssis | bedding the keyframe | Knock test, fingers on the front rail and keybed [V, Kawai, p. 7] | no knocking | — | Redone with the humidity: the front rail lifts at its ends in dry weather [V, Kawai, p. 7]; out of the model's scope (FOUNDATIONS §1.4) |
 
 ### 2.2 Damper regulation settings
@@ -203,7 +210,7 @@ own, modelled as a surface).
 | Départ individuel (par la touche) | individual damper lift timing | Where the hammer is when the damper head starts to move; set by the **depth of the wire in the under-lever** [V, Steinway ch. 3, p. 3] | **At half the blow distance**: Kawai **23 mm** [V, Kawai, p. 23], Yamaha **24 mm** (±1) [V, Spec sheet, p. 4], Redekop about 23 mm, "half of the 46mm" [V, Redekop, p. 3]; Steinway: the key end meets the under-lever at **~1/8" = 3.18 mm** of key travel, so the damper starts **~1/3** into the hammer travel, and **1/3 to 1/2** is acceptable [V, Steinway ch. 3, p. 3] | Depends on **blow distance and key dip** [V, Igrec, p. 158]; later timing, lighter touch [V, Steinway ch. 3, p. 3]; Redekop's note "Too light interferes with the let-off" follows a truncated sentence [?, its subject is lost: Redekop, p. 3] |
 | Ligne des bascules | underlever line | A straightedge laid on the under-levers; set with the underlever capstans | straight and parallel to the keybed [V, Redekop, p. 2; Kawai, p. 23] | The capstans are not the collective lift [V, Redekop, p. 2; Kawai, p. 24] |
 | Départ général (par la pédale) | collective lift | All the under-levers starting together: four sample notes marked in pencil at 23 mm, then the wire block screws set the rest [V, Redekop, p. 2] | — | Fluttering the pedal shows the early lifters, squeezing it the late ones [V, Redekop, p. 3] |
-| Jeu du plateau de levée | lift tray lost motion | Clearance between the lift rail and the line of under-levers at rest | Steinway **~1/8" = 3.18 mm** [V, Steinway ch. 3, p. 7]; Redekop **~2 mm** [V, Redekop, p. 3]; Kawai **1–2 mm**, set at the pedal rod head [V, Kawai, p. 25] | — |
+| Jeu de la barre de forte **[?]** | lift tray lost motion | Clearance between the lift rail and the line of under-levers at rest | Steinway **~1/8" = 3.18 mm** [V, Steinway ch. 3, p. 7]; Redekop **~2 mm** [V, Redekop, p. 3]; Kawai **1–2 mm**, set at the pedal rod head [V, Kawai, p. 25] | — |
 | Barre de butée des étouffoirs | damper (up)stop rail | Play left in the head lifted by hand, a sharp held down | Steinway **~1/16" = 1.59 mm** treble, **~3/32" = 2.38 mm** bass [V, Steinway ch. 3, p. 6]; Kawai **1–2 mm** [V, Kawai, p. 24]; Redekop **0.5 mm** sharps / **1 mm** naturals [V, Redekop, p. 3] | Set **after** the key dip [V, Igrec, p. 158] |
 | Course de la pédale forte | damper pedal travel | A felt block between the keybed's underside and the trapwork lever [V, Steinway ch. 3, p. 6] | The pedal lifts the dampers at **one third of its travel** [V, Redekop, pp. 3–4]; it lifts them as high as the sharps do, set by Kawai's pedal stop capstan [V, Kawai, p. 25], or slightly lower [V, Steinway ch. 3, p. 6]; always below the stop rail | A pedal lifting further makes the dampers bounce [V, Redekop, p. 4] |
 | Hauteur de levée de la tête | damper lift height off strings | — | No standard in the corpus; Schimmel **3.5–4 mm**, flat dampers rising **~8 mm** in practice [?, not in the corpus] | — |
@@ -238,16 +245,16 @@ touchweight reads (FOUNDATIONS §3.1).
 
 | FR quantity | EN | Symbol | Definition | Values |
 |---|---|---|---|---|
-| Poids descendant | down weight | **Pd / D** | The least weight, to the gram, on the measuring point that makes the key go down while the hammer moves slowly and steadily [V, Stanwood 2000, glossary, p. 22]. Spurlock places it on the end of the key and stops at the jack tender first touching the let-off button [V, Spurlock, p. 1]. Dampers out of circuit, action on the bench or pedal down [V, Spurlock, p. 1] | about **50–60 g** in most modern grands in good condition [V, Spurlock, p. 2]; Steinway Hamburg **47 g** in every section (S, M, L, O, A, B), **52 g** bass to **47 g** treble (C, D); Steinway New York **50 g** bass to **47 g** high treble (S, M, L, O, A, B), **51 to 46 g** (C, D) [V, Spec sheet, pp. 2–3] |
-| Poids ascendant | up weight | **Pa / U** | The greatest weight, to the gram, on the measuring point that the key lifts while the hammer moves slowly and steadily [V, Stanwood 2000, glossary, p. 23]; Spurlock starts it with the jack tender just touching the let-off button, the jack not tripped [V, Spurlock, p. 1] | **20 g** "is usually cited as a minimum upweight for good repetition, although this figure leaves little safety factor" [V, Spurlock, p. 2]; Steinway **20 g or more**, every model [V, Spec sheet, p. 3]; slow key return below about **18 g** [V, Spurlock, p. 5] |
-| Frottement | friction weight | **F** | **F = (D − U)/2** [V, Stanwood 2000, glossary, p. 22; Spurlock, p. 1] | **12–15 g** in the bass tapering to **8–10 g** in the high treble; **±1 g** from note to note is a fine tolerance [V, Spurlock, pp. 2, 7] |
+| Poids d'enfoncement (also *poids descendant*) | down weight | **D** | The least weight, to the gram, on the measuring point that makes the key go down while the hammer moves slowly and steadily [V, Stanwood 2000, glossary, p. 22]. Spurlock places it on the end of the key and stops at the jack tender first touching the let-off button [V, Spurlock, p. 1]. Dampers out of circuit, action on the bench or pedal down [V, Spurlock, p. 1] | about **50–60 g** in most modern grands in good condition [V, Spurlock, p. 2]; Steinway Hamburg **47 g** in every section (S, M, L, O, A, B), **52 g** bass to **47 g** treble (C, D); Steinway New York **50 g** bass to **47 g** high treble (S, M, L, O, A, B), **51 to 46 g** (C, D) [V, Spec sheet, pp. 2–3] |
+| Poids de remontée (also *poids ascendant*) | up weight | **U** | The greatest weight, to the gram, on the measuring point that the key lifts while the hammer moves slowly and steadily [V, Stanwood 2000, glossary, p. 23]; Spurlock starts it with the jack tender just touching the let-off button, the jack not tripped [V, Spurlock, p. 1] | **20 g** "is usually cited as a minimum upweight for good repetition, although this figure leaves little safety factor" [V, Spurlock, p. 2]; Steinway **20 g or more**, every model [V, Spec sheet, p. 3]; slow key return below about **18 g** [V, Spurlock, p. 5] |
+| Friction (also *frottement*) | friction weight | **F** | **F = (D − U)/2** [V, Stanwood 2000, glossary, p. 22; Spurlock, p. 1] | **12–15 g** in the bass tapering to **8–10 g** in the high treble; **±1 g** from note to note is a fine tolerance [V, Spurlock, pp. 2, 7] |
 | Poids d'équilibre | balance weight | **BW** | **BW = (D + U)/2**, the weight on the measuring point that balances the key [V, Stanwood 2000, glossary, p. 22] | — |
 | Poids avant | front weight | **FW** | The static weight, to 0.1 g, that "the level key, tipped on its balance-pin point, exerts at the measuring point" [V, Stanwood 2000, glossary, p. 22] | ceiling recommended by Stanwood: **41.3 g** at note 1 to **3.7 g** at note 88 [V, Stanwood 2000-03, Table IV, p. 25] |
-| Poids de frappe | strike weight | **SW** | The weight, to 0.1 g, of shank and hammer pivoted without friction at the hammer centre, shank level, measured at the strike line radius [V, Stanwood 2000, glossary, p. 23]; SW = HW + SS, HW being the hammer alone [V, Stanwood 2000, p. 21] | normal zone **8.0–14.8 g** at note 1 to **3.5–6.9 g** at note 88 [V, Stanwood 2000-03, Table I, p. 21] |
-| Poids de frappe du manche seul | shank strike weight | **SS** | The shank alone, measured as for SW [V, Stanwood 2000, glossary, p. 23] | **1.7 g** as a generic average [V, Stanwood 2000-03, note to Table I, p. 21] |
-| Rapport de poids de frappe | strike weight ratio | **R** | **R = SBW / SW**: the weight on the measuring point that balances 1 g of strike weight [V, Stanwood 2000, glossary, p. 23]. FOUNDATIONS writes it SR in the equation of balance; it is not Reyburn's shank ratio of §3.2 | normal zone **5.0–7.0**; *low* 5.0–5.7 (high leverage), *medium* 5.7–6.3, *high* 6.3–7.0 (low leverage), the leverage being the pianist's on the hammer [V, Stanwood 2000-03, Table III, p. 24] |
-| Poids du chevalet | wippen weight | **WW** | The weight, to 0.1 g, of the level wippen, pivoted without friction at its centre, measured at the capstan/heel contact point [V, Stanwood 2000, glossary, p. 23] | — |
-| Rapport de touche | key weight ratio | **KR** | The force at the measuring point over the force at the capstan: the weight on the measuring point that balances 1 g at the capstan/heel contact point [V, Stanwood 2000, glossary, pp. 22–23] | about **0.5** [V, Reyburn, p. 2]; 0.50 to 0.60 on most actions, 0.68 on an 1878 Steinway concert grand (FOUNDATIONS §3.7) |
+| Poids d'attaque (du marteau; also *poids de frappe*) | strike weight | **SW** | The weight, to 0.1 g, of shank and hammer pivoted without friction at the hammer centre, shank level, measured at the strike line radius [V, Stanwood 2000, glossary, p. 23]; SW = HW + SS, HW being the hammer alone [V, Stanwood 2000, p. 21] | normal zone **8.0–14.8 g** at note 1 to **3.5–6.9 g** at note 88 [V, Stanwood 2000-03, Table I, p. 21] |
+| Poids d'attaque du manche | shank strike weight | **SS** | The shank alone, measured as for SW [V, Stanwood 2000, glossary, p. 23] | **1.7 g** as a generic average [V, Stanwood 2000-03, note to Table I, p. 21] |
+| Rapport de poids d'attaque | strike weight ratio | **R** | **R = SBW / SW**: the weight on the measuring point that balances 1 g of strike weight [V, Stanwood 2000, glossary, p. 23]. FOUNDATIONS writes it SR in the equation of balance; it is not Reyburn's shank ratio of §3.2 | normal zone **5.0–7.0**; *low* 5.0–5.7 (high leverage), *medium* 5.7–6.3, *high* 6.3–7.0 (low leverage), the leverage being the pianist's on the hammer [V, Stanwood 2000-03, Table III, p. 24] |
+| Poids radial du chevalet | wippen weight | **WW** | The weight, to 0.1 g, of the level wippen, pivoted without friction at its centre, measured at the capstan/heel contact point [V, Stanwood 2000, glossary, p. 23] | — |
+| Rapport de poids de clavier | key weight ratio | **KR** | The force at the measuring point over the force at the capstan: the weight on the measuring point that balances 1 g at the capstan/heel contact point [V, Stanwood 2000, glossary, pp. 22–23] | about **0.5** [V, Reyburn, p. 2]; 0.50 to 0.60 on most actions, 0.68 on an 1878 Steinway concert grand (FOUNDATIONS §3.7) |
 
 **Do not use** the reciprocal as KR. Stanwood's own wording, "the ratio of downward
 force on the capstan/heel versus the corresponding upward force at the measuring
@@ -619,6 +626,11 @@ suffix (`spec.key_dip_mm`, `tw.downweight_g`); ratios and SI values carry none.
 (FOUNDATIONS §3.12, §7.3). The built code's field names, such as `capsule_height`
 and `front_board`, do not follow them.
 
+The French column shows the name the interface uses first, then, in italics, other
+names a reader will meet for the same part. The German column holds only the terms
+a French–English–German trade legend gives for the part; where none does, it is
+empty rather than filled from a dictionary.
+
 ### 6.1 Parts
 
 | FR | EN | DE | `identifier` |
@@ -628,42 +640,51 @@ and `front_board`, do not follow them.
 | Barre de balancier | balance rail | — | `balance_rail` |
 | Pointe de balancier | balance rail pin | — | `balance_rail_pin` |
 | Mouche / rondelle de balancier | balance rail punching / bearing | — | `balance_rail_punching` |
-| Barre d'enfoncement | front rail | Tastenfront (fronton) | `front_rail` |
+| Barre d'enfoncement | front rail | — | `front_rail` |
 | Pointe d'enfoncement | front rail pin | — | `front_rail_pin` |
 | Mouche d'enfoncement | front rail punching | — | `front_rail_punching` |
-| Cale papier | paper punching | — | `paper_punching` |
+| Mouche en papier (also *mouche de papier*; the thicker ones, *mouches en carton*) | paper punching | — | `paper_punching`: laid under a felt punching; the papers on hand are an *assortiment de mouches*, and those under one punching a *pile* |
 | Barre de repos arrière | back rail | — | `back_rail` |
 | Drap de repos arrière | back rail cloth | — | `back_rail_cloth` |
-| Vis de réglage de portée du châssis | balance rail stud / glide bolt | — | `balance_rail_glide` |
-| Barre de contre-touche | key stop rail | — | `key_stop_rail` |
-| Bloc / joue de clavier | keyblock / cheekblock | Klaviaturbacke | `keyblock` |
+| Vis de réglage de portée du châssis (also *vis de portée*) | balance rail stud / glide bolt | — | `balance_rail_glide` |
+| Barre de contre-touche (also *barre d'arrêt des touches*) | key stop rail | — | `key_stop_rail` |
+| Bloc / joue de clavier | keyblock / cheekblock | — | `keyblock` |
 | Montant de mécanique | action bracket | Mechanikbacken | `action_bracket` |
-| Barre des chevalets | wippen rail | — | `wippen_rail` |
-| Barre des marteaux | hammer rail / main action rail | Hammerleiste | `hammer_rail` |
-| Barre des boutons d'échappement | let-off rail | — | `let_off_rail` |
-| **Sommier** | **pinblock / wrest plank** | Stimmstock | `pinblock`: *not* an action rail (§1.1) |
-| Barre d'échappement | let-off rail / regulating rail | — | `let_off_rail` |
-| Barre de repos des marteaux | hammer rest rail / cushion | Hammerleiste (Polster) | `hammer_rest_rail` |
+| Barre des chevalets | wippen rail | Hebegliedleiste | `wippen_rail` |
+| Barre des marteaux | hammer rail / main action rail | Mechanikbalken | `hammer_rail` |
+| **Sommier** | **pinblock / wrest plank** | — | `pinblock`. The action rails are « barres » (§1.1) |
+| Barre d'échappement (also *barre des boutons d'échappement*) | let-off rail / regulating rail | Auslösepuppenleiste | `let_off_rail`: one rail, under the hammer rail, carrying the let-off buttons; the interface says **barre d'échappement** |
+| Barre de repos des marteaux (also *barre de butée des marteaux*, *barre de butée des manches*; its cloth: *drap de butée des manches*) | hammer rest rail | Hammerruheleiste | `hammer_rest_rail` |
 | Touche | key | Taste | `key` |
-| Touche blanche / marche | natural / white key | weiße Taste | `natural_key` |
-| Dièse / feinte | sharp / black key | schwarze Taste | `sharp_key` |
-| Revêtement de touche | keytop / key covering | Tastenbelag | `keytop` |
-| Fronton | key front | Tastenfront | `key_front` |
-| Capsule de touche | key button / chase | Bäckchen | `key_button` |
+| Touche blanche / marche | natural / white key | — | `natural_key` |
+| Dièse / feinte | sharp / black key | — | `sharp_key` |
+| Revêtement de touche | keytop / key covering | — | `keytop` |
+| Fronton | key front | — | `key_front` |
+| Capsule de touche | key button / chase | — | `key_button` |
 | Mortaise (de balancier / d'enfoncement) | balance / front mortise | — | `balance_mortise`, `front_mortise` |
-| Garniture de mortaise | bushing (cloth) | Garnierung | `mortise_bushing` |
+| Garniture de mortaise | bushing (cloth) | — | `mortise_bushing` |
 | Patin de balancier | key shoe | — | `key_shoe` |
-| Plomb de touche | key lead | Bleigewicht | `key_lead` |
-| **Pilote (de touche)** | **capstan (screw)** | **Pilote** | `capstan` |
-| Queue / talon de touche | key end / tail | — | `key_tail` |
-| **Chevalet (de mécanique)** | **wippen assembly** | **Hebeglied / Unterglied** | `wippen_assembly`: the whole wooden sub-assembly, body, heel, jack, repetition lever, springs (note below) |
+| Plomb de touche | key lead | — | `key_lead` |
+| **Pilote (de touche)** | **capstan (screw)** | — | `capstan` |
+| Tête du pilote | capstan head | — | the capstan's wider cylindrical part, above its threaded shank |
+| Dôme (du pilote) | capstan dome | — | the rounded top of the head, a spherical cap, that bears on the wippen's heel; its radius is never under the head's |
+| Bloc d'attrape | back check block | — | `back_check_block`: the wooden block glued on the key that carries the back check |
+| Dégagement | wippen rail clearance | — | `top_clearance`: the shallow cut in the top of the key, between the capstan and the back check block, that clears the wippen rail; on many keys, not all |
+| Bout de touche (also *arrière de la touche*) | key end / tail | — | `key_tail`. Not « talon », the wippen's heel |
+| Bout aminci | thinned tail | — | the end of the key, thinner than the keystick |
+| Chanfrein | chamfer (under the tail) | — | the bevel under the tail, cut so that the key rests flat on the back rail cloth |
+| Feutre de bout de touche | key tail felt / key end felt | — | `key_tail_felt`: the felt on the tail that lifts the damper under-lever |
+| **Chevalet (de mécanique)** | **wippen assembly** | Hebeglied | `wippen_assembly`: the whole wooden sub-assembly, body, heel, jack, repetition lever, springs (note below) |
 | Corps du chevalet | wippen (the body alone) | — | `wippen`: the single rigid body that carries one generalized coordinate |
-| Chevalet (de table d'harmonie) | bridge | Steg | `bridge`: the wooden bar coupling the strings to the soundboard |
+| Chevalet (de table d'harmonie) | bridge | — | `bridge`: the wooden bar coupling the strings to the soundboard |
 
 > **« Chevalet » names two different things in a grand**: on the *structure
 > harmonique*, the wooden bar that links the strings to the soundboard; in the
 > *action*, **the assembly of wooden parts**: heel, repetition lever, jack and the
-> rest.
+> rest. Every grand piano technician knows both senses and tells them apart at a
+> glance from the context, so the interface says plain **chevalet** in the
+> action's panels and qualifies, **chevalet de mécanique** and **chevalet de
+> table**, only where the bridge appears too.
 >
 > The second sense is not only a naming point. In the planned dynamics the wippen
 > body, the jack relative to the wippen and the repetition lever relative to the
@@ -679,92 +700,77 @@ and `front_board`, do not follow them.
 
 | FR | EN | DE | `identifier` |
 |---|---|---|---|
-| Talon de chevalet | wippen heel | — | `wippen_heel` |
+| Talon de chevalet | wippen heel | Hebegliedsattel | `wippen_heel` |
 | Feutre / drap de talon | heel cloth | — | `wippen_heel_cloth` |
-| Fourche de chevalet | wippen flange | — | `wippen_flange` |
+| Fourche de chevalet | wippen flange | Hebegliedkapsel | `wippen_flange` |
 | Coussin de chevalet | wippen cushion | — | `wippen_cushion` |
-| **Bâton (doigt) d'échappement** | **jack** (Steinway: *fly*) | **Stoßzunge / Stößer** | `jack` |
-| Pied du bâton d'échappement | jack tender / heel | — | `jack_tender` |
-| Ressort de bâton | jack spring | Stößerfeder | `jack_spring` |
-| **Bouton d'échappement** | **let-off button / regulating button** | **Auslösepuppe** | `let_off_button`: the generic term |
-| **Pilote d'échappement** | long wooden let-off dowel | — | `let_off_button` with `form: Dowel`: the Schwander form, screwed to a threaded point in the underside of the hammer rail; **not a pure synonym of *bouton*** |
-| Ressort auxiliaire (de chevalet) | auxiliary / wippen support spring; Renner USA: "turbo wippen" | — | `auxiliary_spring` |
-| Poids d'enfoncement, poids descendant | **downweight** | Niederdruckgewicht | `tw.downweight_g`: Stanwood's down weight, taken on the measuring point, dampers out of circuit (§2.4; also in §6.2) |
+| **Bâton (doigt) d'échappement** | **jack** (Steinway: *fly*) | Stoßzunge | `jack` |
+| Pied du bâton d'échappement | jack tender / heel | Stoßzungenarm | `jack_tender` |
+| Ressort de bâton | jack spring | — | `jack_spring` |
+| Cuillère (de chevalet) | jack stop (descriptive): what the button carried by the jack rests against, which sets the jack's rest under the knuckle | — | `jack_stop`, with `form: Spoon`, a metal spoon on the wippen, on wippens with a chevron repetition spring; `form: FeltedBlock`, a wooden stop with a felt pad, on wippens with a Schwander-type spring. Not the « cuillère de bascule » (`underlever_spoon`) |
+| **Bouton d'échappement** | **let-off button / regulating button** | Stoßzungenpuppe | `let_off_button`: the generic term |
+| Bouton d'échappement, in its dowel form | long wooden let-off dowel | Stoßzungenpuppe | `let_off_button` with `form: Dowel`: the Schwander form, screwed to a threaded point in the underside of the hammer rail. Still **bouton d'échappement** in French: the form is a property of the part, not a second name |
+| Ressort auxiliaire (de chevalet) | wippen support spring (also *wippen assist spring*, *helper spring*; a wippen fitted with one: "turbo wippen") | — | `wippen_support_spring`: one spring, under every English name, the one Stanwood's support spring balance weight is read with |
 | Tige de bouton d'échappement | let-off dowel / wire | — | `let_off_dowel` |
-| **Levier de répétition** | **repetition lever** (Steinway: *balancier*) | **Repetitionsschenkel** | `repetition_lever` |
-| **Vis de chute** | **drop screw** | **Abstellschraube** | `drop_screw` |
-| **Ressort de répétition** | **repetition spring** | **Repetierfeder** | `repetition_spring` |
-| Vis de tension du ressort | repetition spring tension screw | — | `repetition_spring_screw` |
-| Ressort auxiliaire de chevalet | wippen assist / helper spring | — | `wippen_assist_spring` |
-| **Attrape** | **back check** | **Fänger** | `back_check` |
-| Garniture / peau d'attrape | back check leather / felt | Fängerfilz | `back_check_leather` |
+| **Levier de répétition** | **repetition lever** (Steinway: *balancier*) | Repetierschenkel | `repetition_lever` |
+| **Vis de chute** | **drop screw** | Abnickschraube | `drop_screw`: above the repetition lever, it stops the lever after let-off and so sets the drop |
+| Vis de réglage de la hauteur du levier de répétition | repetition lever height screw (descriptive) | Abstellschraube | `repetition_lever_height_screw`: on the wippen, it sets the lever's height against the top of the jack. At the very back of a wippen with a chevron spring; towards the middle of a wippen with a Schwander-type spring, above the felted stop of the jack's button |
+| **Ressort de répétition** | **repetition spring** | Repetierfeder | `repetition_spring`: two forms on modern wippens, the chevron spring (« ressort papillon », Herz type), adjustable by a screw on some and by bending on others, and the Schwander-type spring |
+| Vis de tension du ressort | repetition spring tension screw | Repetierfederschraube | `repetition_spring_screw`: at the back of a wippen with a Schwander-type spring; on a wippen with a chevron spring, where there is one, towards the middle, at the top of the chevron; where there is none, the spring is bent to adjust its tension |
+| **Attrape** | **back check** | Fänger | `back_check` |
+| Garniture / peau d'attrape | back check leather / felt | — | `back_check_leather` |
 | Fil d'attrape | back check wire | — | `back_check_wire` |
 | Contre-attrape *(piano droit uniquement)* | catcher | — | `catcher` *(upright)* |
-| Lanière *(piano droit uniquement)* | bridle (tape) | Fangband | `bridle_tape` *(upright)* |
-| Marteau (ensemble) | hammer assembly | Hammer | `hammer` |
+| Lanière *(piano droit uniquement)* | bridle (tape) | — | `bridle_tape` *(upright)* |
+| Marteau (ensemble) | hammer assembly | — | `hammer` |
 | Tête de marteau | hammer head | Hammerkopf | `hammer_head` |
-| Feutre de marteau | hammer felt | Hammerfilz | `hammer_felt` |
+| Feutre de marteau | hammer felt | — | `hammer_felt` |
 | Manche de marteau | hammer shank | Hammerstiel | `hammer_shank` |
-| Olive (du manche de marteau) | hammer shank flange | Hammerkapsel | `hammer_flange` |
-| **Rouleau** | **knuckle** | **Hammerrolle** | `knuckle` |
-| Noyau du rouleau | knuckle core / spline | — | `knuckle_core` |
+| Olive (du manche de marteau) | hammer shank flange | Hammerstielkapsel | `hammer_flange` |
+| **Rouleau** | **knuckle** | Rolle | `knuckle` |
+| Âme du rouleau | knuckle core / spline | — | `knuckle_core` |
 | Queue de marteau | hammer tail | — | `hammer_tail` |
-| Noix (de marteau) *(piano droit)* | hammer butt | Hammernuß | `hammer_butt` *(upright)* |
-| Axe / centre / pivot | center pin | Achse | `center_pin` |
-| Bascule / levier d'étouffoir | damper (under)lever | Dämpferhebel | `damper_underlever` |
-| Fourche de bascule (d'étouffoir) | underlever flange | — | `underlever_flange` |
-| Noix d'étouffoir | damper block (clamps the wire) | — | `damper_block` |
+| Noix (de marteau) *(piano droit)* | hammer butt | — | `hammer_butt` *(upright)* |
+| Axe / centre / pivot | center pin | — | `center_pin` |
+| Bascule / levier d'étouffoir | damper (under)lever | Dämpferarm | `damper_underlever` |
+| Fourche de bascule (d'étouffoir) | underlever flange | Dämpferkapsel | `underlever_flange` |
+| Noix d'étouffoir | damper block (clamps the wire) | Dämpferklotz | `damper_block`: the small wooden block at the top of the under-lever's upright, drilled for the damper wire and clamping it with a screw; on some under-levers fused with the upright, on others a separate block on an axle, `form: Fixed` or `form: Articulated`. The interface says **noix d'étouffoir**; **taquet d'étouffoir** names the same block. « Bloc d'étouffoir » is said loosely for the whole damper assembly, not for this block |
 | Tige d'étouffoir | damper wire | Dämpferdraht | `damper_wire` |
-| Galerie des étouffoirs | damper guide rail | — | `damper_guide_rail` |
-| Tête d'étouffoir | damper head | Dämpferkopf | `damper_head` |
-| Barre de forte | damper lift rail | — | `damper_lift_rail` |
-| Barre des bascules d'étouffoir | under-lever rail | — | `underlever_rail` |
-| Barre de butée des bascules d'étouffoir | under-lever stop rail | — | `underlever_stop_rail` |
-| Bec de tonale (de sostenuto) | sostenuto tab | — | `sostenuto_tab` |
-| Barre de tonale | sostenuto rod | — | `sostenuto_rod` |
+| Galerie des étouffoirs | damper guide rail | Führungsleiste | `damper_guide_rail` |
+| Tête d'étouffoir | damper head | Dämpferpüschel | `damper_head` |
+| Barre de forte | damper lift rail | Dämpferabhebeleiste | `damper_lift_rail` |
+| Barre des bascules d'étouffoir | under-lever rail | Dämpferleiste | `underlever_rail` |
+| Barre de butée des bascules d'étouffoir | under-lever stop rail | Dämpferpralleiste | `underlever_stop_rail` |
+| Bec de sostenuto (also *bec de tonale*) | sostenuto tab | — | `sostenuto_tab`: the tab on each damper that the rod catches. A maker's notice calls it « languette de sostenuto » and gives « bec » to the rod's lip instead: read « bec » in a text by what it is fixed to |
+| Barre de sostenuto (also *tringle de sostenuto*, *barre de tonale*; its bracket *support de sostenuto*, *support de tonale*) | sostenuto rod / blade | — | `sostenuto_rod` |
 | Fourche supérieure | underlever top flange | — | `underlever_top_flange` |
-| Pilote de bascule d'étouffoir | underlever capstan | — | `underlever_capstan` |
+| Pilote de bascule d'étouffoir | underlever capstan | Regulierpilote | `underlever_capstan` |
 | Cuillère de bascule | underlever spoon | Dämpferlöffel | `underlever_spoon` |
-| Languette de sostenuto | sostenuto tab / lip | — | `sostenuto_tab` |
-| Fil d'étouffoir | damper wire | Dämpferdraht | `damper_wire` |
-| Bloc / bouton d'étouffoir | damper block / stem block | Dämpferpuppe | `damper_block` |
-| Vis de fil d'étouffoir | damper wire screw | — | `damper_wire_screw` |
-| Feutre d'étouffoir (plat / coin) | damper felt (flat/block, wedge) | Dämpferfilz | `damper_felt_flat`, `damper_felt_wedge` |
-| Barre de guidage des étouffoirs | damper guide rail | Dämpferführungsleiste | `damper_guide_rail` |
-| Garniture de guidage | guide rail bushing | — | `damper_guide_bushing` |
+| Vis de tige d'étouffoir | damper wire screw | — | `damper_wire_screw` |
+| Feutre d'étouffoir (plat / coin) | damper felt (flat/block, wedge) | — | `damper_felt_flat`, `damper_felt_wedge` |
+| Coulisseau d'étouffoir | guide rail bushing | — | `damper_guide_bushing` |
 | Barre de butée des étouffoirs | damper (up)stop rail | Dämpferpralleiste | `damper_stop_rail` |
-| Plateau / barre de levée **[?]** | damper lift rail / underlever tray | Abhebestange | `damper_lift_rail` |
-| Tige / lame de sostenuto | sostenuto rod / blade | — | `sostenuto_rod` |
-| Ressort d'étouffoir | damper (assist) spring | Dämpferfeder | `damper_spring` |
-| Lyre | lyre | Lyra | `lyre` |
-| Pédale forte | damper / sustaining pedal | rechtes Pedal | `damper_pedal` |
-| Pédale de sostenuto | sostenuto pedal | Mittelpedal | `sostenuto_pedal` |
-| Pédale una corda / de décalage **[?]** | soft / shift / una corda pedal | linkes Pedal | `shift_pedal` |
-| Tringle de pédale | pedal rod | — | `pedal_rod` |
-| Tête de tringle | pedal rod head / capstan | — | `pedal_rod_head` |
-| Mouvement / levier de pédale | trapwork lever | Wippe | `trapwork_lever` |
-| Prisonnier (tourillon de transmission) | dowel to the damper lift | — | `lift_dowel` |
-| Tige de pédale | pedal rod | Pedalstange | `pedal_rod` |
+| Ressort d'étouffoir | damper (assist) spring | — | `damper_spring` |
+| Lyre | lyre | — | `lyre` |
+| Pédale forte (pédale de soutien; also *pédale des étouffoirs*) | damper / sustaining pedal | — | `damper_pedal` |
+| Pédale sostenuto (pédale centrale; also *pédale tonale*) | sostenuto pedal | — | `sostenuto_pedal` |
+| Pédale douce (also *pédale una corda*, *pédale de transposition*) | soft / shift / una corda pedal | — | `shift_pedal` |
+| Écrou de réglage de tige de pédale | pedal rod head / capstan | — | `pedal_rod_head`. Not « poupée » for the let-off button |
+| Mouvement / levier de pédale | trapwork lever | — | `trapwork_lever` |
+| Prisonnier (tourillon de transmission du forte) | pitman (dowel to the damper lift) | — | `lift_dowel`. « Pitman » is the English trade's word, not said in French |
+| Tige de pédale | pedal rod | — | `pedal_rod` |
 | Coupelle de pédale | pedal cup | — | `pedal_cup` |
-| Pitman | pitman | — | `pitman` |
-| Vis de décalage du châssis | keyframe shift screw | — | `keyframe_shift_screw` |
+| — **[?]** | keyframe shift screw | — | `keyframe_shift_screw`: the screw that stops the key frame's shift; its French name is not attested, and is the owner's to give |
 | Bloc d'arrêt du châssis | action stop block | — | `action_stop_block` |
-| Dag blocks (patins arrière) **[?]** | dag blocks | — | `dag_block` |
+| Cale arrière du châssis de clavier | dag block | Klaviaturrahmenhaken | `dag_block` |
 
-> **Open in these tables**, each a question in `docs/vocabulary-worksheet.md`:
-> identifiers carried by two French names (`let_off_rail`, `let_off_button`,
-> `damper_block`, `damper_wire`, `damper_guide_rail`, `damper_lift_rail`,
-> `sostenuto_tab`, `sostenuto_rod`, `pedal_rod`); « ressort auxiliaire (de
-> chevalet) » under two identifiers, `auxiliary_spring` and `wippen_assist_spring`;
-> `lift_dowel` and `pitman`, perhaps one part; the German « Tastenfront » given for
-> both the front rail and the key front, and « Hammerleiste » for both the hammer
-> rail and the hammer rest rail; and the rows marked **[?]**.
+> **Open in these tables**: the rows marked **[?]**.
 
 ### 6.2 Regulation settings and quantities
 
 | FR | EN | `identifier` | Unit |
 |---|---|---|---|
-| Dressage (niveau) des touches | key leveling / key height | `spec.key_height_mm` | mm |
+| Hauteur de touche | key height | `spec.key_height_mm` | mm |
 | Hauteur des dièses | sharp height | `spec.sharp_height_mm` | mm |
 | Enfoncement | key dip | `spec.key_dip_mm` | mm |
 | Enfoncement des dièses | sharp dip | `spec.sharp_dip_mm` | mm |
@@ -775,65 +781,105 @@ and `front_board`, do not follow them.
 | **Gras / jeu après échappement** | **aftertouch** | `spec.aftertouch_mm` | mm |
 | **Attrapé** | **checking / back check distance** | `spec.check_height_mm` | mm (from the string) |
 | Pente d'attrape | back check angle | `spec.back_check_angle_deg` | ° |
-| Hauteur du bâton / levier | jack-to-repetition-lever height | `spec.jack_height_mm` | mm |
+| Hauteur du bâton / levier | jack-to-repetition-lever height | `spec.jack_height_mm` | mm; set by the **vis de réglage de la hauteur du levier de répétition** |
 | Position du bâton | jack position | `spec.jack_position_mm` | mm |
 | Jeu au pilote | lost motion | `spec.lost_motion_mm` | mm |
 | Tension du ressort de répétition | repetition spring tension | `spec.rep_spring_tension` | not chosen (N·mm or a gram equivalent); the suffix follows the choice |
-| Hauteur barre de repos marteaux | hammer rest rail height | `spec.hammer_rest_height_mm` | mm |
+| Hauteur de la barre de repos des marteaux | hammer rest rail height | `spec.hammer_rest_height_mm` | mm |
 | Barre de contre-touche | key stop rail clearance | `spec.key_stop_clearance_mm` | mm |
 | Départ individuel d'étouffoir | individual damper lift timing | `spec.damper_lift_timing_mm` | mm of blow distance |
 | Départ général | collective damper lift | `spec.collective_lift_mm` | mm |
-| Jeu du plateau de levée | lift tray lost motion | `spec.tray_lost_motion_mm` | mm |
+| Jeu de la barre de forte **[?]** | lift tray lost motion | `spec.tray_lost_motion_mm` | mm; the French phrase is composed from the rail's name, to confirm |
 | Butée d'étouffoir | damper stop rail clearance | `spec.damper_stop_clearance_mm` | mm |
 | Course de pédale forte | damper pedal travel | `spec.damper_pedal_travel_mm` | mm |
 | Jeu de pédale | pedal lost motion | `spec.pedal_lost_motion_mm` | mm |
-| Décalage una corda | shift travel | `spec.shift_travel_mm` | mm |
+| Distance de transposition | shift travel | `spec.shift_travel_mm` | mm |
 | Hauteur / rotation / distance du sostenuto | sostenuto rod height / rotation / clearance | `spec.sostenuto_height_mm`, `spec.sostenuto_rotation_deg`, `spec.sostenuto_clearance_mm` | mm, ° |
 | Jeu des mortaises | bushing play | `spec.bushing_play_mm` | mm |
 | Portée du châssis | keyframe bedding | `spec.keyframe_bedding` | — |
-| Poids descendant (Pd) | downweight | `tw.downweight_g` | g |
-| Poids ascendant (Pa) | upweight | `tw.upweight_g` | g |
-| Frottement (F) | friction weight | `tw.friction_g` | g |
-| Poids d'équilibre | balance weight | `tw.balance_weight_g` | g |
-| Poids avant | front weight | `tw.front_weight_g` | g |
-| Poids de frappe | strike weight | `tw.strike_weight_g` | g |
-| Rapport de poids de frappe | strike weight ratio | `tw.strike_weight_ratio` | — |
-| Poids du chevalet | wippen weight | `tw.wippen_weight_g` | g |
-| Rapport de touche | key weight ratio | `tw.key_ratio` | — (the force convention, about 0.5: FOUNDATIONS §3.7) |
+| Point de mesure (standard) | measuring point | `tw.measuring_point_mm` | mm back from the covering's front edge, 13 by default (§2.4) |
+| Poids d'enfoncement (D; also *poids descendant*) | downweight | `tw.downweight_g` | g |
+| Poids de remontée (U; also *poids ascendant*) | upweight | `tw.upweight_g` | g |
+| Friction (F; also *frottement*) | friction weight | `tw.friction_g` | g |
+| Friction de la touche (KF) | key friction weight | `tw.key_friction_g` | g; the part of F the key's bushings give alone |
+| Poids d'équilibre (BW) | balance weight | `tw.balance_weight_g` | g |
+| Poids avant (FW) | front weight | `tw.front_weight_g` | g |
+| Poids d'attaque (SW; also *poids de frappe*) | strike weight | `tw.strike_weight_g` | g |
+| Rapport de poids d'attaque (R) | strike weight ratio | `tw.strike_weight_ratio` | — |
+| Poids radial du chevalet (WW) | wippen weight | `tw.wippen_weight_g` | g |
+| Rapport de poids de clavier (KR) | key weight ratio | `tw.key_ratio` | — (the force convention, about 0.5: FOUNDATIONS §3.7) |
 | Inertie | inertia | `tw.inertia` | kg·m² (no trade protocol measures it: FOUNDATIONS §2.3) |
-| **Rapport de mécanique** | **action ratio** | `geom.action_ratio` | — (four definitions, §3.2) |
-| Rapport de touche / de chevalet / de manche | key / wippen / shank ratio | `geom.key_ratio`, `geom.wippen_ratio`, `geom.shank_ratio` | — (Reyburn's lever ratios, §3.2; `geom.key_ratio` is the capstan arm over the front arm, about 0.5, never its reciprocal) |
-| Écart des barres ("spread") | spread | `geom.spread_mm` | mm |
-| Distance rouleau ↔ axe de manche | knuckle distance | `geom.knuckle_distance_mm` | mm |
-| Ø du rouleau | knuckle diameter | `geom.knuckle_diameter_mm` | mm |
+| **Rapport mécanique** (also *rapport de mécanique*) | **action ratio** | `geom.action_ratio` | — (four definitions, §3.2) |
+| Rapport de clavier / du chevalet / du manche | key / wippen / shank ratio | `geom.key_ratio`, `geom.wippen_ratio`, `geom.shank_ratio` | — (Reyburn's lever ratios, §3.2; `geom.key_ratio` is the capstan arm over the front arm, about 0.5, never its reciprocal) |
+| Écartement mécanique (*écartement*; « spread ») | spread | `geom.spread_mm` | mm |
+| Distance du rouleau | knuckle distance | `geom.knuckle_distance_mm` | mm |
+| Diamètre du rouleau | knuckle diameter | `geom.knuckle_diameter_mm` | mm |
 | Distance de perçage | bore distance | `geom.bore_distance_mm` | mm |
 | Distance de pendage | hang distance | `geom.hang_distance_mm` | mm |
-| Ligne de mi-course (ligne magique) | half-stroke line / magic line | `geom.half_stroke_line_mm` | mm of deviation |
+| Ligne magique (also *ligne de mi-course*) | half-stroke line / magic line | `geom.half_stroke_line_mm` | mm of deviation |
 
-> **Open** (`docs/vocabulary-worksheet.md`): « dressage (niveau) des touches » is
-> mapped here to the key-height setting, while §2.1 keeps « hauteur de touche », the
-> height, apart from « dressage », the levelling.
+> « Hauteur de touche » is the height, a measured quantity; « dressage » is the
+> levelling of the keys to one another, an operation (§6.3).
+>
+> **The symbols stay Stanwood's English ones** (D, U, F, BW, FW, KR, KF, SW, SS,
+> WW, R) beside the French names, so that a formula reads the same in both
+> languages: BW + FW = (WW × KR) + (SW × R). French print has its own (Penf,
+> Prem, Péq, Pav, Rcl, Pat, Pch; elsewhere Pd, Pa), which a reader will meet and
+> the interface does not use.
+>
+> **Poids de jeu**, also *poids au toucher*, names the three weights together: a
+> change « of the poids de jeu » moves D, U and BW by the same amount.
+> **Do not translate** the English "nominally 2:1" as « rapport de clavier »: the
+> French writes the key's lever ratio back arm over front arm, about 0.5, the
+> same way round as KR and as `geom.key_ratio`.
 
 ### 6.3 Operations
 
 | FR | EN | `identifier` |
 |---|---|---|
-| Défauchage | traveling (hammers) | `op.travel_hammers` |
-| Fauchage / chauffage des manches | burning shanks | `op.burn_shanks` |
-| Dégagement des touches | easing keys | `op.ease_keys` |
+| Dressage des touches (also *niveler les touches*) | key levelling | `op.level_keys` |
+| Défauchage | traveling (hammers, wippens): correcting a part that « fauche », rises drifting sideways, by shimming its flange | `op.travel_hammers` |
+| Chauffage des manches | burning shanks: heating and twisting the shank so the hammer head stops leaning | `op.burn_shanks` |
+| Donner du jeu (aux garnitures de mortaise) | easing keys | `op.ease_keys`. Not « dégagement », the clearance cut in the key (§6.1) |
 | Portée du châssis | bedding the keyframe | `op.bed_keyframe` |
 | Mise des marteaux sur les cordes | spacing hammers to strings | `op.space_hammers` |
 | Jours (de touches, de cordes) | spacing / clearances | `op.spacing` |
 | Ponçage des têtes | hammer filing / reshaping | `op.file_hammers` |
 | Harmonisation | voicing | `op.voicing` |
 | Plombage | key leading / weighing off | `op.key_leading` |
-| Pesée | weigh-off | `op.weigh_off` |
+| Pesée (also *réglage du poids de jeu*) | weigh-off | `op.weigh_off` |
 | Rebrochage / regoupillage | repinning | `op.repin` |
 | Regarnissage | rebushing | `op.rebush` |
 
-> **Open** (`docs/vocabulary-worksheet.md`): « fauchage » goes with « chauffage »
-> for burning here, and with « défauchage » for traveling and burning together in
-> §2.1, row 27.
+> « Faucher » names the defect, a part whose plane of rotation is not vertical and
+> which drifts sideways as it rises; « défauchage » corrects it at the flange.
+> « Fauchage » is not an operation: do not use it for burning, which is
+> « chauffage des manches », a different correction of a different fault.
+
+### 6.4 At the bench: weighing and laying papers
+
+The words the bench (built) shows around the weighing and the regulation, for the
+French catalogue (planned). The touchweight quantities themselves are in §6.2.
+
+| FR | EN | What it is |
+|---|---|---|
+| Relevé du poids de jeu | weighing sheet | the sheet the readings are written on |
+| Poids de pesée (a set: *jeu de poids*; stacked: *pile de poids*) | gram weights | the weights laid on the measuring point |
+| Bord avant du revêtement | the covering's front lip | the edge the measuring point is measured back from |
+| Balance (de précision) | scale | |
+| Protocole Stanwood | Stanwood's protocol | |
+| Appareil de mesure à faible friction | Stanwood's jig | the key pivoting at its balance hole on a point, its measuring point on the scale |
+| Support à faible friction | the jig's roller | what the measuring point rests on, on the scale's pan |
+| Poids provisoire | temporary weight | a weight laid on the key for one reading, then taken off |
+| Cote (de réglage) | target | the value a setting is regulated to |
+| Position de repos | top seat | the key at rest on the back rail cloth |
+| À plat sur le drap; sur le bord du drap; sur une arête de la touche | flat on the cloth; on the edge of the cloth; on the key's own corner | how the tail bears on the back rail cloth: its chamfer flat, the cloth's front or back edge pressing into the chamfer, or the key's edge (where the chamfer begins, or the key's end) pressing into the cloth. Where a tail does not bed flat, either edge happens |
+| Fond de course (*position d'enfoncement maximal*) | bottom seat | the key down on its front punching |
+| Course de la touche | stroke, travel | |
+| Pile de mouches | punching stack | the papers under one felt punching |
+| Assortiment de mouches | drawer (of papers) | the paper thicknesses on hand |
+| Ajouter une mouche de 0,2 | add a 0.2 mm paper | how a paper is named and laid at the bench: by its thickness in millimetres, never as a stack's total (« régler à 0,37 » is not said) |
+| Courbe d'enfoncement et de remontée | the band | the force on the measuring point through the stroke, its *courbe d'enfoncement* on the way down and its *courbe de remontée* on the way up, the key held by friction anywhere between them: the bench's own measurement, which no weight reads |
 
 ---
 
@@ -852,30 +898,27 @@ one this project uses.
 | « distance de frappe » | understandable, not the trade term | **chasse** |
 | « post-échappement » | in circulation, for the aftertouch | **jeu après échappement**, **gras**, **réserve** |
 | « chute » / « rechute » | both circulate for the quantity | **chute** for the quantity, **vis de chute** for the part |
-| « cuillère » | a « cuillère de chevalet » among the wippen's parts: open (`docs/vocabulary-worksheet.md`) | — |
-| « una corda » | open (`docs/vocabulary-worksheet.md`) | **pédale de transposition** / **de décalage** / **douce**, to be settled |
+| « cuillère » | two parts of a grand: the damper under-lever's spoon, on the lift rail, and the wippen's metal stop for the jack's button, on wippens with a chevron repetition spring | **cuillère de bascule** → `underlever_spoon`; **cuillère de chevalet** → `jack_stop` |
+| « una corda » | the pedal's other name, after the strings a shifted hammer once struck | **pédale douce** |
 | « feutre, cuir, buffle » | correct | — |
 
 ### 7.1 Settled terms
 
 | Question | Answer |
 |---|---|
-| let-off button | **bouton d'échappement**, the project's term. « Pilote d'échappement » is also in use; whether as a plain synonym or only for the long wooden dowel is open (`docs/vocabulary-worksheet.md`) |
+| let-off button | **bouton d'échappement**, whatever its form, a button turning on a screw or a long wooden dowel; « pilote d'échappement » is said of the dowel form, and the interface does not use it. Do not use « poupée » for it: in print « poupée » is the pedal rod's adjusting nut |
 | shank flange | **olive du manche de marteau**; with the **fourche de chevalet**, the two flanges fixed to the flat of their rails |
-| under-lever tray / lift rail | **barre de forte**; the assembly is recorded as the **barre de levée des étouffoirs**, a name §6.1 also maps to the rail: open (`docs/vocabulary-worksheet.md`) |
+| under-lever tray / lift rail | **barre de forte**; « barre de levée des étouffoirs » is a second name for the rail; « plateau de levée » is not said |
 | action brackets | **montants de mécanique** |
 | key stop rail | **barre de contre-touche** |
 | glide bolt | **vis de réglage de portée du châssis**, named after the very thing it corrects, which also gives *portée du châssis* for frame bedding |
 | key bearing | **support de touche au balancier**: a hemispherical stud on Steinway, **mouches de balancier** on other makes. The key bears on the punching, not on the pin; the bench pivots it at the pin, the bearing's offset a parameter set to zero (FOUNDATIONS §2.3) |
-| sostenuto | **la tonale**: *barre de tonale*, *support de tonale*, *bec de tonale*; *bec de sostenuto* and *barre de sostenuto* also in use |
+| sostenuto | **sostenuto**: *barre de sostenuto*, its tabs the *becs de sostenuto* (a maker's « languettes », §6.1); *tonale* (*barre de tonale*, *support de tonale*, *bec de tonale*) names the same parts, and the interface does not use it |
 | trapwork | **mouvement de pédale** / **levier de pédale**; the dowel onto the damper lift is the **prisonnier** |
 | damper parts | **tête**, **feutre**, **tige**, **galerie**, **noix**, **fourche**, **bascule**, **plomb de bascule**, **barre de butée des bascules** |
 
 The open questions, each written so the owner can answer it without opening a file,
-are in `docs/vocabulary-worksheet.md`: « cuillère de chevalet »; « vis de chute »
-beside « vis de réglage de la hauteur du levier de répétition »; « taquet
-d'étouffoir »; « sommier des bascules »; the una corda pedal's name; how the French
-interface tells the two « chevalet » apart; and the inconsistencies flagged in §6.
+are in `docs/vocabulary-worksheet.md`.
 
 ---
 
