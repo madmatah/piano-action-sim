@@ -81,7 +81,7 @@ impl PartId {
 /// What a part is, as the trade names it.
 ///
 /// The identifiers follow the glossary of
-/// `docs/research/A3-nomenclature-and-regulation.md` §6 where it has one; the
+/// `docs/research/A3-nomenclature-and-regulation.md` > Bilingual glossary FR ↔ EN (+ DE) and code identifiers where it has one; the
 /// keystick, the back check block and the key tail felt have none there yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PartCode {

@@ -6,22 +6,22 @@ geometry, the felt and friction laws, the time step and the solver options, the
 compute budget, determinism, the excitation of the key and the validation
 levels, each against the literature in the corpus.
 
-## 0. Sources and markers
+## Sources and markers
 
 The primary sources are in `data/references/`, outside version control (third-party
-copyright; FOUNDATIONS §10):
+copyright; [FOUNDATIONS > Sources](../FOUNDATIONS.md#sources)):
 
 | Document | Local path | What this annex takes from it |
 |---|---|---|
 | Thorin, Boutillon, Lozada, Merlhiot, *Non-smooth dynamics for an efficient simulation of the grand piano action*, Meccanica 52:2837–2854, 2017 | `papers/thorin2017.pdf` | the Moreau–Jean scheme, Δt = 0.5 ms and the 2 against 10 kHz comparison, the felt law and its 1 mg auxiliary bodies, the case against regularized friction, the Bad Model |
 | Thorin, *Non-smooth model of the grand piano action*, PhD thesis, École Polytechnique, 2013 | `papers/thorin_thesis_2013.pdf` | the parameter values (ch. 4), the time steps and computing times (§6.4.1), the virtual regulation (§6.1) |
 | Lozada, *Modeling, haptic control and novel concepts for musical keyboards*, PhD thesis, École Polytechnique, 2007 | `papers/lozada_thesis.pdf` | the measurements behind Thorin's frictions, springs and felts (Tab. 2.3, ch. 3) |
-| Hirschkorn, *Dynamic Model of a Piano Action Mechanism*, MASc thesis, University of Waterloo, 2004 (85 pp.) | `papers/hirschkorn_thesis.pdf` | one action measured: 31 geometric points (Tables A.2–A.7), masses and inertias (Table A.1), thirteen contact laws (Table A.8), five axis frictions (Table A.9), two springs (§A.4), the regulation procedure (§2.3) |
+| Hirschkorn, *Dynamic Model of a Piano Action Mechanism*, MASc thesis, University of Waterloo, 2004 (85 pp.) | `papers/hirschkorn_thesis.pdf` | one action measured: 31 geometric points (Tables A.2–A.7), masses and inertias (Table A.1), thirteen contact laws (Table A.8), five axis frictions (Table A.9), two springs (§A.4), the regulation procedure ([Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step)) |
 | Stulov, *Experimental and computational studies of piano hammers*, Acta Acustica united with Acustica 91(6), 2005 | `papers/stulov_actaa2005.pdf` | the hereditary law of hammer felt, fitted across the 88 notes of one set of hammers |
 | Goebl, Bresin, Galembo, *Touch and temporal behavior of grand piano actions*, JASA 118(2):1154–1165, 2005 | `papers/goebl2005.pdf` | finger forces, hammer velocities, travel times, free flight |
 | Goebl & Bresin, *Measurement and reproduction accuracy of computer-controlled grand pianos*, JASA 114(4):2273–2283, 2003 | `papers/goebl2003.pdf` | MIDI 77 against 2 m/s, FHV = 128/IHV, the solenoids' ceilings |
-| Stanwood, *Standard Protocols of the New Touchweight Metrology*, Piano Technicians Journal, February 2000, and the rest of his series | `stanwood/` | the weighing protocols and reference values of §8 |
-| Steinway's technical reference and the regulation sheets | `manuels/` | the trade's regulation values of §8 |
+| Stanwood, *Standard Protocols of the New Touchweight Metrology*, Piano Technicians Journal, February 2000, and the rest of his series | `stanwood/` | the weighing protocols and reference values of [Quantified validation plan](#quantified-validation-plan) |
+| Steinway's technical reference and the regulation sheets | `manuels/` | the trade's regulation values of [Quantified validation plan](#quantified-validation-plan) |
 
 Markers, as in FOUNDATIONS: **[V]** verified against a primary source in the
 corpus, with its locator; **[E, n]** computed by script `n` in
@@ -41,12 +41,12 @@ each contact normal and the highest linearized modes).
 
 ---
 
-## 1. Planar model of one note
+## Planar model of one note
 
-### 1.1 Bodies and generalized coordinates
+### Bodies and generalized coordinates
 
 Six bodies, **all in pure rotation** in the sagittal plane, with **relative
-coordinates** for the jack and the repetition lever (FOUNDATIONS §3.6, planned).
+coordinates** for the jack and the repetition lever ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever), planned).
 
 | Body | Coordinate | Pivot | Nature |
 |---|---|---|---|
@@ -68,13 +68,13 @@ angle, the tree of pins is complete and the motion is an ordinary differential
 equation in minimal coordinates, constrained only by unilateral contacts. That
 holds with absolute angles for the jack and the lever too, which is how Thorin
 writes it [V, Thorin 2013 §4.6, Eqs. 4.17–4.18 and Appendix B]. What is ruled out
-is absolute coordinates with pin constraints (FOUNDATIONS §3.6): the two pins
+is absolute coordinates with pin constraints ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)): the two pins
 become four scalar constraints, and one inherits an index-3 DAE, constraint drift,
 Baumgarte stabilization and its non-physical parameters, for no benefit.
 
-### 1.2 Structure of the mass matrix
+### Structure of the mass matrix
 
-Planned, with the dynamics (FOUNDATIONS §3.6). The (w, j, r) block is an
+Planned, with the dynamics ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)). The (w, j, r) block is an
 **arrowhead, not a full 3×3 matrix**, because `M_jr = 0` exactly: neither the jack
 nor the repetition lever is an ancestor of the other in the tree; they are two
 sibling children of the wippen.
@@ -102,12 +102,12 @@ Figure A.1, Tables A.2–A.4]. Then:
 
 With **r** the child's pin seen from the wippen's pivot and **u** its center of
 mass seen from its pin, the coupling is `I_cm + m(‖u‖² + r·u)` and the child's
-share of the wippen's diagonal `I_cm + m‖r + u‖²` (FOUNDATIONS §3.6). **Do not
+share of the wippen's diagonal `I_cm + m‖r + u‖²` ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)). **Do not
 use** `I_cm + m(r·u)` and `I_cm + m‖r‖²`: they fit neither relative nor absolute
-coordinates, and a positivity test passes on them anyway (FOUNDATIONS §3.6).
+coordinates, and a positivity test passes on them anyway ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)).
 **Do not take `Pw2` for the wippen's pivot**: it is the jack's pin, listed with
 `Pw3` as "Pin Location" in the wippen's table, and the wippen turns about its
-frame's origin (FOUNDATIONS §6.4).
+frame's origin ([FOUNDATIONS > Hirschkorn's frames](../FOUNDATIONS.md#hirschkorns-frames)).
 
 On Hirschkorn's action at rest, `M_ww = 8.80e-5`, `M_wj = 2.10e-7`,
 `M_wr = 4.52e-6`, `I_j = 1.79e-6` and `I_r = 4.12e-6 kg·m²` [E, 10]. About their
@@ -126,10 +126,10 @@ Gram matrix of a kinetic energy, so the solve has no singular case.
 
 The configuration dependence of `M_ww`, `M_wj` and `M_wr` comes from the jack's
 and the lever's angles relative to the wippen. It is kept: it costs the sines and
-cosines the contact geometry computes anyway, and the Coriolis terms of §1.3 come
+cosines the contact geometry computes anyway, and the Coriolis terms of [Equations of motion, implementable form](#equations-of-motion-implementable-form) come
 from it.
 
-### 1.3 Equations of motion, implementable form
+### Equations of motion, implementable form
 
 Lagrange in minimal coordinates:
 
@@ -143,18 +143,16 @@ M(q) q̈ + C(q, q̇) q̇ = τ_g(q) + τ_spring(q) + τ_fric(q̇) + Σ_i J_i(q)�
   small, but not negligible during let-off, when the jack turns fast relative to
   the wippen.
 - `τ_g(q)`: gravity. The key's comes from its measured mass and front weight,
-  leads included: a key arrives leaded and is weighed whole (FOUNDATIONS §2.1,
-  §2.3). A test weight set on the key, as in the first non-confusion test
-  (FOUNDATIONS §5.3), is a point mass `(x_i, m_i)` on top of it.
+  leads included: a key arrives leaded and is weighed whole ([FOUNDATIONS > Parts and statics](../FOUNDATIONS.md#parts-and-statics), [FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications)). A test weight set on the key, as in the first non-confusion test
+  ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)), is a point mass `(x_i, m_i)` on top of it.
 - `τ_spring`: Hirschkorn measures `T = −0.073·(θ_r − 0.832)` N·m on the
   lever-to-wippen angle and a roughly constant 0.0042 N·m on the jack [V,
   Hirschkorn 2004 §A.4]. Thorin's springs take the linear form
   `C_s(θ) = κ(θ − θ_0)` [V, Thorin 2017 Eq. 5], three of them on his action:
   wippen–frame, jack–wippen and lever–wippen [V, Thorin 2013, Table 4.12]. The
-  wippen support spring is fitted on some actions only (FOUNDATIONS §6.1).
+  wippen support spring is fitted on some actions only ([FOUNDATIONS > Springs inside the wippen assembly](../FOUNDATIONS.md#springs-inside-the-wippen-assembly)).
 - `τ_fric(q̇)`: friction at the pins. With the friction at the sliding contacts
-  (§4.6) it makes the interval between down weight and up weight (FOUNDATIONS
-  §6.5). Hirschkorn regularizes it:
+  ([PITFALL #6 — Tangential friction is not everywhere](#pitfall-6--tangential-friction-is-not-everywhere)) it makes the interval between down weight and up weight ([FOUNDATIONS > Friction](../FOUNDATIONS.md#friction)). Hirschkorn regularizes it:
   `T = A·(tanh(ω/ω_t) + B1(ω/ω_t)/(1 + B2(ω/ω_t)⁴))` [V, Hirschkorn 2004
   Eq. 2.12], with A measured per pin, key 0.0122, wippen 0.000397, jack 0.000397,
   repetition lever 0.00247 and hammer 0.00101 N·m, and `B1 = B2 = 0`: kinetic
@@ -162,11 +160,11 @@ M(q) q̈ + C(q, q̇) q̇ = τ_g(q) + τ_spring(q) + τ_fric(q̇) + Σ_i J_i(q)�
   Table A.9]. Thorin does not regularize: `C_d(θ) = c_d · sign(θ̇)`, with `sign`
   set-valued on `[−1, 1]` [V, Thorin 2017 Eqs. 2–3]. **The engine follows Thorin**:
   axis friction is a set, built for the key's balance friction and planned for every
-  pivot (FOUNDATIONS §3.5). His `c_d` values are mostly assumed,
-  not measured (FOUNDATIONS §6.3; annex A2 §4.2).
-- `J_i(q)ᵀ f_i`: the unilateral contacts, thirteen in Hirschkorn's model (§1.4).
+  pivot ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)). His `c_d` values are mostly assumed,
+  not measured ([FOUNDATIONS > Parameter lineage](../FOUNDATIONS.md#parameter-lineage); annex [A2 > The published dry torques, and where each comes from (N·m)](A2-scientific-literature.md#the-published-dry-torques-and-where-each-comes-from-nm)).
+- `J_i(q)ᵀ f_i`: the unilateral contacts, thirteen in Hirschkorn's model ([The 13 contacts (Hirschkorn nomenclature, Table 2.1 and Table A.8)](#the-13-contacts-hirschkorn-nomenclature-table-21-and-table-a8)).
 
-### 1.4 The 13 contacts (Hirschkorn nomenclature, Table 2.1 and Table A.8)
+### The 13 contacts (Hirschkorn nomenclature, Table 2.1 and Table A.8)
 
 | # | Contact | Regulation it carries |
 |---|---|---|
@@ -186,13 +184,13 @@ M(q) q̈ + C(q, q̇) q̇ = τ_g(q) + τ_spring(q) + τ_fric(q̇) + Σ_i J_i(q)�
 
 Thorin's article counts twelve, these without the shank's rest [V, Thorin 2017
 §2.4]; his thesis adds two for the damper, key against damper and damper against
-its rest [V, Thorin 2013, Table 4.2]. FOUNDATIONS §6.6 plans four for the damper.
+its rest [V, Thorin 2013, Table 4.2]. [FOUNDATIONS > Seventeen contacts per note](../FOUNDATIONS.md#seventeen-contacts-per-note) plans four for the damper.
 
-### 1.5 Sliding contacts: the heart of the variable leverage
+### Sliding contacts: the heart of the variable leverage
 
 This is **entirely solvable analytically**. Built: the circle against a line and
 the circle against a circle, their lever arms tested against central finite
-differences; the hybrid profile is planned (FOUNDATIONS §6.2, §6.6). Three
+differences; the hybrid profile is planned ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap), [FOUNDATIONS > Seventeen contacts per note](../FOUNDATIONS.md#seventeen-contacts-per-note)). Three
 primitives cover Hirschkorn's
 thirteen contacts [V, Hirschkorn 2004 §2.2.1, Table 2.1]: a circle against a line
 (ten), a circle against a circle (the capstan on the wippen heel, contact 1), and a
@@ -217,14 +215,14 @@ x_c      = c_A − R_A·n_B                   (contact point)
 **Do not use** `∂g/∂θ_B = −( ẑ × (x_c − o_B) )·n_B − (c_A − p_B)·( ẑ × n_B )`: the
 second term is spurious. A circle at (0, 2) of radius 1 against a line through
 (5, 0) on a body turning about the origin has a true derivative of 0; that formula
-gives −5 (FOUNDATIONS §6.2).
+gives −5 ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)).
 
 `x_c` **moves along the line** as the bodies turn. That is what the variable
 leverage is, physically: `∂g/∂θ` is the instantaneous lever arm, and it varies
 continuously through the key's descent. About 15 flops, exact, with no iteration
 and no closest-point search. For a coordinate relative to a parent (jack, lever),
 `o` is the body's own pin, and the parent's coordinate turns the child's points
-about the parent's pivot (FOUNDATIONS §6.2). **The arm is not the distance to the
+about the parent's pivot ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)). **The arm is not the distance to the
 pivot**: at rest the knuckle sits on the jack's flat top, whose normal runs close
 to the jack's pin, so the jack's own arm is 3.5 mm though its contact point is
 49.5 mm from the pin [E, 10].
@@ -260,10 +258,10 @@ v_t  = [ (θ̇_A ẑ × (x_c − o_A)) − (θ̇_B ẑ × (x_c − o_B)) ] · t
 ratio(t) = ( r_strike · θ̇_h ) / ( r_front · θ̇_k )
 ```
 2 flops, plotted live against key dip. A lever ratio is never a constant, and the
-literature's small-angle ratios are linearizations about rest (FOUNDATIONS §6.2):
+literature's small-angle ratios are linearizations about rest ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)):
 the variation over the stroke is read off the assembled model, by virtual work. It
 is what moves when the capstan height or the hammer's hang changes. Of the trade's
-definitions of the action ratio, which differ on one action (FOUNDATIONS §3.7),
+definitions of the action ratio, which differ on one action ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)),
 the ratio of useful travels, (blow distance − let-off)/(key dip − aftertouch), is
 5.06 with assumed mid-range regulation (46, 1.5, 10 and 1.2 mm) [E, 06]. **Do not
 use** the "BYU Design Review" figures for the ratio's variation (about 5.5:1 at the
@@ -272,9 +270,9 @@ top of the travel, 5.06:1 "true", about 5.0:1 at let-off, modern targets of 4.9 
 
 ---
 
-## 2. Stiffnesses, effective masses and time steps
+## Stiffnesses, effective masses and time steps
 
-### 2.1 Contact law and measured coefficients
+### Contact law and measured coefficients
 
 Hirschkorn measures **each contact separately** on his disassembled Boston GP-178
 action: one part in a vise, the other on an arm driven by a small torque-controlled
@@ -313,11 +311,11 @@ unloading clearly apart [V, Hirschkorn 2004, Figures 2.5 and 2.6, pp. 20 and 22]
 **Do not use** "about 40 N near 1 mm": 40 N and 1 mm are where the figures' axes
 end.
 
-### 2.2 Effective masses along the contact normals
+### Effective masses along the contact normals
 
 What a contact's frequency depends on is its stiffness against the **effective
 mass along its normal**, `m_eff = 1/(∇gᵀ M⁻¹ ∇g)`, with `∇g` the gradient of its
-gap over the five coordinates (the lever arms of §1.5) and `M` the assembled mass
+gap over the five coordinates (the lever arms of [Sliding contacts: the heart of the variable leverage](#sliding-contacts-the-heart-of-the-variable-leverage)) and `M` the assembled mass
 matrix. On Hirschkorn's action at rest, every frame at its own pivot [E, 10]:
 
 | # | contact | m_eff (g) |
@@ -341,23 +339,23 @@ jack/knuckle contact is not among them at rest, because the knuckle sits on the
 jack's flat top, whose normal runs close to the jack's pin: there the jack's own
 arm is 3.5 mm, the wippen's 92.8 mm and the hammer's 18.2 mm per radian [E, 10].
 Its effective mass falls as the knuckle rolls onto the jack's side wall at the end
-of escapement, to 0.73 g, with the force collapsing (FOUNDATIONS §4.1).
+of escapement, to 0.73 g, with the force collapsing ([FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)).
 
 At the jack/knuckle, the reflected mass is about 9.1 g on the driving side (key,
 wippen, jack and lever, the hammer held) against 466.7 g on the hammer side,
 **51:1** [E, 10]. **Do not use 570:1** for that ratio, nor the argument that it
 puts the knuckle in the regime where the projected Gauss–Seidel solvers of game
 engines converge badly: the reflected-mass ratio at the knuckle does not
-distinguish a dedicated solver (FOUNDATIONS §3.9, §4.1).
+distinguish a dedicated solver ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine), [FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)).
 
 **Do not compute an effective mass as `I_pivot / r²`**, with `r` the distance
 from a pivot to a contact point: the arm that counts is the moment arm of the
 contact normal, taken for each coordinate, and the jack and the lever ride on the
 wippen. That method, with `Pw2` taken for the wippen's pivot, gives 0.73 g at the
 jack/knuckle at rest, a value the contact reaches only on the jack's side wall
-(FOUNDATIONS §4.1, §6.4; `tools/derivations/README.md`).
+([FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step), [FOUNDATIONS > Hirschkorn's frames](../FOUNDATIONS.md#hirschkorns-frames); `tools/derivations/README.md`).
 
-### 2.3 Contact stiffnesses, linearized modes, and the step
+### Contact stiffnesses, linearized modes, and the step
 
 Method: do **not evaluate a stiffness at an arbitrary penetration**. That yields
 absurdities: 1 mm at the lever/knuckle is 1037 N, which never happens. Evaluate it
@@ -389,17 +387,17 @@ highest linearized mode of Hirschkorn's action at rest is 1174 Hz with the
 capstan, the front punching and the jack/knuckle loaded (contacts 1, 2, 7), 2240 Hz
 with the repetition lever and the drop screw loaded too (1, 2, 7, 10, 11), and
 2268 Hz with all thirteen at once, an upper bound [E, 10]. These are the starting
-estimates of FOUNDATIONS §4.1. **The step itself is chosen by the step-convergence
+estimates of [FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step). **The step itself is chosen by the step-convergence
 study**: the same scenarios at decreasing steps, until the key force and the
 observables (the let-off instant, the hammer's speed at let-off, drop, checking)
 stop changing by more than their resolution, with sub-steps only where a measured
-criterion asks for them (FOUNDATIONS §4.1).
+criterion asks for them ([FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)).
 
 **Do not use 12 µs**, nor the per-contact table it comes from (3931 Hz and a
 twentieth of a period of 12.7 µs at the jack/knuckle on a reflected mass of
 0.728 g; 2450 Hz at the lever/knuckle on 1.02 g): those figures take `Pw2` for the
-wippen's pivot and divide `I_pivot` by a radial distance squared (§2.2;
-FOUNDATIONS §4.1). Nor the phase table that went with them (12.7 µs during key
+wippen's pivot and divide `I_pivot` by a radial distance squared ([Effective masses along the contact normals](#effective-masses-along-the-contact-normals);
+[FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)). Nor the phase table that went with them (12.7 µs during key
 depression, 12 to 20 µs at let-off, 2 to 5 µs at hammer–string impact): the step
 is the convergence study's to choose. **Do not use 2/ω
 as the stability limit**: it is the undamped limit of an explicit spring; with the
@@ -407,9 +405,9 @@ contact damping implicit in velocity the limit widens (at a damping ratio of 0.3
 ωΔt < 2.69), and stability is not accuracy [E, 05]. **Do not use 280 Hz** for the
 hammer's first mode, nor the 180 µs derived from it as a twentieth of its period:
 the figure is in no source; Thorin estimates the hammer's first mode at 39 Hz [V,
-Thorin 2017 §2.1 and Appendix] (FOUNDATIONS §4.5).
+Thorin 2017 §2.1 and Appendix] ([FOUNDATIONS > Rigid bodies](../FOUNDATIONS.md#rigid-bodies)).
 
-The non-smooth scheme of §3 runs at Δt = 0.5 ms (2 kHz): Thorin's computed forces
+The non-smooth scheme of [Solver choice: the options and the hypothesis](#solver-choice-the-options-and-the-hypothesis) runs at Δt = 0.5 ms (2 kHz): Thorin's computed forces
 at 2 and 10 kHz are very similar, while 0.4 kHz induces significant discrepancies
 [V, Thorin 2013 §6.4.1, Figure 6.10; Thorin 2017 §5, Figure 12]. In his words,
 "there is no numerical parameter for impact or dry friction calling for a very
@@ -417,11 +415,11 @@ small time-step" [V, Thorin 2017 §5]. **Do not use** "a gain of 25 to 100 times
 the time step" for the non-smooth scheme: it divides 500 µs by compliant steps
 taken from the per-contact figures refuted above.
 
-### 2.4 Hammer–string impact
+### Hammer–string impact
 
 **[?]** Contact durations of about 4 ms in the bass and under 1 ms in the extreme
 treble, varying by about ±20 % from piano to fortissimo, are attributed to
-Askenfelt and Jansson, who are not in the corpus (FOUNDATIONS §10); Goebl et al.
+Askenfelt and Jansson, who are not in the corpus ([FOUNDATIONS > Sources](../FOUNDATIONS.md#sources)); Goebl et al.
 cite them on contact durations without giving the figures [V, Goebl et al. 2005,
 p. 1155].
 
@@ -455,11 +453,11 @@ z_{n+1} = e·z_n + (1 − e)·w_n + [1 − (τ0/Δt)(1 − e)]·(w_{n+1} − w_n
 
 unconditionally stable, `e` and the bracket computed once. When `Δt ≫ τ0` it tends
 to `z ≈ w − τ0 ẇ`, so `F ≈ F0 [ δ·u^p + ε τ0 · d(u^p)/dt ]`: the static branch and
-the dissipation, both carried at the macro step (FOUNDATIONS §4.3). **Do not use**
+the dissipation, both carried at the macro step ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)). **Do not use**
 the update `z ← z·exp(−dt/τ0) + (1 − exp(−dt/τ0))·u^p`, with `u^p` held constant
 over the step: at a step much longer than `τ0` it sets `z` to `u^p` at every step,
 leaves the static branch `F0·δ·u^p` alone, and removes most of the dissipation the
-hereditary law exists to model (FOUNDATIONS §4.3). Nor read a contact duration off
+hereditary law exists to model ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)). Nor read a contact duration off
 the linearized half-period of the static branch against a rigid wall (0.1 to
 0.3 ms across the compass at 5 m/s): for a hardening spring the linearization at
 peak compression is the stiffest point of the stroke, so it understates the
@@ -473,16 +471,16 @@ rebound speed for the hammer" [V, Hirschkorn 2004 §2.2.1, §2.2.3]. Thorin's
 "simple ad hoc Newton elastic law suffices to reproduce the kinematic measurements
 of the velocities of the hammer after it escapes the mechanism and before it is
 captured again" [V, Thorin 2017 §2.1]. The rebound speed matters because it governs
-checking. Whether sound is in scope is open (FOUNDATIONS §9).
+checking. Whether sound is in scope is open ([FOUNDATIONS > Open questions for the owner](../FOUNDATIONS.md#open-questions-for-the-owner)).
 
 ---
 
-## 3. Solver choice: the options and the hypothesis
+## Solver choice: the options and the hypothesis
 
-FOUNDATIONS §4.2 states the hypothesis the dynamics prototype tests: **one dynamic
+[FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver) states the hypothesis the dynamics prototype tests: **one dynamic
 solver** serves the bench and the keyboard, with compliant contacts treated
 implicitly at velocity level, axis friction as a bounded unknown at velocity level
-(the set of §1.3), and a fixed step; the quasi-static solver is its static limit.
+(the set of [Equations of motion, implementable form](#equations-of-motion-implementable-form)), and a fixed step; the quasi-static solver is its static limit.
 This section sets out the options it is drawn from.
 
 ### (a) Explicit adaptive step (Dormand–Prince RK45/RKF45) with event detection — not for the real-time path
@@ -492,18 +490,18 @@ chattering (the jack bottoming out, the hammer bouncing in the back check). Root
 finding dominates the cost, and a variable step cannot promise "n steps per
 frame", which the real-time path needs. Reproducibility is not the objection: with
 identical operations in the same order, an adaptive step reproduces bit for bit
-too (FOUNDATIONS §4.4).
+too ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 
 ### (b) Semi-implicit fixed step, contact force implicit in velocity — the form of the hypothesis
 Semi-implicit (symplectic) Euler or a fixed-step RK2, with the contact force
 treated implicitly in velocity. Simple to write, to parallelize and to keep
-deterministic, and the felt's compliance is native. FOUNDATIONS §4.2 takes this
+deterministic, and the felt's compliance is native. [FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver) takes this
 form with axis friction set-valued, not regularized. Its step is set by the
-step-convergence study, from the starting estimates of §2.3. **Do not use**
+step-convergence study, from the starting estimates of [Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step). **Do not use**
 "dt = 20–40 µs as a baseline, with sub-steps of 5 µs at let-off and 2–5 µs at
 impact", nor "125 Mflop/s per note at 20 µs": the steps come from the per-contact
-figures refuted in §2.3, and the cost from a flop count of a kernel never written
-(§5).
+figures refuted in [Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step), and the cost from a flop count of a kernel never written
+([Compute budget](#compute-budget)).
 
 ### (c) Stiff implicit, variable step (BDF / Radau IIA / Rosenbrock) — not as Hirschkorn ran it
 This is Hirschkorn's choice: MATLAB `ODE15s`, absolute tolerance 1e-5 rad, and "a
@@ -515,7 +513,7 @@ variations in position. Even more significant in contributing stiffness is the
 friction model" [V, Hirschkorn 2004 §2.4]: his regularized friction makes the
 system stiffer still than his contacts do. What rules his combination out here is
 the variable step, which cannot keep a fixed frame cadence, and the regularized
-friction law (FOUNDATIONS §3.5), not implicitness: a fixed-step, linearly implicit
+friction law ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)), not implicitness: a fixed-step, linearly implicit
 step with set-valued friction is option (b), and it is deterministic.
 
 Computing times reported in the literature:
@@ -528,7 +526,7 @@ Computing times reported in the literature:
 | Izadbakhsh (Maple, flexible shank) | about 75 min on a 2.4 GHz PC [V, Thorin 2017, Table 1] | not given: the simulated duration is not stated |
 | Masoudi & Birkett 2015 | 910 s with a rigid shank, 1720 s with a flexible one [V, Thorin 2017, Table 1] | about 4550 for the rigid model, Thorin's estimate from a 200 ms figure [V, Thorin 2017 §1] |
 | **Thorin et al. 2017 (non-smooth, XDE, 3D)** | about **20 times slower than real time** on a 2010 computer with a 2.1 GHz Intel Core i5 [V, Thorin 2017 §6] | **about 20** |
-| Timmermans, Dehez, Fisette 2020, haptic key | **[?]** reported to compute a multibody action model in real time on the controller of a force-feedback key; the paper is not in the corpus, and its figures are unchecked (FOUNDATIONS §10) | — |
+| Timmermans, Dehez, Fisette 2020, haptic key | **[?]** reported to compute a multibody action model in real time on the controller of a force-feedback key; the paper is not in the corpus, and its figures are unchecked ([FOUNDATIONS > Sources](../FOUNDATIONS.md#sources)) | — |
 
 The non-smooth formalism "proved to allow for simulations of about two orders of
 magnitude faster than the regularizing approach, as reported in the literature"
@@ -565,7 +563,7 @@ scheme gives up at a long step is the resolution of contact modes near or above
 the step's frequency: implicit Euler (θ = 1) multiplies an undamped mode's
 amplitude by 1/√(1 + (ωΔt)²) per step, 0.30 for a 1 kHz mode at 500 µs
 (ωΔt = π). Thorin's convergence between 2 and 10 kHz says his observables do not
-see it (§2.3).
+see it ([Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step)).
 
 Felt law: `F_felt(δ) = k·δ^r + b·δ²·δ̇` [V, Thorin 2017 Eq. 6], three parameters
 per felt, identified by minimizing a cost functional over a series of dynamic
@@ -583,7 +581,7 @@ Thorin 2017 §2.4].
 > friction law." [V, Thorin 2017 §2.5]
 
 That is down weight and up weight. A regularized law has zero friction at zero
-speed, so a static solve with it collapses D onto U (FOUNDATIONS §3.5). **Do not
+speed, so a static solve with it collapses D onto U ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)). **Do not
 use** "with regularized friction the 30 g gap between D and U vanishes" for a
 dynamic simulation: with a threshold speed of 10⁻⁶ rad/s the key keeps the
 threshold, creeping under a micrometer in ten seconds under a gram of excess
@@ -598,19 +596,19 @@ stability; "the condition number of the matrices involved increases as the slope
 of the regularized function increases" [V, Thorin 2017 §2.5]. **Do not argue against
 regularization from the time step**: its tiny step holds only for explicit
 integration; treated implicitly, a velocity-only friction law sets no step limit
-[E, 07] (FOUNDATIONS §3.5).
+[E, 07] ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)).
 
 ### (e) Hybrid: non-smooth hard stops, compliant felt — what Thorin already does
 There is no choice between (d) and (e): (d) **is** (e). The 1 mg auxiliary bodies
 realize the decomposition into rigid non-penetration (non-smooth) and felt
 compliance (smooth), and the dry friction stays set-valued. It is published and
-compared with measurements (§8, level 3).
+compared with measurements ([Quantified validation plan](#quantified-validation-plan), level 3).
 
 ### The hypothesis, and what it rules out
 
 One dynamic solver, of form (b) with the friction of (d): compliant contacts
 implicit in velocity, axis friction a bounded unknown at velocity level, a fixed
-step (FOUNDATIONS §4.2). Its test: step convergence; Hirschkorn's forte, piano and
+step ([FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver)). Its test: step convergence; Hirschkorn's forte, piano and
 double-blow trajectories; Thorin's key force under position drive; the trade's
 protocols at states both solvers share. A second dynamic solver comes only if a
 measured criterion fails.
@@ -623,15 +621,15 @@ equilibrium solved at each step with the friction sets), which yields the
 descending and ascending curves and so D, U, BW and F. With compliant contacts the
 configuration depends on the forces, so each load increment of a weighing is a
 nonlinear complementarity problem; reading D and U off two linear programs holds
-only for rigid contacts on one coordinate (FOUNDATIONS §4.2).
+only for rigid contacts on one coordinate ([FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver)).
 
 **Do not use** the three-solver plan (a non-smooth main solver at 250 µs, a penalty
 solver at 20–40 µs with a regularized `tanh` friction for the keyboard, and a
 quasi-static solver apart from both), nor the same scenario played through two
 dynamic solvers as a free non-regression test: it doubles the costliest code for a
-cross-check that convergence studies and published data provide (FOUNDATIONS §4.2),
+cross-check that convergence studies and published data provide ([FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver)),
 and a regularized friction in one of them would make the cross-check compare two
-different models (FOUNDATIONS §3.5).
+different models ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)).
 
 **How the boundary falls** (planned). The pure domain, with no I/O and no web,
 holds the analytic contact geometry (the three primitives), the material laws, the
@@ -642,9 +640,9 @@ laws and friction sets**; they differ in whether inertia is kept.
 
 ---
 
-## 4. Regularization and stability: the concrete pitfalls
+## Regularization and stability: the concrete pitfalls
 
-### 4.1 PITFALL #1 — Hunt–Crossley produces an ATTRACTIVE normal force
+### PITFALL #1 — Hunt–Crossley produces an ATTRACTIVE normal force
 `f_n = f_fit(x)·(1 + D·ẋ)` becomes **negative** (sticky) as soon as `ẋ < −1/D`.
 With Hirschkorn's measured D values [E, 04]:
 
@@ -667,10 +665,10 @@ With Hirschkorn's measured D values [E, 04]:
 Separation speeds are of the order of 0.2 to 1 m/s (the hammer tail leaving the
 back check, the jack leaving the knuckle, the hammer leaving its rest rail), and
 **11 of the 13 contacts turn attractive above −1 m/s** [E, 04]. The remedy is
-mandatory, whatever the law: `f_n = max(0, f_fit(x)·(1 + D·ẋ))` (FOUNDATIONS §4.3).
+mandatory, whatever the law: `f_n = max(0, f_fit(x)·(1 + D·ẋ))` ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)).
 Lankarani–Nikravesh, of the same multiplicative form, has the same flaw.
 
-### 4.2 PITFALL #2 — Real felt is rate-independent; the damped laws are not
+### PITFALL #2 — Real felt is rate-independent; the damped laws are not
 Hirschkorn's qualitative observations from his felt-compression tests [V,
 Hirschkorn 2004 §2.2.2]:
 > **Non-linear spring**: "It also does not follow any simple power function."
@@ -708,7 +706,7 @@ Options and judgment:
   unloading laws and an algorithm for the transitions between them, identified for
   hammer felt and applied to an upright piano action [V, Masoudi & McPhee, abstract,
   Eqs. 9–10, Figures 6–7]. **Do not use** "no published rate-independent felt
-  model": this is one (FOUNDATIONS §4.3).
+  model": this is one ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)).
 - **Loading and unloading curves with a memory of the turning points**: the
   literal description of what Hirschkorn observes, rate-independent by
   construction. The Preisach model is one such construction, which Hirschkorn
@@ -716,16 +714,16 @@ Options and judgment:
   hysteresis with an internal state variable; the corpus holds no identification of
   it for piano felt.
 - **Stulov's hereditary law**: rate-dependent, with an exploitable two-scale
-  structure (§2.4); the only one fitted across 88 notes, for hammer felt against the
+  structure ([Hammer–string impact](#hammerstring-impact)); the only one fitted across 88 notes, for hammer felt against the
   string.
 
-FOUNDATIONS §4.3 states the hypothesis: Hirschkorn's cubics are the elastic term,
+[FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law) states the hypothesis: Hirschkorn's cubics are the elastic term,
 and the target is a rate-independent law with loading and unloading branches and a
 memory of its turning points, after Masoudi and McPhee. Its identification needs
 loading and unloading curves contact by contact, which Hirschkorn plots for the key
 front alone and no source in the corpus gives for a grand action.
 
-### 4.3 PITFALL #3 — C1 continuity at contact entry
+### PITFALL #3 — C1 continuity at contact entry
 `f_fit(x) = ax³ + bx² + cx` has `f_fit(0) = 0` and `f'_fit(0) = c > 0`: the force is
 C0 but **the stiffness jumps from 0 to c**, 2.4 to 32.3 kN/m depending on the contact
 [V, Hirschkorn 2004, Table A.8]. That is an acceleration discontinuity at every
@@ -745,9 +743,9 @@ agree only at the penetration `b_d` was calibrated at, and the additive one turn
 attractive too, at a separation speed that varies with the penetration (on contact
 7, −0.270 m/s at 0.1 mm and −0.171 m/s at 0.3 mm, against −0.213 m/s at the
 calibration point) [E, 07]. The clamp `max(0, f)` is the remedy in both forms
-(FOUNDATIONS §4.3).
+([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)).
 
-### 4.4 PITFALL #4 — Chattering
+### PITFALL #4 — Chattering
 The risk zones: (a) the hammer tail in the back check, which bounces, and where
 tangential friction is, in Thorin's words, "crucial for stopping the motion of the
 hammer after hitting the string" [V, Thorin 2017 §2.4]; Hirschkorn's model without
@@ -758,20 +756,20 @@ auxiliary bodies), force saturation, and above all **robust lift-off detection**
 declare separation only if `g > 0` AND `ġ > ε` over several consecutive steps
 (hysteresis on the contact state), never on the sign of `g` alone.
 
-### 4.5 PITFALL #5 — Conditioning
+### PITFALL #5 — Conditioning
 Thorin: "The condition number of the matrices involved increases as the slope of
 the regularized function increases" [V, Thorin 2017 §2.5]. On one action the
 effective masses along the contact normals span 0.8 to 112.7 g at rest [E, 10],
-and the tangent stiffnesses at the assumed forces of §2.3 span 2.6e3 to 7.5e5 N/m:
+and the tangent stiffnesses at the assumed forces of [Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step) span 2.6e3 to 7.5e5 N/m:
 the Delassus matrix is ill-conditioned, and Gauss–Seidel must be preconditioned
 (diagonal scaling). A fixed iteration budget belongs to the real-time path, where
 the cost per step must be bounded; a loop that stops on a tolerance, under a hard
 cap and with its iteration count reported, is required in the metrological paths
-(FOUNDATIONS §4.4). **Do not use** the argument that a convergence test destroys
+([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). **Do not use** the argument that a convergence test destroys
 reproducibility: with identical operations in the same order it does not
-(FOUNDATIONS §4.4).
+([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 
-### 4.6 PITFALL #6 — Tangential friction is not everywhere
+### PITFALL #6 — Tangential friction is not everywhere
 Hirschkorn applies tangential friction on **4 contacts** only (1, 4, 7, 10) [V,
 Hirschkorn 2004 §2.2.4]; Thorin on **3** (jack/knuckle, back check/hammer,
 jack/let-off button), because "friction is ignored in the other contacts which are
@@ -788,15 +786,15 @@ plain-text extraction of the thesis prints.
 
 ---
 
-## 5. Compute budget
+## Compute budget
 
-FOUNDATIONS §4.6 states the hypothesis: one dynamic solver, the notes computed
+[FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget) states the hypothesis: one dynamic solver, the notes computed
 independently on a few workers, plays 88 notes in real time on a laptop, because a
 note is active for a few hundred milliseconds and static in its hold. Its test is
 measured: the prototype's cost per step, natively and in Chrome and Safari, and the
 notes active at once over a corpus of MIDI files, pedal changes included.
 
-### 5.1 What a step costs
+### What a step costs
 
 Measured on the dynamics prototype, not estimated. What dominates is known in
 kind: in a compliant step, the geometry of the thirteen contacts and their force
@@ -809,7 +807,7 @@ every step to emulate the nonlinear felt law [V, Thorin 2017 §4].
 **Do not use** the hand-counted costs of a kernel never written (2,500 flops per
 penalty step, 45,000 per non-smooth step), the Mflop/s per note built on them (125
 at a 20 µs step, 90 at 500 µs), the per-thread throughputs they were divided by, or
-the frame-time tables that follow: the steps behind them are those refuted in §2.3,
+the frame-time tables that follow: the steps behind them are those refuted in [Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step),
 and annex A1's 108 ns per step and 125 Mflop/s per note cannot both hold on one
 scalar core [E, 06]. Nor read Thorin's 20 seconds per simulated second as
 2·10⁷ flops per step for a dedicated 2D solver to beat: that time is an
@@ -817,7 +815,7 @@ implementation's, a 3D engine readjusting its felt law at each step, and Thorin
 gives the gains he expects from removing those two causes, more than 15 and more
 than 3 [V, Thorin 2013 §6.4.1, p. 110].
 
-### 5.2 How many notes are really active?
+### How many notes are really active?
 
 The mechanical activity window of a note is about **300 ms** [S] (attack about
 150 ms, then release, jack re-engagement and damper return about 150 ms). During
@@ -833,34 +831,34 @@ once are that density times 0.3 s [S]:
 | 32 onsets/s | burst, 8-note chords × 4/s | 9.6 |
 
 The densities are assumptions, to be replaced by counts over a corpus of MIDI files
-(FOUNDATIONS §4.6).
+([FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget)).
 
 The 88 dampers move together only during a pedal change, and each has one degree of
 freedom. The notes still share nothing: the damper lift tray is a prescribed
 position, the trapwork (one to three degrees of freedom driven by timestamped pedal
-input) integrated identically in every worker (FOUNDATIONS §7.6). The sostenuto is
+input) integrated identically in every worker ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)). The sostenuto is
 a latch that keeps the dampers raised when it is pressed. The una corda shifts the
 key frame and the hammers, not the dampers; it is the only motion out of the plane,
-and it adds no planar physics (FOUNDATIONS §7.6).
+and it adds no planar physics ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
-### 5.3 Is WASM NECESSARY? Arguments, not throughput
+### Is WASM NECESSARY? Arguments, not throughput
 
 On the throughput criterion alone, nothing in the corpus decides between
 TypeScript and WebAssembly for one note: the cost per step is the prototype's to
-measure (§5.1), and the published comparisons of JavaScript and WebAssembly on
+measure ([What a step costs](#what-a-step-costs)), and the published comparisons of JavaScript and WebAssembly on
 numerical kernels disagree with one another; none is in the corpus. The domain is
-Rust compiled to WebAssembly for reasons that are not speed (FOUNDATIONS §3.10,
+Rust compiled to WebAssembly for reasons that are not speed ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers),
 built):
 
 1. **Determinism of the transcendentals.** `Math.pow` and `Math.exp` are
    "implementation-approximated" in ECMA-262: the specification does not mandate an
    algorithm, and engines differ. `sqrt` is exact under IEEE-754 on both sides.
    Every transcendental in the domain therefore goes through the `libm` crate,
-   `pow` included, which makes `pow` as reproducible as `sin` (FOUNDATIONS §4.4).
+   `pow` included, which makes `pow` as reproducible as `sin` ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
    **Do not use** "avoid `pow` in the hot loop for determinism", nor its corollary
    that Stulov's `F0·u^p` with a non-integer `p`, or Thorin's `k·δ^r` with
    r = 2.7, is disqualified: a non-integer power is allowed, and a law is chosen on
-   physics and measured cost (FOUNDATIONS §4.3).
+   physics and measured cost ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)).
 2. **Absence of a garbage collector, structurally.** In JS one can avoid the GC
    (TypedArray and pooling), but one accidental allocation in the stepping loop
    brings back an unpredictable pause. In Rust, "zero allocation in `step()`" can be
@@ -868,26 +866,26 @@ built):
 3. **Explicit SIMD, an option and not one of the reasons.** JS has no SIMD (SIMD.js
    is dead); WASM has v128, and since the notes are independent, "inter-note" SIMD
    (two notes as f64x2) avoids shuffles and horizontal reductions, branches
-   becoming masked selects, double precision kept (FOUNDATIONS §3.9). It is a speed
-   argument, so whether it pays is the prototype's to measure (FOUNDATIONS §4.6).
+   becoming masked selects, double precision kept ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)). It is a speed
+   argument, so whether it pays is the prototype's to measure ([FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget)).
 4. **Control of the time step and the order of operations.** Possible in both, but
    easier to keep in a strictly typed language without implicit coercions.
 5. **Native runs of the code that ships**, for studies, sweeps and golden tests
-   (FOUNDATIONS §3.10).
+   ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)).
 
-### 5.4 Deployment constraints not to discover too late
+### Deployment constraints not to discover too late
 - **Baseline SIMD** (v128): Chrome 91+, Firefox 89+, Safari 16.4+, Edge 91+.
-- **Relaxed SIMD**: never (§6).
+- **Relaxed SIMD**: never ([Determinism and reproducibility](#determinism-and-reproducibility)).
 - **WebAssembly threads**: not used. On the pinned Rust toolchain, linking `pa-wasm`
   with shared memory fails without a nightly rebuild of the standard library, so the
-  88-note runtime is one module per Web Worker (FOUNDATIONS §3.10). Transport is a
+  88-note runtime is one module per Web Worker ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)). Transport is a
   lock-free ring in a `SharedArrayBuffer` where the page is cross-origin isolated
   (COOP/COEP headers, `crossOriginIsolated` checked at runtime), transferable
-  buffers otherwise (FOUNDATIONS §7.6).
+  buffers otherwise ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 ---
 
-## 6. Determinism and reproducibility
+## Determinism and reproducibility
 
 **Why it matters here, concretely**: a technician regulates a let-off in the
 simulator, measures 1.2 mm, changes a parameter, goes back, and expects to find
@@ -896,17 +894,17 @@ a colleague's machine. Without that, the tool is not a measuring instrument; it 
 an animation.
 
 The arithmetic is identical bit for bit on every machine when the conditions of
-FOUNDATIONS §4.4 hold. Built: no `HashMap` in the domain's production code;
+[FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly) hold. Built: no `HashMap` in the domain's production code;
 every transcendental there through the `libm` crate, Clippy refusing the
 standard library's; and two fixed bisections that resolve far below anything
-read (FOUNDATIONS §4.4). Checklist:
+read ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). Checklist:
 
 1. **A fixed time step on the real-time path.** No `dt` derived from
    `requestAnimationFrame`: a fixed-step accumulator, the renderer interpolating
-   between snapshots stamped in simulation time (FOUNDATIONS §7.6). The reasons are
+   between snapshots stamped in simulation time ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)). The reasons are
    the frame cadence and a cost per step that is bounded, not reproducibility: with
    identical operations in the same order, a variable step reproduces too
-   (FOUNDATIONS §4.4).
+   ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 2. **Iteration counts.** Convergence-tested loops are allowed, with a hard
    iteration cap and the iteration count reported, and they are required in the
    metrological paths (the quasi-static solver, the inverse regulation solve, the
@@ -917,7 +915,7 @@ read (FOUNDATIONS §4.4). Checklist:
    use** the argument that a convergence test makes the result depend on rounding
    and destroys reproducibility: with identical operations in the same order it
    does not, and with different arithmetic a fixed count would not restore it
-   either (FOUNDATIONS §4.4).
+   either ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 3. **A frozen order of operations.** Contacts iterated in an order fixed by
    construction, not by insertion into a container; reductions (sums of torques) in
    a fixed order, never in parallel without a deterministic reduction tree. In Rust,
@@ -926,14 +924,14 @@ read (FOUNDATIONS §4.4). Checklist:
    semantics for `f32`/`f64` (no extended-precision x87, no flush-to-zero). No
    `-ffast-math` or any equivalent, no contraction of a multiply and an add into one
    fused operation; in Rust, none of the `fast_*` intrinsics. Rust guarantees both on
-   x86-64 and wasm32 (FOUNDATIONS §4.4).
+   x86-64 and wasm32 ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 5. **NEVER relaxed SIMD.** `qfma` rounds **once** on FMA hardware and **twice** on
    hardware without FMA. The non-determinism is bounded to the instruction and
    stable on a given machine, but **it varies across hardware**. So:
-   **baseline v128 only, never `-mrelaxed-simd`** (FOUNDATIONS §4.4).
+   **baseline v128 only, never `-mrelaxed-simd`** ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 6. **No platform transcendentals.** Neither `Math.pow` nor `Math.exp` in JS, nor
    `f64::powf` or `sin` backed by a system library: every transcendental in the
-   domain goes through the `libm` crate, `pow` included (FOUNDATIONS §4.4). `sqrt`
+   domain goes through the `libm` crate, `pow` included ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). `sqrt`
    is safe (exact under IEEE-754).
 7. **No GC.** Zero allocation in `step()`.
 8. **Explicit seeds.** No implicit random number generator. Any variability (note
@@ -941,14 +939,12 @@ read (FOUNDATIONS §4.4). Checklist:
    the seed saved with the scene.
 9. **Serialization of the complete state**, the hidden variables included: felt
    hysteresis memory, the stick or slip state of each friction set, contact flags.
-   A "position + velocity" state is NOT enough to replay a session (FOUNDATIONS
-   §7.6).
+   A "position + velocity" state is NOT enough to replay a session ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 10. **Several workers without non-determinism.** The notes are independent: each
     Web Worker runs its own module and notes, all synchronized at the frame, never
     at each step. One simulation-time master gives every worker the same target
     step; reductions across notes run in a fixed note order, in one place. Which
-    worker computes a note may vary; the order of reductions may not (FOUNDATIONS
-    §7.6).
+    worker computes a note may vary; the order of reductions may not ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 A regression test (planned): a **hash** of the complete state after N steps on a
 canonical scenario, compared across machines and across Chrome, Firefox and Safari,
@@ -958,11 +954,11 @@ measurement.
 
 ---
 
-## 7. Key excitation
+## Key excitation
 
-### 7.1 Three modes
+### Three modes
 
-Planned, with the dynamics (FOUNDATIONS §4, §7.6).
+Planned, with the dynamics ([FOUNDATIONS > What the dynamics prototype settles, and what it leaves open](../FOUNDATIONS.md#what-the-dynamics-prototype-settles-and-what-it-leaves-open), [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 **(i) FORCE-driven: realistic playing.** Finger-key forces measured by Askenfelt
 and Jansson (1992), as Goebl et al. report them [V, Goebl et al. 2005, p. 1156,
@@ -987,7 +983,7 @@ than the usual force-driven simulations" [V, Thorin 2017 §6], because a force i
 hides the model's defects behind the intrinsic smoothness of the resulting motion.
 Put another way: **excite a bad model in force and the displacement will not show
 it; excite it in position and compare the measured force, and it shows at once**
-(FOUNDATIONS §5.1). An implementation detail to anticipate: XDE performed
+([FOUNDATIONS > What a test proves; drive in position, compare forces](../FOUNDATIONS.md#what-a-test-proves-drive-in-position-compare-forces)). An implementation detail to anticipate: XDE performed
 force-driven simulations directly, and position-driven ones by inserting a
 proportional-derivative corrector, mirrored in the experiment by a viscoelastic
 piston between finger and key [V, Thorin 2017 §4, §3]. **In an in-house solver,
@@ -996,14 +992,14 @@ reaction unknown in the one-step problem), provided for in the solver's interfac
 from the start.
 
 **(iii) QUASI-STATIC: down weight and up weight.** The static limit of the dynamic
-solver (§3). Stanwood's protocol to reproduce [V, Stanwood 2000, glossary,
+solver ([Solver choice: the options and the hypothesis](#solver-choice-the-options-and-the-hypothesis)). Stanwood's protocol to reproduce [V, Stanwood 2000, glossary,
 p. 22–23]: **D**, "the minimum amount of weight, to the nearest gram, placed on the
 measuring point that causes the key to drop while maintaining a slow controlled
 motion of the hammer"; **U**, "the maximum amount of weight, to the nearest gram,
 placed on the measuring point that the key can lift while maintaining a slow,
 controlled motion of the hammer".
 
-### 7.2 MIDI velocity 0–127 mapping
+### MIDI velocity 0–127 mapping
 
 Anchors:
 
@@ -1027,11 +1023,11 @@ as it stands as a simulator observable.
 **Why NOT to impose a hammer velocity**: the hammer velocity is the RESULT that
 regulation is supposed to influence. Impose it, and changing the let-off or the
 blow distance changes nothing in the sound, and the tool's teaching value is lost
-(FOUNDATIONS §7.6).
+([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 **Procedure**: impose a parameterized force profile (amplitude × shape) and find,
 by bisection on the model, the amplitude that gives each note and velocity: lazily,
-warm-started, and again when the regulation changes (FOUNDATIONS §7.6). The side
+warm-started, and again when the regulation changes ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)). The side
 effect is the point: **a badly regulated let-off becomes audible and visible**,
 since the forces change. A full 88 × 128 table is 11,264 entries, each a bisection
 of several simulations of about 0.3 s, which is why the entries are computed as
@@ -1044,7 +1040,7 @@ fitted on the last two gives 0.00031 m/s at m = 1 (absurd). Hence an interpolate
 monotone table (PCHIP on `log v` against `m`) rather than a formula, and in any case
 the table calibrated on the model is better.
 
-### 7.3 Timing checks to reproduce (quantified validation targets)
+### Timing checks to reproduce (quantified validation targets)
 - Key travel to the keybed: **25 ms** at forte (5 m/s) → **160 ms** at piano
   (1 m/s) [V, Goebl et al. 2005, p. 1154, citing Askenfelt & Jansson 1991].
 - **Hammer–string contact 12 ms BEFORE the keybed at piano, 3 ms AFTER it at
@@ -1060,17 +1056,17 @@ the table calibrated on the model is better.
 
 ---
 
-## 8. Quantified validation plan
+## Quantified validation plan
 
-The levels are FOUNDATIONS §5.3's. A **consistency check** shows the model agrees
+The levels are [FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)'s. A **consistency check** shows the model agrees
 with itself or with mathematics, and a wrong model passes it; a **validation test**
 predicts outputs measured independently from inputs measured independently, on the
-same instrument (FOUNDATIONS §5.1). Levels 0, 1, 2 and 5 are consistency; level 3
+same instrument ([FOUNDATIONS > What a test proves; drive in position, compare forces](../FOUNDATIONS.md#what-a-test-proves-drive-in-position-compare-forces)). Levels 0, 1, 2 and 5 are consistency; level 3
 is validation; level 4 is consistency, and validation where the measurement is
 independent. Built: the level-0 lever-arm, virtual-work and key-ratio tests, the
 level-4 protocols of the weighing sheet (the jig, the seated pose, the breakaway
 walk, both key friction weights), and the non-confusion tests; the rest is
-planned (FOUNDATIONS §5.3).
+planned ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)).
 
 ### Level 0 — Analytic tests (unit tests, exact)
 - **Lever arms**: replace the profiles with rigid arms of known lengths and check
@@ -1081,8 +1077,7 @@ planned (FOUNDATIONS §5.3).
   normal at the arc-to-line transition of the hybrid profile (a finite difference of
   `n` on either side).
 - **Mass matrix**: `M_jr = 0` exactly; symmetry; `M` against finite differences of
-  the kinetic energy (a positivity test alone passes on wrong couplings, FOUNDATIONS
-  §3.6); the arrowhead solve against a dense LU to 1e-14.
+  the kinetic energy (a positivity test alone passes on wrong couplings, [FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)); the arrowhead solve against a dense LU to 1e-14.
 - **Virtual work**: the static force ratio equals the displacement ratio (a Jacobian
   consistency test, which catches most sign and lever-arm errors); the net torque
   against the gradient of the potential.
@@ -1090,7 +1085,7 @@ planned (FOUNDATIONS §5.3).
 ### Level 1 — Time-step convergence
 The same scenario at several steps, the key force and the observables (the let-off
 instant, the hammer's speed at let-off, drop, checking) compared until they stop
-changing by more than their resolution; the step is fixed there (FOUNDATIONS §4.1).
+changing by more than their resolution; the step is fixed there ([FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)).
 Thorin's study is the model for it: 0.4, 2 and 10 kHz, the force on the key very
 similar at 2 and 10 kHz and significantly off at 0.4 kHz [V, Thorin 2013 §6.4.1,
 Figure 6.10; Thorin 2017, Figure 12]. A difference that persists as the step falls
@@ -1098,37 +1093,37 @@ points at a hidden regularization parameter or a convergence criterion that vari
 with the step. **Do not use** "convergence toward 5–10 µs, visible degradation
 beyond 20–40 µs, instability beyond about 80 µs (2/ω of the jack/knuckle contact)":
 those figures come from the per-contact table and the stability limit refuted in
-§2.3.
+[Contact stiffnesses, linearized modes, and the step](#contact-stiffnesses-linearized-modes-and-the-step).
 
 ### Level 2 — Energy in free flight
 Contacts and friction off, the hammer released from a given angle: `E = ½ I_h θ̇² +
 m_h g h` stays bounded and oscillates, without monotonic drift, under a symplectic
 integrator. For the (wippen, jack, lever) block, whose mass matrix depends on its
 configuration, the semi-implicit step is not symplectic for that Hamiltonian, and
-the test is a drift falling as O(dt) (FOUNDATIONS §5.3); it checks the Coriolis
+the test is a drift falling as O(dt) ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)); it checks the Coriolis
 terms of the subtree.
 
 ### Level 3 — Comparison with published measurements (validation)
 - **Velocity at let-off**, Thorin's demonstrator: piano **1.01 m/s** measured,
   **1.00** simulated; forte **1.56** and **1.56** [V, Thorin 2017, Table 5],
-  reproduced within the measured scatter (FOUNDATIONS §8).
+  reproduced within the measured scatter ([FOUNDATIONS > Stages](../FOUNDATIONS.md#stages)).
 - **Forces on the key under position drive**: "The comparisons between measured and
   simulated forces in response to a given motion are successful" [V, Thorin 2017,
-  abstract; Figures 8–9]. This is THE discriminating test (FOUNDATIONS §5.2 c).
+  abstract; Figures 8–9]. This is THE discriminating test ([FOUNDATIONS > Validation instruments](../FOUNDATIONS.md#validation-instruments), "Thorin's Renner demonstrator").
 - Angular trajectories: Thorin's five bodies by KLT tracking on a high-speed camera
   [V, Thorin 2017, Figure 10]; Hirschkorn's key, wippen and hammer by optical
   encoders under force drive (forte, piano, double blow), the jack and the lever
   filmed at high speed but not compared [V, Hirschkorn 2004 §3.2.2, ch. 4].
-- **Goebl's timing relations** (§7.3), in particular the **change of sign** of the
+- **Goebl's timing relations** ([Timing checks to reproduce (quantified validation targets)](#timing-checks-to-reproduce-quantified-validation-targets)), in particular the **change of sign** of the
   offset between hammer–string contact and key bottom from piano to forte.
 - **Hammer–string contact duration**, if the string is modeled: **[?]** the
   figures (about 4 ms in the bass, under 1 ms in the treble) are Askenfelt and
-  Jansson's, not in the corpus (§2.4).
+  Jansson's, not in the corpus ([Hammer–string impact](#hammerstring-impact)).
 
 ### Level 4 — The simulator measures ITS OWN regulation
 This is the level that counts for the technician, and it exists in no publication.
 The simulator implements **the technician's measuring procedures**, not ad hoc
-numerical probes (FOUNDATIONS §1.3). Hirschkorn regulates the model and the action
+numerical probes ([FOUNDATIONS > The acceptance criterion](../FOUNDATIONS.md#the-acceptance-criterion)). Hirschkorn regulates the model and the action
 by the same procedure, which is the right spirit [V, Hirschkorn 2004 §2.3]:
 
 | Step | Hirschkorn's specification [V, Hirschkorn 2004 §2.3] | Published trade values |
@@ -1169,7 +1164,7 @@ KR = 0.55 [V, Stanwood 2000, p. 22]. **Do not read** the glossary's first wordin
 "the ratio of downward force on the capstan/heel versus the corresponding upward
 force at the measuring point", as capstan force over front force: its own second
 wording and the worked example give front over capstan, about 0.5 to 0.6, the
-convention of the equation of balance (FOUNDATIONS §3.7).
+convention of the equation of balance ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)).
 
 Stanwood's reference values [V, Stanwood, "Looking at Grand Pianos Through the Eyes
 of the New Touchweight Metrology", PTJ March 2000, pp. 21–25, Tables I, III and IV]:
@@ -1190,7 +1185,7 @@ different ratio levels.
 **A check on the convention, not on the model.** `KR` has two reciprocal
 conventions, and the equation of balance takes only one: the **force** convention,
 the front reading for a weight at the capstan, about 0.50 to 0.60 on most actions
-and 0.68 on an 1878 Steinway concert grand (FOUNDATIONS §3.7; Stanwood's example
+and 0.68 on an 1878 Steinway concert grand ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs); Stanwood's example
 reads 0.57 [V, Stanwood 1996, p. 5]). The **geometric** convention, front arm
 over capstan arm, "nominally 2:1" [V, Stanwood, pianotech mailing list,
 `stanwood/mailling-list/swr.txt`], is its reciprocal. On Hirschkorn's key, with the
@@ -1201,14 +1196,14 @@ than at Stanwood's measuring point. Put into the equation, the geometric convent
 inflates the wippen term by 1/KR², about 3.3, and makes a wippen balance weight
 larger than the wippen weight, a reducing lever appearing to amplify: the error the
 engine's level-0 tests refuse with `WBW < WW` and `0.3 < KR < 1.0`, a window that
-separates the two conventions without rejecting a real action (FOUNDATIONS §3.7).
+separates the two conventions without rejecting a real action ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)).
 
 **Do not use 5.84** as a closed test of the action ratio, nor "19.06 under the
 inverted convention" as proof that it discriminates: that lever product multiplies
 radial distances, takes `Pw2` for the wippen's pivot and the jack's pin for its
 contact, uses the front punching as the key's front arm instead of the measuring
 point, and a band of 5.0 to 7.0 could not see a 10 % error in an arm anyway
-(FOUNDATIONS §6.4). The action ratio is read off an assembled model, by virtual
+([FOUNDATIONS > Hirschkorn's frames](../FOUNDATIONS.md#hirschkorns-frames)). The action ratio is read off an assembled model, by virtual
 work. **Do not use** the front-weight "closure" built on it either (a posited BW of
 35 g landing on 24.8 g against a ceiling of 24.7 g): it uses that 5.84, a wippen
 weight no source gives for this action, and an interpolated ceiling where
@@ -1219,7 +1214,7 @@ describes**: Hirschkorn's action is note 52, so note-1 figures (an 8.0–14.8 g 
 weight zone, a 41.3 g front weight ceiling) do not apply to it. And **WW for
 Hirschkorn's action is not published**: Stanwood weighs the level wippen at the
 capstan/heel contact point, and on Hirschkorn's data that is read off the
-assembled model, every frame at its own pivot (§1.2).
+assembled model, every frame at its own pivot ([Structure of the mass matrix](#structure-of-the-mass-matrix)).
 
 The corpus supports a narrower claim than cross-validation, and a useful one:
 Hirschkorn's parameter set, Stulov's felt model, the Steinway and Renner
@@ -1230,11 +1225,11 @@ with the hammer 47.0 mm from the string against the 48.0 mm he regulated [E, 10]
 
 ### Level 5 — Sensitivities
 For each regulation parameter, the change it produces in the observables, by
-finite differences (FOUNDATIONS §5.3). Questions the tool must answer:
+finite differences ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)). Questions the tool must answer:
 - capstan height `+0.1 mm` → what change in hammer height, let-off, aftertouch, D,
   U? (**Do not use** "+0.1 mm of capstan ⇒ −1.4 g of down weight and −0.3 mm of
   aftertouch": it comes from a display mock-up, and raising the capstan increases
-  aftertouch; FOUNDATIONS §5.3.)
+  aftertouch; [FOUNDATIONS > Levels](../FOUNDATIONS.md#levels).)
 - let-off button `+0.1 mm` → change in the let-off and in the velocity at let-off?
 - repetition spring force `+10 %` → change in U and in the re-engagement time?
 - the key's front weight `+1 g`, its mass the same → change in BW (and not in F)?
@@ -1245,7 +1240,7 @@ touching F; a change of friction must move F without touching BW. A technician
 detects at once a model that mixes the two, where a developer would never see it.
 With a constant friction bound both hold but for the tilt between the key's two
 seats, where D and U are read, a tolerance derived from the seats' arms; they
-guard against coding mix-ups until friction depends on load (FOUNDATIONS §5.3).
+guard against coding mix-ups until friction depends on load ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)).
 Settings are not optimized by gradient descent: Thorin's cost function is convex
 along a few parameters and flat along many [V, Thorin 2013 §6.5.6]; a scripted
-regulation sequence or a grid search does the job (FOUNDATIONS §5.3).
+regulation sequence or a grid search does the job ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)).

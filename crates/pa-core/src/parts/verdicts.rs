@@ -7,7 +7,7 @@
 //! punching, by its bushings' friction, or by any mixture of the two: the
 //! static solve reports one admissible split, the one of least utilization,
 //! and it is no answer to the question a technician asks
-//! (`docs/FOUNDATIONS.md` §2.1). So a verdict is built from what does not
+//! (`docs/FOUNDATIONS.md` > Parts and statics). So a verdict is built from what does not
 //! depend on the split: which contacts are closed, how far the key stands
 //! off its balance punching, and whether the generalized force along the
 //! motion the key has with every stop removed, its bearing kept, lies inside

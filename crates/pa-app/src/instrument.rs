@@ -1388,14 +1388,14 @@ impl Instrument {
     /// Whether the last action put the key back by the initialization
     /// instead of moving it from where it stood: an edit that left it sunk
     /// in its frame deeper than the row margin, or one from which no static
-    /// increment could be solved (`docs/FOUNDATIONS.md` §6.5).
+    /// increment could be solved (`docs/FOUNDATIONS.md` > Friction).
     pub fn reinitialized(&self) -> bool {
         self.reinitialized
     }
 
     /// The initialization: the key put on its frame from its nominal pose
     /// under the weight on its measuring point, friction off
-    /// (`docs/FOUNDATIONS.md` §6.5); where it finds no state from there, from
+    /// (`docs/FOUNDATIONS.md` > Friction); where it finds no state from there, from
     /// the key lowered onto its frame from above
     /// ([`mounts::lowered_onto_its_frame`]), as the seats are. Building the
     /// bench runs it, and so does an edit the key cannot follow. The state it
@@ -1470,7 +1470,7 @@ impl Instrument {
     /// Applies the bench's last action to the key, as one static increment
     /// from where it stands with its friction on: a weight on the measuring
     /// point, a weighing, a paper, any edit of the key or of its frame
-    /// (`docs/FOUNDATIONS.md` §6.5). The key stays where it was left if it
+    /// (`docs/FOUNDATIONS.md` > Friction). The key stays where it was left if it
     /// still can, which is the band the touch exercise teaches; a key resting
     /// on its balance punching rises and falls with it as papers are laid
     /// under it, as a key on its punching does. A weight that lifts the key

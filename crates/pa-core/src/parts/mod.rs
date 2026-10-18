@@ -18,7 +18,7 @@
 //! a key and never weighs it: the one number of a weighed key no scale gives,
 //! the height of its center of mass, is estimated from its drawn section's
 //! area centroid ([`KeyDesign::section_centroid`]), and every reading it
-//! reaches names it (`docs/FOUNDATIONS.md` §2.3).
+//! reaches names it (`docs/FOUNDATIONS.md` > Named simplifications).
 //!
 //! # The key's local frame
 //!
@@ -678,7 +678,7 @@ impl KeyDesign {
     /// left out; `None` for a section that encloses nothing.
     ///
     /// **What stands in for the height of a weighed key's center of mass**,
-    /// which no scale gives (`docs/FOUNDATIONS.md` §2.3): where the center of
+    /// which no scale gives (`docs/FOUNDATIONS.md` > Named simplifications): where the center of
     /// mass of a key of one material and one width across the keyboard
     /// would stand. A real key is narrower behind its head, its covering and
     /// its leads denser than its wood, so the height is an estimate, and

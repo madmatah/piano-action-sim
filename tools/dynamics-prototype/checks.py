@@ -2,8 +2,7 @@
 
 THROWAWAY PROTOTYPE (README.md).
 
-Every check here is a CONSISTENCY CHECK in the sense of docs/FOUNDATIONS.md
-§5.1: it shows that the model agrees with itself, with mathematics, or with
+Every check here is a CONSISTENCY CHECK in the sense of `docs/FOUNDATIONS.md` > What a test proves; drive in position, compare forces: it shows that the model agrees with itself, with mathematics, or with
 tools/derivations/10-hirschkorn-assembled-at-rest.py ("script 10"). It catches
 coding errors (a sign, a lever arm, a frame, a unit, a solver that does not
 solve what it says); a wrong model passes every one of them. None of them is a
@@ -94,7 +93,7 @@ def mass_matrix_against_kinetic_energy():
     differentiated by central second differences in q̇ (exact for a quadratic
     form up to rounding), at script 10's closure and 40 random poses. Also: M
     against script 10's own matrix at its rest pose, and the wippen block
-    against FOUNDATIONS §3.6's closed forms."""
+    against `docs/FOUNDATIONS.md` > Relative coordinates for the jack and the repetition lever's closed forms."""
     rng = np.random.default_rng(SEED)
     poses = [closure_pose()] + random_poses(rng, 40, spread=(1.0, 1.0, 1.0, 1.0, 1.0))
     worst = 0.0
@@ -119,7 +118,7 @@ def mass_matrix_against_kinetic_energy():
     m_mat = np.array(mdl.Model.mass_matrix(mdl.Pose(q10)))
     rel10 = float(np.max(np.abs(m_mat - m10)) / np.max(np.abs(m10)))
     assert rel10 < 1e-6, f"script 10's mass matrix differs by {rel10:.2e}"
-    # FOUNDATIONS §3.6: a child pinned at r on the wippen, center of mass at u
+    # `docs/FOUNDATIONS.md` > Relative coordinates for the jack and the repetition lever: a child pinned at r on the wippen, center of mass at u
     # from its pin: coupling I_cm + m(|u|² + r·u), share of the wippen's
     # diagonal I_cm + m|r + u|². Key and hammer are decoupled, jack and lever
     # siblings uncoupled, exactly.
@@ -140,9 +139,9 @@ def mass_matrix_against_kinetic_energy():
         for i, j in ((mdl.K, mdl.W), (mdl.K, mdl.J), (mdl.K, mdl.R), (mdl.K, mdl.H), (mdl.W, mdl.H),
                      (mdl.J, mdl.H), (mdl.R, mdl.H), (mdl.J, mdl.R)):
             assert m_mat[i, j] == 0.0, f"M[{i}][{j}] should be exactly zero"
-    assert worst36 < 1e-12, f"FOUNDATIONS §3.6 closed forms differ by {worst36:.2e}"
+    assert worst36 < 1e-12, f"the closed forms of `docs/FOUNDATIONS.md` > Relative coordinates for the jack and the repetition lever differ by {worst36:.2e}"
     return (f"41 poses, worst |ΔM_ij|/sqrt(M_ii M_jj) = {worst:.1e} (bound 1e-8); script 10's"
-            f" matrix within {rel10:.1e}; §3.6 closed forms within {worst36:.1e}; the eight"
+            f" matrix within {rel10:.1e}; the relative coordinates' closed forms within {worst36:.1e}; the eight"
             f" structural zeros exact")
 
 
@@ -153,7 +152,7 @@ def mass_matrix_against_kinetic_energy():
 
 @check
 def contact_gradients_against_finite_differences():
-    """∂g/∂q by the lever-arm identity (FOUNDATIONS §6.2, the parent's
+    """∂g/∂q by the lever-arm identity (`docs/FOUNDATIONS.md` > The lever arm, and the gradient of a gap, the parent's
     coordinate included for the jack's and the lever's points) against a
     central difference of the gap (step 1e-6 rad), all thirteen contacts, all
     five coordinates, at script 10's closure and 300 random poses. A stencil
@@ -359,7 +358,7 @@ def signed_gap_keeps_its_sign():
     must fall exactly as the depth grows while the nearest feature stays the
     same (at the rate |n|, which is 1 except for the four printed vectors of
     model.py A10, whose norms this also checks), and stay negative to the end
-    (FOUNDATIONS §6.6: a compliant law needs a signed gap)."""
+    (`docs/FOUNDATIONS.md` > Seventeen contacts per note: a compliant law needs a signed gap)."""
     q0 = closure_pose()
     lines = []
     norms = {}
@@ -408,7 +407,7 @@ def energy_bounded_in_free_flight():
     θr). Both integrators, 0.2 s, at dt = 10 and 5 µs. The kinetic energy must
     stay within 1e-3 of its start, and its worst departure must fall at least
     1.6 times when dt halves (first order, as semi-implicit Euler on a
-    configuration-dependent mass matrix gives, FOUNDATIONS §5.3 level 2). The
+    configuration-dependent mass matrix gives, `docs/FOUNDATIONS.md` > Levels level 2). The
     key and the hammer, on constant inertia with nothing acting, must keep
     their speeds to rounding."""
     model = mdl.Model(contacts=False, contact_friction=False, axis_friction=False,
@@ -604,7 +603,7 @@ def contact_laws_as_printed():
     prints them: the normal force at a few penetrations and speeds; zero below
     the separation speed -1/D, never negative; and the friction law's
     static peak over its kinetic coefficient, 1.69, 1.72 and 1.13 at contacts 4,
-    7 and 10 and none at contact 1, as FOUNDATIONS §6.5 [E, 07] gives them."""
+    7 and 10 and none at contact 1, as `docs/FOUNDATIONS.md` > Friction [E, 07] gives them."""
     for c in mdl.CONTACTS:
         spec = mdl.SPECS[c]
         a, b, cc = spec.law
@@ -889,7 +888,7 @@ def independent_derivation_from_the_record():
     script 10): every gap at script 10's closure, at 300 poses around it and
     at the 46 states of a key stroke; the mass matrix at 40 poses, polarized
     from the independent kinetic energy; the (wippen, jack, lever) block
-    against its closed forms with the record's masses (FOUNDATIONS §3.6:
+    against its closed forms with the record's masses (`docs/FOUNDATIONS.md` > Relative coordinates for the jack and the repetition lever:
     coupling I_cm + m(|u|² + r·u), own diagonal I_cm + m|u|², share of the
     wippen's diagonal I_cm + m|r + u|², jack and lever uncoupled); every
     analytic gradient against central differences of the independent gap at

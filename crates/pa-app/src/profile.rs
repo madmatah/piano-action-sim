@@ -45,7 +45,7 @@
 //! # A base and a difference
 //!
 //! A profile may name a base and bind only what differs from it
-//! (`docs/FOUNDATIONS.md` §7.5): the base's bindings, its key's kind, its
+//! (`docs/FOUNDATIONS.md` > The data model): the base's bindings, its key's kind, its
 //! mass and how it arrives, each overridden where the profile says
 //! otherwise.
 //!

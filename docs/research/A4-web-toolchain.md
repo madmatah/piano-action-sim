@@ -5,7 +5,7 @@ It surveys the toolchain for a Rust domain compiled to WebAssembly under a
 browser front end: versions, WebAssembly features, threads, the monorepo,
 rendering, geometry, units and tests. Section 8 sums up what the tree uses,
 labeled **built**, **planned**, **not used** or **ruled out**, consistently
-with FOUNDATIONS §3.10, §3.11 and §7.
+with [FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers), [FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench) and [FOUNDATIONS > Architecture](../FOUNDATIONS.md#architecture).
 
 Versions, dates and browser support are dated observations, recorded on
 11 October 2026 from the npm registry, crates.io, `@mdn/browser-compat-data`
@@ -20,7 +20,7 @@ or an argument that is wrong and easy to derive again.
 
 ---
 
-## 0. Inventory of observed versions (11 October 2026)
+## Inventory of observed versions (11 October 2026)
 
 ### The survey machine [V, local execution]
 | Tool | Version | Note |
@@ -33,7 +33,7 @@ or an argument that is wrong and easy to derive again.
 
 The project pins Rust 1.99.0 (`rust-toolchain.toml`, with rustfmt, Clippy and
 the `wasm32-unknown-unknown` target) and Node 26 (`.nvmrc`), so that tools,
-lints and formatting match between machines (FOUNDATIONS §4.4); `package.json`
+lints and formatting match between machines ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)); `package.json`
 pins pnpm 10.34.5.
 
 On Rust 1.94.1, `rustup target list` offers `wasm32-wasip1`, `wasip1-threads`
@@ -44,7 +44,7 @@ Rust 1.94.1].
 ### JS/TS ecosystem [V, npm registry]
 Of these, the tree uses typescript, vite, vitest, turbo, react, three,
 `@types/three`, `@react-three/fiber`, `@react-three/drei` and
-`@biomejs/biome` (§8); the others are candidates surveyed, not dependencies.
+`@biomejs/biome` ([Decision summary](#decision-summary)); the others are candidates surveyed, not dependencies.
 
 | Package | Version | Published | License |
 |---|---|---|---|
@@ -87,7 +87,7 @@ Of these, the tree uses typescript, vite, vitest, turbo, react, three,
 ### Rust ecosystem [V, crates.io]
 Of these, the tree uses wasm-bindgen, in `pa-wasm`, and wasm-pack, to build it;
 `serde` and `serde_json`, outside this survey, carry the boundary's JSON
-(FOUNDATIONS §7.2).
+([FOUNDATIONS > The WebAssembly boundary](../FOUNDATIONS.md#the-webassembly-boundary)).
 
 | Crate | Version | Updated | License / note |
 |---|---|---|---|
@@ -117,7 +117,7 @@ Safari and iOS Safari **27** (2026-09-14).
 
 ---
 
-## 1. WebAssembly features: what is usable
+## WebAssembly features: what is usable
 
 ### Default target features of `wasm32-unknown-unknown` [V, `rustc --print cfg --target wasm32-unknown-unknown`, Rust 1.94.1 and the pinned 1.99.0, identical]
 ```
@@ -135,12 +135,12 @@ target-features`, Rust 1.99.0]. The build enables none of them (built).
 | reference-types | 96 | 79 | 15.1 | 15.1 | ✅ default |
 | multi-value | 86 | 78 | 13.1 | 13.4 | ✅ default |
 | sign-ext / nontrapping-fptoint | 69 / 75 | 62 / 64 | 14.1 / 15.1 | — | ✅ default |
-| threads-and-atomics | 74 | 79 | 15.2 | 15.2 | ⚠️ supported by browsers, **blocked on the Rust side** (§2) |
+| threads-and-atomics | 74 | 79 | 15.2 | 15.2 | ⚠️ supported by browsers, **blocked on the Rust side** ([Why WebAssembly threads are blocked](#why-webassembly-threads-are-blocked)) |
 | extended-const | 114 | 112 | 17.4 | 17.4 | ✅ possible, not needed |
 | tail-calls | 112 | 121 | 18.2 | 18.2 | ✅ possible, not needed |
 | GC | 119 | 120 | 18.2 | 18.2 | ✅ not applicable (Rust does not use it) |
 | exceptionsFinal | 137 | 131 | 18.4 | 18.4 | ❌ not needed with `panic = "abort"` |
-| **relaxed-SIMD** | 114 | **146** | **preview** | **false** | ❌ **ruled out**: its fused multiply-add rounds once on hardware that has one and twice elsewhere (FOUNDATIONS §4.4) |
+| **relaxed-SIMD** | 114 | **146** | **preview** | **false** | ❌ **ruled out**: its fused multiply-add rounds once on hardware that has one and twice elsewhere ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)) |
 | **memory64** | 133 | 134 | **preview** | **false** | ❌ not enabled, and not needed under 4 GB |
 | multiMemory | 120 | 125 | preview | false | ❌ |
 | branch-hinting | 137 | 148 | 16 | 16 | ⚪ marginal |
@@ -169,7 +169,7 @@ module.
 
 ---
 
-## 2. Why WebAssembly threads are blocked
+## Why WebAssembly threads are blocked
 
 On Rust 1.99.0, the pinned toolchain, building the `pa-wasm` cdylib with shared
 memory [V, local execution, Rust 1.99.0]:
@@ -189,10 +189,10 @@ error: linking with `rust-lld` failed: exit status: 1
 The standard library has to be rebuilt (`-Zbuild-std=panic_abort,std`), which
 the rustc book calls "a Nightly Rust feature" [V, the rustc book, Platform
 Support, `wasm32-unknown-unknown`]. Reproduce it on the cdylib: a library crate
-performs no link step and passes with the same flags (FOUNDATIONS §3.10).
+performs no link step and passes with the same flags ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)).
 `wasm-bindgen-rayon`, the usual route to threads in the browser, has had no
 release since December 2024. The 88-note runtime is planned as one module per
-Web Worker, notes sharing nothing (FOUNDATIONS §3.10, §7.6).
+Web Worker, notes sharing nothing ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers), [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 ### Web Worker or AudioWorklet
 `AudioWorkletProcessor.process()` runs in render quanta of 128 frames, about
@@ -201,9 +201,9 @@ integrator at 1 to 10 kHz. Rejected for the simulation loop [S]: a missed
 deadline becomes an audible dropout, allocation is forbidden there, and
 `AudioWorkletGlobalScope.port` exists only in Firefox 138 and later [V, BCD
 8.1.5, `api.AudioWorkletGlobalScope.port`]. The AudioWorklet is for audio, if
-sound comes (an open question, FOUNDATIONS §9).
+sound comes (an open question, [FOUNDATIONS > Open questions for the owner](../FOUNDATIONS.md#open-questions-for-the-owner)).
 
-### From the workers to the renderer (planned, FOUNDATIONS §7.6)
+### From the workers to the renderer (planned, [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime))
 One interface, two implementations [S]:
 1. `crossOriginIsolated === true`: a lock-free single-producer ring in a
    `SharedArrayBuffer`, a triple buffer or a seqlock. `SharedArrayBuffer`:
@@ -213,12 +213,12 @@ One interface, two implementations [S]:
 2. Otherwise, `postMessage` with transferable `ArrayBuffer`s, without a copy.
 
 **The order of magnitude.** Per-step state crosses as a flat `f64` buffer,
-poses at each step (FOUNDATIONS §7.2). With about 8 parts per note and a planar
+poses at each step ([FOUNDATIONS > The WebAssembly boundary](../FOUNDATIONS.md#the-webassembly-boundary)). With about 8 parts per note and a planar
 pose of three `f64` (an angle and a position), 88 notes make
 88 × 8 × 3 × 8 bytes ≈ 16.9 kB per frame, about 1 MB/s at 60 Hz, which
 `postMessage` with transferable buffers carries [S]. Cross-origin isolation is
 then an optimization, not a prerequisite. **Do not use 2.8 kB per frame**, sized
-on one f32 angle per part: poses cross as f64 (FOUNDATIONS §7.2), and the pose
+on one f32 angle per part: poses cross as f64 ([FOUNDATIONS > The WebAssembly boundary](../FOUNDATIONS.md#the-webassembly-boundary)), and the pose
 of a part riding on the wippen is more than an angle.
 
 The bench's development server and its `public/_headers` file send
@@ -233,18 +233,18 @@ r179", is closed since 8 August 2025 [V, three.js GitHub issue #31605].
 Rendering in a worker loses `OrbitControls` and raycasting unless pointer events
 are forwarded, makes HTML overlays awkward, and react-three-fiber in a worker is
 unexplored ground [S]. The bench renders on the main thread (built); the
-planned simulation workers leave it the headroom (FOUNDATIONS §7.6).
+planned simulation workers leave it the headroom ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 ---
 
-## 3. The monorepo, as built
+## The monorepo, as built
 
 ```
 piano-action-sim/
 ├─ pnpm-workspace.yaml        # packages: apps/*, crates/pa-wasm; the catalog below
 ├─ package.json               # packageManager pnpm@10.34.5; devEngines: Node ^26
 ├─ turbo.json
-├─ Cargo.toml                 # members: pa-core, pa-app, pa-wasm, pa-cli; profiles (§1)
+├─ Cargo.toml                 # members: pa-core, pa-app, pa-wasm, pa-cli; profiles (WebAssembly features: what is usable)
 ├─ rust-toolchain.toml        # channel 1.99.0; rustfmt, clippy; wasm32-unknown-unknown
 ├─ .nvmrc                     # 26
 ├─ biome.json
@@ -260,8 +260,8 @@ piano-action-sim/
 ├─ tools/smoke/               # drives the built page over the Chrome DevTools protocol
 └─ scripts/                   # verify.sh: every gate; smoke.sh: the browser smoke test
 ```
-What each crate does is FOUNDATIONS §7.1. An 88-note application comes with
-stage 4 (planned, FOUNDATIONS §8).
+What each crate does is [FOUNDATIONS > Crates, apps and gates](../FOUNDATIONS.md#crates-apps-and-gates). An 88-note application comes with
+stage 4 (planned, [FOUNDATIONS > Stages](../FOUNDATIONS.md#stages)).
 
 `turbo.json`, where it matters, the wasm build's cache (built):
 ```jsonc
@@ -323,7 +323,7 @@ its `specifier` [V, local execution].
 
 ---
 
-## 4. WebGPU cannot be the only path
+## WebGPU cannot be the only path
 
 The `api.GPU` entry of BCD 8.1.5 [V, `@mdn/browser-compat-data` 8.1.5,
 `api.GPU`]:
@@ -339,7 +339,7 @@ The `api.GPU` entry of BCD 8.1.5 [V, `@mdn/browser-compat-data` 8.1.5,
 
 **Built**: the bench renders with the `WebGLRenderer` that react-three-fiber's
 `<Canvas>` creates, through an orthographic camera in both views
-(FOUNDATIONS §3.11). WebGL 2: Chrome 56, Firefox 51, Safari 15 [V, BCD 8.1.5,
+([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)). WebGL 2: Chrome 56, Firefox 51, Safari 15 [V, BCD 8.1.5,
 `api.WebGL2RenderingContext`]. Three.js's `WebGPURenderer` ("by default, the
 renderer tries to use a WebGPU backend if the browser supports WebGPU. If not,
 WebGPURenderer falls back to a WebGL 2 backend") [V, three.js manual,
@@ -356,14 +356,14 @@ provides `three.webgpu.d.ts` and `three.tsl.d.ts` [V, the installed packages'
 
 ---
 
-## 5. Geometry: the section is the outline
+## Geometry: the section is the outline
 
 **Built.** Every outline is computed in Rust and crosses the boundary in
 millimeters. The view extrudes each part's sagittal outline across its width
 (`THREE.ExtrudeGeometry`) and turns the capstan's profile about its axis
 (`THREE.LatheGeometry`); the section view looks at those solids straight on,
 through an orthographic camera, so what it shows is the outline itself. The
-drawing and the contacts read one definition per part (FOUNDATIONS §7.1).
+drawing and the contacts read one definition per part ([FOUNDATIONS > Crates, apps and gates](../FOUNDATIONS.md#crates-apps-and-gates)).
 
 **manifold-3d: not used.** `manifold-3d@3.5.4/manifold-encapsulated-types.d.ts`
 (1472 lines) offers solids from cross-sections and cuts through them [V,
@@ -394,7 +394,7 @@ belongs in a disposal scope.
 
 ---
 
-## 6. Units in names
+## Units in names
 
 A value in a trade unit carries its unit in its name; geometry and mechanics
 are SI otherwise (`.claude/rules/conventions.md` > Units). The bench's names follow it:
@@ -402,19 +402,18 @@ are SI otherwise (`.claude/rules/conventions.md` > Units). The bench's names fol
 `up_weight_g`, `front_weight_g`, `kf_g`. The later stages' settings take the
 same form [S]: `let_off_mm`, `drop_mm`, `hammer_blow_distance_mm`,
 `back_check_distance_mm`, `aftertouch_mm`, `jack_window_clearance_mm`. A change
-of unit is then a rename; once saved files exist (planned, FOUNDATIONS §7.4), a
+of unit is then a rename; once saved files exist (planned, [FOUNDATIONS > Persistence](../FOUNDATIONS.md#persistence)), a
 rename is a schema change and so a migration, and a saved file cannot be
 misread silently.
 
 ---
 
-## 7. Tests in the browser
+## Tests in the browser
 
 **Built.** The smoke test drives the built bench in a headless Chrome over the
 DevTools protocol, with no dependency (`tools/smoke/`, run by
 `scripts/smoke.sh`), and fails on the first interaction that changes nothing; it
-also runs the non-confusion tests through the whole chain (FOUNDATIONS §5.3,
-§7.1). Vitest runs the TypeScript unit tests in Node. Both are gates of
+also runs the non-confusion tests through the whole chain ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels), [FOUNDATIONS > Crates, apps and gates](../FOUNDATIONS.md#crates-apps-and-gates)). Vitest runs the TypeScript unit tests in Node. Both are gates of
 `scripts/verify.sh` and of CI.
 
 **The GPU trap** [S]: a screenshot comparison such as Playwright 1.64.0's
@@ -435,17 +434,17 @@ packages (`@vitest/browser-playwright`, `@vitest/browser-webdriverio`,
 
 ---
 
-## 8. Decision summary
+## Decision summary
 
 | Axis | Built | Planned, not used, ruled out | Deciding fact |
 |---|---|---|---|
-| A. Monorepo | pnpm 10.34.5 workspace and Turborepo 2.11.7; the wasm crate a package through its own `package.json` (§3) | `experimentalCargoWorkspaces`: not used | library builds uncached under it [V, Turborepo 2.11.7 documentation, Guides, Rust] |
-| B. Pipeline | wasm-pack 0.15.0, `--target web`; the default target features; release at opt-level 3, fat LTO, one codegen unit, `panic = "abort"` (§1) | `simd128`: permitted, not enabled. Relaxed SIMD: ruled out (FOUNDATIONS §4.4). vite-plugin-wasm and vite-plugin-top-level-await: not needed, `--target web` emitting an ES module with an explicit `init()` | Rust 1.99.0's defaults [V, local execution] |
-| C. Execution | the bench runs its module on the main thread: one static key, no stepping loop | one module per Web Worker, notes independent; a `SharedArrayBuffer` ring where the page is cross-origin isolated, transferable buffers otherwise (planned, FOUNDATIONS §7.6). WebAssembly threads: ruled out (FOUNDATIONS §3.10) | `--shared-memory is disallowed by std…` [V, local execution, Rust 1.99.0] |
-| D. Rendering | three.js 0.186.1, react-three-fiber 9.8.1, drei 10.7.9 (`OrbitControls`), the `WebGLRenderer` of `<Canvas>`, orthographic views, labels in HTML (FOUNDATIONS §3.11) | `WebGPURenderer`: not used. Babylon.js: ruled out (FOUNDATIONS §3.11). Linings drawn compressed, dimensions on the section, instancing for 88 notes, skins: planned (FOUNDATIONS §3.11) | WebGPU on Linux: Chrome only on Intel Gen12+ GPUs, Firefox not at all [V, BCD 8.1.5] |
-| E. Geometry | outlines computed in Rust, extruded or turned by three.js; the section is the outline (§5) | manifold-3d: not used | slicing an extrusion of the outline returns the outline (§5) |
-| F. Types | TypeScript types mirror the boundary's two JSON documents by hand (FOUNDATIONS §7.2) | types generated from the Rust ones: planned (FOUNDATIONS §7.2), the tool not chosen; ts-rs 12.0.1, tsify 0.5.8 and specta are the candidates observed. A versioned schema for saved files: planned with persistence (FOUNDATIONS §7.4); schemars 1.2.2 a candidate. json-schema-to-typescript, quicktype and ajv: not used | specta 2.0 still a release candidate (rc.25, 7 May 2026) [V, crates.io] |
-| G. Interface | React 19.3, panels written by hand, their state held in React (FOUNDATIONS §2.4) | leva, zustand and uPlot: not used (zustand arrives only as a dependency of react-three-fiber and drei) | Observable Plot's latest release, 0.6.17, dates from 14 February 2025 [V, npm registry] |
-| H. MIDI and sound | — | MIDI drives a force on the key (planned, FOUNDATIONS §7.6): a MIDI file parser, Web MIDI gated. Sound: an open question (FOUNDATIONS §9) | Safari 27: `requestMIDIAccess` unsupported [V, BCD 8.1.5] |
-| I. Quality | Biome 2.5.15 (lint and format), rustfmt, Clippy with warnings as errors, `cargo test`, `tsc --noEmit`, Vitest and the browser smoke test, all in `scripts/verify.sh` and CI (FOUNDATIONS §7.1) | golden tests from literal coordinates (planned, FOUNDATIONS §7.4); native and WebAssembly results agreeing through the `libm` crate (planned, FOUNDATIONS §4.4). cargo-nextest, criterion, proptest, Playwright and ESLint: not used | typescript-eslint 8.71.1 requires `typescript <6.1.0` [V, npm registry] |
+| A. Monorepo | pnpm 10.34.5 workspace and Turborepo 2.11.7; the wasm crate a package through its own `package.json` ([The monorepo, as built](#the-monorepo-as-built)) | `experimentalCargoWorkspaces`: not used | library builds uncached under it [V, Turborepo 2.11.7 documentation, Guides, Rust] |
+| B. Pipeline | wasm-pack 0.15.0, `--target web`; the default target features; release at opt-level 3, fat LTO, one codegen unit, `panic = "abort"` ([WebAssembly features: what is usable](#webassembly-features-what-is-usable)) | `simd128`: permitted, not enabled. Relaxed SIMD: ruled out ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). vite-plugin-wasm and vite-plugin-top-level-await: not needed, `--target web` emitting an ES module with an explicit `init()` | Rust 1.99.0's defaults [V, local execution] |
+| C. Execution | the bench runs its module on the main thread: one static key, no stepping loop | one module per Web Worker, notes independent; a `SharedArrayBuffer` ring where the page is cross-origin isolated, transferable buffers otherwise (planned, [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)). WebAssembly threads: ruled out ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)) | `--shared-memory is disallowed by std…` [V, local execution, Rust 1.99.0] |
+| D. Rendering | three.js 0.186.1, react-three-fiber 9.8.1, drei 10.7.9 (`OrbitControls`), the `WebGLRenderer` of `<Canvas>`, orthographic views, labels in HTML ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)) | `WebGPURenderer`: not used. Babylon.js: ruled out ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)). Linings drawn compressed, dimensions on the section, instancing for 88 notes, skins: planned ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)) | WebGPU on Linux: Chrome only on Intel Gen12+ GPUs, Firefox not at all [V, BCD 8.1.5] |
+| E. Geometry | outlines computed in Rust, extruded or turned by three.js; the section is the outline ([Geometry: the section is the outline](#geometry-the-section-is-the-outline)) | manifold-3d: not used | slicing an extrusion of the outline returns the outline ([Geometry: the section is the outline](#geometry-the-section-is-the-outline)) |
+| F. Types | TypeScript types mirror the boundary's two JSON documents by hand ([FOUNDATIONS > The WebAssembly boundary](../FOUNDATIONS.md#the-webassembly-boundary)) | types generated from the Rust ones: planned ([FOUNDATIONS > The WebAssembly boundary](../FOUNDATIONS.md#the-webassembly-boundary)), the tool not chosen; ts-rs 12.0.1, tsify 0.5.8 and specta are the candidates observed. A versioned schema for saved files: planned with persistence ([FOUNDATIONS > Persistence](../FOUNDATIONS.md#persistence)); schemars 1.2.2 a candidate. json-schema-to-typescript, quicktype and ajv: not used | specta 2.0 still a release candidate (rc.25, 7 May 2026) [V, crates.io] |
+| G. Interface | React 19.3, panels written by hand, their state held in React ([FOUNDATIONS > The bench](../FOUNDATIONS.md#the-bench)) | leva, zustand and uPlot: not used (zustand arrives only as a dependency of react-three-fiber and drei) | Observable Plot's latest release, 0.6.17, dates from 14 February 2025 [V, npm registry] |
+| H. MIDI and sound | — | MIDI drives a force on the key (planned, [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)): a MIDI file parser, Web MIDI gated. Sound: an open question ([FOUNDATIONS > Open questions for the owner](../FOUNDATIONS.md#open-questions-for-the-owner)) | Safari 27: `requestMIDIAccess` unsupported [V, BCD 8.1.5] |
+| I. Quality | Biome 2.5.15 (lint and format), rustfmt, Clippy with warnings as errors, `cargo test`, `tsc --noEmit`, Vitest and the browser smoke test, all in `scripts/verify.sh` and CI ([FOUNDATIONS > Crates, apps and gates](../FOUNDATIONS.md#crates-apps-and-gates)) | golden tests from literal coordinates (planned, [FOUNDATIONS > Persistence](../FOUNDATIONS.md#persistence)); native and WebAssembly results agreeing through the `libm` crate (planned, [FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). cargo-nextest, criterion, proptest, Playwright and ESLint: not used | typescript-eslint 8.71.1 requires `typescript <6.1.0` [V, npm registry] |
 | Deployment | `apps/bench/public/_headers` sends COOP and COEP, in Cloudflare Pages' format | none yet: the bench is not deployed | Cloudflare Pages `_headers`: 100 rules, 2000 characters a line; GitHub Pages sets no custom headers [V, Cloudflare Pages and GitHub Pages documentation] |

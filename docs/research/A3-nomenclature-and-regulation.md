@@ -7,7 +7,7 @@
 > FOUNDATIONS, FOUNDATIONS holds.
 >
 > **Reliability.** **[V]**: verified against a primary source in the corpus, named
-> with its locator; the short names are listed in §9. **[S]**: assumed, to be
+> with its locator; the short names are listed in [Sources](#sources). **[S]**: assumed, to be
 > measured or confirmed. **[?]**: not verified, with the reason (no source in the
 > corpus, or sources that disagree); on a French term, an open question in
 > `docs/vocabulary-worksheet.md`. A number whose arithmetic is written beside it
@@ -16,36 +16,36 @@
 >
 > Inch values from the American sources are converted to millimeters (× 25.4) and
 > the original is kept beside them: fractional inches are a planned second unit
-> system (FOUNDATIONS §1.3).
+> system ([FOUNDATIONS > The acceptance criterion](../FOUNDATIONS.md#the-acceptance-criterion)).
 
 ---
 
-## 0. What "the" specification is not
+## What "the" specification is not
 
 No regulation dimension is universal. Steinway's own guide says "the specifications
 given are important; however, they may vary within reason to accommodate individual
 needs of the piano player", and that since "individual regulation steps affect
 others, repeating operations will be necessary in achieving stability" [V, Steinway
 ch. 2, p. 3; ch. 1, p. 8]. A regulation setting therefore carries **(value,
-acceptable range, source, keyboard zone)**, not a constant (FOUNDATIONS §7.5,
-planned), and §3.5 sets the makers' specifications side by side: the basis for
+acceptable range, source, keyboard zone)**, not a constant ([FOUNDATIONS > The data model](../FOUNDATIONS.md#the-data-model),
+planned), and [The makers' specifications side by side](#the-makers-specifications-side-by-side) sets the makers' specifications side by side: the basis for
 per-maker presets (planned) rather than one set of defaults.
 
 ---
 
-## 1. Part inventory (modern grand piano)
+## Part inventory (modern grand piano)
 
 Table format: **FR | EN | role | DOF** (degrees of freedom) **| to be parameterized**.
 DOF convention: `R` = planar rotation (1 DOF), `T` = translation, `0` = fixed or
 structural part (a reference frame or a stop), `C` = contact only (no body of its
 own, modeled as a surface).
 
-### 1.1 Key frame, rails, structural members
+### Key frame, rails, structural members
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
 | Plateau de clavier / fond de clavier | keybed | Reference frame of the keyboard; its flatness conditions everything | 0 | Crowned or flat. Steinway New York crowns the keybed's front lip so that its center stands ~1/32" (0.79 mm) above the ends, hollows the middle ~1/32" front to back and bass to treble so that only the balance rail studs touch at the balance rail, and reverse-crowns the key frame's front rail ~1/32"; Hamburg, Boston and Essex keybeds are **flat** [V, Steinway ch. 1, p. 10] |
-| Châssis de clavier | key frame | Carries the three rails; **translates laterally** with the una corda | **T** (una corda) | Shift travel; friction on the dag blocks, graphited [V, Steinway ch. 1, p. 11]; stiffness, out of the model's scope (FOUNDATIONS §1.4) |
+| Châssis de clavier | key frame | Carries the three rails; **translates laterally** with the una corda | **T** (una corda) | Shift travel; friction on the dag blocks, graphited [V, Steinway ch. 1, p. 11]; stiffness, out of the model's scope ([FOUNDATIONS > What the model is](../FOUNDATIONS.md#what-the-model-is)) |
 | Barre de balancier | balance rail | Axis of rotation of the keys | 0 | Height, longitudinal position; Steinway levels the keys with a crown, the center ~1/32" higher than the ends [V, Steinway ch. 1, p. 16] |
 | Pointe de balancier | balance (rail) pin | Axis + lateral guidance | 0 | Ø 2–3 mm [?, not in the corpus]; lateral position (squaring the keys) |
 | Mouche/rondelle de balancier, "balance rail bearing" (NY) | balance rail punching / bearing | Felt bearing + paper punchings for key leveling | C | Thickness of the felt, stack of paper punchings (**the** key-leveling parameter) |
@@ -56,12 +56,12 @@ own, modeled as a surface).
 | Vis de réglage de portée du châssis ("pistons", glides) | balance rail studs / glide bolts | Support the floating balance rail on the keybed | 0 adjustable | Height: just touching the keybed, never lifting the rail; **never used to set the key dip** [V, Steinway ch. 1, pp. 12–13; Kawai, p. 21] |
 | Barre de contre-touche | key stop rail | Limits the upward return of the keys | 0 adjustable | Clearance: Steinway **~1/16" (1.59 mm)** above the keys [V, Steinway ch. 1, p. 17] |
 | Blocs/joues de clavier | keyblocks / cheekblocks | Lock the keyboard laterally, carry the pressure screw | 0 | Pressure screw, set for light pressure on the guide pins [V, Kawai, p. 7] |
-| Montants de mécanique | action brackets | Carry the rails | 0 | Height (moves the half-stroke line, §3.4) |
-| Barre des chevalets | wippen rail | Axis of the wippens | 0 | Position ("spread", §3.1) |
+| Montants de mécanique | action brackets | Carry the rails | 0 | Height (moves the half-stroke line, [Half-stroke line ("half-stroke line" / "magic line" / "line of centers")](#half-stroke-line-half-stroke-line--magic-line--line-of-centers)) |
+| Barre des chevalets | wippen rail | Axis of the wippens | 0 | Position ("spread", [Reyburn's ten measurements](#reyburns-ten-measurements)) |
 | Barre des marteaux | hammer (shank) rail / main action rail | Axis of the hammers | 0 | Position |
 | Barre d'échappement (barre des boutons d'échappement) | let-off rail / regulating rail | Carries the let-off buttons | 0 adjustable | Overall height |
 | Barre de repos des marteaux | hammer rest rail / cushion | Rest for the shanks | 0 adjustable | Kawai: **5 mm below the shanks at rest** [V, Kawai, p. 16]; compliance of the felt |
-| Barre de butée des étouffoirs | damper (up)stop rail | Limits the lift of the dampers | 0 adjustable | §2.2 |
+| Barre de butée des étouffoirs | damper (up)stop rail | Limits the lift of the dampers | 0 adjustable | [Damper regulation settings](#damper-regulation-settings) |
 | Galerie des étouffoirs + coulisseaux | damper guide rail + bushings | Guides the damper wires | 0 | Bore Ø (**~3 mm** for a **~1 mm** wire in Igrec's example [V, Igrec, p. 184]), friction, deliberate off-centering of the wire |
 
 > **Settled.** « Limbe » is not the trade term for the *action frame or rails*.
@@ -74,26 +74,26 @@ own, modeled as a surface).
 > « sommier d'étouffoirs » or « sommier des bascules »; the trade says « barre »
 > today, and the interface keeps **sommier** for the **pinblock** alone.
 
-### 1.2 Key
+### Key
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
-| Touche (corps) | key (stick / lever) | Input lever | **R** about the balance rail pin | Front and rear lengths (§3.1: key front to balance hole 259.5 mm and key front to capstan 398 mm in Reyburn's example [V, Reyburn, p. 3]), mass, inertia, wood |
+| Touche (corps) | key (stick / lever) | Input lever | **R** about the balance rail pin | Front and rear lengths ([Reyburn's ten measurements](#reyburns-ten-measurements): key front to balance hole 259.5 mm and key front to capstan 398 mm in Reyburn's example [V, Reyburn, p. 3]), mass, inertia, wood |
 | Mortaise de balancier + garniture | balance mortise + bushing | Guidance at the balance pin | C | Play (a little side play at the bushing, none fore and aft at the hole [V, Steinway ch. 1, p. 14]), friction |
 | Mortaise d'enfoncement + garniture | front mortise + bushing | Lateral guidance | C | Play, friction |
 | Capsule de touche | key button / chase | Carries the balance mortise | 0 | — |
 | Patin ("shoe") de balancier | key shoe | Extra thickness under the key (older pianos) | 0 | Typically **4–6 mm**; only an **external** shoe counts in the geometry [V, Reyburn, p. 4] |
-| Plombs de touche | key leads | Counterbalance the hammers | 0 | Ø ½" or ⅜" (12.7 or 9.5 mm) usual, 10 and 12 mm in the French edition [V, Spurlock, p. 8; Spurlock FR, p. 10]; position and number, which with the key's own mass set its front weight. The bench models no lead: a key is weighed whole, its leads in it, its mass and front weight typed (FOUNDATIONS §2.1, §2.3) |
+| Plombs de touche | key leads | Counterbalance the hammers | 0 | Ø ½" or ⅜" (12.7 or 9.5 mm) usual, 10 and 12 mm in the French edition [V, Spurlock, p. 8; Spurlock FR, p. 10]; position and number, which with the key's own mass set its front weight. The bench models no lead: a key is weighed whole, its leads in it, its mass and front weight typed ([FOUNDATIONS > Parts and statics](../FOUNDATIONS.md#parts-and-statics), [FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications)) |
 | Pilote (de touche) | capstan (screw) | Transmits to the wippen heel | 0 adjustable (screwing) | **Height**, which sets the blow distance [V, Steinway ch. 2, p. 6]; longitudinal position, which sets the ratio [V, Spurlock, p. 3]; straight or angled [V, Reyburn, p. 4]; surface condition (friction) |
 | Bout de touche | key end / tail | Lifts the damper under-lever | C | Key-end felt |
 | Revêtement | key covering / keytop | — | 0 | Thickness; height of the sharps |
 | Fronton | key front | — | 0 | — |
 
-### 1.3 Wippen (= chevalet de mécanique) and the let-off sub-assembly
+### Wippen (= chevalet de mécanique) and the let-off sub-assembly
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
-| Chevalet (de mécanique) | wippen / whippen | Intermediate lever | **R** | Mass, inertia, "spread" (§3.1) |
+| Chevalet (de mécanique) | wippen / whippen | Intermediate lever | **R** | Mass, inertia, "spread" ([Reyburn's ten measurements](#reyburns-ten-measurements)) |
 | Talon de chevalet | wippen heel (+ heel cloth) | Receives the capstan | C | **Height**: WNG makes 9 heels, their contact surface **16 to 24 mm below the jack center, in 1 mm steps**, the sharps' heels typically **+2 mm**; **position**: 14 locations from **50.0 to 69.5 mm** from the wippen center pin, in 1.5 mm steps, standard **62.0 mm** [V, WNG, pp. 3–6] |
 | Fourche de chevalet | wippen flange | Axis | 0 | Position; friction of the pivot |
 | Bâton (ou doigt) d'échappement | jack / fly (Steinway) | Pushes the knuckle, then lets off | **R** on the wippen | Length, mass; fore-and-aft position under the knuckle; WNG standard, repetition flange center to jack center, 99 ± 1 mm [?, not in the WNG document of the corpus] |
@@ -110,24 +110,24 @@ own, modeled as a surface).
 | Coussin de chevalet / coussin de repos | wippen cushion / rest cushion | Rest for the wippen or for the lever | C | Compliance; WNG offers a "rest rail" **or** a "cushion" variant [V, WNG, p. 2] |
 | Ressort auxiliaire de chevalet | wippen support spring (assist / helper spring) | Lowers the down weight without the inertia of added lead [V, Spurlock, p. 3] | — | Preload; WNG sells a helper spring kit of **90 springs** [V, WNG, p. 6] |
 
-### 1.4 Hammer
+### Hammer
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
 | Ensemble marteau (olive + manche + tête) | hammer assembly | Strikes the string | **R** | Mass, inertia, center of mass |
 | Olive (du manche de marteau) | hammer shank flange | Fixed part hinged on the rail | 0 | Width 12 mm, Renner type [?, not in the corpus]; traveling paper under it [V, Steinway ch. 1, p. 20] |
-| Manche de marteau | hammer shank | Flexible lever arm | — | **Thickness at the center: 6 mm** [V, Reyburn, p. 6]; **stiffness**: WNG grades three, *Flex 1* the stiffest wooden shank, *Flex 2* the stiffest Renner, *Flex 3* the Renner average, from over 100 sets measured [?, not in the WNG document of the corpus]. **Do not use** 260 Hz or 280 Hz as the hammer's first mode: neither figure is in the corpus, and the first bending mode of the hammer is 39 Hz [V, Thorin 2017, §2.1 and Appendix] (FOUNDATIONS §4.5) |
+| Manche de marteau | hammer shank | Flexible lever arm | — | **Thickness at the center: 6 mm** [V, Reyburn, p. 6]; **stiffness**: WNG grades three, *Flex 1* the stiffest wooden shank, *Flex 2* the stiffest Renner, *Flex 3* the Renner average, from over 100 sets measured [?, not in the WNG document of the corpus]. **Do not use** 260 Hz or 280 Hz as the hammer's first mode: neither figure is in the corpus, and the first bending mode of the hammer is 39 Hz [V, Thorin 2017, §2.1 and Appendix] ([FOUNDATIONS > Rigid bodies](../FOUNDATIONS.md#rigid-bodies)) |
 | Rouleau | knuckle | Interface between jack or lever and hammer | C | **Distance from the center pin: 17.0 mm on most modern parts, also 16.2, 16.0 or 15.5 mm** [V, Reyburn, p. 6]; WNG 15 to 19 mm in 0.5 mm steps [V, WNG, p. 3]; **Ø 10.0 mm, also 9.5 mm** [V, Reyburn, p. 8]; WNG 8, 9, 10 or 11 mm [V, WNG, p. 3]; leather and buckskin, lubricated with talc or PTFE powder [V, Spurlock, p. 6] |
-| Tête de marteau + feutre | hammer head + felt | Striking mass | — | Mass; bore (strike distance) and hang distance (§3.1); Shore A hardness; molding wood, mahogany, walnut or soft maple being lighter choices than birch, hard maple or hornbeam [V, Spurlock, p. 5] |
+| Tête de marteau + feutre | hammer head + felt | Striking mass | — | Mass; bore (strike distance) and hang distance ([Reyburn's ten measurements](#reyburns-ten-measurements)); Shore A hardness; molding wood, mahogany, walnut or soft maple being lighter choices than birch, hard maple or hornbeam [V, Spurlock, p. 5] |
 | Queue de marteau | hammer tail | Checking surface | C | Profile, friction |
-| Manchon / garniture de l'axe | center pin bushing | Bearing | C | Friction (§2.5) |
+| Manchon / garniture de l'axe | center pin bushing | Bearing | C | Friction ([Friction of the centers: numbers](#friction-of-the-centers-numbers)) |
 
-### 1.5 Damper
+### Damper
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
 | Bascule (ou levier) d'étouffoir | damper (under)lever | Lever lifted by the key tail or by the lift rail | **R** | Mass; under-lever leads, WNG's standard leading being **two leads on 32 notes from the bass, one front lead on 12, one back lead on 12, none on the rest** [V, WNG, p. 10] |
-| Fourche de bascule + fourche supérieure | underlever flange + top flange | Axes | 0 | Friction (§2.5) |
+| Fourche de bascule + fourche supérieure | underlever flange + top flange | Axes | 0 | Friction ([Friction of the centers: numbers](#friction-of-the-centers-numbers)) |
 | Pilote/vis de bascule d'étouffoir | underlever capstan | Aligns the **line** of the under-levers | 0 adjustable | Height; **not** the means of the collective lift [V, Redekop, p. 2; Kawai, p. 24] |
 | "Cuillère" de bascule | underlever spoon | Interface with the lift rail | C | Center to tip: WNG **73.6 / 76.6 / 81.6 mm** [V, WNG, p. 9] |
 | Bec de sostenuto | sostenuto tab | Caught by the sostenuto rod | 0 | Height (WNG makes two: the tall one replaces American Steinway parts, whose sostenuto is mounted on the action frame [V, WNG, p. 9]) |
@@ -146,14 +146,14 @@ own, modeled as a surface).
 > "lift tray", is not said. « Tringle de forte » names the upright's damper lift
 > rod.
 
-### 1.6 Pedals, lyre, trapwork
+### Pedals, lyre, trapwork
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
 | Lyre + balustres | lyre + lyre braces | Support | 0 | — |
 | Pédale forte (droite; also *pédale des étouffoirs*) | damper / sustaining pedal | Lifts all the dampers | **R** | Travel; the pedal lifts the dampers at one third of its travel [V, Redekop, pp. 3–4]; lost motion |
 | Pédale sostenuto (pédale centrale) | sostenuto pedal | Holds the dampers already lifted | **R** | Travel, set by a felt block between the sostenuto trapwork lever and the keybed [V, Steinway ch. 3, p. 10] |
-| Pédale douce (gauche; also *pédale una corda*) | soft / shift / una corda pedal | **Shifts the key frame**: the *transposition* | **R** → T | Travel; its stop is a screw on the treble side (§2.1, row 24) |
+| Pédale douce (gauche; also *pédale una corda*) | soft / shift / una corda pedal | **Shifts the key frame**: the *transposition* | **R** → T | Travel; its stop is a screw on the treble side ([Master table of the keyboard and action settings](#master-table-of-the-keyboard-and-action-settings), row 24) |
 | Tringles / mouvements / bascules de pédalier | pedal rods / trapwork levers | Transmission | R/T | Lengths, clearances, blocking felts |
 | Écrou de réglage de tige de pédale | pedal rod head / capstan | Fine adjustment of the travel | 0 adjustable | Thread; sets the pedal's lost motion [V, Kawai, p. 25] |
 | Prisonnier | pitman | Vertical transmission, from the damper pedal's lever to the barre de forte | T | Clearance: Kawai puts a **2 mm** paper punching between the pitman and the damper lift rail while setting the dampers [V, Kawai, p. 23] |
@@ -168,9 +168,9 @@ own, modeled as a surface).
 
 ---
 
-## 2. The regulation settings
+## The regulation settings
 
-### 2.1 Master table of the keyboard and action settings
+### Master table of the keyboard and action settings
 
 | # | FR | EN | Operational definition (how it is measured) | Typical value / range | Zone | Breaks / depends on |
 |---|---|---|---|---|---|---|
@@ -194,16 +194,16 @@ own, modeled as a surface).
 | 18 | Course libre du bâton en fond | jack free travel | Key fully down, some free travel left between the jack and its stop felt [V, Steinway ch. 2, p. 11] | "some" | — | The jack clears properly |
 | 19 | **Attrapé** | **checking / back check distance** | Height of the head below the string when the hammer is checked, key held | Steinway New York **1/2"–5/8" = 12.7–15.9 mm** [V, Spec sheet, p. 2; Steinway ch. 2, p. 13]; Hamburg **15 mm** [V, Spec sheet, p. 2; Steinway ch. 1, p. 30]; Kawai **15 mm** [V, Kawai, pp. 19–20]; Yamaha **16 mm** bass to **14 mm** treble [V, Spec sheet, p. 4]; Igrec **1/2"–5/8" (12–15 mm)** [V, Igrec, p. 174]; generic **12.7–16 mm** [V, Spec sheet, p. 1] | slight gradation, bass to treble (Yamaha) | Too close: the tail drags or blocks in fortissimo [V, Kawai, p. 19; Steinway ch. 2, p. 13]; too low: the hammer travels further, the fly returns later, repetition slows [V, Steinway ch. 2, p. 12] |
 | 20 | Alignement/équerrage/pente des attrapes | backcheck squaring, alignment, angle | Parallel pliers to square, wire-bending pliers to align [V, Steinway ch. 2, p. 12]; test by rocking key and hammer together [V, Steinway ch. 2, p. 13] | square to the tail; back surfaces parallel to the hammer line [V, Kawai, p. 19] | — | Out of square: wear of the shank's center-pin bushing and of the backcheck leather [V, Steinway ch. 2, p. 12] |
-| 21 | Tension des ressorts de répétition | repetition spring tension | Strike the key, let the hammer check, release the key **slowly**: the hammer rises until the lever is stopped by the drop screw [V, Steinway ch. 2, p. 14] | No number in the trade sources; the criterion is a rise "steady and quick, but not snappy" [V, Steinway ch. 2, p. 15], "without jumping or catching" [V, Kawai, p. 12]. Measured spring laws of single actions are in FOUNDATIONS §6.1 | **graduated**: slower in the bass, progressively faster in the treble [V, Steinway ch. 2, p. 15]; whether the bass should rise much more slowly or at nearly the treble's speed is a question for the owner (FOUNDATIONS §9) | Adjusted through the **coil** only [V, Kawai, p. 12]; re-checked **after** the backchecks [V, Kawai, p. 20] and **in the piano** [V, Steinway ch. 2, p. 15; Kawai, p. 12] |
+| 21 | Tension des ressorts de répétition | repetition spring tension | Strike the key, let the hammer check, release the key **slowly**: the hammer rises until the lever is stopped by the drop screw [V, Steinway ch. 2, p. 14] | No number in the trade sources; the criterion is a rise "steady and quick, but not snappy" [V, Steinway ch. 2, p. 15], "without jumping or catching" [V, Kawai, p. 12]. Measured spring laws of single actions are in [FOUNDATIONS > Springs inside the wippen assembly](../FOUNDATIONS.md#springs-inside-the-wippen-assembly) | **graduated**: slower in the bass, progressively faster in the treble [V, Steinway ch. 2, p. 15]; whether the bass should rise much more slowly or at nearly the treble's speed is a question for the owner ([FOUNDATIONS > Open questions for the owner](../FOUNDATIONS.md#open-questions-for-the-owner)) | Adjusted through the **coil** only [V, Kawai, p. 12]; re-checked **after** the backchecks [V, Kawai, p. 20] and **in the piano** [V, Steinway ch. 2, p. 15; Kawai, p. 12] |
 | 22 | Vis de réglage de portée du châssis | balance rail studs / glides | Knock test: turn the stud down until the knocking starts, then stops [V, Steinway ch. 1, p. 12]; re-check after pressing the shift pedal three or four times [V, Steinway ch. 1, p. 12] and with the damper pedal down [V, Kawai, p. 21] | just touching, **never lifting** the rail [V, Kawai, p. 21; Steinway ch. 1, p. 13] | — | Kawai's order: the tenor break, then the bass end, re-check, then toward the treble [V, Kawai, p. 21]; **never used to add key dip** [V, Steinway ch. 1, p. 13] |
 | 23 | Barre de contre-touche | key stop rail | Clearance above the keys | Steinway **~1/16" = 1.59 mm** [V, Steinway ch. 1, p. 17] | — | — |
 | 24 | Distance de transposition | shift / keyframe shift | Shift screw on the treble side of the rim, or in the treble keyblock on older Steinways [V, Steinway ch. 2, p. 16]; in the right cheekblock [V, Kawai, p. 27] | Kawai: only **2 strings of 3** struck, the left one missed [V, Kawai, p. 27]; Steinway Hamburg: "only two strings should be struck" [V, Steinway ch. 1, p. 30]; Steinway New York: a partial shift is acceptable, changing the color rather than the volume [V, Steinway ch. 2, p. 16]; Yamaha, the hammer's left side grazing the left string [?, not in the corpus] | trichords, tenor and treble [V, Kawai, p. 27] | No dimension in millimeters in the corpus: the shift is set by where the hammers strike (row 26) |
 | 25 | Point de frappe / position du châssis | strike point / keyframe position | Kawai: hammer 88 strikes **2.16–3.0 mm** from the capo bar, the final position chosen **by ear** [V, Kawai, p. 4] | 2.16–3.0 mm | — | A shim glued to the block behind the key frame, or the block filed [V, Kawai, p. 4] |
 | 26 | Jours / mise des marteaux sur les cordes | spacing hammers to strings | Kawai: on the trichords the hammer's bass side overlaps the left string by **1 mm** [V, Kawai, p. 10]; Steinway: off center toward the treble, **about twice as much felt exposed on the treble side** [V, Steinway ch. 1, p. 22], a third on the left and two thirds on the right in Hamburg [V, Steinway ch. 1, p. 29] | — | unichords centered; bichords centered [V, Kawai, p. 9] or slightly favoring the bass [V, Steinway ch. 1, p. 23] | Conditions the una corda voicing [V, Steinway ch. 1, p. 22] |
 | 27 | Défauchage ; chauffage des manches | traveling ; burning shanks | Défauchage: lift a group with a straightedge and watch the sideways drift, then shim the flange on one side of its screw with a paper (*cale de défauchage*) [V, Steinway ch. 1, p. 20; Kawai, p. 8]; wippens are « défauchés » the same way, at their flanges. Chauffage: heat the shank and twist it, so that the hammer head stands parallel to the plane it swings in [V, Steinway ch. 1, p. 21] | a straight, vertical path; a hammer that does not lean | — | A prerequisite to the rest |
-| 28 | Portée du châssis | bedding the keyframe | Knock test, fingers on the front rail and keybed [V, Kawai, p. 7] | no knocking | — | Redone with the humidity: the front rail lifts at its ends in dry weather [V, Kawai, p. 7]; out of the model's scope (FOUNDATIONS §1.4) |
+| 28 | Portée du châssis | bedding the keyframe | Knock test, fingers on the front rail and keybed [V, Kawai, p. 7] | no knocking | — | Redone with the humidity: the front rail lifts at its ends in dry weather [V, Kawai, p. 7]; out of the model's scope ([FOUNDATIONS > What the model is](../FOUNDATIONS.md#what-the-model-is)) |
 
-### 2.2 Damper regulation settings
+### Damper regulation settings
 
 | FR | EN | Definition | Value | Dependencies |
 |---|---|---|---|---|
@@ -217,7 +217,7 @@ own, modeled as a surface).
 | Alignement du fil, 4 coudes | damper wire bends 1–4 | Vertical, centered, front and back seated together [V, Steinway ch. 3, pp. 4–5] | The wire bears **lightly** on one side of its bushing: bass wires on the treble side, treble wires on the bass side [V, Steinway ch. 3, p. 4] | The lean halves the head's side-to-side motion on a bass string [V, Igrec, p. 184] |
 | Assise / seating | damper seating | Tap the front and the back of the head: the same sponginess [V, Redekop, p. 2] | the back lifts **very slightly before** the front [V, Kawai, p. 22] | String leveling is essential [V, Redekop, p. 4] |
 
-### 2.3 Sostenuto
+### Sostenuto
 
 | Setting | Value | Source |
 |---|---|---|
@@ -229,17 +229,17 @@ own, modeled as a surface).
 | Height of the rod | Slightly higher than the tabs; the angle set with the capstan under the keybed; the pedal holds the dampers at the same height as the key does | [V, Kawai, p. 26] |
 | Functional tests | (a) damper pedal down, then the sostenuto; release the damper pedal: every damper stays up; (b) release the sostenuto slowly: all fall; (c) sostenuto held, forte blows on the notes not held: **no catching** | [V, Steinway ch. 3, p. 8; Kawai, p. 26] |
 
-### 2.4 Touchweight: the quantitative core
+### Touchweight: the quantitative core
 
 The protocols are Stanwood's *Standard Protocols of the New Touchweight Metrology*
-(February 2000), which supersede those of his 1996 paper (FOUNDATIONS §3.1). Every
+(February 2000), which supersede those of his 1996 paper ([FOUNDATIONS > The trade's protocols are the acceptance test](../FOUNDATIONS.md#the-trades-protocols-are-the-acceptance-test)). Every
 weight is centered on the **measuring point**, "the datum point on the top of the
 key 13mm or 1/2" back from the front lip of the key" [V, Stanwood 2000, glossary,
 p. 23]; the 1996 paper puts it "13mm in from the front vertical edge of the key"
 [V, Stanwood 1996, p. 3]. The glossary does not say which lip; on a key whose
 covering overhangs the key front, the simulator takes the covering's, the owner's
 choice, and holds the distance as one setting, 13 mm by default, that every
-touchweight reads (FOUNDATIONS §3.1).
+touchweight reads ([FOUNDATIONS > The trade's protocols are the acceptance test](../FOUNDATIONS.md#the-trades-protocols-are-the-acceptance-test)).
 
 #### Quantities
 
@@ -252,9 +252,9 @@ touchweight reads (FOUNDATIONS §3.1).
 | Poids avant | front weight | **FW** | The static weight, to 0.1 g, that "the level key, tipped on its balance-pin point, exerts at the measuring point" [V, Stanwood 2000, glossary, p. 22] | ceiling recommended by Stanwood: **41.3 g** at note 1 to **3.7 g** at note 88 [V, Stanwood 2000-03, Table IV, p. 25] |
 | Poids d'attaque (du marteau; also *poids de frappe*) | strike weight | **SW** | The weight, to 0.1 g, of shank and hammer pivoted without friction at the hammer center, shank level, measured at the strike line radius [V, Stanwood 2000, glossary, p. 23]; SW = HW + SS, HW being the hammer alone [V, Stanwood 2000, p. 21] | normal zone **8.0–14.8 g** at note 1 to **3.5–6.9 g** at note 88 [V, Stanwood 2000-03, Table I, p. 21] |
 | Poids d'attaque du manche | shank strike weight | **SS** | The shank alone, measured as for SW [V, Stanwood 2000, glossary, p. 23] | **1.7 g** as a generic average [V, Stanwood 2000-03, note to Table I, p. 21] |
-| Rapport de poids d'attaque | strike weight ratio | **R** | **R = SBW / SW**: the weight on the measuring point that balances 1 g of strike weight [V, Stanwood 2000, glossary, p. 23]. FOUNDATIONS writes it SR in the equation of balance; it is not Reyburn's shank ratio of §3.2 | normal zone **5.0–7.0**; *low* 5.0–5.7 (high leverage), *medium* 5.7–6.3, *high* 6.3–7.0 (low leverage), the leverage being the pianist's on the hammer [V, Stanwood 2000-03, Table III, p. 24] |
+| Rapport de poids d'attaque | strike weight ratio | **R** | **R = SBW / SW**: the weight on the measuring point that balances 1 g of strike weight [V, Stanwood 2000, glossary, p. 23]. FOUNDATIONS writes it SR in the equation of balance; it is not Reyburn's shank ratio of [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values) | normal zone **5.0–7.0**; *low* 5.0–5.7 (high leverage), *medium* 5.7–6.3, *high* 6.3–7.0 (low leverage), the leverage being the pianist's on the hammer [V, Stanwood 2000-03, Table III, p. 24] |
 | Poids radial du chevalet | wippen weight | **WW** | The weight, to 0.1 g, of the level wippen, pivoted without friction at its center, measured at the capstan/heel contact point [V, Stanwood 2000, glossary, p. 23] | — |
-| Rapport de poids de clavier | key weight ratio | **KR** | The force at the measuring point over the force at the capstan: the weight on the measuring point that balances 1 g at the capstan/heel contact point [V, Stanwood 2000, glossary, pp. 22–23] | about **0.5** [V, Reyburn, p. 2]; 0.50 to 0.60 on most actions, 0.68 on an 1878 Steinway concert grand (FOUNDATIONS §3.7) |
+| Rapport de poids de clavier | key weight ratio | **KR** | The force at the measuring point over the force at the capstan: the weight on the measuring point that balances 1 g at the capstan/heel contact point [V, Stanwood 2000, glossary, pp. 22–23] | about **0.5** [V, Reyburn, p. 2]; 0.50 to 0.60 on most actions, 0.68 on an 1878 Steinway concert grand ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)) |
 
 **Do not use** the reciprocal as KR. Stanwood's own wording, "the ratio of downward
 force on the capstan/heel versus the corresponding upward force at the measuring
@@ -264,7 +264,7 @@ point" [V, Stanwood 2000, glossary, p. 22], like his 1996 wording [V, Stanwood
 p. 22]. The reciprocal, front arm over capstan arm, "nominally 2:1" [V, Stanwood,
 pianotech list], is the geometric convention: put into the equation of balance it
 inflates the wippen term by 1/KR², about 3.3, and makes a wippen balance weight
-larger than the wippen weight (FOUNDATIONS §3.7).
+larger than the wippen weight ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)).
 
 #### The equation of balance
 
@@ -272,7 +272,7 @@ larger than the wippen weight (FOUNDATIONS §3.7).
 BW + FW = (WW × KR) + (SW × R)
 ```
 
-[V, Stanwood 1996, p. 2]; FOUNDATIONS §3.1 writes SR for R. With TBW = BW + FW
+[V, Stanwood 1996, p. 2]; [FOUNDATIONS > The trade's protocols are the acceptance test](../FOUNDATIONS.md#the-trades-protocols-are-the-acceptance-test) writes SR for R. With TBW = BW + FW
 (top action balance weight), WBW = KR × WW (wippen balance weight) and
 SBW = TBW − WBW (strike balance weight) [V, Stanwood 2000, glossary, pp. 22–23],
 it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
@@ -309,7 +309,7 @@ it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
   the back of the key down on the frame and KF = (D − U)/2, stack off [V, Stanwood
   2000, p. 22; glossary, p. 22]. The bench reads it both ways, labeled: zeroed
   on the leveled jig, as Stanwood does, and zeroed where the key rests on its
-  frame, which reads the bushings alone (FOUNDATIONS §2.2).
+  frame, which reads the bushings alone ([FOUNDATIONS > The protocols, as they are](../FOUNDATIONS.md#the-protocols-as-they-are)).
 - **Support Spring Balance Weight (BWS)**: the balance weight with the wippen
   support spring disengaged, minus the balance weight with it engaged. "Engaging the
   support spring equally reduces Up Weight (U), Down Weight (D) and Balance Weight
@@ -318,7 +318,7 @@ it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
   to argue that the support spring is the only spring that can move BW: it holds for
   any static load depending on position under friction not depending on load, and
   the repetition spring moves D, U and BW too whenever the lever bears on the
-  knuckle or on the drop screw during the stroke (FOUNDATIONS §6.1).
+  knuckle or on the drop screw during the stroke ([FOUNDATIONS > Springs inside the wippen assembly](../FOUNDATIONS.md#springs-inside-the-wippen-assembly)).
 - **Strike weight**: the hammer tail resting on the scale pan, the hammer facing up,
   the flange vertical on a low-friction roller bearing whose height sets the shank
   horizontal, checked with a bubble level on the shank; shank strike weight the same
@@ -327,7 +327,7 @@ it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
 #### Sensitivities (for the interface's sliders)
 
 - **+1 g of hammer weight gives +5 to +7 g on both D and U** [V, Spurlock, p. 2]:
-  the strike ratio (FOUNDATIONS §5.3).
+  the strike ratio ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)).
 - A moderate filing removes about ¼ g, **−1.5 g** on D and U; after many filings a
   hammer loses **over 1 g**, **−5 to −10 g** of touchweight [V, Spurlock, p. 2].
 - Fifty-year-old hammers can make the touch **10 g lighter** than original [V,
@@ -341,8 +341,7 @@ it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
   while [V, Spurlock, p. 6].
 - **Do not use "+0.1 mm of capstan ⇒ −1.4 g of down weight and −0.3 mm of
   aftertouch"**: it comes from a display mock-up, and raising the capstan raises the
-  hammer line, which increases aftertouch [V, Steinway ch. 2, p. 11] (FOUNDATIONS
-  §5.3).
+  hammer line, which increases aftertouch [V, Steinway ch. 2, p. 11] ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)).
 
 #### Sources of friction, in decreasing order
 
@@ -352,7 +351,7 @@ for two reasons: shank pinning is tighter there, heavy hammers swinging the same
 number of times as light ones needing tighter pins; and the heavier hammers press
 the knuckle harder against the wippen [V, Spurlock, p. 2].
 
-### 2.5 Friction of the centers: numbers
+### Friction of the centers: numbers
 
 **Steinway factory standard**: every action center within **1–4 g of rotating
 friction**, minimal side play, read with a gram gauge applied to the flange [V,
@@ -378,19 +377,19 @@ The two directions of rotation should agree within **50 mm·g**; beyond that, lo
 for debris or splinters [V, Igrec, p. 143]. WNG measures flanges at **20 mm**,
 Steinway's specifications assume **~32 mm** [V, Igrec, p. 143]: hence friction
 stored as a **torque** with the radius it was measured at, never as grams alone
-(FOUNDATIONS §3.5).
+([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)).
 
 ---
 
-## 3. Leverage ratios and geometry
+## Leverage ratios and geometry
 
-### 3.1 Reyburn's ten measurements
+### Reyburn's ten measurements
 
 Reyburn's geometry sheet takes ten measurements on a key, a wippen and a hammer,
 shank and flange, from which the radial arms of the three levers follow [V,
 Reyburn, pp. 1–2]. They check an assembled model's arms; they are not enough to
 build one, which needs every pivot and contact profile in the sagittal section
-(FOUNDATIONS §1.4, §6.2).
+([FOUNDATIONS > What the model is](../FOUNDATIONS.md#what-the-model-is), [FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)).
 
 | # | Parameter | Rounded to | Reyburn's example, and other values |
 |---|---|---|---|
@@ -409,25 +408,25 @@ build one, which needs every pivot and contact profile in the sagittal section
 The **spread**, wippen flange center pin to shank flange center pin: Yamaha G1–C7
 **112.5 mm** [V, Spec sheet, p. 4].
 
-### 3.2 The action ratio: four definitions, four values
+### The action ratio: four definitions, four values
 
 The trade defines the action ratio in four ways, and on one action the four differ;
-the engine is to report each, labeled, as an output (FOUNDATIONS §3.7, planned).
+the engine is to report each, labeled, as an output ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs), planned).
 
 | Definition | Formula | Values |
 |---|---|---|
-| **Product of the levers** | AR = KR × WR × SR: KR the key ratio, capstan arm over front arm, "about 0.5"; WR the wippen ratio, measurement 5 over measurement 6 of §3.1, "about 1.4"; SR the shank ratio, "about 6 to 6.5" [V, Reyburn, p. 2] | "An AR of about 5 is normal, 4.9 to 5.1 is the best range" [V, Reyburn, p. 2]. The typical factors multiply to 0.5 × 1.4 × 6 = 4.2 and 0.5 × 1.4 × 6.5 = 4.55, short of 5 |
+| **Product of the levers** | AR = KR × WR × SR: KR the key ratio, capstan arm over front arm, "about 0.5"; WR the wippen ratio, measurement 5 over measurement 6 of [Reyburn's ten measurements](#reyburns-ten-measurements), "about 1.4"; SR the shank ratio, "about 6 to 6.5" [V, Reyburn, p. 2] | "An AR of about 5 is normal, 4.9 to 5.1 is the best range" [V, Reyburn, p. 2]. The typical factors multiply to 0.5 × 1.4 × 6 = 4.2 and 0.5 × 1.4 × 6.5 = 4.55, short of 5 |
 | **Gauge at the start of the stroke** | Hammer rise over a 6 mm key travel from rest, the key depressed by a tapered 6 mm block, not far enough to trip the jack | "generally varies from 5 to 6.2, with most pianos measuring between 5.3 and 5.9" [V, Spurlock, pp. 3–4] |
-| **Stanwood's strike ratio** | R = SBW / SW (§2.4), a ratio of forces read by weighing | normal zone 5.0 to 7.0 [V, Stanwood 2000-03, p. 24]; 5.5 recommended as a modern standard [V, Stanwood, pianotech list] |
+| **Stanwood's strike ratio** | R = SBW / SW ([Touchweight: the quantitative core](#touchweight-the-quantitative-core)), a ratio of forces read by weighing | normal zone 5.0 to 7.0 [V, Stanwood 2000-03, p. 24]; 5.5 recommended as a modern standard [V, Stanwood, pianotech list] |
 | **Ratio of useful travels** | (blow distance − let-off) / (key dip − aftertouch): the hammer's travel to let-off over the key's travel to let-off [?, no source in the corpus states this definition] | (45 − 2) / (10 − 1.5) = 5.06 with typical settings; 45 / 10 = 4.5 mixes the hammer's travel to the string with the key's travel past let-off |
 
 **Do not use** the geometric key ratio, front arm over capstan arm ("nominally
 2:1"), in the product of the levers: Reyburn's KR is the capstan arm over the front
-arm, about 0.5, and its reciprocal multiplies AR by about 4 (FOUNDATIONS §3.7).
+arm, about 0.5, and its reciprocal multiplies AR by about 4 ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)).
 
 **The ratio is not constant.** Arms change as contact points migrate, so every lever
 ratio varies along the stroke; the small-angle ratios above are linearizations about
-rest (FOUNDATIONS §6.2). **Do not use** the "BYU Design Review" figures (an
+rest ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)). **Do not use** the "BYU Design Review" figures (an
 aftertouch of 1.25–1.5 mm, a ratio falling from about 5.5 at rest to about 5.0 at
 let-off, modern actions between 4.9 and 5.3): they trace to no source in the
 corpus.
@@ -436,11 +435,11 @@ corpus.
 the knuckle's lever arm, nor a table turning the knuckle distance into an
 "effective arm" by Pythagoras (17.0 mm across and 13.0 mm down giving 21.4 mm): the
 arm is the moment arm of the contact normal about the center pin, and it moves as
-the knuckle rolls on the jack (FOUNDATIONS §6.2).
+the knuckle rolls on the jack ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)).
 
-### 3.3 Regulation trade-offs imposed by the ratio
+### Regulation trade-offs imposed by the ratio
 
-Spurlock's bands, for his gauge ratio of §3.2 [V, Spurlock, p. 3]:
+Spurlock's bands, for his gauge ratio of [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values) [V, Spurlock, p. 3]:
 
 | Ratio | Consequences |
 |---|---|
@@ -452,9 +451,9 @@ Spurlock's bands, for his gauge ratio of §3.2 [V, Spurlock, p. 3]:
 and the **knuckle's distance from the shank center pin** [V, Spurlock, pp. 3, 5];
 and the key's **bearing point**: cutting the balance rail punchings so the key bears
 just behind its pin drops the action ratio by three to four tenths [V, Stanwood
-2014, p. 8] (FOUNDATIONS §2.3, §3.7).
+2014, p. 8] ([FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications), [FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)).
 
-### 3.4 Half-stroke line ("half-stroke line" / "magic line" / "line of centers")
+### Half-stroke line ("half-stroke line" / "magic line" / "line of centers")
 
 Design condition: **the balance point of the key, the capstan/heel contact point and
 the wippen center on one straight line when the key is at half stroke** [V, WNG,
@@ -468,7 +467,7 @@ differ, so one line cannot serve both: WNG raises the sharps' heels by typically
 the knuckle diameter, the hammer bore, the **height of the action brackets on the
 key frame** [V, Spurlock, p. 5].
 
-### 3.5 The makers' specifications side by side
+### The makers' specifications side by side
 
 | Dimension | Steinway New York (S, M, L, O, A, B / C, D) | Steinway Hamburg (S–B / C, D) | Yamaha G1–C7 | Kawai RX, SK, GX, EX |
 |---|---|---|---|---|
@@ -487,13 +486,13 @@ key frame** [V, Spurlock, p. 5].
 | D / U | 50 to 47 g (S–B), 51 to 46 g (C, D), bass to high treble / ≥ 20 g | 47 g (S–B), 52 to 47 g (C, D) / ≥ 20 g | — | — |
 | Sources [V] | Steinway ch. 1, pp. 16–17; ch. 2, pp. 4–13; ch. 3, p. 3; Spec sheet, pp. 2–3 | Spec sheet, pp. 2–3; Steinway ch. 1, pp. 29–30 | Spec sheet, pp. 3–4 | Kawai, pp. 13–23; Spec sheet, p. 1 |
 
-Each cell's page is given in §2.1 and §2.2.
+Each cell's page is given in [Master table of the keyboard and action settings](#master-table-of-the-keyboard-and-action-settings) and [Damper regulation settings](#damper-regulation-settings).
 
 ---
 
-## 4. The order of regulation (basis of the training mode)
+## The order of regulation (basis of the training mode)
 
-### 4.1 French reference sequence: the Potter checklist, 53 steps
+### French reference sequence: the Potter checklist, 53 steps
 
 The grand piano regulation checklist of *The Piano Action Handbook* (Randy Potter
 School), in Marc Valdeyron's 1999 French translation [V, Potter checklist, p. 2]:
@@ -512,15 +511,15 @@ School), in Marc Valdeyron's 1999 French translation [V, Potter checklist, p. 2]
 
 **"Fine regulation check"**: 29 blow distance/keyboard level, 31 even let-off, 32 even drop, 33/34 key dip, 35 even aftertouch
 
-> This is **the** skeleton for the training mode (FOUNDATIONS §8, stage 3, planned):
+> This is **the** skeleton for the training mode ([FOUNDATIONS > Stages](../FOUNDATIONS.md#stages), stage 3, planned):
 > French, ordered, separating preparation, regulation and checking, with two short
 > paths already given ("quick regulation" and "fine check").
 
-### 4.2 Kawai sequence, 24 steps [V, Kawai, p. 2]
+### Kawai sequence, 24 steps [V, Kawai, p. 2]
 
 1 tighten the plate screws · 2 strike point & key frame position · 3 easing the keys (front holes, then balance holes) · 4 bedding the key frame · 5 travel & hammer angle · 6 spacing the hammers to the strings · 7 levers to knuckles, wippens to capstans · 8 repetition spring · 9 jack alignment & height · 10 key height and squaring · 11 blow distance · 12 hammer rest rail · 13 let-off · 14 drop · 15 key dip (naturals, then sharps) · 16 back checks (angle, alignment) · 17 checking (back stop, 15 mm) · 18 repetition spring (re-check) · 19 balance rail studs · 20 dampers · 21 damper upstop rail · 22 damper pedal · 23 sostenuto · 24 una corda
 
-### 4.3 Steinway sequence [V, Steinway ch. 1, p. 2; ch. 2, p. 2; ch. 3, p. 2]
+### Steinway sequence [V, Steinway ch. 1, p. 2; ch. 2, p. 2; ch. 3, p. 2]
 
 **Preparation (ch. 1)**: preliminaries → bedding the key frame → balance rail studs → easing the keys → leveling the naturals → sharp height → servicing the centers (friction 1–4 g) → traveling → burning → spacing the hammers to the strings → spacing the wippens → spacing the flies.
 
@@ -528,11 +527,11 @@ School), in Marc Valdeyron's 1999 French translation [V, Potter checklist, p. 2]
 
 **Dampers and sostenuto (ch. 3)**: damper "touch" (individual lift timing) → bends below the guide rail → bends above it → re-check of the lift → stop rail → damper pedal travel → height of the lift tray → sostenuto (alignment, tabs in line, height to the gauge, fore-and-aft position, travel).
 
-### 4.4 A 50-point "complete shop" checklist (Jurjens) [?, not in the corpus]
+### A 50-point "complete shop" checklist (Jurjens) [?, not in the corpus]
 
 A grouping useful for the interface: **I. Keys and key frame** (1–14) · **II. Action off the key frame** (15–25: centers, traveling, re-graphiting the top of the jack and the lever's window, rounding and filing the knuckles…) · **III. Alignments, action reinstalled** (26–30) · **IV. Touch** (31–39: jack/lever height, blow distance, let-off, drop, aftertouch, checking, spring, **weighing the 88 notes**, stop rail) · **V. Dampers and pedals** (40–50).
 
-### 4.5 Bench or piano: a map of the two applications
+### Bench or piano: a map of the two applications
 
 **On the bench, action out (the single-key bench)**: jack position and centering
 [V, Steinway ch. 1, p. 28]; jack to repetition lever height [V, Kawai, p. 13];
@@ -571,7 +570,7 @@ jacks" [V, Igrec, p. 174].
 
 ---
 
-## 5. Pathologies to reproduce (diagnostic engine, planned)
+## Pathologies to reproduce (diagnostic engine, planned)
 
 Each pathology is a **predicate on simulation observables** (strike velocity, number
 of string contacts, the instant the jack leaves the knuckle, checking height, return
@@ -616,14 +615,14 @@ tail lifted 1–2 mm [V, Kawai, p. 6].
 
 ---
 
-## 6. Bilingual glossary FR ↔ EN (+ DE) and code identifiers
+## Bilingual glossary FR ↔ EN (+ DE) and code identifiers
 
-Identifiers are English snake_case, in five namespaces: parts, bare (§6.1); `spec.`
+Identifiers are English snake_case, in five namespaces: parts, bare ([Parts](#parts)); `spec.`
 the regulation settings, `tw.` the touchweight quantities and `geom.` the geometry
-(§6.2); `op.` the operations (§6.3). A value in a trade unit carries its unit as a
+([Regulation settings and quantities](#regulation-settings-and-quantities)); `op.` the operations ([Operations](#operations)). A value in a trade unit carries its unit as a
 suffix (`spec.key_dip_mm`, `tw.downweight_g`); ratios and SI values carry none.
 **Planned**: these identifiers key the persisted schema and the French catalog
-(FOUNDATIONS §3.12, §7.3). The built code's field names, such as `capsule_height`
+([FOUNDATIONS > A bilingual interface](../FOUNDATIONS.md#a-bilingual-interface), [FOUNDATIONS > The parameter registry and the validation layer](../FOUNDATIONS.md#the-parameter-registry-and-the-validation-layer)). The built code's field names, such as `capsule_height`
 and `front_board`, do not follow them.
 
 The French column shows the name the interface uses first, then, in italics, other
@@ -631,7 +630,7 @@ names a reader will meet for the same part. The German column holds only the ter
 a French–English–German trade legend gives for the part; where none does, it is
 empty rather than filled from a dictionary.
 
-### 6.1 Parts
+### Parts
 
 | FR | EN | DE | `identifier` |
 |---|---|---|---|
@@ -652,7 +651,7 @@ empty rather than filled from a dictionary.
 | Montant de mécanique | action bracket | Mechanikbacken | `action_bracket` |
 | Barre des chevalets | wippen rail | Hebegliedleiste | `wippen_rail` |
 | Barre des marteaux | hammer rail / main action rail | Mechanikbalken | `hammer_rail` |
-| **Sommier** | **pinblock / wrest plank** | — | `pinblock`. The action rails are « barres » (§1.1) |
+| **Sommier** | **pinblock / wrest plank** | — | `pinblock`. The action rails are « barres » ([Key frame, rails, structural members](#key-frame-rails-structural-members)) |
 | Barre d'échappement (also *barre des boutons d'échappement*) | let-off rail / regulating rail | Auslösepuppenleiste | `let_off_rail`: one rail, under the hammer rail, carrying the let-off buttons; the interface says **barre d'échappement** |
 | Barre de repos des marteaux (also *barre de butée des marteaux*, *barre de butée des manches*; its cloth: *drap de butée des manches*) | hammer rest rail | Hammerruheleiste | `hammer_rest_rail` |
 | Touche | key | Taste | `key` |
@@ -690,7 +689,7 @@ empty rather than filled from a dictionary.
 > body, the jack relative to the wippen and the repetition lever relative to the
 > wippen are the three coordinates whose couplings form one block of the mass
 > matrix, the only one with off-diagonal terms; the jack and the lever couple to
-> the body but not to each other, `m_jr = 0` exactly (FOUNDATIONS §3.6). That block
+> the body but not to each other, `m_jr = 0` exactly ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)). That block
 > is the *chevalet*, written as a matrix. A technician buys and replaces a chevalet
 > as one part; the solver treats the same three bodies as one block.
 >
@@ -766,7 +765,7 @@ empty rather than filled from a dictionary.
 
 > **Open in these tables**: the rows marked **[?]**.
 
-### 6.2 Regulation settings and quantities
+### Regulation settings and quantities
 
 | FR | EN | `identifier` | Unit |
 |---|---|---|---|
@@ -777,7 +776,7 @@ empty rather than filled from a dictionary.
 | **Chasse** | **blow distance** | `spec.blow_distance_mm` | mm |
 | Ligne des marteaux | hammer line | `spec.hammer_line_mm` | mm |
 | **Échappement** | **let-off** | `spec.let_off_mm` | mm (from the string) |
-| **Chute** | **drop** | `spec.drop_abs_mm` / `spec.drop_below_let_off_mm` | mm, stored with its reference (FOUNDATIONS §7.4) |
+| **Chute** | **drop** | `spec.drop_abs_mm` / `spec.drop_below_let_off_mm` | mm, stored with its reference ([FOUNDATIONS > Persistence](../FOUNDATIONS.md#persistence)) |
 | **Gras / jeu après échappement** | **aftertouch** | `spec.aftertouch_mm` | mm |
 | **Attrapé** | **checking / back check distance** | `spec.check_height_mm` | mm (from the string) |
 | Pente d'attrape | back check angle | `spec.back_check_angle_deg` | ° |
@@ -797,7 +796,7 @@ empty rather than filled from a dictionary.
 | Hauteur / rotation / distance du sostenuto | sostenuto rod height / rotation / clearance | `spec.sostenuto_height_mm`, `spec.sostenuto_rotation_deg`, `spec.sostenuto_clearance_mm` | mm, ° |
 | Jeu des mortaises | bushing play | `spec.bushing_play_mm` | mm |
 | Portée du châssis | keyframe bedding | `spec.keyframe_bedding` | — |
-| Point de mesure (standard) | measuring point | `tw.measuring_point_mm` | mm back from the covering's front edge, 13 by default (§2.4) |
+| Point de mesure (standard) | measuring point | `tw.measuring_point_mm` | mm back from the covering's front edge, 13 by default ([Touchweight: the quantitative core](#touchweight-the-quantitative-core)) |
 | Poids d'enfoncement (D; also *poids descendant*) | downweight | `tw.downweight_g` | g |
 | Poids de remontée (U; also *poids ascendant*) | upweight | `tw.upweight_g` | g |
 | Friction (F; also *frottement*) | friction weight | `tw.friction_g` | g |
@@ -807,10 +806,10 @@ empty rather than filled from a dictionary.
 | Poids d'attaque (SW; also *poids de frappe*) | strike weight | `tw.strike_weight_g` | g |
 | Rapport de poids d'attaque (R) | strike weight ratio | `tw.strike_weight_ratio` | — |
 | Poids radial du chevalet (WW) | wippen weight | `tw.wippen_weight_g` | g |
-| Rapport de poids de clavier (KR) | key weight ratio | `tw.key_ratio` | — (the force convention, about 0.5: FOUNDATIONS §3.7) |
-| Inertie | inertia | `tw.inertia` | kg·m² (no trade protocol measures it: FOUNDATIONS §2.3) |
-| **Rapport mécanique** (also *rapport de mécanique*) | **action ratio** | `geom.action_ratio` | — (four definitions, §3.2) |
-| Rapport de clavier / du chevalet / du manche | key / wippen / shank ratio | `geom.key_ratio`, `geom.wippen_ratio`, `geom.shank_ratio` | — (Reyburn's lever ratios, §3.2; `geom.key_ratio` is the capstan arm over the front arm, about 0.5, never its reciprocal) |
+| Rapport de poids de clavier (KR) | key weight ratio | `tw.key_ratio` | — (the force convention, about 0.5: [FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)) |
+| Inertie | inertia | `tw.inertia` | kg·m² (no trade protocol measures it: [FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications)) |
+| **Rapport mécanique** (also *rapport de mécanique*) | **action ratio** | `geom.action_ratio` | — (four definitions, [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values)) |
+| Rapport de clavier / du chevalet / du manche | key / wippen / shank ratio | `geom.key_ratio`, `geom.wippen_ratio`, `geom.shank_ratio` | — (Reyburn's lever ratios, [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values); `geom.key_ratio` is the capstan arm over the front arm, about 0.5, never its reciprocal) |
 | Écartement mécanique (*écartement*; « spread ») | spread | `geom.spread_mm` | mm |
 | Distance du rouleau | knuckle distance | `geom.knuckle_distance_mm` | mm |
 | Diamètre du rouleau | knuckle diameter | `geom.knuckle_diameter_mm` | mm |
@@ -819,7 +818,7 @@ empty rather than filled from a dictionary.
 | Ligne magique (also *ligne de mi-course*) | half-stroke line / magic line | `geom.half_stroke_line_mm` | mm of deviation |
 
 > « Hauteur de touche » is the height, a measured quantity; « dressage » is the
-> leveling of the keys to one another, an operation (§6.3).
+> leveling of the keys to one another, an operation ([Operations](#operations)).
 >
 > **The symbols stay Stanwood's English ones** (D, U, F, BW, FW, KR, KF, SW, SS,
 > WW, R) beside the French names, so that a formula reads the same in both
@@ -833,14 +832,14 @@ empty rather than filled from a dictionary.
 > French writes the key's lever ratio back arm over front arm, about 0.5, the
 > same way round as KR and as `geom.key_ratio`.
 
-### 6.3 Operations
+### Operations
 
 | FR | EN | `identifier` |
 |---|---|---|
 | Dressage des touches (also *niveler les touches*) | key leveling | `op.level_keys` |
 | Défauchage | traveling (hammers, wippens): correcting a part that « fauche », rises drifting sideways, by shimming its flange | `op.travel_hammers` |
 | Chauffage des manches | burning shanks: heating and twisting the shank so the hammer head stops leaning | `op.burn_shanks` |
-| Donner du jeu (aux garnitures de mortaise) | easing keys | `op.ease_keys`. Not « dégagement », the clearance cut in the key (§6.1) |
+| Donner du jeu (aux garnitures de mortaise) | easing keys | `op.ease_keys`. Not « dégagement », the clearance cut in the key ([Parts](#parts)) |
 | Portée du châssis | bedding the keyframe | `op.bed_keyframe` |
 | Mise des marteaux sur les cordes | spacing hammers to strings | `op.space_hammers` |
 | Jours (de touches, de cordes) | spacing / clearances | `op.spacing` |
@@ -856,10 +855,10 @@ empty rather than filled from a dictionary.
 > « Fauchage » is not an operation: do not use it for burning, which is
 > « chauffage des manches », a different correction of a different fault.
 
-### 6.4 At the bench: weighing and laying papers
+### At the bench: weighing and laying papers
 
 The words the bench (built) shows around the weighing and the regulation, for the
-French catalog (planned). The touchweight quantities themselves are in §6.2.
+French catalog (planned). The touchweight quantities themselves are in [Regulation settings and quantities](#regulation-settings-and-quantities).
 
 | FR | EN | What it is |
 |---|---|---|
@@ -883,7 +882,7 @@ French catalog (planned). The touchweight quantities themselves are in §6.2.
 
 ---
 
-## 7. Terms easy to get wrong
+## Terms easy to get wrong
 
 Standard trade usage in France. Where two words circulate, the last column gives the
 one this project uses.
@@ -902,7 +901,7 @@ one this project uses.
 | « una corda » | the pedal's other name, after the strings a shifted hammer once struck | **pédale douce** |
 | « feutre, cuir, buffle » | correct | — |
 
-### 7.1 Settled terms
+### Settled terms
 
 | Question | Answer |
 |---|---|
@@ -912,8 +911,8 @@ one this project uses.
 | action brackets | **montants de mécanique** |
 | key stop rail | **barre de contre-touche** |
 | glide bolt | **vis de réglage de portée du châssis**, named after the very thing it corrects, which also gives *portée du châssis* for frame bedding |
-| key bearing | **support de touche au balancier**: a hemispherical stud on Steinway, **mouches de balancier** on other makes. The key bears on the punching, not on the pin; the bench pivots it at the pin, the bearing's offset a parameter set to zero (FOUNDATIONS §2.3) |
-| sostenuto | **sostenuto**: *barre de sostenuto*, its tabs the *becs de sostenuto* (a maker's « languettes », §6.1); *tonale* (*barre de tonale*, *support de tonale*, *bec de tonale*) names the same parts, and the interface does not use it |
+| key bearing | **support de touche au balancier**: a hemispherical stud on Steinway, **mouches de balancier** on other makes. The key bears on the punching, not on the pin; the bench pivots it at the pin, the bearing's offset a parameter set to zero ([FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications)) |
+| sostenuto | **sostenuto**: *barre de sostenuto*, its tabs the *becs de sostenuto* (a maker's « languettes », [Parts](#parts)); *tonale* (*barre de tonale*, *support de tonale*, *bec de tonale*) names the same parts, and the interface does not use it |
 | trapwork | **mouvement de pédale** / **levier de pédale**; the dowel onto the damper lift is the **prisonnier** |
 | damper parts | **tête**, **feutre**, **tige**, **galerie**, **noix**, **fourche**, **bascule**, **plomb de bascule**, **barre de butée des bascules** |
 
@@ -922,10 +921,10 @@ are in `docs/vocabulary-worksheet.md`.
 
 ---
 
-## 8. Consequences for the data model (planned)
+## Consequences for the data model (planned)
 
-1. **The layers of FOUNDATIONS §7.5**: action design (geometry, measured masses,
-   bearing point); regulation state, the settings of §2, each with its value,
+1. **The layers of [FOUNDATIONS > The data model](../FOUNDATIONS.md#the-data-model)**: action design (geometry, measured masses,
+   bearing point); regulation state, the settings of [The regulation settings](#the-regulation-settings), each with its value,
    range, source, keyboard zone and actuator, which is what the technician turns;
    material set, each interface's contact law (felt, leather, buckskin, cloth,
    back check leather, graphite or PTFE); per-note data, graduation curves over
@@ -934,52 +933,52 @@ are in `docs/vocabulary-worksheet.md`.
    section }`. The sections: `bass`, `tenor`, `mid`, `treble`, `high_treble`, the
    division of Steinway's touchweight specifications [V, Spec sheet, pp. 2–3].
 3. **Two unit systems**, millimeters and fractional inches (1/32, 3/64, 1/16,
-   13/32…) (FOUNDATIONS §1.3): Steinway's New York figures are in inches; Hamburg,
+   13/32…) ([FOUNDATIONS > The acceptance criterion](../FOUNDATIONS.md#the-acceptance-criterion)): Steinway's New York figures are in inches; Hamburg,
    Yamaha and Kawai's in millimeters.
-4. **The action ratio is an output**, in the four definitions of §3.2, each
-   labeled (FOUNDATIONS §3.7); it varies along the stroke, the definitions differ
+4. **The action ratio is an output**, in the four definitions of [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values), each
+   labeled ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)); it varies along the stroke, the definitions differ
    on one action, and the technician meets all four in the field.
 5. **Drop is stored with its reference**, from the string or below let-off, because
-   makers write it both ways (FOUNDATIONS §7.4); the other form is derived for
+   makers write it both ways ([FOUNDATIONS > Persistence](../FOUNDATIONS.md#persistence)); the other form is derived for
    display, and a drop that does not clear the let-off, "eclipsing" it [V, Steinway
    ch. 2, p. 7], is reported.
 6. **Dependency graph of the settings.** Each setting declares what it invalidates,
    shown as an out-of-specification badge, never corrected automatically
-   (FOUNDATIONS §3.3). From the sources: blow distance → aftertouch [V, Steinway
+   ([FOUNDATIONS > Upstream settings drift; faults are reported, not refused](../FOUNDATIONS.md#upstream-settings-drift-faults-are-reported-not-refused)). From the sources: blow distance → aftertouch [V, Steinway
    ch. 2, p. 11], damper lift timing [V, Igrec, p. 158], hammer line [V, Steinway
    ch. 2, p. 6]; key dip → aftertouch [V, Steinway ch. 2, p. 11], damper stop rail
    [V, Igrec, p. 158]; let-off → drop [V, Steinway ch. 2, p. 7; Kawai, p. 17];
    checking → repetition spring [V, Kawai, p. 20]; key height → key dip, which
    runs from it, and aftertouch [V, Steinway ch. 2, p. 11]; lever height → lost
    motion [V, Steinway ch. 2, p. 5]; balance rail studs → key dip, forbidden [V,
-   Steinway ch. 1, p. 13]. This graph drives the training mode (FOUNDATIONS §8,
+   Steinway ch. 1, p. 13]. This graph drives the training mode ([FOUNDATIONS > Stages](../FOUNDATIONS.md#stages),
    stage 3).
 7. **The 88 notes share the topology, not the values.** Graduation curves carry the
    strike weight (8.0–14.8 g at note 1 to 3.5–6.9 g at note 88), the front weight
    ceiling (41.3 to 3.7 g), friction (12–15 g to 8–10 g), let-off (3 to 1.5 mm, or
    1.5 to 1.0 mm), checking (16 to 14 mm), the repetition spring (slower in the
-   bass in Steinway's guide, FOUNDATIONS §9), the under-lever leads (WNG standard
-   2/1/1/0), with the locators of §2.
+   bass in Steinway's guide, [FOUNDATIONS > Open questions for the owner](../FOUNDATIONS.md#open-questions-for-the-owner)), the under-lever leads (WNG standard
+   2/1/1/0), with the locators of [The regulation settings](#the-regulation-settings).
 8. **WNG's part ranges bound the sliders**: knuckle 15–19 mm in 0.5 mm steps, Ø 8,
    9, 10 or 11 mm; heel position 50.0–69.5 mm in 1.5 mm steps, heel height 16–24 mm
    in 1 mm steps, the sharps' heels +2 mm; spoon 73.6, 76.6 or 81.6 mm [V, WNG,
    pp. 3–6, 9]. They are values a supplier makes, so they bound an admissible range
-   (FOUNDATIONS §7.3); they do not validate a model, which takes independent
-   measurements (FOUNDATIONS §5.1).
+   ([FOUNDATIONS > The parameter registry and the validation layer](../FOUNDATIONS.md#the-parameter-registry-and-the-validation-layer)); they do not validate a model, which takes independent
+   measurements ([FOUNDATIONS > What a test proves; drive in position, compare forces](../FOUNDATIONS.md#what-a-test-proves-drive-in-position-compare-forces)).
 9. **Bench artifacts as environment parameters**: the keyboard on the lap, whose
    front rail bows upward and reduces the key dip [V, Igrec, p. 173]; finger
    pressure when reading the key dip [V, Steinway ch. 2, p. 9]; humidity, through
    the bushings' tightness [V, Kawai, p. 6]. Key frame bedding itself is out of
    scope: a deflecting frame couples the notes, and the bench states a perfectly
-   bedded frame (FOUNDATIONS §1.4).
+   bedded frame ([FOUNDATIONS > What the model is](../FOUNDATIONS.md#what-the-model-is)).
 10. **Friction is stored as a torque with the radius it was measured at**, never as
     grams alone, because the published values are taken at different radii:
     Steinway about 32 mm, WNG 20 mm, Igrec's Table 5 25 mm for most parts [V, Igrec,
-    p. 143] (FOUNDATIONS §3.5).
+    p. 143] ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)).
 
 ---
 
-## 9. Sources
+## Sources
 
 The corpus is in `data/references/`, outside version control. Short names as used
 in the locators; page numbers are each document's own.

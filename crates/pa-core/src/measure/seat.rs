@@ -76,7 +76,7 @@ pub const SEAT_MARGIN: f64 = 0.01;
 /// static solve converges on has every contact it reads closed to a
 /// picometer; drawn parts deeper in one another than this are sunk where no
 /// contact reads them, past an edge's center or across a corner's sector
-/// (`docs/FOUNDATIONS.md` §6.6), and the seat is not one.
+/// (`docs/FOUNDATIONS.md` > Seventeen contacts per note), and the seat is not one.
 pub const SEAT_OVERLAP: f64 = 1e-6;
 
 /// The key on its frame as the procedure needs it: the mounted key, and the

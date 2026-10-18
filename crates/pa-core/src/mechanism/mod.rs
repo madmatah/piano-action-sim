@@ -101,7 +101,7 @@ pub struct Coord {
     /// The bound of its joint's dry friction: a torque in newton-meters on an
     /// angle, a force in newtons on a length. Set-valued: while the joint is
     /// still it takes any value within plus or minus this
-    /// (`docs/FOUNDATIONS.md` §3.5). Zero for a joint that turns freely.
+    /// (`docs/FOUNDATIONS.md` > Set-valued dry friction, at the axes and at sliding contacts). Zero for a joint that turns freely.
     pub friction: f64,
 }
 

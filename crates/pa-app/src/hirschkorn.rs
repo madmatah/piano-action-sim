@@ -121,7 +121,7 @@ fn fall(p: Point, rest: f64, bottom: f64) -> f64 {
 }
 
 /// C11, a consistency check across implementations and not a validation
-/// (`docs/FOUNDATIONS.md` §5.1): the instrument built on Hirschkorn's
+/// (`docs/FOUNDATIONS.md` > What a test proves; drive in position, compare forces): the instrument built on Hirschkorn's
 /// profile against what script 10 and the prototype print of his key between
 /// its stops, and against Table A.1. `Err` names what disagrees.
 ///

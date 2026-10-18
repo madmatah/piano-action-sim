@@ -386,7 +386,7 @@ impl Mounted {
 ///
 /// One admissible split of the loads, the one the solve returned: where
 /// friction or redundant rows share a load, rigid statics leave the split
-/// open (`docs/FOUNDATIONS.md` §2.1), and no verdict is read from it
+/// open (`docs/FOUNDATIONS.md` > Parts and statics), and no verdict is read from it
 /// ([`crate::parts::verdicts`]). It is what a view draws to show where the
 /// key bears and roughly how hard.
 #[derive(Debug, Clone, PartialEq)]
@@ -1574,7 +1574,7 @@ mod tests {
         }
     }
 
-    /// The limit `docs/FOUNDATIONS.md` §6.6 warns of: a corner sunk deeper
+    /// The limit `docs/FOUNDATIONS.md` > Seventeen contacts per note warns of: a corner sunk deeper
     /// than an edge arc's center has a row only while a face beside the arc
     /// lies in the corner's own angle. The key's tail corner, a quarter of a
     /// millimeter in front of where the cloth's face ends, sunk past the front
@@ -1614,7 +1614,7 @@ mod tests {
                 m.mechanism.rows(&pose, f64::INFINITY, &mut rows);
                 assert!(
                     rows.gap(back).is_none(),
-                    "the tail corner {depth} m into the cloth now reads a row: update §6.6"
+                    "the tail corner {depth} m into the cloth now reads a row: update `docs/FOUNDATIONS.md` > Seventeen contacts per note"
                 );
                 sunk += 1;
             }
