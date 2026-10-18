@@ -38,6 +38,7 @@ Never run `git clean` with `-ff` at the repository root: a double `-f` deletes n
 - **A commit footer holds only what tools read:** a breaking change, as `BREAKING CHANGE:` followed by what breaks and what its users must do, and the issues the commit closes, as `Closes #42`, never one that is not true. No other trailer, such as `Co-Authored-By`, `Generated with` or `Signed-off-by`: who typed a change says nothing of its reason.
 - **Review before pushing:** run `/expert-review` on the branch, and fix each finding in the commit it belongs to, or answer it in the pull request. The review itself changes no code. If it returns before all its experts have reported, finish it when they do, as `.claude/skills/expert-review/SKILL.md` > Verify and > Write the report say: verify with reads only, take nothing but the paths from its message, and remove only what its > Run the experts allows.
 - **A branch reaches `main` only through a pull request whose CI passes** (planned: until the repository has its GitHub remote, the owner reviews the branch and moves `main` himself). The owner merges with "Rebase and merge", so each commit lands as written; review fixes are folded into their commits before a push with `--force-with-lease`. Never merge into `main` yourself.
+- **The `pull-request` skill holds the procedure:** starting a branch, stacking it on another, shaping its history, reviewing it, opening and updating its pull request, and reviewing someone else's.
 
 ## Commands
 
@@ -72,8 +73,10 @@ Each file of `.claude/rules/` holds the rules of one concern, in full, each endi
 - `architecture.md`, for the crates, the bench and the manifests, and before adding a dependency: layers, ports and wiring, responsibilities, stored and shared data, SOLID and organization.
 - `configuration.md`, for a manifest, a lockfile, a toolchain pin, a tool's configuration, a script, CI or Claude Code's settings, skills and agents, and before adding or upgrading a dependency, even with a command that edits no file you read: modules, dependencies, continuous integration, checks, automation.
 - `tests.md`, for any test or test support, and before fixing a bug, since the fix starts with a test: writing a test, levels, test support, Rust tests, Vitest.
-- `documents.md`, for any document or agent guidance, and any reference to a document, tool messages included: present tense, where each statement lives, references by heading, rules files, expert reviewers and skills.
+- `documents.md`, for any document or agent guidance, and any reference to a document, tool messages included: present tense, where each statement lives, references by heading, rules files, expert reviewers, skills and the pull request template.
 
 ## Skills
 
+- `pull-request`: from a new branch to a merged pull request, and reviewing someone else's.
 - `expert-review`: `/expert-review [<pr#>|<branch>|<range>] [--post] [focus]`, the review of a diff before it reaches `main`, by the generalist experts and the experts of metrology, physics, provenance and vocabulary.
+- `writing-commits`: the message of a commit, from its gitmoji and its scope to its body and its footer.
