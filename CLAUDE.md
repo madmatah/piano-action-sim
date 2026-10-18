@@ -190,7 +190,7 @@ private/           gitignored, its own repository: owner's material, tracking
 ## Commands
 
 ```bash
-pnpm install                         # first run only
+pnpm install --frozen-lockfile       # first run; a session hook does it in a new worktree
 pnpm verify                          # every CI gate but the frozen install
 cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
@@ -209,7 +209,10 @@ Node 26 and Rust 1.99.0 are pinned (`.nvmrc`, `rust-toolchain.toml`) so tools,
 lints and formatting match CI; `nvm` is on the owner's machine. `wasm-pack` is
 in `~/.cargo/bin`, off a non-interactive shell's `PATH`, hence the prefix on
 every task that builds the wasm first (`pnpm verify` sets it itself):
-`wasm-pack: not found` is a shell difference, not a broken build. Re-check the
+`wasm-pack: not found` is a shell difference, not a broken build. A session
+that starts in a checkout without `node_modules` installs it from the
+lockfile (`.claude/settings.json`); in a worktree added during a session,
+run `pnpm install --frozen-lockfile` there first. Re-check the
 wasm-threads blocker on `pa-wasm`, a `cdylib`: a library crate does not link,
 and passes with the same flags.
 
