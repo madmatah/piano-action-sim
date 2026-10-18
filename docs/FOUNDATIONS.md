@@ -1997,8 +1997,6 @@ Each is stated so it can be answered without opening anything else.
    exercise: targets within tolerances, evenness from note to note, or both?
 4. **Sound.** In scope or not, and if so, samples chosen by the computed hammer
    velocity or a physical string?
-5. **Licence.** Under which licence may the project be published? Nothing is
-   published until one is chosen.
 
 The French terms in doubt are listed in `docs/vocabulary-worksheet.md`. And an
 opportunity: a compression bench, even a rudimentary one, would first repay the

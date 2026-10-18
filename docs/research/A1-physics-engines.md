@@ -689,4 +689,4 @@ curves and the trade's protocols validate (FOUNDATIONS §5.2).
 | Cross-platform determinism | not verified | yes (feature) | build flag | no | no | [?] | [?] | **under FOUNDATIONS §4.4's conditions** |
 | Model editing from JS | partial | — | partial | partial | partial | partial | **yes (`MjSpec` + `mj_compile`)** | **yes** |
 | Binary size (gzip) | 1.17 MB | the user's | 742 kB | 658 kB | 1.61 MB | [?] | 2.54 MB | 50–200 kB [S] |
-| Licence | Apache-2.0 | Apache-2.0 | MIT | MIT (no published source) | MIT | MIT | **Apache-2.0** | undecided (FOUNDATIONS §9) |
+| Licence | Apache-2.0 | Apache-2.0 | MIT | MIT (no published source) | MIT | MIT | **Apache-2.0** | **MIT** |

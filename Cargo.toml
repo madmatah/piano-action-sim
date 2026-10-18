@@ -13,11 +13,8 @@ edition = "2021"
 # Matches the pin in rust-toolchain.toml. A lower MSRV would be a claim nothing
 # tests.
 rust-version = "1.99"
-# OPEN DECISION, owner's call: the licence is undecided, and `UNLICENSED` is a
-# placeholder rather than an intent. Nothing may be published until it is set.
-license = "UNLICENSED"
-# OPEN: placeholder until the repository has a home.
-repository = "https://github.com/OWNER/piano-action-sim"
+license = "MIT"
+repository = "https://github.com/madmatah/piano-action-sim"
 
 [workspace.dependencies]
 pa-core = { path = "crates/pa-core" }

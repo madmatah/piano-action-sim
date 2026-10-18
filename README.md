@@ -161,4 +161,5 @@ pnpm --filter @pas/app-bench dev           # the bench; ?view=section or ?view=b
   number in FOUNDATIONS.
 - [`CLAUDE.md`](CLAUDE.md): the working rules.
 
-The licence is not chosen, and nothing is published until it is.
+piano-action-sim is released under the MIT License ([`LICENSE`](LICENSE)). The
+published works it draws on keep their own terms.
