@@ -88,7 +88,7 @@ bench.
 
 Every reading on the weighing sheet is a procedure run on the model; their
 closed forms are the tests' oracles. What the stage simplifies is listed in
-[`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §2.3; on Hirschkorn's key every
+[`docs/FOUNDATIONS.md` > Named simplifications](docs/FOUNDATIONS.md#named-simplifications); on Hirschkorn's key every
 reading is an indication of its geometry, his keybed, rails, felts and papers
 being borrowed or assumed.
 
@@ -103,7 +103,7 @@ being borrowed or assumed.
 ## What is planned
 
 In this order, each stage with its engine and its view
-([`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md) §8):
+([`docs/FOUNDATIONS.md` > Stages](docs/FOUNDATIONS.md#stages)):
 
 - a general quasi-static core with the key as its first client and an
   interface in English and French (its first parts, the mechanism, the

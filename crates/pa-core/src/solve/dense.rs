@@ -11,7 +11,7 @@
 //! takes the split of least utilization, the solution of least norm in
 //! scaled multipliers, so that it is one definite answer that does not drift
 //! from one solve to the next, and reports it as one admissible split among
-//! many (`docs/FOUNDATIONS.md` §2.1).
+//! many (`docs/FOUNDATIONS.md` > Parts and statics).
 //!
 //! Neither a pivoted LDLᵀ nor a column-pivoted QR alone returns the
 //! least-norm solution of a rank-deficient system: each returns *a* solution,

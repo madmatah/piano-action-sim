@@ -1,7 +1,7 @@
 """One note of Hirschkorn's grand piano action in motion: the model.
 
 THROWAWAY PROTOTYPE (README.md). It exists to settle the hypotheses of
-docs/FOUNDATIONS.md §4 (the time step, one dynamic solver, the felt law) and is
+`docs/FOUNDATIONS.md` > What the dynamics prototype settles, and what it leaves open (the time step, one dynamic solver, the felt law) and is
 not the engine.
 
 Source: Hirschkorn 2004, MASc thesis, Appendix A, as transcribed with locators
@@ -23,8 +23,7 @@ Coordinates, Hirschkorn's (Eq. 2.1, Figure 2.3) and script 10's, in this order:
 
 θk, θw, θh: key, wippen and hammer, counter-clockwise from ground about their
 ground pins Pg1, Pg2, Pg3. θj, θr: jack and repetition lever, counter-clockwise
-from the wippen about their pins Pw2, Pw3 (relative coordinates, FOUNDATIONS
-§3.6). Every coordinate is a joint angle, so the joint speeds are exactly q̇.
+from the wippen about their pins Pw2, Pw3 (relative coordinates, `docs/FOUNDATIONS.md` > Relative coordinates for the jack and the repetition lever). Every coordinate is a joint angle, so the joint speeds are exactly q̇.
 SI throughout: meters, radians, kilograms, newtons, seconds.
 
 Equations of motion:  M(q) q̈ + h(q, q̇) = Q(q, q̇, t) + (axis friction)
@@ -60,7 +59,7 @@ ASSUMPTIONS, each also stated where it is used:
       counter-clockwise, which presses the jack against its rest (contact 5) and
       under the knuckle (contact 7); checks.py verifies both signs.
       A spring between a child and the wippen acts on the child's relative
-      coordinate only (FOUNDATIONS §6.1, the lemma).
+      coordinate only (`docs/FOUNDATIONS.md` > Springs inside the wippen assembly, the lemma).
   A8  The finger acts at Pk2, the point on top of the key front where Figure
       A.1 draws its downward arrow; the model's one applied force is "an
       externally specified force applied to the key front" (§2.1, p. 15). Its
@@ -351,7 +350,7 @@ def contact_geometry(spec, pose):
 
 def lever_arms(spec, pose, nx, ny, px, py):
     """The gap's gradient over all five coordinates, by the lever-arm identity
-    of FOUNDATIONS §6.2, and the Jacobian of the tangential slip speed.
+    of `docs/FOUNDATIONS.md` > The lever arm, and the gradient of a gap, and the Jacobian of the tangential slip speed.
 
     For each coordinate i turning body A about O: ∂g/∂q_i += ((P - O) × n)·ẑ;
     for body B the same with a minus sign. A coordinate that turns both bodies

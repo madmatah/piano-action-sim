@@ -29,7 +29,7 @@
 //!
 //! It turns the key about its balance pin, so it cannot see where the key
 //! bears on its balance punching: only a reading on the frame can
-//! (`docs/FOUNDATIONS.md` §5.2 a). And its pivot turns without friction, which
+//! (`docs/FOUNDATIONS.md` > Validation instruments, "One real key, measured by the owner"). And its pivot turns without friction, which
 //! is an assumption: the real key turns on a pin through its bushings.
 
 use super::TouchweightProtocol;

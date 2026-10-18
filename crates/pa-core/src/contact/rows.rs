@@ -9,7 +9,7 @@
 //! entry per coordinate of the mechanism:
 //!
 //! - the **gradient** of the gap, `∂g/∂q_c = n · (J_A,c(P) − J_B,c(P))`, the
-//!   lever-arm identity (`docs/FOUNDATIONS.md` §6.2) extended to every
+//!   lever-arm identity (`docs/FOUNDATIONS.md` > The lever arm, and the gradient of a gap) extended to every
 //!   ancestor joint: a coordinate that moves both bodies moves both
 //!   material points alike and cancels exactly;
 //! - the **slip gradient**, `t · (J_A,c(P) − J_B,c(P))` with `t = ẑ × n`: how
@@ -469,7 +469,7 @@ impl Mechanism {
     ///
     /// Read off the outlines, not the rows: a part sunk far into another,
     /// past an edge's center or across a corner's sector, may read no row at
-    /// all (`docs/FOUNDATIONS.md` §6.6), and this is what a solve that must
+    /// all (`docs/FOUNDATIONS.md` > Seventeen contacts per note), and this is what a solve that must
     /// start somewhere uses to start where nothing is sunk.
     pub fn overlap(&self, pose: &Pose) -> f64 {
         (0..self.pairs().len())

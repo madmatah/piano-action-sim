@@ -17,9 +17,9 @@ where a reader would otherwise derive it. The
 research annexes, `docs/research/A1` to `A5`, hold the study this document draws
 on; where one disagrees with this document, this document holds.
 
-## 1. What the simulator is for
+## What the simulator is for
 
-### 1.1 An engine for piano applications
+### An engine for piano applications
 
 The project is an **engine for building applications around the grand piano
 action**, educational and playful alike, rather than one application. It is
@@ -27,30 +27,30 @@ built for a piano technician, who is also its first user, and it provides five
 things an application composes:
 
 - **the trade's physics**: the action's parts, contacts, friction and motion,
-  measuring itself by the trade's protocols (§1.3);
+  measuring itself by the trade's protocols ([The acceptance criterion](#the-acceptance-criterion));
 - **a configurator**: every part and every regulation setting adjustable, the
-  way a technician regulates and a designer draws (§3.4, §7.3);
+  way a technician regulates and a designer draws ([Regulation as targets; the coordinate is normative](#regulation-as-targets-the-coordinate-is-normative), [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer));
 - **a state**: a regulated action that can be saved, reopened, compared and
-  replayed, its coordinates normative (§3.4, §7.4);
+  replayed, its coordinates normative ([Regulation as targets; the coordinate is normative](#regulation-as-targets-the-coordinate-is-normative), [Persistence](#persistence));
 - **diagnostics**: what is out of regulation and what cannot work, named in the
-  trade's terms and quantities (§3.3);
+  trade's terms and quantities ([Upstream settings drift; faults are reported, not refused](#upstream-settings-drift-faults-are-reported-not-refused));
 - **a realistic rendering in 3D**, beside the technical section that validates
-  the geometry (§3.11).
+  the geometry ([React and react-three-fiber for the bench](#react-and-react-three-fiber-for-the-bench)).
 
 Built: the physics, configurator and diagnostics of the key on its frame, the
 technical section and solid view of the bench, the engine's first
 application, and the interface it composes them through: every setting
 addressed by a path, every operation run as an action, each edit validated
-before any solve, logged and replayable to the same state (§7.2, §7.3).
-Planned: the rest, the state saved and reopened (§7.4) among it.
+before any solve, logged and replayable to the same state ([The WebAssembly boundary](#the-webassembly-boundary), [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)).
+Planned: the rest, the state saved and reopened ([Persistence](#persistence)) among it.
 
-### 1.2 Uses
+### Uses
 
 The applications in view, others to follow:
 
 1. **Regulate, measure and train on a single key**, set up as a technician sets
    one up and read as he reads it. Regulating and measuring built for the key on
-   its frame (§2); training planned (§8).
+   its frame ([What is built: stage 1a, the key on its frame](#what-is-built-stage-1a-the-key-on-its-frame)); training planned ([Stages](#stages)).
 2. **Understand the action's static and dynamic equilibria**: why a key rests
    where it does, why a weight between up weight and down weight moves nothing,
    what the jack does at let-off. Key statics built; dynamics planned.
@@ -62,14 +62,14 @@ The applications in view, others to follow:
    shortfall in millimeters; what can be handled is handled, so a frame that
    does not fit its key is drawn as it is, its faults named in millimeters.
    Faults for the key and frame, and the validation layer that refuses a key
-   no one could cut, built (§7.3).
+   no one could cut, built ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)).
 5. **Play a score on 88 notes**, dampers and three pedals included. Planned.
 6. **A game whose task is to regulate a piano.** Planned.
 
 Out of scope: upright actions, a soundboard model, tuning, voicing. Whether
-sound is in scope, and how, is open (§9).
+sound is in scope, and how, is open ([Open questions for the owner](#open-questions-for-the-owner)).
 
-### 1.3 The acceptance criterion
+### The acceptance criterion
 
 > **The simulator must measure its own regulation using the trade's own
 > protocols, and come back with the expected values**: key height, key dip,
@@ -80,8 +80,8 @@ If that holds, the simulator is an instrument; if not, an animation. Hence a
 reported value is the protocol run on the model (a let-off is the
 hammer-to-string distance at the instant the jack leaves the knuckle, not a
 parameter read back), and where a displayed value is a formula instead, this
-document says so (§2.2). A protocol run on the model is a consistency check, not
-a validation, which needs measurements taken independently of the model (§5). A
+document says so ([The protocols, as they are](#the-protocols-as-they-are)). A protocol run on the model is a consistency check, not
+a validation, which needs measurements taken independently of the model ([Validation](#validation)). A
 simplification is judged against the protocol's resolution, the gram for
 touchweights and a punching paper for key height and dip (the thinnest is
 0.08 mm [V, `data/params/punching-papers.json`]); one that can move a reading by
@@ -89,7 +89,7 @@ that much is named where it is made. And the user sees the trade's quantities:
 grams, millimeters, the trade's names, fractional inches planned as a second
 unit system.
 
-### 1.4 What the model is
+### What the model is
 
 **Planar and single-note**: the sagittal section of one note. Adjustments out of
 that plane or across notes (squaring and spacing keys, bushing play, glides,
@@ -98,15 +98,15 @@ as parameters that change what is observed, not as geometry. **String height
 and keybed crown** form one vertical gap, whose sum is all that blow distance,
 let-off and aftertouch see; both are planned. **Key frame bedding is out of
 scope**: a deflecting frame couples neighboring notes, breaking the
-independence the 88-note runtime rests on (§7.6), and no published frame
+independence the 88-note runtime rests on ([The 88-note runtime](#the-88-note-runtime)), and no published frame
 compliance exists. Its main symptom, dip absorbed by something soft, stays
 reachable through a softer front punching law; the bench is to state *perfectly
 bedded frame* beside the settings it teaches (planned).
 
-## 2. What is built: stage 1a, the key on its frame
+## What is built: stage 1a, the key on its frame
 
 The bench opens on **Hirschkorn's key, note 52 of a Boston GP-178, on his
-printed frame** (§5.2 b): a key whose mass, center of mass, inertia,
+printed frame** ([Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52"): a key whose mass, center of mass, inertia,
 contact points and bushings' friction were all measured and published on one
 action. His printed points, lines and circles are read as printed; what his
 tables give no number for, the key's front, covering and blocks, is traced
@@ -118,11 +118,11 @@ them on his keys, on the key frame he measured, regulated on arrival, its key
 front assumed where his balance pin stands along the key is not measured, and
 **not weighed**: until one of its keys is weighed whole on the bench, every
 reading that needs the key's mass is refused, saying so, and the others are
-read (§2.2). Each is a profile (`data/profiles/`), every number of which is a
-record or a stated assumption (§3.8), and every drawn line can be marked by how
-its number is known (§7.3).
+read ([The protocols, as they are](#the-protocols-as-they-are)). Each is a profile (`data/profiles/`), every number of which is a
+record or a stated assumption ([Every number has its provenance](#every-number-has-its-provenance)), and every drawn line can be marked by how
+its number is known ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)).
 
-### 2.1 Parts and statics
+### Parts and statics
 
 **The key**, `KeyDesign`, is a natural: a keystick of one wood thickness with
 what is glued to it or cut from it (the covering; the key front over the end
@@ -151,7 +151,7 @@ have, placed by its two ends from the balance pin, as the back check block is
 and for the same reason, the action placing the rail it clears, and by its
 depth below the full top; it is a shape of the keystick's outline, drawn in
 the section and in the solid and taken out of the drawn section whose
-centroid estimates a weighed key's center-of-mass height (§2.3). Neither
+centroid estimates a weighed key's center-of-mass height ([Named simplifications](#named-simplifications)). Neither
 shipped key has one drawn: the
 measured section's waits on the owner's measurement of its place and depth,
 and Hirschkorn's figure draws his key's top lowered from just behind the
@@ -160,8 +160,8 @@ a block across the step down to the tail, a felted tail under a block, a
 capstan over the thinned tail or across the step down to it, a dome narrower
 than its head, and a clearance run into the capstan's seat, into a block or
 back over the thinned tail, cut through the keystick, whose wood under it the
-chamfer under the tail thins where it runs on under it, or no cut (§7.3),
-each by how far. Hirschkorn's key has all of them but the clearance (§5.2 b). No
+chamfer under the tail thins where it runs on under it, or no cut ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)),
+each by how far. Hirschkorn's key has all of them but the clearance ([Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52"). No
 lead is modeled: a key's leads are in its weighing (below). Each piece is a part of its own, with its own material, on the key's
 body: the covering and the key front are of their own materials, the capsule and
 the back check block of one wood that is not the keystick's, and the front
@@ -169,19 +169,19 @@ mortise is a cut, a void in the keystick open at its underside.
 
 **The key is weighed whole**, as a key that arrives leaded is weighed, its leads
 in it and their masses unknown: its mass on a scale, and its front weight on
-Stanwood's jig (§2.2) with the distance back from the covering's lip it was read
+Stanwood's jig ([The protocols, as they are](#the-protocols-as-they-are)) with the distance back from the covering's lip it was read
 at, typed on the bench in grams and millimeters. The bench keeps the mass and
 the static moment about the balance pin, the front weight times the arm it was
 read on, with that reading as its datum, as it keeps a friction as a torque with
-the radius it was read at (§2.2): moving the measuring point afterwards, or
+the radius it was read at ([The protocols, as they are](#the-protocols-as-they-are)): moving the measuring point afterwards, or
 editing the key, reads the same moment on another arm, and the front weight the
 jig reads follows by the lever. The moment over the key's weight stands its
 center of mass along the key. Its height, which no scale gives, is estimated
 from the key's drawn section: the area centroid of its parts as the section
 draws them, the front mortise and the clearance in the top, where the key has
 one, taken out and the turned capstan left out, where
-the center of mass of a key of one material and one width would stand (§2.3).
-Every reading it reaches names it (§2.2): it acts only through the key's tilt
+the center of mass of a key of one material and one width would stand ([Named simplifications](#named-simplifications)).
+Every reading it reaches names it ([The protocols, as they are](#the-protocols-as-they-are)): it acts only through the key's tilt
 on its frame, about 0.02 g of down weight per millimeter on a key of 120 g
 standing 2.3° nose-up at its top seat, as the measured section does. A key
 nobody has weighed has no mass in the model at all: no volume and no density
@@ -231,15 +231,15 @@ deliberate act.
 **The general mechanism, its first part.** Bodies in a tree, the ground first,
 each hung from its parent by a pin or a slide with one coordinate, an angle or a
 length; poses by one forward pass, whose only transcendentals are one sine and
-one cosine per pin, through `libm` (§4.4); the Jacobian column of any material
-point for any coordinate, by the lever-arm identity of §6.2 extended to every
+one cosine per pin, through `libm` ([Determinism, stated correctly](#determinism-stated-correctly)); the Jacobian column of any material
+point for any coordinate, by the lever-arm identity of [The lever arm, and the gradient of a gap](#the-lever-arm-and-the-gradient-of-a-gap) extended to every
 ancestor joint; gravity at each body's center of mass and forces fixed in the
 world, with their potential and generalized forces; and coordinates prescribed
 for one procedure, with the reaction that holds each. The mechanism never
 computes a body's mass; it is handed one, the key's as a source publishes it or
 as it was weighed, the height of a weighed key's center of mass estimated from
 its drawn section; a key nobody has weighed is handed none, and the procedures
-that need its weight refuse. Its first client is the jig (§2.2). Each coordinate carries its
+that need its weight refuse. Its first client is the jig ([The protocols, as they are](#the-protocols-as-they-are)). Each coordinate carries its
 limits, an interval it cannot leave, and its joint's dry friction, a torque
 bound that holds it still against any generalized force inside it; the static
 solve below finds the coordinates a procedure leaves free. The key on its frame
@@ -261,9 +261,9 @@ parts reads every pair at any pose into rows: one for each pair of features that
 meet (a disc, which is an arc or a convex corner, against a straight face; two
 discs; a face's center against a face), each a signed gap with its normal and
 its contact point, and over every coordinate the gap's gradient by the lever-arm
-identity of §6.2 and the sliding of the two surfaces past each other. A row's
+identity of [The lever arm, and the gradient of a gap](#the-lever-arm-and-the-gradient-of-a-gap) and the sliding of the two surfaces past each other. A row's
 gap keeps its sign however deep it is read, though a corner driven past the
-center of an edge it overlaps can have no row at all (§6.6). A row deeper than
+center of an edge it overlaps can have no row at all ([Seventeen contacts per note](#seventeen-contacts-per-note)). A row deeper than
 the row margin is kept only where its point stands inside the other side's drawn
 material, the shallowest of a corner's, which is the face it comes out through;
 a face's center gives one only where no other side of the material stands nearer
@@ -302,7 +302,7 @@ no point by more than a picometer, no gap overlaps by more than a picometer,
 every row carrying more than the residual's tolerance of the loads is closed to
 within a picometer, and the stationarity residual is negligible against the
 loads, under a cap of 100 steps and of 200 sweeps of each box problem, its
-counts reported (§4.4). The closed rows are part of the test because the
+counts reported ([Determinism, stated correctly](#determinism-stated-correctly)). The closed rows are part of the test because the
 residual alone cannot see them: the box problem accepts its multipliers to a
 part in 10⁹ of their scale, and under a metric many accepted steps have
 softened, that accepts rows no motion can close together as closed while they
@@ -472,7 +472,7 @@ it: it is drawn where its top seat puts it, its back held
 down on its cloth by the load standing for the action, as key height is read,
 whatever weight stands on it, and the bench gives no verdict.
 
-### 2.2 The protocols, as they are
+### The protocols, as they are
 
 Every reading on the weighing sheet is a protocol run on the model, and comes
 back as a measurement: its value in full; what the trade reads it as, by the
@@ -480,13 +480,13 @@ protocol's own rounding; its unit and resolution; its conditions (where the
 key was read, the stops holding the seat it was read at or walked from, the
 loads that seated it, the walk, the temporary weight); its trust; the counts
 of the static solves it took; and the fingerprint of the solver that took it
-(§4.4). Or it is refused with its reason, and the others are read all the
+([Determinism, stated correctly](#determinism-stated-correctly)). Or it is refused with its reason, and the others are read all the
 same. `pa-cli weigh` prints each with its procedure, its trust and its counts.
 Their closed forms are test oracles, compiled for the domain's tests only.
 
 - **Front weight and key weight ratio** are Stanwood's jig run on the model
   [V, Stanwood 2000; `data/params/touchweight-protocol.json`]. The key hangs
-  from the jig by a pin at its balance pin's axis, a mechanism of §2.1 whose
+  from the jig by a pin at its balance pin's axis, a mechanism of [Parts and statics](#parts-and-statics) whose
   pin turns without friction: Stanwood's own tooling fastens the pin to a
   wedge that turns on a roller bearing with the key, so the key's bushings do
   not rub [V, Stanwood 2000, p. 21]. Its angle is held level, the covering's
@@ -500,8 +500,8 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   closed forms, static moment over arm and capstan arm over arm, are test
   oracles the jig matches to round-off. A jig pivots the key at the pin, so it
   cannot see where the key bears on its balance punching; only a reading on
-  the frame can (§5.2 a).
-- **Key height and dip** are the seated pose run on the model (§2.1): the back
+  the frame can ([Validation instruments](#validation-instruments), "One real key, measured by the owner").
+- **Key height and dip** are the seated pose run on the model ([Parts and statics](#parts-and-statics)): the back
   of the key held down at the capstan, then the front pressed down until a stop
   takes it, the two read at the key front's top. They see whichever stop binds
   first: a front pin bottoming in its mortise meets the mortise's top with a
@@ -544,7 +544,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   with the key level.
 - **The band** is the driven sweep, a second procedure for D and U and the
   force curve the bench draws: the static form of driving in position and
-  comparing forces (§5.1). The key is seated at the top and at the bottom of
+  comparing forces ([What a test proves; drive in position, compare forces](#what-a-test-proves-drive-in-position-compare-forces)). The key is seated at the top and at the bottom of
   its stroke; from the top seat its angle is held where the measuring point
   stands 0.05 mm lower, then twice that, through every whole step strictly
   inside the window between the two seats, each step solved from where the
@@ -577,7 +577,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   against its U −32.8319 g within a step of the bottom one, 184 readings
   each way. Every step is the band by hand at the
   attitude it holds, `(±b − M(θ)) / (g a(θ))`, to rounding. The step is one
-  of the solver's frozen numbers (§4.4). The sweep runs when the band is
+  of the solver's frozen numbers ([Determinism, stated correctly](#determinism-stated-correctly)). The sweep runs when the band is
   shown, never with the sheet; `pa-cli band` prints it.
 - **Read as gram weights give them**, the owner's reading: D and the key
   friction weights rounded up to the gram, U down, BW and F from those two
@@ -637,7 +637,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   U, BW, F, Stanwood's key friction weight and the band are refused, the key
   not weighed. On Hirschkorn's key every reading is indicative for its
   geometry alone, his mass, center of mass and bushings being published and
-  his keybed, rails, felts and papers borrowed or assumed (§2.3, §3.8). On the
+  his keybed, rails, felts and papers borrowed or assumed ([Named simplifications](#named-simplifications), [Every number has its provenance](#every-number-has-its-provenance)). On the
   measured section a key weighed on the bench has its mass and static moment
   set by hand, and the height of its center of mass is the estimate from its
   drawn section, which D, U, BW, F and Stanwood's key friction weight name;
@@ -645,7 +645,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
 - **Datums.** Key height and dip are read at the key front, the face of the
   plate over the end grain, 237.80 mm in front of the balance pin on
   Hirschkorn's key and 258 mm, assumed, on the measured section. Every
-  touchweight is read at the measuring point, 13 mm by default (§3.1) back
+  touchweight is read at the measuring point, 13 mm by default ([The trade's protocols are the acceptance test](#the-trades-protocols-are-the-acceptance-test)) back
   from the covering's lip, the front edge of the keytop, which stands 1.48 mm
   proud of the key front on his key and 2 mm on the measured section: 226.28
   and 247 mm in front of the balance pin. The distance is
@@ -656,7 +656,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   lever, the same static moment and the same friction torque read on another
   arm, and leaves key height and dip where they are.
 
-### 2.3 Named simplifications
+### Named simplifications
 
 - **A key's mass is weighed, never derived from its outline.** A volume model
   cannot predict a front weight read to the gram: a grand keystick is far
@@ -664,7 +664,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   hollows and leads are where its plan puts them, several grams of doubt in
   all. So a key's mass is weighed, per key, by the trade's protocol, each key
   being cut to its own plan shape: built, its mass and its front weight, which
-  give its static moment about the balance pin (§2.1); planned, for the
+  give its static moment about the balance pin ([Parts and statics](#parts-and-statics)); planned, for the
   dynamics, its inertia. The three are independent: a key carrying 16 g of
   front weight in leads alone has 8,000, 5,700 or 2,920 g·cm² about its
   balance point depending on where the leads sit [V, Nakamura, *Practical
@@ -683,10 +683,10 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   out (built), which treats the key
   as one material of one width: a covering denser than the wood raises the
   true center, and leads set low in the keystick lower it, each millimeter
-  moving D by about 0.02 g on a key of 120 g (§2.1). No lead is modeled:
+  moving D by about 0.02 g on a key of 120 g ([Parts and statics](#parts-and-statics)). No lead is modeled:
   a key arrives leaded, with lead masses nobody knows, and is weighed whole.
 - **The default key is Hirschkorn's**, note 52 of a Boston GP-178, on his
-  printed frame (§5.2 b). Published, with their tables: his key's printed
+  printed frame ([Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52"). Published, with their tables: his key's printed
   points, lines and circles, its mass, center of mass and inertia (Table
   A.1), its bushings' friction (Table A.9), his frame's bearings and his dip
   target. Traced from his Figure A.1 [E, 11]: the key front, 237.80 mm in
@@ -756,7 +756,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   so a front rail moved back onto the balance rail is drawn through it; and
   the capstan's thread against its hole, so a capstan screwed up past its
   shaft's length, within the 2 to 30 mm the bench admits, is drawn standing
-  above the wood (§7.3).
+  above the wood ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)).
 - **Hirschkorn's key is drawn square** where his figure draws its key button
   with rounded ends, its two blocks coved and its covering beveled, each
   traced to its feet [E, 11]; its back check, wire and head, belongs to the
@@ -771,7 +771,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   and length along the key are assumed [S, `data/params/key-section.json`],
   its width across the keyboard not modeled.
 
-### 2.4 The bench
+### The bench
 
 **Built.** A browser page in React and react-three-fiber draws the key on its
 frame in section and in solid from parts computed in Rust, each in its own
@@ -815,19 +815,19 @@ Stanwood's protocol reads; how far the punchings' drawn edges overlap the key;
 and, on a key nobody has weighed, why a weight on it does nothing). The panels
 and their controls are the ones the engine's registry
 describes, in its order, each control's range, step and unit the engine's
-(§7.2); the page adds the readings and the notes around them. Every slider
+([The WebAssembly boundary](#the-webassembly-boundary)); the page adds the readings and the notes around them. Every slider
 shows the value the engine holds, the key friction weight's as the sheet reads
 it and every other as the settings hold it, and keeps no copy of it; a slider
 moved where no key could be built is refused, the slider back where the
 setting stands and the page saying why right under it, with the limiting
-dimension and the shortfall (§7.3); the target and weighing fields hold what
+dimension and the shortfall ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)); the target and weighing fields hold what
 is typed until it is sent.
-In place of the section and the solid the view draws the band (§2.2): force
+In place of the section and the solid the view draws the band ([The protocols, as they are](#the-protocols-as-they-are)): force
 on the measuring point in grams against the key's travel there in
 millimeters, the down curve and the up curve, the two seats at the window's
 ends, the down curve's greatest force and the up curve's least marked where
 they fall and labeled in full, to the hundredth of a gram, never as the
-sheet's D and U, which read the gram (§2.2), the weight on the measuring
+sheet's D and U, which read the gram ([The protocols, as they are](#the-protocols-as-they-are)), the weight on the measuring
 point drawn across it and a dot where that weight has left the key; the
 pointer reads both curves at the travel nearest it, and for a reader without
 the chart the two extremes are written out and a table carries every step.
@@ -838,21 +838,21 @@ measuring point, which the band does not read, moves only its line and dot. A
 key with no stroke, or no mass, has no band, and the view says why.
 Faults are listed in millimeters, every number on the page is computed in
 Rust, and every sentence is the English catalog's, composed from the codes the
-engine sends (§3.12).
+engine sends ([A bilingual interface](#a-bilingual-interface)).
 `pa-cli weigh` prints every reading of Hirschkorn's key, or of the shipped
 profile named, with its procedure, its trust and the static solves it took;
 `pa-cli band` prints the band, its two extremes in full beside the walk's D
 and U, and both curves step by step.
 
-## 3. Decisions that stand
+## Decisions that stand
 
 Each decision is in force; its reason is given, and the alternative it rules
 out where that matters.
 
-### 3.1 The trade's protocols are the acceptance test
+### The trade's protocols are the acceptance test
 
 The simulator reports what a technician's procedure reads when run on the model
-(§1.3), so the person who uses the tool can judge it; ruled out are probes chosen
+([The acceptance criterion](#the-acceptance-criterion)), so the person who uses the tool can judge it; ruled out are probes chosen
 for convenience, a parameter read back or an internal angle. The protocols are
 Stanwood's *Standard Protocols of the New Touchweight Metrology* (Piano
 Technicians Journal, February 2000), which supersede those of his 1996 paper:
@@ -877,12 +877,12 @@ and every touchweight would be read on an arm 0.8 % shorter. **The distance is a
 default and the glossary's 1/2 inch as its alternative
 [`data/params/touchweight-protocol.json`], held in one place because every
 touchweight protocol reads it, so no two can be taken at different points
-(§2.2). Key height and key dip keep the key front as their datum.
+([The protocols, as they are](#the-protocols-as-they-are)). Key height and key dip keep the key front as their datum.
 
-### 3.2 Staged by sub-assembly, with the view at every stage
+### Staged by sub-assembly, with the view at every stage
 
 The action is built one sub-assembly at a time, engine and view together, along
-the terms of Stanwood's equation: key, wippen, hammer (§8). A discrepancy is
+the terms of Stanwood's equation: key, wippen, hammer ([Stages](#stages)). A discrepancy is
 then attributable (a whole action's down weight has dozens of candidate causes,
 one key's front weight a handful); the decomposition is the trade's own, each
 term a sub-assembly and a measurement; and the owner validates by looking, so
@@ -893,7 +893,7 @@ channel of validation. Geometry comes from the owner's measurements, asked for
 before a part is drawn; the drawing catches what slips through and does not
 replace measuring.
 
-### 3.3 Upstream settings drift; faults are reported, not refused
+### Upstream settings drift; faults are reported, not refused
 
 Change the key dip and the aftertouch keeps its old value, out of specification;
 shorten a key and its front rail pin stands outside its mortise by a named
@@ -903,10 +903,10 @@ breaks needs to know where: both are what the tool teaches. Ruled out:
 cascading, which hides the lesson, and refusing every state out of
 specification, which forbids design. The limit is honesty: what cannot be
 computed or drawn truthfully is refused, never clamped, with its reason, the
-limiting dimension and the shortfall, before any solve (§7.3). Built for the
-key and its frame (§2.1, §7.3); planned for regulation settings, as badges.
+limiting dimension and the shortfall, before any solve ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)). Built for the
+key and its frame ([Parts and statics](#parts-and-statics), [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)); planned for regulation settings, as badges.
 
-### 3.4 Regulation as targets; the coordinate is normative
+### Regulation as targets; the coordinate is normative
 
 Regulation is stated in the trade's targets (key height and dip, then blow
 distance, let-off, drop, checking) and the geometry (punching stacks, capstan,
@@ -917,11 +917,11 @@ silently change every number downstream. Training turns an actuator and reads
 the result; the solver aims at a target. Built: key height and dip solved to
 punching stacks by the seated pose itself, laid from the drawer within one
 paper of their targets, a target a stop forbids refused with the stop and the
-shortfall (§2.1); the solver's fingerprint, which every reading carries
-(§4.4). Planned: the other targets, actuators with their quanta (a paper, a
-turn of a screw), persistence (§7.4).
+shortfall ([Parts and statics](#parts-and-statics)); the solver's fingerprint, which every reading carries
+([Determinism, stated correctly](#determinism-stated-correctly)). Planned: the other targets, actuators with their quanta (a paper, a
+turn of a screw), persistence ([Persistence](#persistence)).
 
-### 3.5 Set-valued dry friction, at the axes and at sliding contacts
+### Set-valued dry friction, at the axes and at sliding contacts
 
 Friction at a pivot is a set, any torque within [−b, b] while the pivot is
 still; never a `sign()` or a `tanh()`. The interval between down weight and up
@@ -945,14 +945,14 @@ loaded contact sticks (218,419 reversals in the 485,000 steps of a forte press
 at 1 µs), and its readings still move at a quarter of a microsecond
 [E, prototype]. Its limit as that speed goes to zero is a set: any friction up to
 the curve's peak while the contact sticks, the kinetic coefficient while it
-slides (§6.5). That set is what the engine uses, solved with the axes' in one
+slides ([Friction](#friction)). That set is what the engine uses, solved with the axes' in one
 box-constrained problem at velocity level. Built: the key's balance friction,
 set-valued, a box row of the static solve, stored as a torque with the radius
 it was typed at, typed as a key friction weight in grams at the measuring
-point, the torque at which Stanwood's protocol reads it back (§2.2).
+point, the torque at which Stanwood's protocol reads it back ([The protocols, as they are](#the-protocols-as-they-are)).
 Planned: every pivot and the four sliding contacts, in every solver.
 
-### 3.6 Relative coordinates for the jack and the repetition lever
+### Relative coordinates for the jack and the repetition lever
 
 Planned, with the dynamics. One note has six coordinates: key, wippen, jack and
 repetition lever each relative to the wippen, hammer, damper under-lever. The
@@ -974,7 +974,7 @@ I_cm + m|**r** + **u**|². **Do not use** I_cm + m(**r**·**u**) and
 I_cm + m|**r**|²: they fit neither relative nor absolute coordinates, and a
 positivity test passes on them anyway.
 
-### 3.7 The two key ratio conventions; ratios are outputs
+### The two key ratio conventions; ratios are outputs
 
 The **force convention**, KR = force at the front over force at the capstan,
 read with 10 g at the capstan ("−5.5 … 0.55") [V, Stanwood 2000], about 0.50 to
@@ -998,7 +998,7 @@ of the stroke, Stanwood's strike ratio, the ratio of useful travels) differ on
 one action; each is to be reported, labeled (planned). Built: the key weight
 ratio is computed from the arms and has no setter.
 
-### 3.8 Every number has its provenance
+### Every number has its provenance
 
 Every value the engine starts from has a record in `data/params/` with its unit,
 source and reliability marker (`V`, `E` or `S`), or is an assumption a profile
@@ -1019,18 +1019,18 @@ is stated in the profile that uses it. `every_default_has_a_record_or_a_stated_a
 a number of a shipped profile that is neither, the numbers taken from the
 validation layer's walk of every field, which the compiler holds exhaustive.
 Hirschkorn's profile reads his record and the outline traced from his
-Figure A.1 (§5.2 b), each traced number `[E, 11]`. A drawn stretch of a part
+Figure A.1 ([Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52"), each traced number `[E, 11]`. A drawn stretch of a part
 is placed by one number of the design, which the part names; how it is known,
 measured, published, traced, derived, borrowed, assumed, or set on the bench
 since the instrument was built, is read from the instrument's profile, and the
-view marks every line by it when asked (§7.3). A profile names the
+view marks every line by it when asked ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)). A profile names the
 instruments it describes as its records name them, so a number it reads from
 a record of another instrument, as Hirschkorn's reads the owner's key frame's
 pins and punchings, is marked borrowed rather than measured.
 
-### 3.9 A dedicated planar solver, not a general-purpose engine
+### A dedicated planar solver, not a general-purpose engine
 
-Six coordinates and seventeen contacts per note (§6.6) make a small multibody
+Six coordinates and seventeen contacts per note ([Seventeen contacts per note](#seventeen-contacts-per-note)) make a small multibody
 problem; the work is in contact geometry, material laws, friction and
 protocols, and three things a general-purpose engine lacks decide it.
 (1) **Per-contact nonlinear felt laws with memory**: what the finger feels and
@@ -1038,7 +1038,7 @@ when escapement happens come from felt and leather compressing, each interface
 with its own law of penetration, rate and history, while game engines expose a
 scene-wide numerical softness (Rapier's default: a 30 Hz spring, damping ratio
 10 [V, Rapier source]) and accept no force law per contact. (2) **Exact analytic
-lever arms at sub-millimeter scale, in double precision** (§6.2), where a
+lever arms at sub-millimeter scale, in double precision** ([The lever arm, and the gradient of a gap](#the-lever-arm-and-the-gradient-of-a-gap)), where a
 collision pipeline returns contact points with margins and Rapier's browser
 build is single precision. (3) **Contact softness and margins are global and
 millimetric**: at metric scale Rapier tolerates 5 mm of penetration and
@@ -1050,27 +1050,27 @@ constraint has a maximum friction torque, and Box2D documents joint friction as
 a motor held at zero speed with a bounded torque, the box constraint of MuJoCo's
 friction loss [V, Jolt `HingeConstraintSettings`; Box2D manual]; joint friction
 does not distinguish a dedicated solver, nor does the reflected-mass ratio at
-the knuckle (§4.1). **MuJoCo** has joint friction loss, polynomial springs,
+the knuckle ([The time step](#the-time-step)). **MuJoCo** has joint friction loss, polynomial springs,
 reduced coordinates, double precision and an official WebAssembly build, but its
 friction loss is a soft constraint, so a joint creeps under a sub-threshold
 load: an optional oracle for cross-checks (planned), not a dependency.
 
-### 3.10 Rust compiled to WebAssembly; notes on independent workers
+### Rust compiled to WebAssembly; notes on independent workers
 
 **Built.** The domain is Rust, compiled to WebAssembly for the bench and
 natively for `pa-cli` and the tests, for reasons that are not speed: arithmetic
 reproducible across machines (ECMAScript leaves every transcendental but `sqrt`
 implementation-approximated, and engines differ; Rust with the `libm` crate
-does not, §4.4); no garbage collector in a fixed-step loop; and native runs of
+does not, [Determinism, stated correctly](#determinism-stated-correctly)); no garbage collector in a fixed-step loop; and native runs of
 the code that ships, for studies, sweeps and golden tests. **WebAssembly threads:
 no.** On the pinned Rust 1.99.0, linking `pa-wasm` with shared memory fails
 (`rust-lld: error: --shared-memory is disallowed by std-… because it was not
 compiled with 'atomics' or 'bulk-memory' features`), and rebuilding the standard
 library needs nightly; reproduce it on the `cdylib`, since a library crate does
 not link and passes with the same flags. The planned 88-note runtime is
-therefore one module per Web Worker (§7.6).
+therefore one module per Web Worker ([The 88-note runtime](#the-88-note-runtime)).
 
-### 3.11 React and react-three-fiber for the bench
+### React and react-three-fiber for the bench
 
 **Built.** React, with three.js through react-three-fiber and drei, covers a 3D
 scene inside a dense interface of panels and readouts; `three`, its types,
@@ -1079,40 +1079,40 @@ and values sit in HTML over the canvas, never as 3D text. Ruled out: Babylon.js,
 with a better inspector and bundled types but no equivalent of the React
 ecosystem for the interface. Planned: linings drawn compressed by the solver's
 penetration, dimensions on the section, one instanced mesh per part family for
-88 notes, and the realistic rendering of §1.1: materials and detailed shapes
+88 notes, and the realistic rendering of [An engine for piano applications](#an-engine-for-piano-applications): materials and detailed shapes
 as skins riding on the parametric solids without replacing them, so the
 realistic view cannot drift from the physics any more than the section can.
 
-### 3.12 A bilingual interface
+### A bilingual interface
 
 English and French: the primary user works in French and the vocabulary is the
 point; contributors read English; wording built in Rust could not be translated.
 **Built:** Rust sends codes and numbers across the boundary, never sentences
-(§7.2), and the page composes every sentence it shows from one catalog per
+([The WebAssembly boundary](#the-webassembly-boundary)), and the page composes every sentence it shows from one catalog per
 language (`apps/bench/src/i18n/`), each family of codes typed from the generated
 types, so that a code the engine gains and a catalog does not word fails the
 type-check. Emphasis is marked in the wording itself, so a translation carries
 it with its words. The English catalog is the one built. **Planned:** the
 French catalog, in the owner's trade vocabulary (glossary:
-`docs/research/A3-nomenclature-and-regulation.md` §6); the browser's language
+[A3 > Bilingual glossary FR ↔ EN (+ DE) and code identifiers](research/A3-nomenclature-and-regulation.md#bilingual-glossary-fr--en--de-and-code-identifiers)); the browser's language
 detected, English the default, and a selector.
 
-## 4. What the dynamics prototype settles, and what it leaves open
+## What the dynamics prototype settles, and what it leaves open
 
 **Built**, and throwaway: a one-note dynamics prototype on Hirschkorn's Boston
 GP-178, note 52, in Python, reading his record and assembled with the pivots
-read correctly (§6.4), in `tools/dynamics-prototype/`. Its level-0 checks pass,
+read correctly ([Hirschkorn's frames](#hirschkorns-frames)), in `tools/dynamics-prototype/`. Its level-0 checks pass,
 and its `RESULTS.md` holds the step-convergence and solver study, generated by
 `study.py`: four integrators, four scenarios (a slow weighing-like press, a
 forte and a piano press under position drive, a forte driven by force, each with
 its release), fixed steps from 0.25 to 500 µs. Every result in it is a
-consistency check (§5.1): it says how the model behaves under its integrators,
-not that the model is right. §4.1, §4.2 and §4.6 are settled by it; §4.3 and §4.5
+consistency check ([What a test proves; drive in position, compare forces](#what-a-test-proves-drive-in-position-compare-forces)): it says how the model behaves under its integrators,
+not that the model is right. [The time step](#the-time-step), [One dynamic solver](#one-dynamic-solver) and [The 88-note budget](#the-88-note-budget) are settled by it; [The felt law](#the-felt-law) and [Rigid bodies](#rigid-bodies)
 remain hypotheses.
 
-### 4.1 The time step
+### The time step
 
-**Settled: one fixed step of 50 µs, no sub-steps.** With the solver of §4.2,
+**Settled: one fixed step of 50 µs, no sub-steps.** With the solver of [One dynamic solver](#one-dynamic-solver),
 every trade observable (let-off, aftertouch, drop, checking, the rest regained
 after release, down and up weight), the hammer's speeds within 1 %, and the key
 force of the slow press within 1 g and of the piano press within 0.1 N stay
@@ -1146,14 +1146,14 @@ stability limit**: it is the undamped limit of an explicit spring, the limit
 widens with the contact damping implicit in velocity, and stability is not
 accuracy [E, 05].
 
-### 4.2 One dynamic solver
+### One dynamic solver
 
 **Settled: explicit on the contact laws, with both frictions as one set.** One
 dynamic solver serves the bench and the keyboard: semi-implicit Euler on the
 compliant contact laws, and the axis friction and the four sliding contacts'
-friction (§3.5) as box-bounded unknowns at velocity level, solved together by a
+friction ([Set-valued dry friction, at the axes and at sliding contacts](#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)) as box-bounded unknowns at velocity level, solved together by a
 projected Gauss–Seidel sweep finished by an exact active-set pass, at the fixed
-step of §4.1 [E, prototype]. **Rejected on accuracy: compliant contacts treated
+step of [The time step](#the-time-step) [E, prototype]. **Rejected on accuracy: compliant contacts treated
 implicitly by backward Euler.** It is stable at every step tried, but it damps
 every contact mode: the back check catches the hammer 25 µs late per
 microsecond of step, and it holds the observables only to 2 µs where the
@@ -1161,7 +1161,7 @@ explicit solver holds them to 50 µs or more [E, prototype]. A trapezoidal step
 was not tried; it would matter for a much stiffer felt law. The quasi-static
 solver is a separate static solve on the same contacts and friction sets,
 inertia dropped, solved to convergence under an iteration cap (built for the
-key on its frame, §2.1). With compliant contacts
+key on its frame, [Parts and statics](#parts-and-statics)). With compliant contacts
 the configuration depends on the forces, so each load increment of a weighing
 is a nonlinear complementarity problem; reading D and U off two linear programs
 holds only for rigid contacts on one coordinate.
@@ -1175,7 +1175,7 @@ very similar results at 2 and 10 kHz and significant discrepancies at 0.4 kHz
 trajectory existed, doubling the costliest code for a cross-check that
 convergence studies and published data provide.
 
-### 4.3 The felt law
+### The felt law
 
 What felt does, in Hirschkorn's words: it "does not follow any simple power
 function"; it "requires more force to compress than it returns on
@@ -1216,7 +1216,7 @@ penetration": that needs b_d recalibrated at every penetration. **Stulov's
 hereditary law**, if used for the string, needs an exact update of its memory
 variable with the input varying linearly across the step; holding the input
 constant over the step removes most of its dissipation. **A non-integer power is
-allowed**: the `libm` crate makes `pow` as reproducible as `sin` (§4.4), and the
+allowed**: the `libm` crate makes `pow` as reproducible as `sin` ([Determinism, stated correctly](#determinism-stated-correctly)), and the
 law is chosen on physics and measured cost.
 
 **Do not use "no published rate-independent felt model"**: Masoudi and McPhee
@@ -1226,7 +1226,7 @@ against 7e9; at equal force, 10 to 100 N, the tangent stiffnesses differ by 3.1
 to 3.6 [E, 05]. The two laws come from different actions, benches and law forms,
 and enter the data as two labeled material sets, never merged.
 
-### 4.4 Determinism, stated correctly
+### Determinism, stated correctly
 
 The arithmetic is identical bit for bit on every machine when all of these hold:
 IEEE-754 operations only, with no fast-math and no contraction of a multiply and
@@ -1253,7 +1253,7 @@ it either.
 The toolchain pins, Rust 1.99.0 and Node 26, keep tools, lints and formatting
 identical between machines; the `libm` crate, not the pins, makes native and
 WebAssembly results agree. Built: `libm` is `pa-core`'s one dependency, and the
-sine and cosine of every pose go through it (§2.1); Clippy refuses in `pa-core`
+sine and cosine of every pose go through it ([Parts and statics](#parts-and-statics)); Clippy refuses in `pa-core`
 every `f64` method IEEE-754 does not round exactly, `sin` to `hypot`, `powi`
 included (`crates/pa-core/clippy.toml`), so no transcendental in the domain
 reaches the platform's math library, and a test that wants one for a reference
@@ -1266,7 +1266,7 @@ friction weight into a torque, resolve far below anything read, and a walk's
 threshold within its last bracket of a whole gram reads as that gram; the static
 solve converges under its caps and reports its counts, a key free to lift in up
 to four pieces of the step cap, each going on from where the last stopped,
-counted as one increment (§2.1); and a test holds the seats of every key of its
+counted as one increment ([Parts and statics](#parts-and-statics)); and a test holds the seats of every key of its
 property corpus a keyboard could be built from, and of every frame whose stops
 fight, to a quarter of the step cap, and the walks' increments to half of it: a
 trial a hair past breakaway starts the key with a step of a femtometer, each
@@ -1278,10 +1278,10 @@ stations and the searches' reaches, and fails when one changes and the
 fingerprint does not; where the key leaves its balance pin is read off the
 drawn pin, a dimension and not a frozen number, and the key weight ratio's
 load is the protocol's, bound by the instrument's profile to its record. The golden
-sheet (§7.1) holds the engine's readings bit for bit wherever the tests run, and
+sheet ([Crates, apps and gates](#crates-apps-and-gates)) holds the engine's readings bit for bit wherever the tests run, and
 the WebAssembly build to the same bits as the native one.
 
-### 4.5 Rigid bodies
+### Rigid bodies
 
 **Hypothesis.** The key and the hammer are rigid. Thorin's criterion, a part's
 first bending mode against the duration of the event, holds for the key (first
@@ -1293,13 +1293,13 @@ position drive; untested so far, the prototype having no head–shank coordinate
 and the record no shank stiffness. **Do not use 280 Hz** for the hammer's first mode, nor the
 180 µs derived from it as a twentieth of its period: the figure is in no source.
 
-### 4.6 The 88-note budget
+### The 88-note budget
 
 **Hypothesis.** One dynamic solver, notes computed independently on a few
 workers, plays 88 notes in real time on a laptop: a note is active for a few
 hundred milliseconds and static in its hold, so far fewer than 88 move at once.
 **Counted:** about 2,400 floating-point operations a step with the solver of
-§4.2, plus 15 transcendental calls: 49 million per simulated second for a note
+[One dynamic solver](#one-dynamic-solver), plus 15 transcendental calls: 49 million per simulated second for a note
 at 50 µs, 4.3 billion if all 88 notes moved at once [E, prototype], which they
 rarely do. **Still to measure:** the cost per step natively and in Chrome and
 Safari, and the notes active at once over a corpus of MIDI files, pedal changes
@@ -1307,9 +1307,9 @@ included.
 **Do not use** the per-step costs quoted in annex A1: the benchmark kernel
 behind them is not in the repository.
 
-## 5. Validation
+## Validation
 
-### 5.1 What a test proves; drive in position, compare forces
+### What a test proves; drive in position, compare forces
 
 A **consistency check** shows that the model agrees with itself or with
 mathematics: a round trip, a closed form against a solver, a derivative against
@@ -1317,7 +1317,7 @@ a finite difference, a conservation law. It catches coding errors, and a wrong
 model passes it. A **validation test** predicts outputs measured independently
 from inputs measured independently, on the same instrument; only validation says
 the model is right. A validation test says so; every other test is a consistency
-check, as the whole stage-1a suite is. The first validation test is §5.2(a).
+check, as the whole stage-1a suite is. The first validation test is [Validation instruments](#validation-instruments), "One real key, measured by the owner".
 
 **Drive in position, compare forces.** The action is dominated by inertia until
 escapement: driven by a force and judged on displacements, a deliberately wrong
@@ -1328,16 +1328,16 @@ the dynamics are validated by driving the key in position and comparing the
 reaction force at the finger, the curve a technician reads, and the **Bad-Model
 guard** belongs in the suite: stiffen the felts, and if validation still passes,
 the validation is worthless. Planned for the dynamics; its static form is built,
-the band (§2.2), which drives the key through its stroke in position and reads
+the band ([The protocols, as they are](#the-protocols-as-they-are)), which drives the key through its stroke in position and reads
 the force that holds it there.
 
-### 5.2 Validation instruments
+### Validation instruments
 
-**(a) One real key, measured by the owner** (planned). Its mass and its front
-weight by the trade's protocol are inputs (§2.3); its key weight ratio on the
+**One real key, measured by the owner** (planned). Its mass and its front
+weight by the trade's protocol are inputs ([Named simplifications](#named-simplifications)); its key weight ratio on the
 jig and its down and up weights on its frame are outputs, the bench's measuring
-point set to where he weighs before anything is weighed (§3.1). Its entry
-point is built: the owner's measured section (§2.3), which arrives unweighed,
+point set to where he weighs before anything is weighed ([The trade's protocols are the acceptance test](#the-trades-protocols-are-the-acceptance-test)). Its entry
+point is built: the owner's measured section ([Named simplifications](#named-simplifications)), which arrives unweighed,
 takes the three numbers of one of its keys weighed whole, its mass, its front
 weight by Stanwood's protocol and how far back from the covering's lip the
 weight was centered, and reads the rest; with the distance from the balance
@@ -1348,7 +1348,7 @@ the rest attitude add. But it is the first comparison of computed readings with
 independent ones, and it exercises what stage 1a builds: arms, datum, bearing,
 protocols.
 
-**(b) Hirschkorn's Boston GP-178, note 52**: geometry, masses,
+**Hirschkorn's Boston GP-178, note 52**: geometry, masses,
 thirteen contact laws and five axis frictions measured on one action [V,
 Hirschkorn 2004, Appendix A]. With every frame's origin at its own pivot, his
 geometry closes on contacts 1, 3, 5, 7 and 10 with the hammer 47.0 mm from the
@@ -1421,24 +1421,24 @@ its front punching under no weight, and falls on its own. His dip of 10.0 mm
 is one regulation away. Nothing on the key validates
 until his action's own readings are compared (stage 2).
 
-**(c) Thorin's Renner demonstrator** (planned): the only published key force
+**Thorin's Renner demonstrator** (planned): the only published key force
 under position drive, and escapement velocities measured and simulated, 1.01 and
 1.00 m/s piano, 1.56 and 1.56 m/s forte [V, Thorin 2017, Table 5]. It was
 adjusted by a professional technician and carries no key leads [V, Thorin 2013
 §1.6]: do not read its heavy touchweights as wear. Its parameters have lineage
-traps (§6.3).
+traps ([Parameter lineage](#parameter-lineage)).
 
-### 5.3 Levels
+### Levels
 
 | Level | What it checks | Kind | Status |
 |---|---|---|---|
 | 0 | the mechanism's Jacobian columns against central differences of its poses, and its generalized forces against the gradient of its potential; every contact row's gradient and sliding against central differences, at depths past any radius, its sign against the side of its drawn piece; the contact rows against a brute-force sampling of the drawn outlines; every contact surface a range of a drawn part, and every row's points on the drawn outlines wherever the key stands, riding on stops that fight and lifted off its punching included; the box problem against an exhaustive enumeration of its active sets; the static solve against closed forms (a pendulum on its stop, a lever breaking away at its friction band, two levers through an arc in the ratio of their arms); the unilateral virtual-work inequality at every settled state; the seated pose against a brute-force reading of the drawn outlines over a property corpus, frames whose stops fight among them, the key riding on its stops with no dip, and the breakaway walk over the same corpus, D above U by the band its friction makes; a front pin a few tenths into the wood beside its slot, the key lowered onto it from above; the key on its balance punching against the key on a pivot there, the same bits wherever the punching carries it; a pull past what the punching carries, by hand, lifting the key off its frame and the bench saying so; the key ratio guard; the solver's fingerprint against a hash of its frozen numbers | consistency | built |
 | 0 | the mass matrix against finite differences of the kinetic energy; normals continuous across the hybrid profiles; every coordinate acted on by a contact or a spring | consistency | planned |
-| 1 | step convergence: one scenario at several steps (§4.1) | consistency | planned |
+| 1 | step convergence: one scenario at several steps ([The time step](#the-time-step)) | consistency | planned |
 | 2 | energy in free flight, contacts and friction off: bounded for the hammer alone; for the (wippen, jack, lever) block, whose mass matrix depends on its configuration, a drift falling as O(dt) | consistency | planned |
-| 3 | published data, §5.2 (b) and (c) | validation | planned |
+| 3 | published data, [Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52" and "Thorin's Renner demonstrator" | validation | planned |
 | 4 | the trade's protocols run on the model: the jig, reading a key weighed whole back where its front weight was read and by the lever elsewhere, the seated pose that reads key height and dip, the breakaway walk that reads D and U and both key friction weights, against the band at the seats' attitudes by hand and the level closed form within its derived tilt, the driven sweep that draws the band, every step against the band by hand at the attitude it holds and its extremes against the walk's D and U in full within the walk's resolution and the curve's change over one step, a step half as long within the same, on both shipped keys, the measured section weighed by a test weighing and in whole grams, a key friction weight typed read back by Stanwood's protocol and its bushings against that band by hand, and the regulation that lays papers to key height and dip targets, against an exact inverse of the key on a pivot and with the small-angle placement held within the terms it drops; every reading of the golden sheet the same bits natively and in WebAssembly | consistency | built |
-| 4 | let-off, drop, checking, aftertouch and blow distance as the trade measures them; §5.2 (a) | consistency, and validation where the measurement is independent | planned |
+| 4 | let-off, drop, checking, aftertouch and blow distance as the trade measures them; [Validation instruments](#validation-instruments), "One real key, measured by the owner" | consistency, and validation where the measurement is independent | planned |
 | 5 | sensitivities by finite differences: what moves when a setting changes | consistency | planned |
 
 **Non-confusion tests** (built, through the procedures and through the whole
@@ -1474,13 +1474,13 @@ function convex along a few parameters and flat along many, and concludes that
 piano action" with it [V, Thorin 2013 §6.5.6]. A scripted regulation sequence
 or a grid search does the job.
 
-## 6. Physics notes for the next stages
+## Physics notes for the next stages
 
-### 6.1 Springs inside the wippen assembly
+### Springs inside the wippen assembly
 
 **The lemma.** A massless spring pivoted on one of the wippen, the jack and the
 repetition lever, and bearing on two of them, has exactly zero generalized force
-on the wippen's coordinate of §3.6: turning the wippen with the jack and lever
+on the wippen's coordinate of [Relative coordinates for the jack and the repetition lever](#relative-coordinates-for-the-jack-and-the-repetition-lever): turning the wippen with the jack and lever
 angles held turns the whole assembly rigidly, spring included, without
 deforming it, whatever the spring's shape.
 
@@ -1518,7 +1518,7 @@ reversals of contact state, not on velocity sign changes, which count the
 solver's chatter; float; and the finger's impulse, since a peak against a stiff
 stop scales with the step.
 
-### 6.2 The lever arm, and the gradient of a gap
+### The lever arm, and the gradient of a gap
 
 For a contact between bodies A and B, with contact point P, unit normal n
 pointing from B to A, and O the pivot about which a coordinate turns its body:
@@ -1533,7 +1533,7 @@ parent's coordinate turns the child's points about the parent's pivot. Built for
 circle against line and circle against circle at one coordinate, as the
 mechanism's Jacobian column for any material point over every ancestor joint,
 and for every contact row over every coordinate, `n · (J_A − J_B)` at the
-contact point, a coordinate that moves both bodies canceling exactly (§2.1);
+contact point, a coordinate that moves both bodies canceling exactly ([Parts and statics](#parts-and-statics));
 each tested against central finite differences.
 **Do not use** ∂g/∂θ_B = −(ẑ × (x_c − o_B))·n_B −
 (c_A − p_B)·(ẑ × n_B) for a circle on A against a line on B: the second term is
@@ -1545,7 +1545,7 @@ flat top, whose normal runs close to the jack's pin, so the jack's own arm is
 contact points migrate, so a lever ratio is never a constant; the literature's
 small-angle ratios are linearizations about rest.
 
-### 6.3 Parameter lineage
+### Parameter lineage
 
 Planned: each value transcribed with its lineage: measured, assumed, placeholder.
 
@@ -1574,13 +1574,13 @@ Planned: each value transcribed with its lineage: measured, assumed, placeholder
   own 2e7 for felt and 1e3 and 3e3 for the knuckle's and drop screw's leathers
   [V, Thorin 2013 Eqs 4.9–4.10; Lozada 2007, Table 2.3].
 
-### 6.4 Hirschkorn's frames
+### Hirschkorn's frames
 
 Every body frame in Hirschkorn's Appendix A has its origin at the body's pivot,
 as his Figure A.1 draws it: the ground pins are Pg1 (key), Pg2 (wippen) and Pg3
 (hammer), and in the wippen's frame Pw2 is the jack's pin and Pw3 the lever's,
 both listed as "Pin Location" [V, Hirschkorn 2004, Figure A.1, Tables A.2–A.4].
-Read that way the action closes at rest (§5.2 b). **Do not take Pw2 for the
+Read that way the action closes at rest ([Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52"). **Do not take Pw2 for the
 wippen's pivot**: that misreading is what gives the 12 µs step, the 570:1 ratio
 and the claim that his rest pose cannot be reconstructed. **Do not use 5.84 as a
 closed test of the action ratio**: that lever product multiplies radial
@@ -1589,9 +1589,9 @@ and uses the front punching, 217.5 mm out, as the key's front arm instead of the
 measuring point, and a band of 5.0 to 7.0 could not see a 10 % error in an arm
 anyway. The action ratio is read off an assembled model, by virtual work.
 
-### 6.5 Friction
+### Friction
 
-- **At the axes**: set-valued (§3.5). Hirschkorn measures five pivots, key
+- **At the axes**: set-valued ([Set-valued dry friction, at the axes and at sliding contacts](#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)). Hirschkorn measures five pivots, key
   0.0122, wippen 3.97e-4, jack 3.97e-4, repetition lever 2.47e-3 and hammer
   1.01e-3 N·m, kinetic only, leaving static friction out of his joints [V,
   Hirschkorn 2004, Table A.9]; joint friction is set by the tightness of the
@@ -1613,10 +1613,10 @@ anyway. The action ratio is read off an assembled model, by virtual work.
 - **At rest** the equilibrium is an interval, not a point: where a hammer
   settles depends on how it got there, as a technician bouncing a key sees. The
   engine fixes one initialization (frictionless equilibrium, then friction, then
-  relaxation), built for the key on its frame (§2.1), and reports the
+  relaxation), built for the key on its frame ([Parts and statics](#parts-and-statics)), and reports the
   interval's width (planned).
 
-### 6.6 Seventeen contacts per note
+### Seventeen contacts per note
 
 Hirschkorn's thirteen, and four for the damper (planned):
 
@@ -1664,23 +1664,23 @@ contact's gradient, the shock at the finger, the rest state and the regulation
 offered. Contacts 14 and 15 both lift the damper lever from below and the higher
 wins, so pedal force falls as notes are played.
 
-## 7. Architecture
+## Architecture
 
-### 7.1 Crates, apps and gates
+### Crates, apps and gates
 
 **Built.**
 
 ```
 crates/pa-core     the domain: geometry, mechanism, contact, solve, parts, measure,
                    regulation, registry, validate. No I/O, no web; one
-                   dependency, libm (§4.4); no number to start from of its
+                   dependency, libm (Determinism, stated correctly); no number to start from of its
                    own, its tests' fixture compiled for tests only
 crates/pa-app      the application: the single-key bench as an instrument, set by
                    path and by action, built from a profile, and its registry;
                    the golden sheet
 data/params        the records, each value with its source
 data/profiles      what each instrument starts from, every number a record or a
-                   stated assumption (§3.8)
+                   stated assumption (Every number has its provenance)
 crates/pa-wasm     the browser's adapter of pa-app; the only crate that knows JavaScript
 crates/pa-cli      the shell's adapter of pa-app: `weigh`, `band`, `golden`
 apps/bench         the bench page: React, react-three-fiber
@@ -1723,12 +1723,12 @@ to the same sheets, bit for bit. The bedding at the back, which the sheet shows
 in degrees, is recorded as the slope it comes from, because the platform's
 `atan` may differ in the last bit.
 
-**The engine and its applications.** The crates are the engine (§1.1) and
+**The engine and its applications.** The crates are the engine ([An engine for piano applications](#an-engine-for-piano-applications)) and
 `apps/bench` its first application. Built: the engine's interface is what an
-application is written against, the instrument of `pa-app` (§7.2): its
-registry and validation layer (§7.3) make the configurator, its documents the
+application is written against, the instrument of `pa-app` ([The WebAssembly boundary](#the-webassembly-boundary)): its
+registry and validation layer ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)) make the configurator, its documents the
 diagnostics, and its log and state hash a state that replays. Planned:
-persistence (§7.4); a rendering package and an interface package extracted
+persistence ([Persistence](#persistence)); a rendering package and an interface package extracted
 from the bench when a second application needs them, not created empty
 before.
 
@@ -1753,9 +1753,9 @@ no code with the rows. No outline is weighed: the drawn parts tile one polygon
 through the key's fields, and their area centroid, the front mortise taken
 out, stands in for the height of a weighed key's center of mass. Planned: each
 part's inertia derived from its outline or measured, by an explicit choice, a
-key's always measured (§2.3).
+key's always measured ([Named simplifications](#named-simplifications)).
 
-### 7.2 The WebAssembly boundary
+### The WebAssembly boundary
 
 **Built.** The bench boots the module once (the boot promise is cached, so a
 double mount cannot construct two engines) and reads six JSON documents, each
@@ -1764,7 +1764,7 @@ The **registry**: every setting's path, its unit in its name
 (`frame.front_rail.pin_height_mm`), what it measures, its layer, the range it
 admits and how it moves, and whether `set` reaches it or an action does; and the page that presents them, panel by
 panel, each control with the code its label is worded by and the range its
-slider offers (§7.3). The **settings**: every value the controls set, nested
+slider offers ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)). The **settings**: every value the controls set, nested
 as the paths are, so the value at a path is read at that path, the key's
 weighing as typed and the bushings' friction as the torque it is stored as
 among them, always valid whatever the frame does; the key friction weight
@@ -1783,7 +1783,7 @@ none of; the measuring point on the key; the contacts within a millimeter of
 closing, each its two surface points in the keybed's frame, its gap, whether
 it is closed, open or overlapping, its row's normal, and the force the row
 carried in the last equilibrium, one admissible split of the loads where
-friction or redundant rows share them (§2.1), never read as a verdict. The
+friction or redundant rows share them ([Parts and statics](#parts-and-statics)), never read as a verdict. The
 **scene**: every part's outline in its own body's frame, in millimeters, with
 its material and the provenance of each stretch, which the page keeps while
 the geometry does not change. The **band**, asked for only when the page shows
@@ -1797,7 +1797,7 @@ parameters in the trade's units, each unit in its parameter's name
 (`{"code":"pin_outside_mortise","by_mm":16.5}`); they mirror the domain's
 enums through matches with no catch-all arm, so a refusal added in `pa-core`
 and not mapped is a compile error. The page words them from its catalog
-(§3.12), writes each reading of the sheet to its protocol's resolution, and
+([A bilingual interface](#a-bilingual-interface)), writes each reading of the sheet to its protocol's resolution, and
 the band's two in full: the band is a curve, which no weight reads.
 
 The page changes the bench by two calls. `set(path, value)` sets a setting in
@@ -1843,7 +1843,7 @@ through a pointer and a length, the JavaScript view rebuilt whenever
 step that produces a non-finite value stops and keeps the last finite state,
 so none is ever published.
 
-### 7.3 The parameter registry and the validation layer
+### The parameter registry and the validation layer
 
 **Built.** Every setting is declared in `pa-core` beside the field it sets
 (`pa_core::registry`): what it measures, the range a part can physically have
@@ -1883,7 +1883,7 @@ be, however badly regulated, is computed and reported, not refused: a pin
 standing proud of its mortise is a state, the key riding on it; an action
 regulated into jamming is a state to report, not an error.
 
-An instrument starts from a profile (§3.8, §7.5), every number of which is a
+An instrument starts from a profile ([Every number has its provenance](#every-number-has-its-provenance), [The data model](#the-data-model)), every number of which is a
 record or a stated assumption; the profile it was built from is kept with
 each value's provenance, and resetting the instrument returns to it, not to
 another.
@@ -1898,12 +1898,12 @@ arrives (built).
 **Planned.** Each setting's provenance sent beside it to the page; the paths a
 profile needs beyond the bench's page, the tail's end, the back check block's
 place, the front mortise's place and length, the key's row; the rails checked
-against one another and the capstan's thread against its hole (§2.3).
+against one another and the capstan's thread against its hole ([Named simplifications](#named-simplifications)).
 
-### 7.4 Persistence
+### Persistence
 
 **Planned.** A saved file holds the coordinates, which are normative, and each
-target with its achieved value and the solver's fingerprint (§3.4). On opening,
+target with its achieved value and the solver's fingerprint ([Regulation as targets; the coordinate is normative](#regulation-as-targets-the-coordinate-is-normative)). On opening,
 the coordinates are used as they are and the targets re-solved and compared; a
 divergence is offered as a choice, never resolved silently. The schema is
 versioned, each migration a pure function with a fixture. Drop is stored with
@@ -1912,7 +1912,7 @@ ways. Golden scenarios start from literal coordinates, so a change in the
 regulation solver cannot pass for a change in the physics. `pa-core` gains
 `serde` behind an optional feature for this.
 
-### 7.5 The data model
+### The data model
 
 **Planned.**
 
@@ -1926,7 +1926,7 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
 - **Three kinds of setting**, which decide what the interface offers: actuated
   (a control turned), derived (read-only), target (aimed at through an actuator).
 - **A profile is a base plus a measured difference**, the base being
-  Hirschkorn's action (§5.2 b). Built: a profile (`data/profiles/`) may name
+  Hirschkorn's action ([Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52"). Built: a profile (`data/profiles/`) may name
   a base and bind only what differs, each binding and each choice (the key's
   row, how its mass is known, whether it arrives regulated) replacing the
   base's; the two shipped, Hirschkorn's key on his printed frame and the
@@ -1938,13 +1938,13 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
 - **A measurement carries its provenance**: value and unit, the solver, its
   conditions (dampers and repetition spring engaged or not, where the stroke
   stopped), and its trust, metrological or indicative. A weighing without its
-  conditions is not a datum. Built for the key's readings (§2.2), each with
+  conditions is not a datum. Built for the key's readings ([The protocols, as they are](#the-protocols-as-they-are)), each with
   what the trade reads it as, its resolution, the mount, the seat, the walk
   and the temporary weight, its trust from the bases of what it reads, and
   the solver's fingerprint; the conditions an action adds, dampers and
-  springs, come with it, and the bases from the registry's records (§7.3).
+  springs, come with it, and the bases from the registry's records ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)).
 
-### 7.6 The 88-note runtime
+### The 88-note runtime
 
 **Planned.**
 
@@ -1971,24 +1971,24 @@ regulation solver cannot pass for a change in the physics. `pa-core` gains
   regulation changes, so a badly regulated let-off is heard and seen. Releases
   follow a profile; a repeated note starts from the action's current state.
 
-## 8. Stages
+## Stages
 
 One table, in order. Each stage ships its engine and its view together and ends
 on a number the owner can judge by the trade's protocol.
 
 | Stage | What is added | What becomes measurable | It ends when | Status |
 |---|---|---|---|---|
-| 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures (§5.2 a) agrees with the bench by the protocol | built; its validation planned |
-| dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step (§4) | each hypothesis of §4 is settled by its test | built: step, solver and cost settled; the felt law (§4.3) and the flexible hammer (§4.5) open |
-| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default (§2); the registry, the validation layer, the new boundary, the bilingual interface (§7) | every weighing quantity by procedure (§2.2) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust (§2.1, §2.2), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalog (§7.2, §3.12), and the instrument set by path and by action, its registry and validation layer, its log and state hash (§7.2, §7.3), and the profiles that bind every number it starts from to a record or a stated assumption (§3.8), Hirschkorn's key on his printed frame the default and the owner's measured section beside it, unweighed until he weighs one of its keys, chosen on the bench, every drawn line marked by how its number is known (§2, §5.2 b, §7.3), a key's mass weighed or published and never derived from its outline (§2.3), and the band, drawn by the driven sweep that reads D and U a second way (§2.2, §2.4), built; the rest planned |
+| 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures ([Validation instruments](#validation-instruments), "One real key, measured by the owner") agrees with the bench by the protocol | built; its validation planned |
+| dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step ([What the dynamics prototype settles, and what it leaves open](#what-the-dynamics-prototype-settles-and-what-it-leaves-open)) | each hypothesis of [What the dynamics prototype settles, and what it leaves open](#what-the-dynamics-prototype-settles-and-what-it-leaves-open) is settled by its test | built: step, solver and cost settled; the felt law ([The felt law](#the-felt-law)) and the flexible hammer ([Rigid bodies](#rigid-bodies)) open |
+| quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default ([What is built: stage 1a, the key on its frame](#what-is-built-stage-1a-the-key-on-its-frame)); the registry, the validation layer, the new boundary, the bilingual interface ([Architecture](#architecture)) | every weighing quantity by procedure ([The protocols, as they are](#the-protocols-as-they-are)) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust ([Parts and statics](#parts-and-statics), [The protocols, as they are](#the-protocols-as-they-are)), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and the English catalog ([The WebAssembly boundary](#the-webassembly-boundary), [A bilingual interface](#a-bilingual-interface)), and the instrument set by path and by action, its registry and validation layer, its log and state hash ([The WebAssembly boundary](#the-webassembly-boundary), [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)), and the profiles that bind every number it starts from to a record or a stated assumption ([Every number has its provenance](#every-number-has-its-provenance)), Hirschkorn's key on his printed frame the default and the owner's measured section beside it, unweighed until he weighs one of its keys, chosen on the bench, every drawn line marked by how its number is known ([What is built: stage 1a, the key on its frame](#what-is-built-stage-1a-the-key-on-its-frame), [Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52", [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)), a key's mass weighed or published and never derived from its outline ([Named simplifications](#named-simplifications)), and the band, drawn by the driven sweep that reads D and U a second way ([The protocols, as they are](#the-protocols-as-they-are), [The bench](#the-bench)), built; the rest planned |
 | 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |
-| 2 | the jack, the repetition lever, let-off, drop, checking: the action in motion | let-off, drop, checking, the slow-release test, the key force under position drive | Thorin's key force and Hirschkorn's trajectories are reproduced within their measured scatter (§5.2) | planned |
+| 2 | the jack, the repetition lever, let-off, drop, checking: the action in motion | let-off, drop, checking, the slow-release test, the key force under position drive | Thorin's key force and Hirschkorn's trajectories are reproduced within their measured scatter ([Validation instruments](#validation-instruments)) | planned |
 | 3 | regulation training | every setting as a target and an actuator; exercises; faults named as the trade names them | the trade's regulation sequence runs end to end on the model | planned |
 | 4 | dampers, pedals, 88 notes | damper lift point, the pedals, a score played | a score plays in real time with the stage-2 readings unchanged | planned |
 
-## 9. Open questions for the owner
+## Open questions for the owner
 
 Each is stated so it can be answered without opening anything else.
 
@@ -2011,9 +2011,9 @@ The French terms in doubt are listed in `docs/vocabulary-worksheet.md`. And an
 opportunity: a compression bench, even a rudimentary one, would first repay the
 four contacts that dominate the force the finger feels (capstan on heel, jack
 and lever on knuckle, front rail punching); without one, every contact law is
-borrowed (§7.5).
+borrowed ([The data model](#the-data-model)).
 
-## 10. Sources
+## Sources
 
 The corpus is in `data/references/`, outside version control: copyrighted
 documents kept for study, never redistributed; the numbers taken from them are

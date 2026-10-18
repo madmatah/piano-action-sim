@@ -20,7 +20,7 @@
 //! 0.5 mm edge arc's center stands over one of the faces beside the arc, and
 //! [`disc_on_face`] reads it there only while the face's normal, turned
 //! round, lies in the corner's own angle: past an edge's center a pair can
-//! lose a corner altogether (`docs/FOUNDATIONS.md` §6.6).
+//! lose a corner altogether (`docs/FOUNDATIONS.md` > Seventeen contacts per note).
 //!
 //! # Conventions
 //!

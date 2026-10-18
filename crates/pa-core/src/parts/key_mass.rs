@@ -84,7 +84,7 @@ pub enum KeyMass {
     },
     /// Nobody has weighed the key: it has no mass in the model, and every
     /// reading that needs one is refused until it is weighed
-    /// (`docs/FOUNDATIONS.md` §2.3).
+    /// (`docs/FOUNDATIONS.md` > Named simplifications).
     Unweighed,
     /// Weighed whole, its leads in it.
     Weighed {

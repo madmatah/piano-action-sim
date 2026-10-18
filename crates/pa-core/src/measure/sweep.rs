@@ -14,7 +14,7 @@
 //! greatest force the down curve needs over the window, the up weight the
 //! least the up curve holds: the same two numbers as the walk's, read by
 //! another procedure, so each checks the other. It is the static form of
-//! driving in position and comparing forces (`docs/FOUNDATIONS.md` §5.1).
+//! driving in position and comparing forces (`docs/FOUNDATIONS.md` > What a test proves; drive in position, compare forces).
 //!
 //! # The procedure
 //!

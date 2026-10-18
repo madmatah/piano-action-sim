@@ -8,7 +8,7 @@ the action's physics asks of a solver.
 Software facts (versions, dates, sizes, API surfaces, defaults) are dated
 observations: read on 11 October 2026 from the npm registry, crates.io, the
 GitHub API, the published packages and their documentation, each with its
-locator. Facts from the literature are read in the corpus (FOUNDATIONS §10),
+locator. Facts from the literature are read in the corpus ([FOUNDATIONS > Sources](../FOUNDATIONS.md#sources)),
 each with its section, table, equation or page.
 
 Markers: [V] verified against the primary source named beside it; [E, n]
@@ -18,10 +18,10 @@ marks a figure or an argument that is wrong and easy to derive again.
 
 ---
 
-## 1. Answer to the central question
+## Answer to the central question
 
 **No general-purpose engine in the core; MuJoCo at most as an optional oracle;
-a dedicated planar solver.** FOUNDATIONS §3.9 states the grounds: per-contact
+a dedicated planar solver.** [FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine) states the grounds: per-contact
 nonlinear felt laws with memory; exact analytic lever arms at sub-millimeter
 scale, in double precision; and contact softness and margins that game engines
 make global and millimetric. The evidence, engine by engine:
@@ -43,7 +43,7 @@ make global and millimetric. The evidence, engine by engine:
    `F(δ) = k·δ^r + b·δ²·δ̇` [V, Thorin 2017 §2.4, Eq. 6] and
    `f_n = f_fit(x)·(1 + D·ẋ)` with `f_fit(x) = a·x³ + b·x² + c·x` [V, Hirschkorn
    2004 §2.2.2, Eqs 2.4–2.5]; which law the simulator uses is a hypothesis
-   (FOUNDATIONS §4.3). In Rapier the only entry point would be
+   ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)). In Rapier the only entry point would be
    `PhysicsHooks::modify_solver_contacts`, and the JS binding does not expose
    it: `ActiveHooks` holds only `NONE | FILTER_CONTACT_PAIRS |
    FILTER_INTERSECTION_PAIRS` [V, `@dimforge/rapier3d@0.21.0`,
@@ -65,7 +65,7 @@ make global and millimetric. The evidence, engine by engine:
    is f32. The crates `rapier3d-f64` and `rapier2d-f64` 0.36.1 exist [V,
    crates.io], but no f64 npm build is published. And a collision pipeline
    returns contact points with margins, where the lever arms every ratio of the
-   trade is made of are wanted exact and analytic (FOUNDATIONS §3.9, §6.2).
+   trade is made of are wanted exact and analytic ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine), [FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap)).
 
 **Do not use "no game engine has dry friction at a joint".** Jolt's hinge
 constraint carries a maximum friction torque,
@@ -75,45 +75,44 @@ constraint carries a maximum friction torque,
 freedom and path constraints carry the same bound. Box2D documents joint
 friction as a motor held at zero speed with a bounded torque, the box constraint
 of MuJoCo's friction loss, and joint friction does not distinguish a dedicated
-solver (FOUNDATIONS §3.9). What a bounded motor inside an iterative solver does
+solver ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)). What a bounded motor inside an iterative solver does
 not promise is an exact stick: Rapier's default is four solver iterations [V,
 rapier 0.36.1, `src/dynamics/integration_parameters.rs`], and in Rapier the
-motors of multibody joints are not reachable from JS (§3).
+motors of multibody joints are not reachable from JS ([A — "Game" engines: versions, licenses, bindings (observed 11 October 2026)](#a--game-engines-versions-licenses-bindings-observed-11-october-2026)).
 
 **MuJoCo, an engineering engine, is the one worth keeping**: joint friction
 loss, polynomial springs, reduced coordinates, double precision and an official
-WebAssembly build (§4). Its friction loss is a soft constraint, so a joint
+WebAssembly build ([B — "Engineering" and robotics multibody engines](#b--engineering-and-robotics-multibody-engines)). Its friction loss is a soft constraint, so a joint
 creeps under a sub-threshold load: an optional oracle for cross-checks, not a
-dependency (FOUNDATIONS §3.9).
+dependency ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)).
 
 **The dedicated solver is chosen for control over the formulation, not for
 speed.** A technician is to be told which law a felt follows, with coefficients
 measured on it, not that the contacts are a 30 Hz spring. Rust compiled to
 WebAssembly is chosen for reproducible arithmetic, no garbage collector in a
-fixed-step loop, and native runs of the code that ships (FOUNDATIONS §3.10);
-whether 88 notes fit in real time is a hypothesis with its test (FOUNDATIONS
-§4.6).
+fixed-step loop, and native runs of the code that ships ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers));
+whether 88 notes fit in real time is a hypothesis with its test ([FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget)).
 
 ### The formulation: compliant along the normal, set-valued in friction
 
 Neither everything regularized (stiff ordinary differential equations) nor
 everything non-smooth: each direction gets the formulation its physics has. This
-is the hypothesis of FOUNDATIONS §4.2, which the dynamics prototype settles.
+is the hypothesis of [FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver), which the dynamics prototype settles.
 
 | Direction | Physical nature | Formulation | Why |
 |---|---|---|---|
-| **Normal** (felt, cloth, leather) | felt compresses, with hysteresis and a memory of the loads it has seen (FOUNDATIONS §4.3) | **compliant**, a law per contact, treated implicitly | the compliance is the physics, not a regularization of a rigid contact; which law is FOUNDATIONS §4.3's hypothesis. Under the key front, Hirschkorn's loading curve reaches about 35 N at 0.86 mm [V, Hirschkorn 2004 §2.2.3, Figure 2.6, p. 22] |
-| **Tangential** (sliding contacts) | Coulomb friction | **set-valued** (cone or box) | sticking is a real state, not a limit. Thorin keeps it at three contacts: hammer and back check, jack and knuckle (his "roller"), jack and let-off button [V, Thorin 2017 §2.4, Eq. 7, Fig. 2]; Hirschkorn's law covers the capstan and heel, the back check, the jack and knuckle, the lever and knuckle (FOUNDATIONS §6.5) |
-| **Axes** (center pins in their bushings) | dry and viscous friction | **set-valued**, \|λ\| ≤ c_d, plus a viscous term | the interval between down weight and up weight is this friction (FOUNDATIONS §3.5) |
+| **Normal** (felt, cloth, leather) | felt compresses, with hysteresis and a memory of the loads it has seen ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)) | **compliant**, a law per contact, treated implicitly | the compliance is the physics, not a regularization of a rigid contact; which law is [FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)'s hypothesis. Under the key front, Hirschkorn's loading curve reaches about 35 N at 0.86 mm [V, Hirschkorn 2004 §2.2.3, Figure 2.6, p. 22] |
+| **Tangential** (sliding contacts) | Coulomb friction | **set-valued** (cone or box) | sticking is a real state, not a limit. Thorin keeps it at three contacts: hammer and back check, jack and knuckle (his "roller"), jack and let-off button [V, Thorin 2017 §2.4, Eq. 7, Fig. 2]; Hirschkorn's law covers the capstan and heel, the back check, the jack and knuckle, the lever and knuckle ([FOUNDATIONS > Friction](../FOUNDATIONS.md#friction)) |
+| **Axes** (center pins in their bushings) | dry and viscous friction | **set-valued**, \|λ\| ≤ c_d, plus a viscous term | the interval between down weight and up weight is this friction ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)) |
 
 MuJoCo comes close to this decomposition, with every constraint soft, friction
-loss included (§4); Jolt's hinge friction and Box2D's bounded motor give the
+loss included ([B — "Engineering" and robotics multibody engines](#b--engineering-and-robotics-multibody-engines)); Jolt's hinge friction and Box2D's bounded motor give the
 axis term too. The decomposition rules out no engine by itself; the three
-grounds of FOUNDATIONS §3.9 do.
+grounds of [FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine) do.
 
 ---
 
-## 2. What the physics demands: reference figures
+## What the physics demands: reference figures
 
 ### Thorin, Boutillon, Lozada, Merlhiot, "Non-smooth dynamics for an efficient simulation of the grand piano action", *Meccanica* 52, 2017
 
@@ -127,7 +126,7 @@ grounds of FOUNDATIONS §3.9 do.
   blocks the translation, replacing that felt with a metal ring of the same
   thickness, for repeatable measurements [V, Thorin 2017 §2.2]. The simulator
   keeps it: the key's vertical degree of freedom and a compliant rocking contact
-  on the balance punching are planned (FOUNDATIONS §2.3).
+  on the balance punching are planned ([FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications)).
 - **Felt**: an auxiliary rigid body of 1 mg, a prismatic joint and a nonlinear
   Kelvin–Voigt element `F_felt(δ) = k·δ^r + b·δ²·δ̇`, with a unilateral
   constraint and an inelastic impact law on the auxiliary body [V, Thorin 2017
@@ -145,13 +144,13 @@ grounds of FOUNDATIONS §3.9 do.
   parameter for impact or dry friction calling for a very small time-step" [V,
   Thorin 2017 §5]. **Do not use the time step as an argument against regularized
   friction**: the tiny step holds only for explicit integration; treated
-  implicitly, a velocity-only friction law sets no step limit (FOUNDATIONS §3.5)
+  implicitly, a velocity-only friction law sets no step limit ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts))
   [E, 07].
 - **Cost**: about twenty times slower than real time, in 3D, on a 2010 computer
   with a 2.1 GHz Intel Core i5. The authors' routes to real time are a more
   efficient implementation of the nonlinear spring laws and to "perform direct
   2D dynamics rather that [sic] 3D" [V, Thorin 2017 §6]; the planar model of
-  FOUNDATIONS §1.4 takes the second.
+  [FOUNDATIONS > What the model is](../FOUNDATIONS.md#what-the-model-is) takes the second.
 - **Published run times**: Masoudi and Birkett, 910 s of CPU, 1720 s with a
   flexible shank, for a simulated duration Thorin estimates at 200 ms from their
   figure, a factor of 4550; Van den Berghe et al., one second simulated in about
@@ -171,7 +170,7 @@ grounds of FOUNDATIONS §3.9 do.
   with it collapses D onto U; integrated dynamically with a threshold speed of
   10⁻⁶ rad/s it keeps the threshold, creeping under a micrometer in ten seconds
   under a gram of excess, but that speed has no physical meaning and enters
-  every sensitivity (FOUNDATIONS §3.5) [E, 07].
+  every sensitivity ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts)) [E, 07].
 
 ### Hirschkorn, *Dynamic Model of a Piano Action Mechanism*, MASc thesis, University of Waterloo, 2004
 
@@ -199,7 +198,7 @@ grounds of FOUNDATIONS §3.9 do.
 ### The time step is a hypothesis
 
 The step is chosen by the step-convergence study, not derived from a stability
-limit (FOUNDATIONS §4.1). Its starting estimates come from Hirschkorn's action
+limit ([FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)). Its starting estimates come from Hirschkorn's action
 assembled with every frame's origin at its own pivot. Along the contact normals,
 the effective masses at rest run from 0.8 g (the jack in the lever's window) to
 113 g (the back check), 8.9 g at the jack and knuckle [E, 10]; the stiffnesses
@@ -215,26 +214,26 @@ significant discrepancies at 0.4 kHz [V, Thorin 2013 §6.4.1].
 50 g**: at the contacts of the jack and the repetition lever the effective
 masses along the contact normals fall to a few grams and below, 0.8 g in the
 lever's window [E, 10]. **Nor 12 µs, nor 2/ω as the stability limit**
-(FOUNDATIONS §4.1).
+([FOUNDATIONS > The time step](../FOUNDATIONS.md#the-time-step)).
 
 ### Timmermans, Dehez and Fisette, "Multibody-Based Piano Action: Validation of a Haptic Key", *Machines* 8(4), 76, 2020
 
-Not in the corpus (FOUNDATIONS §10); what follows comes from secondary sources
+Not in the corpus ([FOUNDATIONS > Sources](../FOUNDATIONS.md#sources)); what follows comes from secondary sources
 and is unverified [?]: a haptic key driven in real time by a multibody model,
 its loop under 1 ms, under ROS, with a custom linear actuator; a grand action
 model in MATLAB/Simulink simulating 1 s in about 1.15 s, which the team calls
 still too slow, where a simpler Viennese action already runs in real time.
 Fisette's group also modeled a grand action with six degrees of freedom in
-Robotran, a generator of multibody equations in symbolic form (§7): Bokiau,
+Robotran, a generator of multibody equations in symbolic form ([Computation budget and execution](#computation-budget-and-execution)): Bokiau,
 Poncelet, Fisette and Docquier, 2012 [V, Thorin 2017, Table 2 and reference 4].
 
 ---
 
-## 3. A — "Game" engines: versions, licenses, bindings (observed 11 October 2026)
+## A — "Game" engines: versions, licenses, bindings (observed 11 October 2026)
 
 | npm package | Version | Date | License | `.wasm` raw / gzip | Verdict for this project |
 |---|---|---|---|---|---|
-| `@dimforge/rapier3d` | **0.21.0** | 2026-09-25 | Apache-2.0 | 3.08 MB / **1.17 MB** | Not for the core; not used (§9) |
+| `@dimforge/rapier3d` | **0.21.0** | 2026-09-25 | Apache-2.0 | 3.08 MB / **1.17 MB** | Not for the core; not used ([General-purpose engines in secondary roles](#general-purpose-engines-in-secondary-roles)) |
 | `@dimforge/rapier2d` | **0.21.0** | 2026-09-25 | Apache-2.0 | 2.40 MB / **906 kB** | Same; 2D fits the sagittal plane |
 | `@dimforge/rapier3d-compat` | 0.21.0 | 2026-09-25 | Apache-2.0 | wasm inlined, 4.34 MB bundle | A variant needing no bundler configuration, same engine |
 | `@dimforge/rapier3d-simd` | 0.21.0 | 2026-09-25 | Apache-2.0 | — | SIMD128; incompatible with enhanced determinism |
@@ -256,7 +255,7 @@ Rapier CHANGELOG, 0.34.0 to 0.36.1]:
   spring/damper"), `MultibodyDofCoupling` (a holonomic coupling of degrees of
   freedom), per-DoF armature (`Multibody::armature()`). A holonomic coupling
   cannot stand for the capstan or the damper lift tray: both are unilateral
-  contacts that lift off (FOUNDATIONS §6.6).
+  contacts that lift off ([FOUNDATIONS > Seventeen contacts per note](../FOUNDATIONS.md#seventeen-contacts-per-note)).
 - **0.36.0 (24 September 2026)**: `Multibody::remove_dof_coupling`,
   `retain_dof_couplings`, `clear_dof_couplings`; extended FEM soft bodies.
 - **0.36.1 (4 October 2026)**: Python access to the reduced-coordinate state
@@ -354,9 +353,9 @@ float contactDampingRatio; // "Contact bounciness. Non-dimensional."
 float contactSpeed;        // cap on overlap resolution speed (m/s)
 float maximumLinearSpeed;
 ```
-It is planar, as the model is (FOUNDATIONS §1.4), small and fast. Its contacts
+It is planar, as the model is ([FOUNDATIONS > What the model is](../FOUNDATIONS.md#what-the-model-is)), small and fast. Its contacts
 are springs set in hertz with no law per contact, and joint friction comes as a
-motor held at zero speed with a bounded torque (FOUNDATIONS §3.9). Verdict: a
+motor held at zero speed with a bounded torque ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)). Verdict: a
 quick kinematic mock-up; not a touchweight, which needs a law per contact.
 
 ### cannon-es, ammo.js, planck: eliminated
@@ -368,7 +367,7 @@ here.
 
 ---
 
-## 4. B — "Engineering" and robotics multibody engines
+## B — "Engineering" and robotics multibody engines
 
 ### MuJoCo: an optional oracle
 
@@ -396,7 +395,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
 - **Double precision**: the glue uses `HEAPF64`; `mjtNum` is `double` [V, the
   3.15.0 JS glue].
 
-**What MuJoCo offers** (FOUNDATIONS §3.9):
+**What MuJoCo offers** ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)):
 
 1. **Friction loss, a box constraint solved softly.** Dry friction at a joint
    or a tendon is modeled "as a constraint, namely an upper limit on the
@@ -405,7 +404,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
    constraint model]. That is the set of Thorin's `c_d·sign(θ̇)`, solved inside
    MuJoCo's convex program; but like every MuJoCo constraint it is soft, its
    impedance set by `solreffriction` and `solimpfriction`, so a joint creeps
-   under a sub-threshold load (FOUNDATIONS §3.9). **Do not use MuJoCo's friction
+   under a sub-threshold load ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)). **Do not use MuJoCo's friction
    loss as an exact, unregularized model of axis friction**: a down weight or an
    up weight read on MuJoCo carries that creep. Whether the noslip pass (item 4)
    also holds friction loss without slip is not checked [?].
@@ -420,7 +419,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
    The spring has the form of Hirschkorn's `f_fit(x) = a·x³ + b·x² + c·x`:
    modeling each felt Thorin's way, a small auxiliary body on a prismatic joint
    with that spring, gives Hirschkorn's elastic term natively; not his damping
-   (limit 4 below), nor the memory of past loads that FOUNDATIONS §4.3 targets.
+   (limit 4 below), nor the memory of past loads that [FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law) targets.
 3. **Reduced coordinates**, per-DoF `armature`, `springref`, tendons (for the
    lift tray and the trapwork), eight kinds of equality constraint
    (`mjEQ_CONNECT/WELD/JOINT/TENDON/FLEX/FLEXVERT/FLEXSTRAIN/DISTANCE`) [V,
@@ -476,7 +475,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
 5. **Scale**: the oracle role needs one note. Constraint islands are the
    default since 3.3.6, `mjDSBL_ISLAND` being the flag that disables them [V,
    MuJoCo changelog, 3.3.6]. The 88-note runtime is the project's own:
-   independent notes, the pedals as prescribed inputs (FOUNDATIONS §7.6).
+   independent notes, the pedals as prescribed inputs ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)).
 
 ### The others, one by one
 
@@ -487,17 +486,17 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
 | **Pinocchio** | community WebAssembly ports: `Mostafasaad1/pinocchio-js` (release 1 March 2026: RNEA, forward kinematics, center of mass, Jacobian) and the `ucalgary-shivers` fork (adds ABA and CRBA; Pinocchio v2 with Eigen 3.4; binary about 457 kB) [V, the two GitHub repositories] | unofficial | No unilateral contact: articulated-tree dynamics only. A building block (M, gradients, ABA) for a solver written around it, not an engine |
 | **Drake** | — | none found [?] | Out of the running in a browser; its `MultibodyPlant` with the SAP solver fits the formulation conceptually |
 | **Simbody / OpenSim** | — | none found [?]; LAPACK and BLAS dependencies | Out of the running |
-| **Robotran** (UCLouvain) | used for a six-degree-of-freedom grand action model [V, Thorin 2017, Table 2] | no | Not a runtime; the reference for **symbolic** generation of the equations (§7) |
+| **Robotran** (UCLouvain) | used for a six-degree-of-freedom grand action model [V, Thorin 2017, Table 2] | no | Not a runtime; the reference for **symbolic** generation of the equations ([Computation budget and execution](#computation-budget-and-execution)) |
 | **MBDyn** | — | none found [?] | Out of the running |
-| **Kane and symbolic tools** (SymPy mechanics, Maple with DynaFlexPro) | SymPy `sympy.physics.mechanics`: `KanesMethod`, `LagrangesMethod`, code generation through `sympy.utilities.codegen`, `sympy.printing.c`, `sympy.printing.rust` [S] | through C or Rust compiled to WebAssembly | An option for deriving the equations (§7): the route of Hirschkorn and Izadbakhsh (DynaFlexPro) and of Bokiau and co-authors (Robotran) |
+| **Kane and symbolic tools** (SymPy mechanics, Maple with DynaFlexPro) | SymPy `sympy.physics.mechanics`: `KanesMethod`, `LagrangesMethod`, code generation through `sympy.utilities.codegen`, `sympy.printing.c`, `sympy.printing.rust` [S] | through C or Rust compiled to WebAssembly | An option for deriving the equations ([Computation budget and execution](#computation-budget-and-execution)): the route of Hirschkorn and Izadbakhsh (DynaFlexPro) and of Bokiau and co-authors (Robotran) |
 
 ---
 
-## 5. C — Rust building blocks (crates.io, observed 11 October 2026)
+## C — Rust building blocks (crates.io, observed 11 October 2026)
 
 `pa-core` has one dependency, the `libm` crate, through which every
-transcendental goes (FOUNDATIONS §4.4); `serde`, behind an optional feature for
-persistence, is the planned other (FOUNDATIONS §7.4). The table records what
+transcendental goes ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)); `serde`, behind an optional feature for
+persistence, is the planned other ([FOUNDATIONS > Persistence](../FOUNDATIONS.md#persistence)). The table records what
 exists.
 
 | Crate | Version | Last update | Role, verdict |
@@ -509,40 +508,40 @@ exists.
 | **ode_solvers** | 0.6.2 | 2026-06-07 | Dormand–Prince, Runge–Kutta, Radau: for an offline reference integration, not a fixed step |
 | **diffsol** | **0.17.1** | 2026-09-28 | The most active Rust ODE solver; BDF and SDIRK with a sparse Jacobian; for an offline reference of stiff integration; whether its Sundials and LLVM features build for WebAssembly is not checked [?] |
 | peroxide | 0.43.1 | 2026-08-02 | A general scientific toolbox; not needed |
-| **num-dual** | 0.15.1 | **2026-10-05** | Dual and hyper-dual numbers: exact Jacobians of smooth contact laws. Not a dependency. Sensitivities of the trade's readings are planned by finite differences (FOUNDATIONS §5.3, level 5): a reading taken at a contact event or a friction threshold is not differentiable across events. **Do not use "+0.1 mm of capstan ⇒ −1.4 g of down weight"**: it is a display mock-up, not a computed or measured value, and raising the capstan increases aftertouch (FOUNDATIONS §5.3) |
+| **num-dual** | 0.15.1 | **2026-10-05** | Dual and hyper-dual numbers: exact Jacobians of smooth contact laws. Not a dependency. Sensitivities of the trade's readings are planned by finite differences ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels), level 5): a reading taken at a contact event or a friction threshold is not differentiable across events. **Do not use "+0.1 mm of capstan ⇒ −1.4 g of down weight"**: it is a display mock-up, not a computed or measured value, and raising the capstan increases aftertouch ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)) |
 | enzyme (Rust autodiff) | nightly, experimental [S] | — | Not for production |
-| **rapier2d / rapier3d** | 0.36.1 | **2026-10-10** | Not used (§9); its multibody module does not replace a solver whose contact law is the point |
+| **rapier2d / rapier3d** | 0.36.1 | **2026-10-10** | Not used ([General-purpose engines in secondary roles](#general-purpose-engines-in-secondary-roles)); its multibody module does not replace a solver whose contact law is the point |
 | rapier3d-f64 / rapier2d-f64 | 0.36.1 | 2026-10-10 | The f64 variants, to be compiled by their user |
-| rapier3d-mjcf / rapier3d-urdf | 0.36.1 | 2026-10-10 | MJCF and URDF loading in Rapier. MJCF is also the route by which a note would reach the optional MuJoCo oracle (§8) |
-| parry2d / parry3d | 0.31.1 | 2026-09-18 | Not used: the contact primitives are the project's own, circle against line and circle against circle built, the hybrid profile planned, with exact analytic lever arms (FOUNDATIONS §6.2, §6.6); Thorin's model uses the same three kinds of geometry [V, Thorin 2017 §2.4, Table 4] |
+| rapier3d-mjcf / rapier3d-urdf | 0.36.1 | 2026-10-10 | MJCF and URDF loading in Rapier. MJCF is also the route by which a note would reach the optional MuJoCo oracle ([Architecture](#architecture)) |
+| parry2d / parry3d | 0.31.1 | 2026-09-18 | Not used: the contact primitives are the project's own, circle against line and circle against circle built, the hybrid profile planned, with exact analytic lever arms ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap), [FOUNDATIONS > Seventeen contacts per note](../FOUNDATIONS.md#seventeen-contacts-per-note)); Thorin's model uses the same three kinds of geometry [V, Thorin 2017 §2.4, Table 4] |
 | **nphysics3d** | 0.24.0 | **2021-08-08** | Abandoned, "superseded by the rapier3d crate" [V, crates.io description] |
 | **k** | 0.32.0 | **2024-09-10** | Kinematics only, no dynamics; stagnant |
 | **rbdl-rs** | not on crates.io | — | — |
-| mujoco (Rust bindings) | not checked [?] | — | The official WebAssembly bindings are the ones §4 relies on |
+| mujoco (Rust bindings) | not checked [?] | — | The official WebAssembly bindings are the ones [B — "Engineering" and robotics multibody engines](#b--engineering-and-robotics-multibody-engines) relies on |
 | **rayon** | 1.12.0 | 2026-04-14 | Not used; native parallelism only |
-| **wasm-bindgen-rayon** | 1.3.0 | **2024-12-21** | Last published on that date; depends on `wasm-bindgen ^0.2.99`, so compatible with 0.2.129 by caret [V, crates.io API]. Not usable: WebAssembly threads need the standard library rebuilt with atomics, which needs nightly Rust (FOUNDATIONS §3.10); the planned runtime is one module per Web Worker, notes sharing nothing (FOUNDATIONS §7.6) |
+| **wasm-bindgen-rayon** | 1.3.0 | **2024-12-21** | Last published on that date; depends on `wasm-bindgen ^0.2.99`, so compatible with 0.2.129 by caret [V, crates.io API]. Not usable: WebAssembly threads need the standard library rebuilt with atomics, which needs nightly Rust ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)); the planned runtime is one module per Web Worker, notes sharing nothing ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)) |
 | wasm-bindgen | 0.2.129 | 2026-09-25 | Used by `pa-wasm` (built) |
 | argmin | 0.11.0 | 2025-09-28 | For identifying parameters offline, such as fitting felt load curves as Hirschkorn did |
-| roots | 0.0.8 | **2022-12-21** | Stagnant; a bracketed search is a few lines (the breakaway walk's bisection is built, FOUNDATIONS §2.2) |
+| roots | 0.0.8 | **2022-12-21** | Stagnant; a bracketed search is a few lines (the breakaway walk's bisection is built, [FOUNDATIONS > The protocols, as they are](../FOUNDATIONS.md#the-protocols-as-they-are)) |
 
 **WebAssembly SIMD**: fixed-width SIMD128 ships in Chrome 91, Firefox 89 and
 Safari 16.4; relaxed SIMD reaches Safari only as a preview and iOS Safari not at
 all [V, `@mdn/browser-compat-data` 8.1.5, `webassembly.fixed-width-SIMD`,
 `webassembly.relaxed-SIMD`]. Relaxed SIMD is ruled out in any case: its fused
 multiply-add rounds once on hardware that has one and twice elsewhere
-(FOUNDATIONS §4.4). Vectorized across notes, SIMD128 carries two f64 lanes, two
+([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). Vectorized across notes, SIMD128 carries two f64 lanes, two
 notes at a time; whether it helps a scalar 6×6 kernel is not measured [?].
 
 ---
 
-## 6. D — Pure TypeScript against Rust compiled to WebAssembly
+## D — Pure TypeScript against Rust compiled to WebAssembly
 
 **Do not use the per-step costs of 157.5 ns (JavaScript), 108.4 ns
 (WebAssembly) and 92.4 ns (native Rust), the ratios drawn from them (1.45
 between WebAssembly and JavaScript, 1.17 and 1.70 for native code), nor the
 shares of a core built on them**: the benchmark kernel behind them is not in
-the repository (FOUNDATIONS §4.6). The cost per step is one of the
-dynamics prototype's tests, natively and in Chrome and Safari (FOUNDATIONS §4.6).
+the repository ([FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget)). The cost per step is one of the
+dynamics prototype's tests, natively and in Chrome and Safari ([FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget)).
 
 ### Determinism
 
@@ -550,7 +549,7 @@ Addition, subtraction, multiplication, division and the square root are exactly
 rounded under IEEE-754, in JavaScript, in WebAssembly and in native Rust alike,
 so code using nothing else, with the same operations in the same order and no
 multiply and add contracted into one fused operation, gives bit-identical
-results in all three (FOUNDATIONS §4.4).
+results in all three ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 
 Transcendentals break this:
 - ECMAScript leaves `Math.sin`, `Math.cos`, `Math.exp` and the rest
@@ -561,9 +560,9 @@ Transcendentals break this:
 - In Rust, a transcendental called through the `libm` crate compiles the same
   code into the native binary and into the WebAssembly module, so both agree
   bit for bit, in every browser; the standard library's `f64::sin` calls the
-  platform's library natively, and differs (FOUNDATIONS §4.4). `pa-core` calls
+  platform's library natively, and differs ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). `pa-core` calls
   its transcendentals through the `libm` crate, and Clippy refuses the
-  standard library's there (FOUNDATIONS §4.4).
+  standard library's there ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)).
 
 A technician who reads 52 g of down weight with a set of settings must read the
 same 52 g on another machine the next day: reproducibility is structural to the
@@ -578,13 +577,13 @@ The divergence is silent.
 compiled to WebAssembly is chosen for reasons that are not speed: arithmetic
 reproducible across machines, no garbage collector in a fixed-step loop, and
 native runs of the code that ships, for studies, sweeps and golden tests
-(FOUNDATIONS §3.10).
+([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)).
 
 ---
 
-## 7. Computation budget and execution
+## Computation budget and execution
 
-**The budget is a hypothesis** (FOUNDATIONS §4.6): one dynamic solver, notes
+**The budget is a hypothesis** ([FOUNDATIONS > The 88-note budget](../FOUNDATIONS.md#the-88-note-budget)): one dynamic solver, notes
 computed independently on a few workers, plays 88 notes in real time on a
 laptop, because a note moves for a few hundred milliseconds and holds still
 after, so far fewer than 88 move at once. Its test is the prototype's cost per
@@ -592,7 +591,7 @@ step, natively and in Chrome and Safari, and the number of notes active at once
 over a corpus of MIDI files, pedal changes included. A note at rest, every
 velocity zero and every contact steady, could sleep at almost no cost [S].
 
-**Execution** (planned, FOUNDATIONS §7.6): one WebAssembly module per Web
+**Execution** (planned, [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)): one WebAssembly module per Web
 Worker, neither on the main thread nor in an AudioWorklet; a lock-free ring in a
 `SharedArrayBuffer` where the page is cross-origin isolated, transferable
 buffers otherwise; the renderer interpolating between snapshots stamped in
@@ -611,63 +610,62 @@ Thorin 2017 §4]. `M(q)`, the Coriolis terms and the contact Jacobians can be
 derived with `sympy.physics.mechanics` (Kane or Lagrange) and emitted as Rust
 [S]: a dense 6×6 `M(q)` with no recursion, and analytic Jacobians. Derived by
 hand or generated, the mass matrix is tested against finite differences of the
-kinetic energy (FOUNDATIONS §3.6, §5.3); FOUNDATIONS §3.6 gives the couplings in
+kinetic energy ([FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever), [FOUNDATIONS > Levels](../FOUNDATIONS.md#levels)); [FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever) gives the couplings in
 relative coordinates, with the formulas not to use.
 
 ---
 
-## 8. Architecture
+## Architecture
 
-The layering this study arrives at is the one built (FOUNDATIONS §7.1): a domain
+The layering this study arrives at is the one built ([FOUNDATIONS > Crates, apps and gates](../FOUNDATIONS.md#crates-apps-and-gates)): a domain
 crate, `pa-core`, in Rust, with no I/O, no web and one dependency, `libm`,
 tested natively; an application crate, `pa-app`; and two adapters that add no
 physics, `pa-wasm` for the browser and `pa-cli` for the shell. The bench renders
-with three.js 0.186.1 through react-three-fiber (FOUNDATIONS §3.11).
+with three.js 0.186.1 through react-three-fiber ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)).
 
 What the domain is to gain, each a plan or a hypothesis of FOUNDATIONS:
 - contact geometry with exact analytic lever arms: circle against line and
-  circle against circle built, the hybrid profile planned (§6.2, §6.6);
+  circle against circle built, the hybrid profile planned ([FOUNDATIONS > The lever arm, and the gradient of a gap](../FOUNDATIONS.md#the-lever-arm-and-the-gradient-of-a-gap), [FOUNDATIONS > Seventeen contacts per note](../FOUNDATIONS.md#seventeen-contacts-per-note));
 - a felt law, Hirschkorn's cubics as the elastic term, a rate-independent law
-  with memory as the target (§4.3, a hypothesis);
-- set-valued friction at every pivot, built for the key's balance (§3.5);
+  with memory as the target ([FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law), a hypothesis);
+- set-valued friction at every pivot, built for the key's balance ([FOUNDATIONS > Set-valued dry friction, at the axes and at sliding contacts](../FOUNDATIONS.md#set-valued-dry-friction-at-the-axes-and-at-sliding-contacts));
 - one fixed-step dynamic solver with compliant contacts and friction as bounded
-  unknowns at velocity level, the quasi-static solver as its static limit (§4.2,
+  unknowns at velocity level, the quasi-static solver as its static limit ([FOUNDATIONS > One dynamic solver](../FOUNDATIONS.md#one-dynamic-solver),
   a hypothesis);
-- sensitivities by finite differences (§5.3, level 5);
-- arithmetic reproducible under the conditions of §4.4: every transcendental
+- sensitivities by finite differences ([FOUNDATIONS > Levels](../FOUNDATIONS.md#levels), level 5);
+- arithmetic reproducible under the conditions of [FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly): every transcendental
   through the `libm` crate (built), native and WebAssembly results compared bit
   for bit (planned).
 
-**Order of work**: FOUNDATIONS §8 holds the stages, by sub-assembly along
+**Order of work**: [FOUNDATIONS > Stages](../FOUNDATIONS.md#stages) holds the stages, by sub-assembly along
 Stanwood's equation, with the dynamics prototype that settles the step, the
-solver and the felt law (FOUNDATIONS §4) before the wippen. MuJoCo is not a
-stage: it enters, if at all, as the optional oracle of FOUNDATIONS §3.9. Its
+solver and the felt law ([FOUNDATIONS > What the dynamics prototype settles, and what it leaves open](../FOUNDATIONS.md#what-the-dynamics-prototype-settles-and-what-it-leaves-open)) before the wippen. MuJoCo is not a
+stage: it enters, if at all, as the optional oracle of [FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine). Its
 route is an MJCF model of one note, auxiliary felt bodies on polynomial springs
 and friction loss at the pins, loaded with `@mujoco/mujoco`; MJCF is read by
 MuJoCo and, through `rapier3d-mjcf` 0.36.1, by Rapier, and expresses joints,
 friction loss, polynomial springs, tendons, equality constraints and
 `solref`/`solimp`. Agreement between two solvers of one model is a consistency
-check, not a validation (FOUNDATIONS §5.1); Thorin's and Hirschkorn's measured
-curves and the trade's protocols validate (FOUNDATIONS §5.2).
+check, not a validation ([FOUNDATIONS > What a test proves; drive in position, compare forces](../FOUNDATIONS.md#what-a-test-proves-drive-in-position-compare-forces)); Thorin's and Hirschkorn's measured
+curves and the trade's protocols validate ([FOUNDATIONS > Validation instruments](../FOUNDATIONS.md#validation-instruments)).
 
 ---
 
-## 9. General-purpose engines in secondary roles
+## General-purpose engines in secondary roles
 
 1. **Cross-checking oracle: MuJoCo through MJCF** (planned, optional;
-   FOUNDATIONS §3.9). One geometry, two independent solvers, double precision on
+   [FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)). One geometry, two independent solvers, double precision on
    both sides. A divergence on the hammer's speed at let-off is a difference to
    explain, in either model, since MuJoCo's friction loss creeps and its contact
-   stiffness is numerical (§4).
+   stiffness is numerical ([B — "Engineering" and robotics multibody engines](#b--engineering-and-robotics-multibody-engines)).
 2. **Trapwork, pedals and lyre: not given to an engine.** The trapwork is one to
    three degrees of freedom driven by timestamped pedal input and integrated
-   identically in every worker (FOUNDATIONS §7.6), and no general-purpose engine
-   is a dependency of the project (FOUNDATIONS §3.9).
+   identically in every worker ([FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)), and no general-purpose engine
+   is a dependency of the project ([FOUNDATIONS > A dedicated planar solver, not a general-purpose engine](../FOUNDATIONS.md#a-dedicated-planar-solver-not-a-general-purpose-engine)).
 3. **Kinematic exploration in Box2D v3 (`box2d3-wasm` 5.2.0) or
    `@dimforge/rapier2d`**: possible as a throwaway outside the project. The
    bench's own drawing, from the outlines the engine computes, is where a lever
-   ratio, a wippen's layout or a capstan's height is checked by eye (FOUNDATIONS
-   §3.2). A touchweight is never read off a game engine.
+   ratio, a wippen's layout or a capstan's height is checked by eye ([FOUNDATIONS > Staged by sub-assembly, with the view at every stage](../FOUNDATIONS.md#staged-by-sub-assembly-with-the-view-at-every-stage)). A touchweight is never read off a game engine.
 4. **Not to do**: bending Rapier or Jolt into the core through
    `contact_natural_frequency`, `lengthUnit` and bounded motors. Their contact
    model cannot be replaced, and every term of the core must be one a
@@ -675,18 +673,18 @@ curves and the trade's protocols validate (FOUNDATIONS §5.2).
 
 ---
 
-## 10. Summary: who can do what
+## Summary: who can do what
 
 | Need | Rapier (JS) | Rapier (Rust) | Jolt | Havok | PhysX | Box2D v3 | **MuJoCo** | **Dedicated solver** |
 |---|---|---|---|---|---|---|---|---|
-| Reduced coordinates | partial (bare API) | yes | no | no | yes | no | **yes** | **relative coordinates** (planned, FOUNDATIONS §3.6) |
+| Reduced coordinates | partial (bare API) | yes | no | no | yes | no | **yes** | **relative coordinates** (planned, [FOUNDATIONS > Relative coordinates for the jack and the repetition lever](../FOUNDATIONS.md#relative-coordinates-for-the-jack-and-the-repetition-lever)) |
 | Double precision | **no (f32)** | yes (f64 crate) | build option | ? | build option | no | **yes** | **yes** |
-| Force law per contact | **no** | partial | **no** | **no** | **no** | **no** | partial (cubic polynomial) | **yes** (planned, FOUNDATIONS §4.3) |
+| Force law per contact | **no** | partial | **no** | **no** | **no** | **no** | partial (cubic polynomial) | **yes** (planned, [FOUNDATIONS > The felt law](../FOUNDATIONS.md#the-felt-law)) |
 | Polynomial spring per DoF | **no** | yes (0.34+) | no | no | no | no | **yes (3.7.0+)** | **yes** |
 | Set-valued dry friction at the axes | no | bounded motor | **yes** (hinge maximum friction torque) | no | bounded motor | bounded motor at zero speed | **soft** (`frictionloss`) | **yes** (the key's balance built; every pivot planned) |
 | Unregularized tangential friction | no | no | no | no | no | no | **with noslip** (cone) | **yes** (planned) |
 | Geometric tolerance < 0.1 mm | after rescaling | after rescaling | slop | ? | slop | slop | through `solref`/`solimp` | **analytic** |
-| Cross-platform determinism | not verified | yes (feature) | build flag | no | no | [?] | [?] | **under FOUNDATIONS §4.4's conditions** |
+| Cross-platform determinism | not verified | yes (feature) | build flag | no | no | [?] | [?] | **under [FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)'s conditions** |
 | Model editing from JS | partial | — | partial | partial | partial | partial | **yes (`MjSpec` + `mj_compile`)** | **yes** |
 | Binary size (gzip) | 1.17 MB | the user's | 742 kB | 658 kB | 1.61 MB | [?] | 2.54 MB | 50–200 kB [S] |
 | License | Apache-2.0 | Apache-2.0 | MIT | MIT (no published source) | MIT | MIT | **Apache-2.0** | **MIT** |

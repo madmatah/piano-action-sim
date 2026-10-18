@@ -4,7 +4,7 @@
  *
  * A catalog in another language has the same shape (`Catalog`), its
  * trade terms the trade's own in that language; between English and French
- * they are mapped in `docs/research/A3-nomenclature-and-regulation.md` §6.
+ * they are mapped in `docs/research/A3-nomenclature-and-regulation.md` > Bilingual glossary FR ↔ EN (+ DE) and code identifiers.
  */
 import type {
   Contact,

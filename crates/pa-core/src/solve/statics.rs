@@ -19,8 +19,8 @@
 //! coordinate whose friction is below its bound has not moved:
 //! `q_i = q_k,i` exactly. Friction enters as a dissipation, which is
 //! set-valued by nature, never as a `sign()` or a `tanh()`
-//! (`docs/FOUNDATIONS.md` §3.5); contacts are constraints; inertia is
-//! dropped (§4.2).
+//! (`docs/FOUNDATIONS.md` > Set-valued dry friction, at the axes and at sliding contacts); contacts are constraints; inertia is
+//! dropped (`docs/FOUNDATIONS.md` > One dynamic solver).
 //!
 //! Dissipation is summed along the path, not along the chord: once an iterate
 //! has moved some point of the mechanism further than the row margin from the

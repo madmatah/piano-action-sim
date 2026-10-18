@@ -1,6 +1,6 @@
 //! The box problem: multipliers bounded in boxes, each row of a linear
 //! complementarity system. The static increment's subproblem is one
-//! ([`super::statics`]); the dynamic step of `docs/FOUNDATIONS.md` §4.2 will
+//! ([`super::statics`]); the dynamic step of `docs/FOUNDATIONS.md` > One dynamic solver will
 //! be another, with the mass matrix in place of the static metric.
 //!
 //! # The problem

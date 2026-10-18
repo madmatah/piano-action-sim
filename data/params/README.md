@@ -40,7 +40,7 @@ convention at the top: every frame's origin is the body's own pivot, and `Pw2`,
 `Pw3` are the jack and repetition lever pins on the wippen (his Figure A.1). With no compression bench, every
 contact law the engine is to use is borrowed from this action, and anything
 computed from a borrowed law is to be marked as such (planned,
-`docs/FOUNDATIONS.md` §7.5).
+[FOUNDATIONS > The data model](../../docs/FOUNDATIONS.md#the-data-model)).
 
 Read bounds at the note the data describes. Hirschkorn's action is note 52, so
 Stanwood's figures for note 1 do not apply to it.
@@ -112,7 +112,7 @@ Five conventions come up as soon as a real instrument is measured:
 
 - Thorin 2013, chapter 4.5, and Lozada 2007, transcribed with a lineage tag on
   every value: measured, assumed equal to another joint, or placeholder. The
-  traps are in `docs/FOUNDATIONS.md` §6.3.
+  traps are in [FOUNDATIONS > Parameter lineage](../../docs/FOUNDATIONS.md#parameter-lineage).
 - Manufacturer regulation specifications, as presets whose cells carry a value,
   a range and a source, with both values kept where two documents of one maker
   disagree.
