@@ -26,6 +26,8 @@ data/references/papers/
   goebl2003.pdf            computer-controlled grand pianos: hammer velocity measurement
   stanwood2014.pdf         down weight against equation balancing
   stanwood_blueprint.pdf   component touchweight balancing
+  timmermans2021.pdf       Timmermans, Ceulemans & Fisette: an upright and a grand action, one multibody method
+  fisette2019.pdf          Fisette, Bokiau & Timmermans: the grand action explained by removing parts (author's manuscript)
 data/references/stanwood/  Stanwood's touchweight metrology series, 1996–2014
 data/references/manuels/   regulation manuals and specification sheets
 data/references/extracts/
@@ -52,8 +54,10 @@ data/references/extracts/
 | Masoudi & Birkett 2015 | measured force | key, hammer, wippen displacements | 5 | MATLAB ODE15s | upright action only |
 | **Thorin 2013/2017** | **force AND position** | **FORCES + kinematics** | **5 (+1 damper in the thesis)** | **measure differential inclusion, Moreau–Jean, XDE** | **the only published key force under position drive (FOUNDATIONS §5.2 c)** |
 | Timmermans, Dehez, Fisette 2020 | real time | haptic force | — | symbolic ROBOTRAN, C | **[?]** a real-time haptic key; not in the corpus, unchecked (FOUNDATIONS §10) |
+| Timmermans, Ceulemans, Fisette 2021 | force (1 kg at the key tip; a double blow) or key position (a sinusoid) | key and hammer angles, high-speed camera at 2000 fps | 6 (grand), 5 (upright) | symbolic ROBOTRAN, a two-stage W-method at a fixed 10 µs | the grand model is Bokiau's, its masses measured on a Renner demonstrator and 12 of its 13 contacts fitted on a tribometer; the curves are given as figures only [V, Timmermans 2021 §3–§6] (§7.5) |
+| Fisette, Bokiau, Timmermans 2019 | key motion: measured under a 1 kg mass, or Goebl's key velocities integrated | hammer angle by high-speed camera (3000 fps); hammer velocity against Goebl's | 5 (no damper) | symbolic ROBOTRAN | teaching: one model of a demonstrator action, degraded by locking or removing parts into an action without escapement, then with a single escapement, then whole; no parameter published [V, Fisette 2019 §2–§3] |
 
-Every row but the last two is in Thorin's Table 2 [V, Thorin 2017, Table 2]; the
+Every row but the last four is in Thorin's Table 2 [V, Thorin 2017, Table 2]; the
 gloss on Gillespie's rubber is Thorin's [V, Thorin 2013 §2.5, p. 29].
 
 ---
@@ -639,6 +643,40 @@ constant α**: the dynamics are to read the instantaneous ratio off the contact
 geometry at every step (planned, FOUNDATIONS §6.2); the published α values serve only as consistency
 checks of a model of Thorin's action at rest.
 
+### 7.5 Timmermans 2021: a second Renner demonstrator, masses only
+
+Timmermans, Ceulemans and Fisette measured the masses and moments of inertia of a
+Renner grand demonstrator's six bodies [V, Timmermans 2021 §5.1, Table 3]:
+
+| Body | Mass | Moment of inertia |
+|---|---|---|
+| Key | 94 g | 2110.62 kg·mm² |
+| Wippen | 12 g | 10.78 kg·mm² |
+| Jack | 2 g | 0.78 kg·mm² |
+| Hammer | 17 g | 31.86 kg·mm² |
+| Damper | 51 g | 126 kg·mm² |
+| Repetition lever | 3 g | 4.32 kg·mm² |
+
+The paper does not say about which point the inertias are taken, nor where any
+centre of mass lies, nor any pivot or contact position: the set cannot build an
+action. Read about the centre of mass, the radii of gyration are plausible, √(I/m):
+key 150 mm, wippen 30 mm, hammer 43 mm; read about the axis, the wippen's 30 mm
+would put its centre of mass within 30 mm of its flange, which Thorin's set (53 mm,
+§7.2) does not. **[?]** which of the two, until the authors say. Beside Thorin's
+Renner set it gives a second, independent wippen: 12 g against Lozada's 19.8 g, and
+an inertia about 37 times smaller than Lozada's 3.97E−4 kg·m², the value §7.2 shows
+impossible.
+
+Its contact laws are smooth: Masoudi's exponential felt law F = a x e^(bx) + c x,
+unloading switched by tanh(α ẋ), and Hirschkorn's tanh friction law at the
+sliding contacts and the axes [V, Timmermans 2021 §4.2, Eqs. 2–6], which the
+simulator does not use (FOUNDATIONS §3.5). The coefficients are fitted per contact
+(one fit drawn, the key–wippen contact, Fig. 11) and not tabulated; the grand
+model fits the loading curves only, unloading taken equal [V, §5.2]. One friction
+coefficient is given in the text: about **0.65** between the hammer and the felt
+of the back check, at sliding speeds the paper calls small beside those of play
+[V, §5.2, Fig. 12].
+
 ---
 
 ## 8. SOLVERS, TIME STEPS, COMPUTATIONAL COST
@@ -656,6 +694,7 @@ checks of a model of Thorin's action at rest.
 | **Thorin 2017 (non-smooth, XDE 3D)** | **20 s for 1 s** [V, Thorin 2017 §6] | 2010 computer, 2.1 GHz Core i5 | **20** |
 | Thorin, **before** the felt laws and the synchronisation were implemented | — | same | **1.2** [V, Thorin 2013 §6.4.1, p. 110] |
 | Timmermans, Dehez, Fisette 2020 (haptic keyboard) | **[?]** real time reported; not in the corpus, unchecked (FOUNDATIONS §10) | — | — |
+| Timmermans, Ceulemans, Fisette 2021 (grand, 6 rigid bodies, 13 contacts) | **0.87 s for 1 s** with the fixed-step W-method, 0.72 s with an error-controlled Rosenbrock integrator; the upright model 10 s for 1 s [V, Timmermans 2021 §3.2, Table 1] | not given | none: faster than real time (0.87) |
 
 **Reading**: the move to non-smooth dynamics gains about two orders of magnitude, in
 Thorin's words "about two orders of magnitude faster than the regularizing approach,
@@ -821,6 +860,21 @@ Thorin 2017, Table 5 (thesis Table 6.1):
 
 "*The prediction is very good*" [V, Thorin 2017 §5]; "*perfectly estimated*" [V,
 Thorin 2013 §6.4.1]. **The quantified test to reproduce first.**
+
+### 9.5 Repetition frequency (Timmermans 2021)
+
+The highest frequency at which a key driven by a sinusoidal position still repeats
+its note, on the Renner demonstrators, simulated and measured [V, Timmermans 2021
+§7.1, Table 4]:
+
+| Action | Simulated | Measured |
+|---|---|---|
+| Upright | 11 Hz | 13 Hz |
+| Grand, full stroke | 13 Hz | 14 Hz |
+| Grand, from the bottom to halfway up the stroke | 19 Hz | ≥ 20 Hz (the actuator's limit) |
+
+A dynamic target for the repetition lever (planned), measured on a demonstrator
+whose geometry is not published: a comparison of order of magnitude, not a test.
 
 ---
 

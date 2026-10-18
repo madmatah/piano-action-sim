@@ -2028,6 +2028,11 @@ trade term: the trade's vocabulary belongs to the trade.
   *Multibody System Dynamics*, doi:10.1007/s11044-015-9483-6.
 - **Stulov**, "Experimental and computational studies of piano hammers", *Acta
   Acustica united with Acustica* 91(6), 2005.
+- **Timmermans, Ceulemans and Fisette**, "Upright and grand piano actions dynamic
+  performances assessments using a multibody approach", *Mechanism and Machine
+  Theory* 160, 2021, doi:10.1016/j.mechmachtheory.2021.104296; and Fisette,
+  Bokiau and Timmermans, "The grand piano action functioning demystified thanks
+  to the multibody approach" (IFToMM 2019), the authors' manuscript.
 - **Stanwood**: *The New Touchweight Metrology* (Piano Technicians Journal, June
   1996); *Standard Protocols of the New Touchweight Metrology* (February 2000),
   the protocols; *Cutting the Balance Rail Punching to Effect Ratio* (2014); the
