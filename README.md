@@ -159,6 +159,8 @@ pnpm --filter @pas/app-bench dev           # the bench; ?view=section or ?view=b
   number bound to a record or to an assumption stated with its reason.
 - [`tools/derivations/`](tools/derivations/): the script behind every `[E]`
   number in FOUNDATIONS.
+- [`CREDITS.md`](CREDITS.md): the libraries and the published data the
+  project reuses, with their terms.
 - [`CLAUDE.md`](CLAUDE.md): the working rules.
 
 piano-action-sim is released under the MIT License ([`LICENSE`](LICENSE)). The
