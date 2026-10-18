@@ -35,4 +35,5 @@ private/
 # TypeScript incremental build state
 *.tsbuildinfo
 .claude/worktrees/
+.claude/settings.local.json
 __pycache__/
