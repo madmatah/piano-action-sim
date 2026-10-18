@@ -1809,7 +1809,7 @@ mod tests {
         })
     }
 
-    /// Consistency, rule 5 made mechanical: **every number an instrument
+    /// Consistency, `.claude/rules/provenance.md` > No number without provenance made mechanical: **every number an instrument
     /// starts from has a record or a stated assumption.** For each shipped
     /// profile, every number of the design it builds, as
     /// [`pa_core::validate::numbers`] reads it with every field of every

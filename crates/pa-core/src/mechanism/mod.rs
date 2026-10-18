@@ -137,7 +137,7 @@ impl Coord {
 }
 
 /// A pin's dry friction as it is known: a torque bound, and the radius it
-/// was measured at (`CLAUDE.md` rule 4).
+/// was measured at (`.claude/rules/physics.md` > Dry friction is set-valued).
 ///
 /// The trade measures a key's bushings as a key friction weight, grams at the
 /// measuring point, and publishes pivot frictions as torques taken at radii

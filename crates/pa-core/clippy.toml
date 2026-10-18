@@ -1,4 +1,4 @@
-# Determinism in the domain (CLAUDE.md rule 8, docs/FOUNDATIONS.md §4.4).
+# Determinism in the domain (`.claude/rules/physics.md` > Determinism, docs/FOUNDATIONS.md §4.4).
 #
 # Every `f64` method below computes a function IEEE-754 does not require to be
 # rounded exactly, so its last bit comes from whichever math library the

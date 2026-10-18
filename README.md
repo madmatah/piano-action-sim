@@ -161,7 +161,8 @@ pnpm --filter @pas/app-bench dev           # the bench; ?view=section or ?view=b
   number in FOUNDATIONS.
 - [`CREDITS.md`](CREDITS.md): the libraries and the published data the
   project reuses, with their terms.
-- [`CLAUDE.md`](CLAUDE.md): the working rules.
+- [`CLAUDE.md`](CLAUDE.md) and [`.claude/rules/`](.claude/rules/): how an
+  agent works here, and the rules the repository keeps, each with its check.
 
 piano-action-sim is released under the MIT License ([`LICENSE`](LICENSE)). The
 published works it draws on keep their own terms.

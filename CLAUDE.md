@@ -1,197 +1,47 @@
 # CLAUDE.md
 
-Rules for this repository, each true of the tree or naming where it is not yet,
-and each ending with its check or *not mechanically checked*. What the simulator
-is for, what is built or planned, and why: `docs/FOUNDATIONS.md`. Where the work
-stands: `private/HANDOFF.md`, read before touching anything. Where either
-disagrees with the code, the code is right. One criterion governs everything
-(FOUNDATIONS §1.3): **the simulator must measure its own regulation using the
-trade's own protocols, and come back with the expected values.**
+The session manual for agents working in this repository: what every session must know and do. The rules about what the repository holds live in `.claude/rules/`, each once and in full with its check, and [Rules](#rules) says when to read each file. `docs/FOUNDATIONS.md` holds what the simulator is for, what is built or planned, and why. Where a document disagrees with the code, the code is right.
 
-## Documents and commits
+One criterion governs everything (`docs/FOUNDATIONS.md` > The acceptance criterion): **the simulator must measure its own regulation using the trade's own protocols, and come back with the expected values.**
 
-- **Present tense, no history**: justification stays, narration goes. Every
-  component a published document describes is labeled **built** or
-  **planned**; an unsettled decision is a **hypothesis** with its test. *Not
-  mechanically checked.*
-- **`private/` is one-way**: gitignored and its own repository, it may cite
-  `docs/`; no published file cites it (this file, the agents' way in, is the
-  exception), and a refuted claim gets an inline *do not use* warning instead.
-  `git mv` into it leaves the file tracked: untrack it too. Never run `git
-  clean` with `-ff` at the root: a double `-f` deletes nested repositories,
-  `private/` among them. Check: `grep -rln 'private/' README.md docs data
-  tools crates apps scripts` and `git ls-files private` find nothing.
-- **Nothing committed names the owner's instruments or other projects.** Check:
-  `git diff --cached | grep -iFf private/forbidden-names.txt` finds nothing.
-- **A commit message says why**: the reason, the constraint, the observation
-  or the rejected alternative that the diff cannot show. The diff already says
-  what changed; a message that restates it is noise. *Not mechanically checked.*
-- **American English** throughout, except the French interface catalog
-  (planned), the bilingual glossaries, and a quotation or a title copied from
-  a source, which keeps its spelling. *Not mechanically checked.*
-- **"Done" means a test or a grep in the tree shows it**, never a message.
+## Language
 
-## Code
+American English throughout: code, identifiers, comments, documents, commit messages, file names and the text the page shows. Three kinds of text keep their own: the French interface catalog (planned), the bilingual glossaries, and a quotation or a title copied from a source, as printed. *Not mechanically checked.*
 
-1. **One part definition feeds contacts and drawing**: both are built in Rust
-   from the same fields and exported, and the browser only renders them,
-   applying each body's pose as given. The drawn parts declare the ranges a
-   contact may read, and a contact pair holds those ranges and nothing else,
-   so nothing a contact reads can drift from the drawing: the invariant holds
-   by structure. The static solve places the key on those contacts, and every
-   procedure of the sheet, the regulation solve and the drawing read the key
-   placed there. Check:
-   `every_contact_surface_is_a_range_of_a_drawn_part`,
-   `every_contact_lies_on_its_drawn_outline`.
-2. **Regulation is trade targets solved to geometry; the coordinate is
-   normative**, the target kept beside it with its achieved value. Check:
-   `the_regulated_key_meets_its_targets_then_lands_within_one_paper`.
-3. **The simulator measures itself with the trade's protocols** run on the
-   model, never a parameter read back; each reading carries its value in
-   full, what the trade reads it as, its conditions, its trust and the
-   solver's fingerprint; where a displayed value is still an input, as a
-   key's mass, published or weighed, and the estimated height of its center
-   of mass, FOUNDATIONS §2.2 says so. The readings' closed
-   forms are test oracles, compiled for `pa-core`'s tests only. Check:
-   `the_bench_measures_its_own_friction_by_the_protocol`,
-   `down_and_up_are_the_band_at_the_seats_attitudes`; `grep -rn oracle
-   crates/pa-app/src crates/pa-wasm/src crates/pa-cli/src` finds nothing.
-4. **Dry friction is set-valued**, at the axes and at the sliding contacts
-   alike, never `sign()` or `tanh()`; axis friction is stored as a torque with
-   its measurement radius. Check: `grep -rn tanh crates/*/src` finds
-   only comments; `AxisFriction` carries its radius.
-5. **No number without provenance**: the engine starts from no number of its
-   own; a profile in `data/profiles/` binds every value an instrument starts
-   from to a record in `data/params/` or to an assumption it states with its
-   reason, and a derived one has its rule beside it or its script in
-   `tools/derivations/`, as every `[E]` does; a source in `private/` counts,
-   a lost one does not. Check:
-   `every_default_has_a_record_or_a_stated_assumption`,
-   `the_measured_section_profile_loads_to_the_test_fixture`.
-6. **No general-purpose physics engine in the core** (FOUNDATIONS §3.9); MuJoCo
-   only ever as an optional oracle. Check: `cargo tree`, the `package.json`s.
-7. **`pa-core` has no I/O and no web dependency, and justifies each
-   dependency** in its manifest: `libm` today, for every transcendental (rule
-   8); `serde` behind a feature, with persistence, is the planned one. Its one
-   feature, `fixtures`, compiles its test fixture for `pa-app`'s tests, and
-   nothing shipped enables it. `pa-wasm` and `pa-cli` adapt `pa-app` and add
-   no physics. Check: the three manifests; `grep -rnE
-   'std::(fs|io|net)|wasm_bindgen' crates/pa-core/src` finds nothing.
-8. **Determinism** (FOUNDATIONS §4.4): IEEE-754 only, a fixed order of
-   operations and contacts, no `HashMap` iteration in the solver, every
-   transcendental in `pa-core` (`pow` included) through the `libm` crate, no
-   relaxed SIMD. Convergence-tested loops are allowed with a hard cap and a
-   reported count; a metrological path converges, by tolerance under a cap or by
-   a bisection whose fixed count resolves below what is read; fixed budgets
-   elsewhere only where real time needs them. No time step, solver count or felt
-   law is fixed by rule: each is a FOUNDATIONS §4 hypothesis, settled by its
-   test. Check: `grep -rn HashMap crates/pa-core/src` finds nothing; Clippy
-   refuses in `pa-core` every `f64` method IEEE-754 does not round exactly
-   (`crates/pa-core/clippy.toml`), a test allowing one explicitly; the golden
-   sheet (`crates/pa-app/tests/golden.rs`) fails when a reading moves by a
-   bit, and its WebAssembly twin (`crates/pa-wasm/tests/golden.test.mjs`,
-   in `pnpm test`) when the browser's build reads another; a change that
-   means to move one rewrites it with `cargo run -p pa-cli -- golden` and
-   says why; `the_fingerprint_names_the_frozen_numbers` fails when a cap,
-   tolerance or count changes and the solver's fingerprint does not.
-9. **SI unless the name says otherwise.** Geometry and mechanics are SI; a value
-   in a trade unit (grams in the weighing algebra; millimeters and grams at the
-   boundary, in the display and in saved files) carries it in its name
-   (`down_weight_g`, `key_dip_mm`), and a measurement its unit beside its
-   value. An unsuffixed trade-unit field is a bug, as is a `*_torque`
-   returning kg·m. Check: review; `grep -rnE '_(mm|g)\b' crates/pa-core/src`
-   lists the suffixed names.
-10. **Upstream settings drift, they do not cascade; faults are reported, not
-    refused.** Only what cannot be computed or drawn truthfully is refused,
-    never clamped: by the validation layer (`pa_core::validate`, FOUNDATIONS
-    §7.3), before any solve, naming the limiting dimension and the shortfall,
-    the instrument left as it was to the bit of its state hash. Check:
-    `a_fault_shrinks_to_nothing_as_the_frame_comes_right`,
-    `each_problem_is_refused_and_leaves_the_instrument_as_it_was`,
-    `everything_an_assembled_keyboard_can_be_is_taken`,
-    `no_number_that_is_not_finite_reaches_the_core`.
-11. **Ratios are outputs**, changed only through geometry. The key ratio's force
-    convention (≈ 0.5–0.7, the one in the equation of balance) and geometric
-    one ("nominally 2:1") are reciprocals; swapping them inflates the wippen
-    term about 3.3 times. Check: `grep -rnE 'set_[a-z_]*ratio' crates apps`
-    finds nothing; `Touchweight::conventions_are_sane`,
-    `the_inverted_key_ratio_is_rejected`.
+## Project
 
-## Validation
+piano-action-sim is an engine for building applications around the grand piano action, for a piano technician, its physics in Rust compiled to WebAssembly; its first application is a single-key regulation bench (`apps/bench`). Built: stage 1a, the key on its frame. Planned: the wippen, the hammer, the action in motion, 88 notes (`docs/FOUNDATIONS.md` > Stages). Read `docs/FOUNDATIONS.md` before changing the physics, the architecture, the dependencies or the tooling; its Crates, apps and gates maps the repository.
 
-- **Drive in position, compare forces; keep the Bad-Model guard** (FOUNDATIONS
-  §5.1), from the dynamics prototype on. *Not mechanically checked.*
-- **Keep the non-confusion tests**: 1 g of mass on the key moves BW, not F;
-  axis friction ×1.2 moves F, not BW; through the procedures, within what the
-  tilt between the key's two seats derives, never a tolerance widened to pass;
-  through the band likewise, the gram moving its middle and not its width,
-  friction ×1.2 its width and not its middle. Check:
-  `one_gram_of_mass_moves_balance_weight_*`,
-  `scaling_friction_moves_friction_weight_*`,
-  `one_gram_of_mass_moves_the_bands_middle_and_not_its_width`,
-  `tighter_bushings_widen_the_band_and_leave_its_middle`, `tools/smoke/`.
-- **A validation test says so in its doc comment**; every other test is a
-  consistency check, and a round trip through the model's own code never
-  validates (FOUNDATIONS §5.1). *Not mechanically checked.*
+## The owner
 
-## The owner, and staging
+He is the authority on the trade: vocabulary, priorities and what a part looks like are his call (`.claude/rules/vocabulary.md`); ask when a term is in doubt. Speak in trade quantities and his names; say what a modeling choice changes for regulating, not which code moved; ask for his measurements before drawing a part. Build by sub-assembly, engine and view together (`docs/FOUNDATIONS.md` > Staged by sub-assembly, with the view at every stage): he validates by looking, so each stage ends on a number he can judge by the trade's protocol.
 
-He is the authority on the trade: vocabulary, priorities and what a part looks
-like are his call; ask when a term is in doubt. The French–English mapping is
-`docs/research/A3-nomenclature-and-regulation.md` §6, its open questions in
-`docs/vocabulary-worksheet.md`; do not restate it, and cite no source for a
-trade term. Speak in trade quantities and his names; say what a modeling
-choice changes for regulating, not which code moved; ask for his measurements
-before drawing a part. Build by sub-assembly, engine and view together
-(FOUNDATIONS §8): he validates by looking, so each stage ends on a number he can
-judge by the trade's protocol. *Not mechanically checked.*
+## Where the work stands
 
-## Do not use
+`private/` is a separate, private Git repository nested at the root of the main checkout and ignored by this one: the owner's own material and the project's tracking (`.claude/rules/repository.md`). Read `private/HANDOFF.md` before touching anything; `private/README.md` lists its siblings (decision history, corrections, measurement requests, the audit record). Linked worktrees do not have it: from one, it is at `$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/private`.
 
-FOUNDATIONS warns inline against numbers and arguments that are wrong and easy
-to derive again. Keep those warnings, add new ones where the error would be
-re-derived, and keep this index current: 12 µs, 570:1, 2/ω as the stability
-limit (§4.1); 280 Hz, 180 µs (§4.5); the time-step case against regularized
-friction (§3.5); the coupling I_cm + m(r·u) (§3.6); "no game engine has joint
-dry friction" (§3.9); the additive-damping equivalence, "no published
-rate-independent felt model", "a factor of 56" (§4.3); "a convergence test
-breaks reproducibility" (§4.4); annex A1's per-step costs (§4.6); "+0.1 mm of
-capstan ⇒ −1.4 g", ΔJ/J as a ranking, gradient descent on settings (§5.3);
-Thorin's demonstrator touchweights read as wear (§5.2); "only the support spring
-moves BW" (§6.1); the spurious gap-gradient term (§6.2); Pw2 as the wippen
-pivot, 5.84 (§6.4); "~40 % of friction unexplained", F ≈ 9 g, Hirschkorn's
-friction law without its bracket (§6.5); the face beside an edge arc as the
-row that always carries a corner sunk past the arc's center (§6.6). Check: a
-grep for a listed value finds only its warning; *not enforced*.
+Add a line to this file only if it would stay true when the work moves on: a rule does, a status does not.
 
-## Layout
+Never run `git clean` with `-ff` at the repository root: a double `-f` deletes nested repositories, `private/` among them.
 
-```
-crates/pa-core     domain: geometry · mechanism · contact · solve · parts ·
-                   measure · regulation · registry · validate. No I/O, no
-                   web; libm its one dependency
-crates/pa-app      application: the single-key bench as an Instrument (set by
-                   path, act by action, the composed registry, built from a
-                   profile), the golden sheet (tests/golden/)
-crates/pa-wasm     browser adapter of pa-app, the only crate that knows JS;
-                   its package.json lets Turborepo drive wasm-pack
-crates/pa-cli      shell adapter of pa-app: `weigh`, `band`, `golden`
-apps/bench         the bench: React, react-three-fiber
-data/params/       parameter records with provenance
-data/profiles/     what each instrument starts from: every number a record or
-                   a stated assumption
-data/references/   primary corpus: gitignored, third-party copyright
-docs/              FOUNDATIONS.md · vocabulary-worksheet.md · research/ A1–A5
-tools/derivations/ the script behind every [E] number (python3 -I)
-tools/smoke/       drives the real page over the Chrome DevTools protocol
-scripts/           verify.sh (every gate) · smoke.sh (headless Chrome)
-private/           gitignored, its own repository: owner's material, tracking
-```
+## Workflow
+
+- **Each piece of work has its own branch, `<type>/<topic>`, in its own worktree** under `.claude/worktrees/`, started from `origin/main` (from `main` until the repository has its GitHub remote), or from an unmerged branch whose work it needs. The main checkout stays on `main` for the owner. A type is one of `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore` and `ci`.
+- **Parallel sessions:** each owns one worktree and its branch, and never works in another's. Only the coordinating session, the one that started the others or the one the owner names, writes to `private/`: the others put their decisions and handoff notes in their final report.
+- **Dependencies:** a session that starts in a checkout without `node_modules` installs them from the lockfile (`.claude/settings.json`); in a worktree added during a session, run `pnpm install --frozen-lockfile` there first.
+- **Dev servers:** the owner's `pnpm --filter @pas/app-bench dev` owns Vite's port, 5173. Start yours from your worktree on another (`--port 5174`), and stop it when you are done.
+- **Check a visible change in a browser** before calling it done: load the page on your own server, exercise the change, read the console. The smoke test proves that every control reaches the engine, not that what is drawn is right.
+- **"Done" means a test or a grep in the tree shows it,** never a message.
+- **Commits:** commit as you like while working. Before pushing, rewrite the branch into atomic commits that each hold one reason to change and pass `pnpm verify`. The header of a message is `<gitmoji>(<scope>) <subject>`, with no colon: the gitmoji (https://gitmoji.dev) whose meaning matches the commit's dominant intention, as a Unicode character and never a shortcode, then the scope in parentheses, one space and the subject: `✨(pa-core) draw the band, the force down and up over the whole stroke`. A branch takes the type that matches the intention of its main change: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore` or `ci`.
+- **A commit scope names where the change belongs:** the module, as `docs/FOUNDATIONS.md` > Crates, apps and gates names it (`pa-core`, `pa-app`, `pa-wasm`, `pa-cli`, `bench`), or else the area: `data` for the records and the profiles, `tools` for the derivations, the prototype and the smoke test, `build` for the build, the packaging and the tools' configuration, `ci` for the workflows, `docs` for `README.md`, `CREDITS.md` and the documents of `docs/`, `rules` for `CLAUDE.md` and `.claude/rules/`, a skill's name for that skill and the agents it runs, and `project` for the repository's own files, such as `.gitignore`, `.claude/settings.json` or the pull request template. A scope is in lowercase, and never a file name, a path or two scopes. The documents a change must update go in its commit, under its scope; a change that spans two modules is usually two commits, and one that cannot be split takes the scope of the module or area that owns the decision.
+- **A commit message says why.** The subject says what the change achieves, in the reader's terms, and not the files it touches, which the diff lists: in the imperative, in lowercase, acronyms and product names included, a symbol keeping its own casing, without a final period, in a header of around 70 characters. The body, after a blank line and wrapped at 72 columns, gives what the diff cannot show: the motivation and the behavior it replaces, the constraint, the observation or the rejected alternative. It never lists the changes. Only a change that speaks for itself goes without a body: a typo, a mechanical rename, a dependency bump.
+- **A commit footer holds only what tools read:** a breaking change, as `BREAKING CHANGE:` followed by what breaks and what its users must do, and the issues the commit closes, as `Closes #42`, never one that is not true. No other trailer, such as `Co-Authored-By`, `Generated with` or `Signed-off-by`: who typed a change says nothing of its reason.
+- **A branch reaches `main` only through a pull request whose CI passes** (planned: until the repository has its GitHub remote, the owner reviews the branch and moves `main` himself). The owner merges with "Rebase and merge", so each commit lands as written; review fixes are folded into their commits before a push with `--force-with-lease`. Never merge into `main` yourself.
 
 ## Commands
 
 ```bash
-pnpm install --frozen-lockfile       # first run; a session hook does it in a new worktree
+pnpm install --frozen-lockfile       # first run; the session hook does it in a new worktree
 pnpm verify                          # every CI gate but the frozen install
 cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
@@ -206,21 +56,19 @@ PATH="$HOME/.cargo/bin:$PATH" pnpm test
 pnpm --filter @pas/app-bench dev     # after a build; ?view=section, ?view=band
 ```
 
-Node 26 and Rust 1.99.0 are pinned (`.nvmrc`, `rust-toolchain.toml`) so tools,
-lints and formatting match CI; `nvm` is on the owner's machine. `wasm-pack` is
-in `~/.cargo/bin`, off a non-interactive shell's `PATH`, hence the prefix on
-every task that builds the wasm first (`pnpm verify` sets it itself):
-`wasm-pack: not found` is a shell difference, not a broken build. A session
-that starts in a checkout without `node_modules` installs it from the
-lockfile (`.claude/settings.json`); in a worktree added during a session,
-run `pnpm install --frozen-lockfile` there first. Re-check the
-wasm-threads blocker on `pa-wasm`, a `cdylib`: a library crate does not link,
-and passes with the same flags.
+Node 26 and Rust 1.99.0 are pinned (`.nvmrc`, `rust-toolchain.toml`) so tools, lints and formatting match CI; `nvm` is on the owner's machine. `wasm-pack` is in `~/.cargo/bin`, off a non-interactive shell's `PATH`, hence the prefix on every task that builds the wasm first (`pnpm verify` sets it itself): `wasm-pack: not found` is a shell difference, not a broken build. Re-check the wasm-threads blocker on `pa-wasm`, a `cdylib`: a library crate does not link, and passes with the same flags.
 
-## Resuming after a gap
+## Rules
 
-Read `private/HANDOFF.md`; `private/README.md` lists its siblings (decision
-history, corrections, measurement requests, the audit record). None is
-published, and nothing published depends on them. Add a line to this file only
-if it would stay true when the work moves on: a rule does, a status does not,
-except a rule's known exceptions, which stay with the rule until fixed.
+Each file of `.claude/rules/` holds the rules of one concern, in full, each ending with its check. Claude Code loads a file with `paths` when you read or edit a file that matches them, but a subagent in its own worktree or a compacted session can miss that load: read the file before you do what its line says.
+
+- `repository.md`, loaded in every session: what belongs in the repository and in `private/`, the owner's names kept out, the documents a change updates, and how external work is credited.
+- `conventions.md`, loaded in every session: naming and the trade's symbols, units and the frame of reference, finite numbers, comments, Rust, TypeScript, and input from outside the program.
+- `physics.md`, for the crates, the page, the dynamics prototype and the manifests: one part definition for contacts and drawing, set-valued friction, no general-purpose engine, determinism and the golden sheet.
+- `metrology.md`, for the crates, the page, the profiles and the smoke test: regulation as targets, readings by the trade's protocols, drift reported and the impossible refused, ratios as outputs, validation.
+- `provenance.md`, for the data, the documents, the tools and the code that loads profiles: the record behind every starting number, and the "Do not use" index.
+- `vocabulary.md`, for any document, the catalogs, the data and the crates' sources: the owner's terms, the one glossary, trade quantities.
+- `architecture.md`, for the crates, the bench and the manifests, and before adding a dependency: layers, ports and wiring, responsibilities, stored and shared data, SOLID and organization.
+- `configuration.md`, for a manifest, a lockfile, a toolchain pin, a tool's configuration, a script, CI or Claude Code's settings, skills and agents, and before adding or upgrading a dependency, even with a command that edits no file you read: modules, dependencies, continuous integration, checks, automation.
+- `tests.md`, for any test or test support, and before fixing a bug, since the fix starts with a test: writing a test, levels, test support, Rust tests, Vitest.
+- `documents.md`, for any document or agent guidance, and any reference to a document, tool messages included: present tense, where each statement lives, references by heading, rules files.

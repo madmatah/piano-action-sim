@@ -289,7 +289,7 @@ fn corpus() -> Vec<(Class, Setup)> {
 /// the oracle confirms it, and every refusal names its reason.
 ///
 /// A seat of a key a keyboard could be built from takes at most a quarter
-/// of the static solve's cap of steps, which `CLAUDE.md` rule 8 asks of a
+/// of the static solve's cap of steps, which `.claude/rules/physics.md` > Determinism asks of a
 /// cap, and so does a key riding on a frame whose stops fight, lowered onto
 /// its frame from above near where it rides. Every wedged key rides, at both
 /// seats, on the same pose, so it has no dip.

@@ -397,7 +397,7 @@ belongs in a disposal scope.
 ## 6. Units in names
 
 A value in a trade unit carries its unit in its name; geometry and mechanics
-are SI otherwise (CLAUDE.md, Code, rule 9). The bench's names follow it:
+are SI otherwise (`.claude/rules/conventions.md` > Units). The bench's names follow it:
 `key_dip_mm`, `key_height_mm`, `capstan_height_mm`, `down_weight_g`,
 `up_weight_g`, `front_weight_g`, `kf_g`. The later stages' settings take the
 same form [S]: `let_off_mm`, `drop_mm`, `hammer_blow_distance_mm`,
