@@ -1,11 +1,18 @@
 name: CI
 
 # The same gates as `pnpm verify` (scripts/verify.sh), split into two jobs.
+# Each action is pinned to the commit of a release, its version beside it: a
+# tag can be moved to other code, a commit cannot.
 
 on:
   push:
     branches: [main]
   pull_request:
+
+# The workflow only reads the repository: a token that can write is a token a
+# compromised action could use.
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,11 +23,13 @@ jobs:
     name: Rust — fmt, clippy, test, wasm build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # With no argument, rustup installs the toolchain rust-toolchain.toml
       # names, with the components and the wasm target it lists.
       - run: rustup toolchain install && rustup show active-toolchain
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
@@ -30,16 +39,18 @@ jobs:
     name: Web — check, typecheck, build, test, browser smoke test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # The bench imports the wasm package, which wasm-pack builds from Rust.
       - run: rustup toolchain install && rustup show active-toolchain
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
         with:
-          tool: wasm-pack
+          tool: wasm-pack@0.15.0
       # pnpm's version comes from `packageManager` in package.json.
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
