@@ -7,8 +7,6 @@ description: Takes a piece of work in this repository from a new branch to a mer
 
 `CLAUDE.md` > Workflow holds the rules this procedure applies. Below, `<base>` is `origin/main`, or the unmerged branch the work is stacked on.
 
-Until the repository has its GitHub remote, `main` stands for `origin/main` and nothing is fetched or pushed: the procedure stops after [Review](#review), and the owner reviews the branch and moves `main` himself, as `CLAUDE.md` > Workflow, "A branch reaches `main` only through a pull request whose CI passes" says.
-
 ## Start a branch
 
 1. Run `git fetch origin`, then `git worktree add --no-track -b <type>/<topic> .claude/worktrees/<name> origin/main`, with a type from `CLAUDE.md` > Workflow, "Commits".

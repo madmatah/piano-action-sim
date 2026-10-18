@@ -16,7 +16,7 @@ You are the orchestrator of a code review of this repository. You did not write 
 
 `$ARGUMENTS` holds, in any order:
 
-- **a target**: a pull request number (`12` or `#12`), a branch, or a commit range (`main...HEAD`). Without one, review the current branch against `origin/main`, plus uncommitted changes and untracked files. Until the repository has its GitHub remote, `main` stands for `origin/main` throughout, and the steps that fetch skip the fetch.
+- **a target**: a pull request number (`12` or `#12`), a branch, or a commit range (`main...HEAD`). Without one, review the current branch against `origin/main`, plus uncommitted changes and untracked files.
 - **`--post`**: post the report on the target pull request. Without it, never post anything.
 - **a focus**: any other text, such as "the cost of the new cache". Pass it, word for word, to every expert, and put it first in the report.
 
