@@ -17,8 +17,10 @@
  * control by the path it sets (`data-path`) or the action it runs
  * (`data-action`), a reading by its procedure (`data-procedure`), a message by
  * its code. The wording is the catalog's and changes with the language; the
- * identifiers do not, so the same test drives the bench in English and in
- * French.
+ * identifiers do not. The test asks for French as the browser's language,
+ * by the protocol and not by the machine's locale, so the page opens in
+ * French wherever it runs; it then chooses English for the checks that read
+ * a sentence the page writes, such as a band's extreme with its number.
  *
  * One thing to know before trusting what you see through this protocol: a
  * capture taken within a few seconds of an edit catches Vite mid reload, and a
@@ -87,6 +89,15 @@ const send = (method, params = {}) =>
   })
 
 await send('Runtime.enable')
+
+// French as the browser's language, then the page loaded again in it: an
+// override that holds for every page this target loads afterwards.
+const { result: browser } = await send('Browser.getVersion')
+await send('Emulation.setUserAgentOverride', {
+  userAgent: browser.userAgent,
+  acceptLanguage: 'fr-FR,fr',
+})
+await send('Page.navigate', { url: `http://127.0.0.1:${appPort}/` })
 
 const evaluate = async (expression) => {
   const r = await send('Runtime.evaluate', {
@@ -189,6 +200,25 @@ const showView = (view) =>
     })()
   `)
 
+const chooseLanguage = (language) =>
+  evaluate(`
+    (() => {
+      const b = document.querySelector('[data-language="${language}"]')
+      if (!b) return 'no such language'
+      b.click()
+      return 'ok'
+    })()
+  `)
+
+/** Fails unless the page opened in the browser's language, French, then
+ * chooses English, which the checks of the wording read. */
+async function expectFrenchThenChooseEnglish() {
+  const opened = await evaluate('document.documentElement.lang')
+  if (opened !== 'fr') fail(`the page does not open in the browser's language, fr: ${opened}`)
+  if ((await chooseLanguage('en')) !== 'ok') fail('no English in the language selector')
+  await settle()
+}
+
 /**
  * Clicks inside the punching stack whose papers are at `path`: a paper of
  * `add` millimeters from its drawer, or its `first` or `last` paper lifted
@@ -274,6 +304,8 @@ await waitFor('the engine to boot and fill the weighing sheet', async () => {
   const s = await sheet()
   return Object.keys(s).length > 0 ? s : undefined
 })
+await expectFrenchThenChooseEnglish()
+console.log("  ok  the page opens in the browser's language, French")
 
 // What is on the bench is one of the profiles the engine ships, chosen by the
 // action that puts it there, as it arrives. The page opens on Hirschkorn's
@@ -337,6 +369,125 @@ if (
 console.log(
   `  ok  the page opens on Hirschkorn's key: FW ${bootRead.front_weight.exact} g, ${hisMass} g, no fault, resting on the cloth's edge ${hisBack.at} mm behind the pin`,
 )
+
+/** What the page says, by the identifiers it says it about, and what it
+ * shows: every panel's heading and every reading's label, each reading's
+ * value as written, and the values themselves, the readings' and the
+ * settings'. */
+const readWordsAndValues = () =>
+  evaluate(`
+    (() => {
+      const by = (selector, key, value) => Object.fromEntries(
+        [...document.querySelectorAll(selector)].map((e) => [key(e), value(e)]))
+      return JSON.stringify({
+        lang: document.documentElement.lang,
+        title: document.title,
+        panels: by('h2[data-panel]', (h) => h.dataset.panel, (h) => h.textContent),
+        labels: by('.row[data-procedure]', (r) => r.dataset.procedure,
+          (r) => r.querySelector('.label')?.textContent ?? ''),
+        written: by('.row[data-procedure]:not(.refused)', (r) => r.dataset.procedure,
+          (r) => r.querySelector('.value')?.textContent ?? ''),
+        values: {
+          readings: by('[data-procedure]', (r) => r.dataset.procedure,
+            (r) => [r.dataset.shown ?? null, r.dataset.exact ?? null]),
+          settings: by('label.slider[data-path]', (l) => l.dataset.path, (l) => l.dataset.value),
+        },
+      })
+    })()
+  `).then(JSON.parse)
+
+// The language is the wording's alone: chosen in French, every panel heading
+// and every reading's label is reworded and every number written with a
+// decimal comma, and no value moves; chosen back in English, the page reads
+// as it did.
+if ((await chooseLanguage('en')) !== 'ok') fail('no English in the language selector')
+await settle()
+const inEnglish = await readWordsAndValues()
+if ((await chooseLanguage('fr')) !== 'ok') fail('no French in the language selector')
+await settle()
+const inFrench = await readWordsAndValues()
+if (inEnglish.lang !== 'en' || inFrench.lang !== 'fr' || inEnglish.title === inFrench.title) {
+  fail(
+    `the document does not follow the language: ${JSON.stringify([inEnglish.lang, inFrench.lang, inFrench.title])}`,
+  )
+}
+for (const part of ['panels', 'labels']) {
+  const codes = Object.keys(inEnglish[part])
+  const same = codes.filter((code) => inFrench[part][code] === inEnglish[part][code])
+  if (codes.length === 0 || same.length > 0) {
+    fail(`French leaves ${part} as they were: ${JSON.stringify(same.length > 0 ? same : codes)}`)
+  }
+}
+const misWritten = Object.keys(inEnglish.written).filter(
+  (code) => inFrench.written[code] !== inEnglish.written[code].replace('.', ','),
+)
+if (misWritten.length > 0) {
+  fail(
+    `French writes these readings otherwise than with a decimal comma: ${JSON.stringify(misWritten.map((code) => [inEnglish.written[code], inFrench.written[code]]))}`,
+  )
+}
+if (JSON.stringify(inFrench.values) !== JSON.stringify(inEnglish.values)) {
+  fail('choosing French moved a value')
+}
+// The French names are longer than the English ones: each view's tab keeps
+// its name whole on one line, the tabs wrapping under each other instead,
+// and the panel holds its lines without a sideways scroll.
+const frenchLayout = await evaluate(`
+  (() => {
+    const panel = document.querySelector('aside.panel')
+    return {
+      broken: [...document.querySelectorAll('.viewtabs button')]
+        .filter((tab) => {
+          const name = document.createRange()
+          name.selectNodeContents(tab)
+          return tab.scrollWidth > tab.clientWidth + 1 || name.getClientRects().length > 1
+        })
+        .map((tab) => tab.textContent),
+      overflow: panel.scrollWidth - panel.clientWidth,
+    }
+  })()
+`)
+if (frenchLayout.broken.length > 0 || frenchLayout.overflow > 0) {
+  fail(`the page does not hold its French names: ${JSON.stringify(frenchLayout)}`)
+}
+if ((await chooseLanguage('en')) !== 'ok') fail('no English in the language selector')
+await settle()
+if (JSON.stringify(await readWordsAndValues()) !== JSON.stringify(inEnglish)) {
+  fail('the page does not read as it did once English is chosen again')
+}
+console.log(
+  `  ok  French rewords ${Object.keys(inEnglish.panels).length} headings and ${Object.keys(inEnglish.labels).length} readings, "${inEnglish.labels.down_weight}" as "${inFrench.labels.down_weight}", and moves no value`,
+)
+
+// Choosing a language rewords the page and keeps what it holds: a target
+// typed and not sent stays in its field, and the band drawn stays drawn and
+// current.
+const typedBefore = await fieldValue(KEY_HEIGHT)
+if ((await setField(KEY_HEIGHT, '64.5')) !== 'ok') fail('no key height field')
+if ((await showView('band')) !== 'ok') fail('no band button')
+await settle()
+const drawnBand = () =>
+  evaluate(`
+    (() => {
+      const b = document.querySelector('.band')
+      return b ? [b.dataset.band, b.dataset.stale, b.dataset.samples].join(' ') : null
+    })()
+  `)
+const bandBefore = await drawnBand()
+for (const language of ['fr', 'en']) {
+  if ((await chooseLanguage(language)) !== 'ok') fail(`no ${language} in the language selector`)
+  await settle()
+  const [typed, band] = [await fieldValue(KEY_HEIGHT), await drawnBand()]
+  if (typed !== '64.5' || band !== bandBefore || !band?.startsWith('drawn false')) {
+    fail(
+      `choosing ${language} lost what the page held: ${JSON.stringify([typed, band, bandBefore])}`,
+    )
+  }
+}
+console.log(`  ok  a language chosen keeps the target typed and the band drawn: ${bandBefore}`)
+if ((await setField(KEY_HEIGHT, typedBefore ?? '')) !== 'ok') fail('no key height field')
+if ((await showView('solid')) !== 'ok') fail('no solid button')
+await settle()
 
 /** The friction control: the key friction weight Stanwood's protocol reads,
  * as shown, or why it is not, and whether it can be moved. */
@@ -1242,7 +1393,7 @@ await waitFor('the engine to boot again on the section', async () => {
   const s = await sheet().catch(() => ({}))
   return Object.keys(s).length > 0 ? s : undefined
 })
-await settle()
+await expectFrenchThenChooseEnglish()
 const rgbOf = (hex) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
 const paintedOn = async (profile) => {
   if ((await choose(profile)) !== 'ok') fail('no profile choice')

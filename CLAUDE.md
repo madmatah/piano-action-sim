@@ -6,7 +6,7 @@ One criterion governs everything (`docs/FOUNDATIONS.md` > The acceptance criteri
 
 ## Language
 
-American English throughout: code, identifiers, comments, documents, commit messages, file names and the text the page shows. Three kinds of text keep their own: the French interface catalog (planned), the bilingual glossaries, and a quotation or a title copied from a source, as printed. *Not mechanically checked.*
+American English throughout: code, identifiers, comments, documents, commit messages, file names and the text the page shows. Three kinds of text keep their own: the French interface catalog, the bilingual glossaries, and a quotation or a title copied from a source, as printed. *Not mechanically checked.*
 
 ## Project
 

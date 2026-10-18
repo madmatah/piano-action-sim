@@ -98,7 +98,7 @@ being borrowed or assumed.
 | `crates/pa-app` | the single-key bench as an instrument, built from a profile, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
 | `data/profiles` | what each instrument starts from, every number bound to a record or a stated assumption |
 | `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `band [PROFILE]`: the band, its extremes in full beside the walk's D and U, and both curves step by step; `golden`: rewrites the golden sheet |
-| `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section, in solid and as the band, force against travel, drawn when it is chosen (React, react-three-fiber), from the same Rust compiled to WebAssembly |
+| `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section, in solid and as the band, force against travel, drawn when it is chosen (React, react-three-fiber), from the same Rust compiled to WebAssembly; worded in English or in French, the browser's language first, with a selector |
 
 ## What is planned
 
@@ -106,13 +106,13 @@ In this order, each stage with its engine and its view
 ([`docs/FOUNDATIONS.md` > Stages](docs/FOUNDATIONS.md#stages)):
 
 - a general quasi-static core with the key as its first client and an
-  interface in English and French (its first parts, the mechanism, the
+  interface in English and French: its first parts, the mechanism, the
   contacts over all coordinates, the static solve, every reading of the sheet
   by procedure, a boundary that sends codes and numbers which the page words
-  in English, the registry and the validation layer, the profiles that load
-  `data/params/`, Hirschkorn's key the default and the owner's measured
-  section beside it, the band drawn by the driven sweep, are built; the French
-  interface is planned);
+  in English or in French, the registry and the validation layer, the
+  profiles that load `data/params/`, Hirschkorn's key the default and the
+  owner's measured section beside it, and the band drawn by the driven sweep
+  are built; the felt laws that will let its linings compress are planned;
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;

@@ -26,7 +26,7 @@ import { useLayoutEffect, useState } from 'react'
 import { nearest, niceStep, padded, ticks } from './axis'
 import { extremeAt, extremeLabel, FORCE_DECIMALS, type Read, TRAVEL_DECIMALS } from './band'
 import { decimals, MASS_G } from './format'
-import { t, word } from './i18n'
+import { useCatalog, word } from './i18n'
 import { BAND_COLOR } from './palette'
 import { Rich } from './Rich'
 
@@ -119,6 +119,7 @@ export function BandView({
    * top seat; `null` where the engine reads none. */
   travelMm: number | null
 }) {
+  const t = useCatalog()
   const [plotRef, size] = useSize<HTMLDivElement>()
   const [at, setAt] = useState<number | null>(null)
   const curves = band.curves
@@ -176,7 +177,7 @@ export function BandView({
     const atMm = m.conditions.sweep?.at_mm ?? 0
     const [mx, my] = [x(atMm), y(m.value)]
     const left = atMm < curves.window_mm / 2
-    const text = extremeLabel(m)
+    const text = extremeLabel(t, m)
     // The label's baseline away from the band, or into it where the weight's
     // line would cross it: a line of text stands about 12 px tall.
     const outside = my + (above ? -10 : 20)
@@ -421,7 +422,7 @@ export function BandView({
           step of the sweep. */}
       <div className="visually-hidden">
         <ul className="band-extremes">
-          {[down, up].map((m) => m && <li key={m.procedure}>{extremeAt(m)}</li>)}
+          {[down, up].map((m) => m && <li key={m.procedure}>{extremeAt(t, m)}</li>)}
         </ul>
         <table>
           <caption>{t.band.table}</caption>

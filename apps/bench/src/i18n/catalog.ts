@@ -79,6 +79,16 @@ export function unitBeside(labeled: Labeled, unit: string): string {
   return labeled.unit === undefined ? unit : labeled.unit(unit)
 }
 
+/** The units a path's name may end in, the longest first. */
+const SUFFIXES: readonly SettingUnit[] = ['gmm', 'mm', 'g']
+
+/** The unit a path's name ends in, as `unit` writes it after a value, space
+ * included: every path carries its unit in its name. */
+export function unitIn(path: string, unit: Named<SettingUnit>): string {
+  const found = SUFFIXES.find((u) => path.endsWith(`_${u}`))
+  return found === undefined ? '' : ` ${unit[found]}`
+}
+
 /** A regulation laid: the papers, and what they give. */
 export type Laid = Extract<Acted, { outcome: 'laid' }>
 
@@ -86,10 +96,17 @@ export interface Catalog {
   /** `x` to `decimals` places as this language writes a number, never -0. */
   number(x: number, decimals: number): string
   /** Items as a sentence lists them: "a", "a and b", "a, b and c". */
-  list(items: readonly string[]): string
+  list(terms: readonly string[]): string
+  /** Reasons as a note or a tooltip lists them, each a clause of its own:
+   * "a; b". */
+  reasons(clauses: readonly string[]): string
 
   readonly booting: string
   readonly title: string
+  /** The title the browser's tab shows. */
+  readonly tabTitle: string
+  /** What the language selector is called, for a reader who cannot see it. */
+  readonly languageSelector: string
   readonly protocol: string
 
   readonly view: {

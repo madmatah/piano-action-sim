@@ -78,7 +78,7 @@ own, modeled as a surface).
 
 | FR | EN | Role | DOF | To be parameterized |
 |---|---|---|---|---|
-| Touche (corps) | key (stick / lever) | Input lever | **R** about the balance rail pin | Front and rear lengths ([Reyburn's ten measurements](#reyburns-ten-measurements): key front to balance hole 259.5 mm and key front to capstan 398 mm in Reyburn's example [V, Reyburn, p. 3]), mass, inertia, wood |
+| Touche | key, as one lever | Input lever | **R** about the balance rail pin | Front and rear lengths ([Reyburn's ten measurements](#reyburns-ten-measurements): key front to balance hole 259.5 mm and key front to capstan 398 mm in Reyburn's example [V, Reyburn, p. 3]), mass, inertia, wood |
 | Mortaise de balancier + garniture | balance mortise + bushing | Guidance at the balance pin | C | Play (a little side play at the bushing, none fore and aft at the hole [V, Steinway ch. 1, p. 14]), friction |
 | Mortaise d'enfoncement + garniture | front mortise + bushing | Lateral guidance | C | Play, friction |
 | Capsule de touche | key button / chase | Carries the balance mortise | 0 | — |
@@ -621,9 +621,11 @@ Identifiers are English snake_case, in five namespaces: parts, bare ([Parts](#pa
 the regulation settings, `tw.` the touchweight quantities and `geom.` the geometry
 ([Regulation settings and quantities](#regulation-settings-and-quantities)); `op.` the operations ([Operations](#operations)). A value in a trade unit carries its unit as a
 suffix (`spec.key_dip_mm`, `tw.downweight_g`); ratios and SI values carry none.
-**Planned**: these identifiers key the persisted schema and the French catalog
-([FOUNDATIONS > A bilingual interface](../FOUNDATIONS.md#a-bilingual-interface), [FOUNDATIONS > The parameter registry and the validation layer](../FOUNDATIONS.md#the-parameter-registry-and-the-validation-layer)). The built code's field names, such as `capsule_height`
-and `front_board`, do not follow them.
+**Planned**: these identifiers key the persisted schema
+([FOUNDATIONS > The parameter registry and the validation layer](../FOUNDATIONS.md#the-parameter-registry-and-the-validation-layer)). The built code's field names, such as `capsule_height`
+and `front_board`, do not follow them. The page's French catalog (built)
+words the engine's codes with the French names of these tables
+([FOUNDATIONS > A bilingual interface](../FOUNDATIONS.md#a-bilingual-interface)).
 
 The French column shows the name the interface uses first, then, in italics, other
 names a reader will meet for the same part. The German column holds only the terms
@@ -655,6 +657,7 @@ empty rather than filled from a dictionary.
 | Barre d'échappement (also *barre des boutons d'échappement*) | let-off rail / regulating rail | Auslösepuppenleiste | `let_off_rail`: one rail, under the hammer rail, carrying the let-off buttons; the interface says **barre d'échappement** |
 | Barre de repos des marteaux (also *barre de butée des marteaux*, *barre de butée des manches*; its cloth: *drap de butée des manches*) | hammer rest rail | Hammerruheleiste | `hammer_rest_rail` |
 | Touche | key | Taste | `key` |
+| Corps de la touche | keystick | — | `keystick`: the key's wooden body, without its covering, its key button and the blocks glued on it |
 | Touche blanche / marche | natural / white key | — | `natural_key` |
 | Dièse / feinte | sharp / black key | — | `sharp_key` |
 | Revêtement de touche | keytop / key covering | — | `keytop` |
@@ -671,6 +674,7 @@ empty rather than filled from a dictionary.
 | Dégagement | wippen rail clearance | — | `top_clearance`: the shallow cut in the top of the key, between the capstan and the back check block, that clears the wippen rail; on many keys, not all |
 | Bout de touche (also *arrière de la touche*) | key end / tail | — | `key_tail`. Not « talon », the wippen's heel |
 | Bout aminci | thinned tail | — | the end of the key, thinner than the keystick |
+| Épaulement | the step down to the thinned tail | — | where the keystick's full height steps down to the thinned tail |
 | Chanfrein | chamfer (under the tail) | — | the bevel under the tail, cut so that the key rests flat on the back rail cloth |
 | Feutre de bout de touche | key tail felt / key end felt | — | `key_tail_felt`: the felt on the tail that lifts the damper under-lever |
 | **Chevalet (de mécanique)** | **wippen assembly** | Hebeglied | `wippen_assembly`: the whole wooden sub-assembly, body, heel, jack, repetition lever, springs (note below) |
@@ -857,11 +861,12 @@ empty rather than filled from a dictionary.
 
 ### At the bench: weighing and laying papers
 
-The words the bench (built) shows around the weighing and the regulation, for the
-French catalog (planned). The touchweight quantities themselves are in [Regulation settings and quantities](#regulation-settings-and-quantities).
+The words the bench (built) shows around the weighing and the regulation, and its
+views; its French catalog (built) takes them from here. The touchweight quantities themselves are in [Regulation settings and quantities](#regulation-settings-and-quantities).
 
 | FR | EN | What it is |
 |---|---|---|
+| Banc d'essai | the bench | the page itself: the model of the grand action shown to be judged and corrected, not yet an application; the owner's name for it for the time being |
 | Relevé du poids de jeu | weighing sheet | the sheet the readings are written on |
 | Poids de pesée (a set: *jeu de poids*; stacked: *pile de poids*) | gram weights | the weights laid on the measuring point |
 | Bord avant du revêtement | the covering's front lip | the edge the measuring point is measured back from |
@@ -869,15 +874,21 @@ French catalog (planned). The touchweight quantities themselves are in [Regulati
 | Protocole Stanwood | Stanwood's protocol | |
 | Appareil de mesure à faible friction | Stanwood's jig | the key pivoting at its balance hole on a point, its measuring point on the scale |
 | Support à faible friction | the jig's roller | what the measuring point rests on, on the scale's pan |
+| Pesée (de la touche) | weighing the key | the key weighed whole: its mass on a scale, its front weight on the appareil de mesure à faible friction, and where the roller stood. « Pesée » is also the weigh-off ([Operations](#operations)); the context tells them apart |
 | Poids provisoire | temporary weight | a weight laid on the key for one reading, then taken off |
 | Cote (de réglage) | target | the value a setting is regulated to |
 | Position de repos | top seat | the key at rest on the back rail cloth |
 | À plat sur le drap; sur le bord du drap; sur une arête de la touche | flat on the cloth; on the edge of the cloth; on the key's own corner | how the tail bears on the back rail cloth: its chamfer flat, the cloth's front or back edge pressing into the chamfer, or the key's edge (where the chamfer begins, or the key's end) pressing into the cloth. Where a tail does not bed flat, either edge happens |
+| Équilibre des poids | the equation of balance | Stanwood's BW + FW = (WW × KR) + (SW × R) ([The equation of balance](#the-equation-of-balance)) |
+| Écart de niveau, touche enfoncée | out of level, key down | how far the key stands from level when fully down, in degrees, its target 0°; nose-down positive |
+| Assise du bout de touche | bedding at the back | the angle between the chamfer under the tail and the back rail cloth, the key at rest: 0° where the tail beds flat, positive where its rear end digs in. Not « portée », which is the key frame's on the keybed |
 | Fond de course (*position d'enfoncement maximal*) | bottom seat | the key down on its front punching |
 | Course de la touche | stroke, travel | |
 | Pile de mouches | punching stack | the papers under one felt punching |
 | Assortiment de mouches | drawer (of papers) | the paper thicknesses on hand |
 | Ajouter une mouche de 0,2 | add a 0.2 mm paper | how a paper is named and laid at the bench: by its thickness in millimeters, never as a stack's total (« régler à 0,37 » is not said) |
+| Coupe | section (the view) | the key on its frame drawn flat, in the sagittal section |
+| 3D | solid (the view) | the same key and frame in three dimensions, seen three-quarters, turned by hand |
 | Courbe d'enfoncement et de remontée | the band | the force on the measuring point through the stroke, its *courbe d'enfoncement* on the way down and its *courbe de remontée* on the way up, the key held by friction anywhere between them: the bench's own measurement, which no weight reads |
 
 ---

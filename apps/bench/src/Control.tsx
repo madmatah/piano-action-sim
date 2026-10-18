@@ -12,8 +12,8 @@
  *
  * Each control carries the engine's identifiers as attributes, `data-path`
  * for a setting, `data-action` for what runs an action, so that a test
- * drives it by what it is and not by its wording, which a catalog in
- * another language changes.
+ * drives it by what it is and not by its wording, which the language chosen
+ * changes: every component words itself from the catalog the page provides.
  */
 import type {
   Acted,
@@ -34,7 +34,7 @@ import { type Arguments, reading } from './bench'
 import { numberAt, numbersAt, param, textAt } from './document'
 import { typedNumber } from './fields'
 import { decimals, LENGTH_MM, RESOLUTION } from './format'
-import { t, unitBeside, word } from './i18n'
+import { type Catalog, unitBeside, useCatalog, word } from './i18n'
 import { labelOf, madeBy, seedText } from './layout'
 import { Rich } from './Rich'
 
@@ -61,8 +61,9 @@ export interface Answer {
   readonly acted: Acted
 }
 
-/** `x` to the decimals `resolution` is shown to, as the catalog writes it. */
-export function shown(x: number, resolution: number): string {
+/** `x` to the decimals `resolution` is shown to, as the catalog `t` writes
+ * it. */
+export function shown(t: Catalog, x: number, resolution: number): string {
   return t.number(x, decimals(resolution))
 }
 
@@ -72,8 +73,8 @@ function resolutionOf(p: Param | undefined): number {
 }
 
 /** The unit beside a control's value: its label's wording of its setting's
- * unit. */
-function unitOf(label: Label, p: Param | undefined): string {
+ * unit, in the catalog `t`. */
+function unitOf(t: Catalog, label: Label, p: Param | undefined): string {
   return unitBeside(t.control[label], p === undefined ? '' : t.unit[p.unit])
 }
 
@@ -83,6 +84,7 @@ function unitOf(label: Label, p: Param | undefined): string {
  * a test reads them.
  */
 export function Refused({ refused }: { refused: RefusedEdit }) {
+  const t = useCatalog()
   const { edit, why } = refused
   return (
     <p
@@ -111,6 +113,7 @@ function Slider({
   read: Read
   edits: Edits
 }) {
+  const t = useCatalog()
   const p = param(read.registry, c.path)
   const value = numberAt(read.settings, c.path)
   // Every path a slider reads holds a number (the engine's test of its
@@ -122,7 +125,7 @@ function Slider({
       <span>
         {t.control[c.label].label}{' '}
         <b>
-          {shown(value, resolutionOf(p))} {unitOf(c.label, p)}
+          {shown(t, value, resolutionOf(p))} {unitOf(t, c.label, p)}
         </b>
       </span>
       <input
@@ -152,6 +155,7 @@ function Stack({
   read: Read
   edits: Edits
 }) {
+  const t = useCatalog()
   const p = param(read.registry, c.path)
   const sizes = p?.step.step === 'drawer' ? p.step.sizes_mm : []
   const papers = numbersAt(read.settings, c.path)
@@ -163,7 +167,11 @@ function Stack({
     <div className="stack" data-path={c.path} data-stack={c.stack}>
       <div className="stacktitle">
         <Rich
-          text={t.papers.stack(t.control[c.label].label, shown(total, resolution), papers.length)}
+          text={t.papers.stack(
+            t.control[c.label].label,
+            shown(t, total, resolution),
+            papers.length,
+          )}
         />
       </div>
       <div className="drawer">
@@ -176,14 +184,14 @@ function Stack({
             data-thickness-mm={mm}
             onClick={() => edits.act('add_paper', { stack: c.stack, thickness_mm: mm })}
           >
-            {shown(mm, resolution)}
+            {shown(t, mm, resolution)}
           </button>
         ))}
       </div>
       <ul className="pile">
         {papers.map((mm, i) => (
           <li key={i}>
-            <span>{t.papers.paper(shown(mm, resolution))}</span>
+            <span>{t.papers.paper(shown(t, mm, resolution))}</span>
             <button
               type="button"
               data-action="remove_paper"
@@ -231,6 +239,7 @@ function Form({
   edits: Edits
   answer: Answer | null
 }) {
+  const t = useCatalog()
   // Seeded once, when the page opens on the engine: what is typed afterwards
   // is the technician's until it is sent.
   const [typedIn, setTypedIn] = useState<Readonly<Record<string, string>>>(() =>
@@ -262,7 +271,7 @@ function Form({
               value={typedIn[f.argument] ?? ''}
               onChange={(e) => setTypedIn({ ...typedIn, [f.argument]: e.target.value })}
             />
-            {unitOf(f.label, param(read.registry, f.path))}
+            {unitOf(t, f.label, param(read.registry, f.path))}
           </label>
         ))}
         <button type="button" data-action={c.action} onClick={send} disabled={needs.length > 0}>
@@ -303,6 +312,7 @@ function KeyFrictionWeight({
   read: Read
   edits: Edits
 }) {
+  const t = useCatalog()
   const kf = reading(read.sheet, c.reads)
   const r = kf?.outcome === 'read' ? kf : null
   const why = kf?.outcome === 'refused' ? kf.why : null
@@ -361,6 +371,7 @@ function ProfileChoice({
   read: Read
   edits: Edits
 }) {
+  const t = useCatalog()
   const on = textAt(read.settings, c.at)
   return (
     <fieldset className="choice" data-action={c.action} data-profile={on ?? undefined}>
@@ -396,6 +407,7 @@ export function Control({
   edits: Edits
   answer: Answer | null
 }) {
+  const t = useCatalog()
   const refused = read.diagnostics.refused_edit
   return (
     <>
@@ -446,6 +458,7 @@ export function Panel({
   edits: Edits
   answer: Answer | null
 }) {
+  const t = useCatalog()
   return (
     <>
       <h2 data-panel={layout.panel}>{t.panel[layout.panel]}</h2>
