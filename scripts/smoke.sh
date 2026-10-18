@@ -110,7 +110,10 @@ wait_for "http://127.0.0.1:$app_port/" 60
 
 # WebGL through SwiftShader, so the three.js view renders with no GPU. On a CI
 # runner the browser sandbox depends on the image's kernel settings; the page
-# loaded is only the bench served above, so CI runs without it.
+# loaded is only the bench served above, so CI runs without it. The window
+# has a set size rather than the binary's default, which differs from one
+# Chrome build to another (a CI runner's left a page 437 px high), since the
+# checks of the layout read the window's height.
 chrome_flags=(
   --headless=new
   --no-first-run
@@ -119,6 +122,7 @@ chrome_flags=(
   --remote-debugging-port="$devtools_port"
   --use-angle=swiftshader
   --enable-unsafe-swiftshader
+  --window-size=1280,800
 )
 if [[ "${CI:-}" == "true" ]]; then
   chrome_flags+=(--no-sandbox)
