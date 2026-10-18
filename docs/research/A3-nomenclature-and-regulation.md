@@ -882,6 +882,7 @@ views; its French catalog (built) takes them from here. The touchweight quantiti
 | Équilibre des poids | the equation of balance | Stanwood's BW + FW = (WW × KR) + (SW × R) ([The equation of balance](#the-equation-of-balance)) |
 | Écart de niveau, touche enfoncée | out of level, key down | how far the key stands from level when fully down, in degrees, its target 0°; nose-down positive |
 | Assise du bout de touche | bedding at the back | the angle between the chamfer under the tail and the back rail cloth, the key at rest: 0° where the tail beds flat, positive where its rear end digs in. Not « portée », which is the key frame's on the keybed |
+| Point d'appui sur le drap | where the key bears | how far behind the balance pin the tail bears on the back rail cloth, the key at rest |
 | Fond de course (*position d'enfoncement maximal*) | bottom seat | the key down on its front punching |
 | Course de la touche | stroke, travel | |
 | Pile de mouches | punching stack | the papers under one felt punching |

@@ -517,7 +517,7 @@ export const en: Catalog = {
     keyMass: { label: 'key mass', unit: 'g' },
     outOfLevel: { label: 'out of level, key down', unit: '°' },
     bedding: { label: 'bedding at the back', unit: '°' },
-    bearsAt: { label: 'bears at', unit: 'mm behind' },
+    bearsAt: { label: 'bears, behind the balance pin', unit: 'mm' },
     bearsHow: (how) => `The key is **${how}**.`,
     bearingNote:
       'A keyboard is set up so the key is **level when it is fully down**, and so slightly nose-up when released — and the chamfer under the tail is cut at that same angle so the tail beds **flat** on its cloth. Both are design goals, not laws: rail heights, punchings and cloth are what reach them, and most keys rest on an **edge** instead, sometimes the cloth’s, sometimes the key’s own. For regulating that hardly matters: the papers under the balance punching set the key’s height, and the cloth’s work is to damp the key’s return and give it the same rest every time; bedded flat, the tail only wears its cloth more slowly. So the bench reports all three rather than refusing the frame. Nose-down is positive, and so is a rear end digging in.',

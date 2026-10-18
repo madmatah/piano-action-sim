@@ -541,7 +541,7 @@ export const fr: Catalog = {
     keyMass: { label: 'masse de la touche', unit: 'g' },
     outOfLevel: { label: 'écart de niveau, touche enfoncée', unit: '°' },
     bedding: { label: 'assise du bout de touche', unit: '°' },
-    bearsAt: { label: 'porte à', unit: 'mm derrière' },
+    bearsAt: { label: 'point d’appui sur le drap, derrière la pointe de balancier', unit: 'mm' },
     bearsHow: (how) => `La touche porte **${how}**.`,
     bearingNote:
       'Un clavier se règle pour que la touche soit **de niveau quand elle est enfoncée à fond**, donc légèrement relevée à l’avant quand elle est relâchée, et le chanfrein sous le bout de touche est taillé à ce même angle pour que le bout de touche porte **à plat** sur son drap. Ce sont deux objectifs de conception, pas des lois : les hauteurs des barres, les mouches et le drap sont ce qui les atteint, et la plupart des touches reposent plutôt sur un bord, tantôt sur le **bord du drap**, tantôt sur une **arête de la touche**. Pour le réglage, cela compte peu : les mouches en papier sous la mouche de balancier fixent la hauteur de la touche, et le drap sert à amortir le retour de la touche et à lui donner le même repos à chaque fois ; portant à plat, le bout de touche use seulement son drap plus lentement. Le banc d’essai indique donc les trois valeurs plutôt que de refuser le châssis. Un avant qui plonge compte en positif, de même qu’un arrière qui s’enfonce dans le drap.',
