@@ -4,7 +4,7 @@
  * (`pa_core::measure::sweep`).
  *
  * The band's extremes over the stroke, the most the way down needs and the
- * least the way up holds, are each marked where they fall, labelled in full
+ * least the way up holds, are each marked where they fall, labeled in full
  * to the hundredth of a gram: the band is a curve, read by no weight, and
  * its extremes are not the sheet's D and U, which the walk reads with gram
  * weights and the trade rounds to the gram (`band.ts`). Between the two
@@ -27,7 +27,7 @@ import { nearest, niceStep, padded, ticks } from './axis'
 import { extremeAt, extremeLabel, FORCE_DECIMALS, type Read, TRAVEL_DECIMALS } from './band'
 import { decimals, MASS_G } from './format'
 import { t, word } from './i18n'
-import { BAND_COLOUR } from './palette'
+import { BAND_COLOR } from './palette'
 import { Rich } from './Rich'
 
 /** The room round the plot, pixels: for the force's ticks and title on the
@@ -39,7 +39,7 @@ const MARGIN = { top: 16, right: 24, bottom: 62, left: 64 } as const
 const CHARACTER_PX = 7.4
 
 /**
- * A label on the plot, on a patch of the sheet's colour, so that a grid line
+ * A label on the plot, on a patch of the sheet's color, so that a grid line
  * or the weight's line passing under it does not run through its words: the
  * page's face is monospaced, so its width is its characters'.
  */
@@ -60,7 +60,7 @@ function Label({
   const left = anchor === 'start' ? x - 3 : anchor === 'end' ? x - width + 3 : x - width / 2
   return (
     <g>
-      <rect x={left} y={y - 12} width={width} height={16} fill={BAND_COLOUR.surface} />
+      <rect x={left} y={y - 12} width={width} height={16} fill={BAND_COLOR.surface} />
       <text x={x} y={y} textAnchor={anchor} className={className}>
         {text}
       </text>
@@ -115,7 +115,7 @@ export function BandView({
   stale: boolean
   /** The weight on the measuring point, grams. */
   weightG: number
-  /** Where that weight has left the key, millimetres of travel below its
+  /** Where that weight has left the key, millimeters of travel below its
    * top seat; `null` where the engine reads none. */
   travelMm: number | null
 }) {
@@ -169,7 +169,7 @@ export function BandView({
   const n = (v: number, d: number) => t.number(v, d)
 
   /** A curve's extreme marked where it falls, its label beside it, in
-   * full, towards the middle of the window and away from the band; into the
+   * full, toward the middle of the window and away from the band; into the
    * band instead where the weight's line runs where it would stand. */
   const marker = (m: Read | undefined, above: boolean) => {
     if (!m) return null
@@ -194,8 +194,8 @@ export function BandView({
           cx={mx}
           cy={my}
           r={4.5}
-          fill={m.procedure === 'down_weight_on_the_band' ? BAND_COLOUR.down : BAND_COLOUR.up}
-          stroke={BAND_COLOUR.surface}
+          fill={m.procedure === 'down_weight_on_the_band' ? BAND_COLOR.down : BAND_COLOR.up}
+          stroke={BAND_COLOR.surface}
           strokeWidth={2}
         />
         <Label
@@ -224,20 +224,19 @@ export function BandView({
       </p>
       <ul className="band-legend">
         <li>
-          <i className="band-key key-line" style={{ background: BAND_COLOUR.down }} /> {t.band.down}
+          <i className="band-key key-line" style={{ background: BAND_COLOR.down }} /> {t.band.down}
         </li>
         <li>
-          <i className="band-key key-line" style={{ background: BAND_COLOUR.up }} /> {t.band.up}
+          <i className="band-key key-line" style={{ background: BAND_COLOR.up }} /> {t.band.up}
         </li>
         <li>
-          <i className="band-key key-rect" style={{ background: BAND_COLOUR.held }} /> {t.band.held}
+          <i className="band-key key-rect" style={{ background: BAND_COLOR.held }} /> {t.band.held}
         </li>
         <li>
-          <i className="band-key key-hair" style={{ background: BAND_COLOUR.ink }} />{' '}
-          {t.band.weight}
+          <i className="band-key key-hair" style={{ background: BAND_COLOR.ink }} /> {t.band.weight}
         </li>
         <li>
-          <i className="band-key key-dot" style={{ background: BAND_COLOUR.ink }} /> {t.band.key}
+          <i className="band-key key-dot" style={{ background: BAND_COLOR.ink }} /> {t.band.key}
         </li>
       </ul>
       {stale && (
@@ -259,7 +258,7 @@ export function BandView({
             }}
             onPointerLeave={() => setAt(null)}
           >
-            <rect x={0} y={0} width={width} height={height} fill={BAND_COLOUR.surface} />
+            <rect x={0} y={0} width={width} height={height} fill={BAND_COLOR.surface} />
             {forceTicks.map((g) => (
               <g key={`f${g}`}>
                 <line
@@ -267,7 +266,7 @@ export function BandView({
                   x2={MARGIN.left + plotW}
                   y1={y(g)}
                   y2={y(g)}
-                  stroke={g === 0 ? BAND_COLOUR.muted : BAND_COLOUR.rule}
+                  stroke={g === 0 ? BAND_COLOR.muted : BAND_COLOR.rule}
                   strokeWidth={1}
                 />
                 <text x={MARGIN.left - 8} y={y(g) + 4} textAnchor="end" className="band-tick">
@@ -297,7 +296,7 @@ export function BandView({
                   x2={x(mm)}
                   y1={MARGIN.top}
                   y2={MARGIN.top + plotH}
-                  stroke={BAND_COLOUR.muted}
+                  stroke={BAND_COLOR.muted}
                   strokeWidth={1}
                 />
                 <text
@@ -326,11 +325,11 @@ export function BandView({
               {t.band.force}
             </text>
 
-            <path d={band_} fill={BAND_COLOUR.held} stroke="none" />
+            <path d={band_} fill={BAND_COLOR.held} stroke="none" />
             <path
               d={path(curves.down, x, y)}
               fill="none"
-              stroke={BAND_COLOUR.down}
+              stroke={BAND_COLOR.down}
               strokeWidth={2}
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -339,7 +338,7 @@ export function BandView({
             <path
               d={path(curves.up, x, y)}
               fill="none"
-              stroke={BAND_COLOUR.up}
+              stroke={BAND_COLOR.up}
               strokeWidth={2}
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -358,7 +357,7 @@ export function BandView({
                 x2={MARGIN.left + plotW}
                 y1={y(weightG)}
                 y2={y(weightG)}
-                stroke={BAND_COLOUR.ink}
+                stroke={BAND_COLOR.ink}
                 strokeWidth={1}
               />
               <Label
@@ -373,8 +372,8 @@ export function BandView({
                   cx={x(Math.min(Math.max(travelMm, 0), curves.window_mm))}
                   cy={y(weightG)}
                   r={4.5}
-                  fill={BAND_COLOUR.ink}
-                  stroke={BAND_COLOUR.surface}
+                  fill={BAND_COLOR.ink}
+                  stroke={BAND_COLOR.surface}
                   strokeWidth={2}
                 />
               )}
@@ -390,16 +389,16 @@ export function BandView({
                   x2={x(there.travel_mm)}
                   y1={MARGIN.top}
                   y2={MARGIN.top + plotH}
-                  stroke={BAND_COLOUR.muted}
+                  stroke={BAND_COLOR.muted}
                   strokeWidth={1}
                 />
                 <circle
                   cx={x(there.travel_mm)}
                   cy={y(there.force_g)}
                   r={3.5}
-                  fill={BAND_COLOUR.down}
+                  fill={BAND_COLOR.down}
                 />
-                <circle cx={x(back.travel_mm)} cy={y(back.force_g)} r={3.5} fill={BAND_COLOUR.up} />
+                <circle cx={x(back.travel_mm)} cy={y(back.force_g)} r={3.5} fill={BAND_COLOR.up} />
                 <Label
                   x={x(there.travel_mm) + (there.travel_mm < curves.window_mm / 2 ? 8 : -8)}
                   y={MARGIN.top + 14}

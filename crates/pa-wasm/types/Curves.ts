@@ -7,11 +7,11 @@ import type { BandPoint } from "./BandPoint";
 export type Curves = { 
 /**
  * How far the measuring point travels from the top seat to the bottom
- * one, millimetres: the window both curves lie in.
+ * one, millimeters: the window both curves lie in.
  */
 window_mm: number, 
 /**
- * How far it travels between two readings, millimetres.
+ * How far it travels between two readings, millimeters.
  */
 step_mm: number, 
 /**

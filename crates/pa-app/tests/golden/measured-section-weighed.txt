@@ -26,29 +26,29 @@ sheet.key_dip.fingerprint statics/2
 sheet.down_weight.value -19.22548361456704 0xc03339b94b4e596c
 sheet.down_weight.shown -19.0 0xc033000000000000
 sheet.down_weight.unit g
-sheet.down_weight.trust indicative centre_of_mass_height,key_friction,geometry
+sheet.down_weight.trust indicative center_of_mass_height,key_friction,geometry
 sheet.down_weight.fingerprint statics/2
 sheet.down_weight.walk.from_g -25.25532217657876 0xc039415ccb4e596c
 sheet.up_weight.value -31.40026998004352 0xc03f667817e9db85
 sheet.up_weight.shown -32.0 0xc040000000000000
 sheet.up_weight.unit g
-sheet.up_weight.trust indicative centre_of_mass_height,key_friction,geometry
+sheet.up_weight.trust indicative center_of_mass_height,key_friction,geometry
 sheet.up_weight.fingerprint statics/2
 sheet.up_weight.walk.from_g -25.40032338580524 0xc039667b97e9db85
 sheet.balance_weight.value -25.31287679730528 0xc0395018b19c1a78
 sheet.balance_weight.shown -25.5 0xc039800000000000
 sheet.balance_weight.unit g
-sheet.balance_weight.trust indicative centre_of_mass_height,key_friction,geometry
+sheet.balance_weight.trust indicative center_of_mass_height,key_friction,geometry
 sheet.balance_weight.fingerprint statics/2
 sheet.friction_weight.value 6.087393182738241 0x4018597d99370432
 sheet.friction_weight.shown 6.5 0x401a000000000000
 sheet.friction_weight.unit g
-sheet.friction_weight.trust indicative centre_of_mass_height,key_friction,geometry
+sheet.friction_weight.trust indicative center_of_mass_height,key_friction,geometry
 sheet.friction_weight.fingerprint statics/2
 sheet.key_friction_weight_zeroed_on_the_jig.value 6.528312128398008 0x401a1cfddac632ca
 sheet.key_friction_weight_zeroed_on_the_jig.shown 7.0 0x401c000000000000
 sheet.key_friction_weight_zeroed_on_the_jig.unit g
-sheet.key_friction_weight_zeroed_on_the_jig.trust indicative centre_of_mass_height,key_friction,geometry
+sheet.key_friction_weight_zeroed_on_the_jig.trust indicative center_of_mass_height,key_friction,geometry
 sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/2
 sheet.key_friction_weight_zeroed_on_the_jig.walk.from_g 0.49847356638628953 0x3fdfe6fdac632c9f
 sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.mass_g 62.73799999999961 0x404f5e76c8b43921
@@ -90,7 +90,7 @@ pose.measuring_point.y 0.05477804434181513 0x3fac0bde29f94f64
 band.down_weight_on_the_band.value -19.226409220003735 0xc03339f5f4636dcd
 band.down_weight_on_the_band.shown -19.0 0xc033000000000000
 band.down_weight_on_the_band.unit g
-band.down_weight_on_the_band.trust indicative centre_of_mass_height,key_friction,geometry
+band.down_weight_on_the_band.trust indicative center_of_mass_height,key_friction,geometry
 band.down_weight_on_the_band.fingerprint statics/2
 band.down_weight_on_the_band.sweep.samples 195
 band.down_weight_on_the_band.sweep.window 0.009775470551257368 0x3f8405297290b6f8
@@ -98,7 +98,7 @@ band.down_weight_on_the_band.sweep.at 5.000000000000837e-5 0x3f0a36e2eb1c4800
 band.up_weight_on_the_band.value -31.39995721635912 0xc03f6663989c0fc6
 band.up_weight_on_the_band.shown -32.0 0xc040000000000000
 band.up_weight_on_the_band.unit g
-band.up_weight_on_the_band.trust indicative centre_of_mass_height,key_friction,geometry
+band.up_weight_on_the_band.trust indicative center_of_mass_height,key_friction,geometry
 band.up_weight_on_the_band.fingerprint statics/2
 band.up_weight_on_the_band.sweep.samples 195
 band.up_weight_on_the_band.sweep.window 0.009775470551257368 0x3f8405297290b6f8

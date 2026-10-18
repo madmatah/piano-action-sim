@@ -7,15 +7,15 @@ import type { Part } from "./Part";
  */
 export type Fault = { "code": "pin_outside_mortise", 
 /**
- * By how much, millimetres.
+ * By how much, millimeters.
  */
 by_mm: number, } | { "code": "cloth_in_front_of_chamfer", 
 /**
- * By how much, millimetres.
+ * By how much, millimeters.
  */
 by_mm: number, } | { "code": "cloth_behind_key", 
 /**
- * By how much, millimetres.
+ * By how much, millimeters.
  */
 by_mm: number, } | { "code": "punching_off_underside", 
 /**
@@ -23,6 +23,6 @@ by_mm: number, } | { "code": "punching_off_underside",
  */
 rail: Part, 
 /**
- * By how much, millimetres.
+ * By how much, millimeters.
  */
 by_mm: number, };

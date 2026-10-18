@@ -28,11 +28,11 @@ use crate::validate::Problem;
 /// What a setting measures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quantity {
-    /// A length or a position, metres.
+    /// A length or a position, meters.
     Length,
     /// A mass or a weight, grams where the name says so.
     Mass,
-    /// A torque, newton-metres.
+    /// A torque, newton-meters.
     Torque,
 }
 
@@ -58,7 +58,7 @@ pub enum Layer {
     /// the targets.
     Regulation,
     /// The conventions a protocol is run under: where every weight is
-    /// centred.
+    /// centered.
     Protocol,
     /// What an experiment puts on the key: the weight on the measuring point.
     Experiment,

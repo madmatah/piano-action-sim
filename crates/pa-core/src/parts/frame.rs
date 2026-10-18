@@ -6,13 +6,13 @@
 //! Two of the settings a technician spends the most time on live here and
 //! nowhere else. **Key height** is the balance rail punching stack. **Key dip**
 //! is the gap left above the front rail punching. Both are *stacks of paper and
-//! felt washers*, adjusted a few hundredths of a millimetre at a time, and both
+//! felt washers*, adjusted a few hundredths of a millimeter at a time, and both
 //! have to be manipulable for the bench to teach anything. A frame expressed as
-//! fixed numbers would make levelling and dipping inexpressible.
+//! fixed numbers would make leveling and dipping inexpressible.
 //!
 //! # Frame
 //!
-//! Shared with [`super::KeyDesign`]: origin at the balance rail pin, `x` towards
+//! Shared with [`super::KeyDesign`]: origin at the balance rail pin, `x` toward
 //! the player, `y` up. The keybed surface is the vertical datum, `y = 0`. The
 //! frame is the ground's: [`FrameDesign::parts`] builds its parts on
 //! [`BodyId::GROUND`].
@@ -36,9 +36,9 @@ use crate::validate::Problem;
 /// what a model of the felt's compliance will need.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PunchingStack {
-    /// The papers laid on the rail, bottom first, metres each.
+    /// The papers laid on the rail, bottom first, meters each.
     pub papers: Vec<f64>,
-    /// Thickness of the felt or leather washer, metres.
+    /// Thickness of the felt or leather washer, meters.
     pub felt: f64,
 }
 
@@ -48,12 +48,12 @@ impl PunchingStack {
         Self { papers, felt }
     }
 
-    /// The papers' total thickness, metres, summed bottom first.
+    /// The papers' total thickness, meters, summed bottom first.
     pub fn paper(&self) -> f64 {
         self.papers.iter().sum()
     }
 
-    /// Total uncompressed height, metres.
+    /// Total uncompressed height, meters.
     pub fn height(&self) -> f64 {
         self.paper() + self.felt
     }
@@ -65,25 +65,25 @@ impl PunchingStack {
 /// stack sits on top of that.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FrameDesign {
-    /// Top of the balance rail above the keybed, metres.
+    /// Top of the balance rail above the keybed, meters.
     pub balance_rail_height: f64,
     /// Punchings under the key at the balance pin.
     pub balance_punching: PunchingStack,
-    /// Top of the front rail above the keybed, metres.
+    /// Top of the front rail above the keybed, meters.
     pub front_rail_height: f64,
     /// Punchings on the front rail. Their height sets the **key dip**.
     pub front_punching: PunchingStack,
-    /// Top of the back rail above the keybed, metres.
+    /// Top of the back rail above the keybed, meters.
     pub back_rail_height: f64,
     /// Cloth on the back rail.
     pub back_rail_cloth: f64,
     /// The radius the back rail cloth's two top edges are rounded to,
-    /// metres: a shape, not a setting. Small enough that where the key bears
+    /// meters: a shape, not a setting. Small enough that where the key bears
     /// on an edge is essentially the end of the cloth's face, large enough
     /// to be a real curve rather than a numerical fiction; it is drawn, and
     /// the contact with the key's underside reads the arcs as drawn.
     pub back_rail_cloth_edge_radius: f64,
-    /// Where the front rail stands, metres in front of the balance pin,
+    /// Where the front rail stands, meters in front of the balance pin,
     /// measured to the **natural** row of pins.
     ///
     /// A frame coordinate and not a key one, although it is placed from the
@@ -94,7 +94,7 @@ pub struct FrameDesign {
     /// pin leaves the mortise and the keyboard is wrong until somebody moves
     /// the rail. [`super::faults::faults`] says so.
     pub front_rail: f64,
-    /// Where the back rail stands, metres behind the balance pin (negative).
+    /// Where the back rail stands, meters behind the balance pin (negative).
     ///
     /// **Bounded by the key's chamfer, and bounded the other way round from
     /// how it first looks.** The chamfer under the tail is cut so the key beds
@@ -104,7 +104,7 @@ pub struct FrameDesign {
     /// met by the kink, which is the thing the chamfer exists to prevent.
     pub back_rail: f64,
     /// How far in from the end of the key [`Self::placed_under`] sets the
-    /// back rail, metres: the relation a frame is built to under a key, not
+    /// back rail, meters: the relation a frame is built to under a key, not
     /// a dimension of any part.
     ///
     /// The tail has to overhang the rail — the key is lifted off the frame
@@ -199,20 +199,20 @@ impl FrameDesign {
         ),
     ];
 
-    /// Height of the key's underside at the balance pin, at rest, metres.
+    /// Height of the key's underside at the balance pin, at rest, meters.
     ///
-    /// This is what key levelling moves, and it is the only one of the three
+    /// This is what key leveling moves, and it is the only one of the three
     /// bearings that carries the key at rest on a bench with no action fitted.
     pub fn balance_bearing_height(&self) -> f64 {
         self.balance_rail_height + self.balance_punching.height()
     }
 
-    /// Height of the top of the front rail punching, metres.
+    /// Height of the top of the front rail punching, meters.
     pub fn front_bearing_height(&self) -> f64 {
         self.front_rail_height + self.front_punching.height()
     }
 
-    /// Height of the top of the back rail cloth, metres.
+    /// Height of the top of the back rail cloth, meters.
     pub fn back_bearing_height(&self) -> f64 {
         self.back_rail_height + self.back_rail_cloth
     }
@@ -270,11 +270,11 @@ mod tests {
     /// Adding paper under the balance punching raises the key, and moves nothing
     /// else.
     ///
-    /// This is the trade operation "key levelling", and it is the simplest
+    /// This is the trade operation "key leveling", and it is the simplest
     /// possible non-confusion test: the lever that lifts the key must not be the
     /// lever that sets the dip.
     #[test]
-    fn levelling_the_key_does_not_change_the_front_or_back_bearings() {
+    fn leveling_the_key_does_not_change_the_front_or_back_bearings() {
         let base = crate::test_fixture::frame();
         let mut raised = base.clone();
         raised.balance_punching.papers.push(0.0004);
@@ -286,11 +286,11 @@ mod tests {
         );
         assert!(
             (raised.front_bearing_height() - base.front_bearing_height()).abs() < 1e-15,
-            "levelling must not touch the front rail"
+            "leveling must not touch the front rail"
         );
         assert!(
             (raised.back_bearing_height() - base.back_bearing_height()).abs() < 1e-15,
-            "levelling must not touch the back rail"
+            "leveling must not touch the back rail"
         );
     }
 }
@@ -327,7 +327,7 @@ pub enum KeyKind {
 pub enum PinShape {
     /// Turned round.
     Round {
-        /// Diameter, metres.
+        /// Diameter, meters.
         diameter: f64,
     },
     /// Flattened, with its wide faces across the keyboard. The sagittal
@@ -339,15 +339,15 @@ pub enum PinShape {
     /// which is the whole of what the key and the punchings ever touch — the
     /// shank is buried in wood and is not drawn.
     Oblong {
-        /// Extent along the key, metres.
+        /// Extent along the key, meters.
         length: f64,
-        /// Extent across the keyboard, metres.
+        /// Extent across the keyboard, meters.
         thickness: f64,
     },
 }
 
 impl PinShape {
-    /// Extent along the key, metres — what a sagittal section shows.
+    /// Extent along the key, meters — what a sagittal section shows.
     pub fn length(&self) -> f64 {
         match *self {
             PinShape::Round { diameter } => diameter,
@@ -355,7 +355,7 @@ impl PinShape {
         }
     }
 
-    /// Extent across the keyboard, metres.
+    /// Extent across the keyboard, meters.
     pub fn thickness(&self) -> f64 {
         match *self {
             PinShape::Round { diameter } => diameter,
@@ -373,12 +373,12 @@ impl PinShape {
 ///
 /// Not every maker builds it this way. Steinway rounds the bearing instead, so
 /// the key rolls on an arc rather than sitting on a flat; that is a different
-/// profile and a different contact, and it is not modelled here yet.
+/// profile and a different contact, and it is not modeled here yet.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Crown {
-    /// Half-length of the flat on top, metres. Smaller than the rail's own.
+    /// Half-length of the flat on top, meters. Smaller than the rail's own.
     pub half_length: f64,
-    /// Height of the trapezoid above the shoulder, metres.
+    /// Height of the trapezoid above the shoulder, meters.
     pub height: f64,
 }
 
@@ -389,18 +389,18 @@ pub struct Crown {
 /// rail's width; he changes what is stacked on it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RailSection {
-    /// Half-length of the rail along the key, metres.
+    /// Half-length of the rail along the key, meters.
     pub half_length: f64,
     /// The trapezoid on top, if the rail has one.
     pub crown: Option<Crown>,
     /// The pin standing in it, if any.
     pub pin: Option<PinShape>,
-    /// How far the pin stands above the top of the **bare rail**, metres.
+    /// How far the pin stands above the top of the **bare rail**, meters.
     ///
     /// Measured from the wood, not from the punchings, because the wood is
     /// what a depth gauge reaches and because the punching stack changes with
     /// every regulation — a pin described relative to it would appear to grow
-    /// when the key is levelled. How far the pin reaches into the key's
+    /// when the key is leveled. How far the pin reaches into the key's
     /// mortise is this, less whatever is stacked underneath.
     ///
     /// **The mortise bounds it, and the bound is read at the bottom of the
@@ -420,9 +420,9 @@ pub struct RailSection {
     /// shoulder gives 24 mm proud and 2 mm of headroom, and that is the value
     /// below.
     pub pin_height: f64,
-    /// Outer radius of the punching washers, metres.
+    /// Outer radius of the punching washers, meters.
     pub punching_radius: f64,
-    /// Radius of the hole through the punchings, metres.
+    /// Radius of the hole through the punchings, meters.
     ///
     /// Measured rather than derived from the pin, because a punching is pierced
     /// with a **round** die: the hole is round even where the pin is not, and
@@ -431,13 +431,13 @@ pub struct RailSection {
     /// long axis — the circle touches the pin at its two ends, which is the
     /// design and not a coincidence.
     pub punching_hole_radius: f64,
-    /// Distance along the key from the natural row to the sharp row, metres.
+    /// Distance along the key from the natural row to the sharp row, meters.
     /// Positive is away from the player.
     pub sharp_row_offset: f64,
 }
 
 impl RailSection {
-    /// Where this rail's pin stands for a key of this kind, metres.
+    /// Where this rail's pin stands for a key of this kind, meters.
     pub fn pin_x(&self, natural_x: f64, kind: KeyKind) -> f64 {
         match kind {
             KeyKind::Natural => natural_x,
@@ -445,18 +445,18 @@ impl RailSection {
         }
     }
 
-    /// The middle of the rail along the key, metres.
+    /// The middle of the rail along the key, meters.
     ///
-    /// A rail is centred **between** its two rows, not on either of them, so
+    /// A rail is centered **between** its two rows, not on either of them, so
     /// the front rail reaches back under the key rather than sitting
     /// symmetrically beneath the natural's pin. Where a rail serves one row —
     /// the back rail, whose cloth every key tail meets at the same place — this
     /// is the bearing itself.
-    pub fn centre_x(&self, natural_x: f64) -> f64 {
+    pub fn center_x(&self, natural_x: f64) -> f64 {
         natural_x - 0.5 * self.sharp_row_offset
     }
 
-    /// The smallest half-length that still carries both rows, metres.
+    /// The smallest half-length that still carries both rows, meters.
     ///
     /// One rail serves both, so its width along the key is not free: from the
     /// midpoint between the rows it has to reach half the row offset plus a
@@ -481,7 +481,7 @@ pub struct FrameSections {
     pub back: RailSection,
 }
 
-/// The punching papers a drawer holds: their thicknesses, metres, thinnest
+/// The punching papers a drawer holds: their thicknesses, meters, thinnest
 /// first, each a whole number of [`PAPER_STEP`]s.
 ///
 /// Key height and key dip are not continuous quantities on a real bench: they
@@ -490,7 +490,7 @@ pub struct FrameSections {
 /// hiding it.
 ///
 /// Thickness is also how a paper punching is **identified**: a drawer is
-/// sorted by colour and the colour *is* the thickness. That is why the
+/// sorted by color and the color *is* the thickness. That is why the
 /// geometry builds one part per paper rather than one block of the right
 /// total height. Which thicknesses a drawer holds is the stock a technician
 /// buys, data and not code: an instrument's profile binds them to their
@@ -507,17 +507,17 @@ pub struct Drawer {
 pub enum NotADrawer {
     /// It holds no paper.
     Empty,
-    /// A thickness that is not a number, or not more than nothing, metres.
+    /// A thickness that is not a number, or not more than nothing, meters.
     NotAThickness(f64),
-    /// A thickness that is not a whole number of [`PAPER_STEP`]s, metres: the
+    /// A thickness that is not a whole number of [`PAPER_STEP`]s, meters: the
     /// search through the drawer is exact only while every paper is one.
     NotGraded(f64),
-    /// A thickness listed after one as thick or thicker, metres.
+    /// A thickness listed after one as thick or thicker, meters.
     NotThinnestFirst(f64),
 }
 
 impl Drawer {
-    /// A drawer holding these thicknesses, metres; or why they are none the
+    /// A drawer holding these thicknesses, meters; or why they are none the
     /// exact search can lay from: listed thinnest first, each a whole
     /// number of [`PAPER_STEP`]s and more than nothing.
     pub fn graded(thicknesses: Vec<f64>) -> Result<Self, NotADrawer> {
@@ -539,12 +539,12 @@ impl Drawer {
         Ok(Self { thicknesses })
     }
 
-    /// The thicknesses it holds, metres, thinnest first.
+    /// The thicknesses it holds, meters, thinnest first.
     pub fn thicknesses(&self) -> &[f64] {
         &self.thicknesses
     }
 
-    /// Its thinnest paper, metres: what key height and dip are adjusted by,
+    /// Its thinnest paper, meters: what key height and dip are adjusted by,
     /// and read to.
     pub fn thinnest(&self) -> f64 {
         self.thicknesses[0]
@@ -657,7 +657,7 @@ pub const PAPER: ParamSpec<f64> = ParamSpec {
 /// approximately.
 pub const PAPER_STEP: f64 = 0.000_01;
 
-/// The tallest stack worth searching for, metres.
+/// The tallest stack worth searching for, meters.
 ///
 /// Beyond this the design is wrong and not the drawer, and the regulation
 /// solve has already refused it ([`crate::regulation::STACK_SEARCH`]); this
@@ -665,11 +665,11 @@ pub const PAPER_STEP: f64 = 0.000_01;
 pub(crate) const PAPER_SEARCH_LIMIT: f64 = 0.100;
 
 /// How far short of a whole number of [`PAPER_STEP`]s a wanted thickness may
-/// fall and still count as that number, metres: a picometre.
+/// fall and still count as that number, meters: a picometer.
 ///
 /// A sum of papers carries the rounding of its additions, a few parts in
-/// 10¹⁶ of a millimetre, and a floor taken without this would read 0.70 mm
-/// written as 0.6999… as 0.69 mm and lose a whole step. A picometre is ten
+/// 10¹⁶ of a millimeter, and a floor taken without this would read 0.70 mm
+/// written as 0.6999… as 0.69 mm and lose a whole step. A picometer is ten
 /// million times less than the step, so no thickness a technician can tell
 /// apart from the next step is ever rounded up to it.
 pub(crate) const PAPER_EPSILON: f64 = 1e-12;
@@ -763,7 +763,7 @@ pub struct FrameRanges {
     pub cloth_top: SurfaceRef,
     /// The cloth's top and the two sides its rounded edges lead into, from
     /// the front side round to the back: what the key's underside meets. The
-    /// sides are there so that a corner driven deeper than an edge's centre
+    /// sides are there so that a corner driven deeper than an edge's center
     /// still stands over a face the contact reads.
     pub cloth_and_sides: SurfaceRef,
     /// The front rail pin's top, where the rail has one.
@@ -803,7 +803,7 @@ fn top_of_turned(part: PartId, segments: u16) -> SurfaceRef {
 
 impl FrameDesign {
     /// Builds every part of the frame onto `out`, on the ground, in the keybed
-    /// frame: `x` towards the player from the balance pin, `y` up from the
+    /// frame: `x` toward the player from the balance pin, `y` up from the
     /// keybed. Returns what they declare.
     ///
     /// Ordered back to front, the order a technician names them. `key`
@@ -839,9 +839,9 @@ impl FrameDesign {
             .max(s.back.half_length);
         let slice = (key.width * 1.8).max(2.4 * longest);
         let mut rail = |code, natural_x: f64, top: f64, sec: &RailSection, n: &RailNames| {
-            // Centred between its two rows: a rail wide enough for both is not
+            // Centered between its two rows: a rail wide enough for both is not
             // symmetric about either.
-            let x = sec.centre_x(natural_x);
+            let x = sec.center_x(natural_x);
             let h = sec.half_length;
             let (outline, placed_by) = match sec.crown {
                 None => (
@@ -904,10 +904,10 @@ impl FrameDesign {
         );
 
         // The cloth: a strip the length of the rail, its two top edges rounded,
-        // the arcs centred under the face's two ends. Each line takes its ends
+        // the arcs centered under the face's two ends. Each line takes its ends
         // from the arcs beside it, so the outline closes bit for bit.
-        let centre = s.back.centre_x(self.back_rail);
-        let (x0, x1) = (centre - s.back.half_length, centre + s.back.half_length);
+        let center = s.back.center_x(self.back_rail);
+        let (x0, x1) = (center - s.back.half_length, center + s.back.half_length);
         let (bottom, top) = (self.back_rail_height, self.back_bearing_height());
         let r = self.back_rail_cloth_edge_radius;
         let front_edge = Seg::Arc {
@@ -1129,7 +1129,7 @@ mod drawer_tests {
     use super::*;
     use crate::test_fixture::PAPER_THICKNESSES;
 
-    /// The owner's drawer's stack for `total` metres of paper.
+    /// The owner's drawer's stack for `total` meters of paper.
     fn papers_for(total: f64) -> Vec<f64> {
         crate::test_fixture::drawer().papers_for(total)
     }
@@ -1210,7 +1210,7 @@ mod drawer_tests {
     /// which a regulation asks for and which rounding to the nearest step
     /// would overshoot by up to half a step.
     ///
-    /// The bound is the floor's own epsilon, a picometre.
+    /// The bound is the floor's own epsilon, a picometer.
     #[test]
     fn a_stack_is_laid_thickest_first_and_never_overshoots() {
         for target in [
@@ -1387,7 +1387,7 @@ mod part_tests {
     }
 
     /// The cloth is drawn with its rounded edges: two quarter circles of
-    /// the frame's cloth edge radius, centred under the ends of its face, the face
+    /// the frame's cloth edge radius, centered under the ends of its face, the face
     /// between them.
     #[test]
     fn the_cloth_is_drawn_with_its_rounded_edges() {
@@ -1395,7 +1395,7 @@ mod part_tests {
         let (parts, ranges) = laid(&frame, KeyKind::Natural);
         let top = ranges.cloth_top.segs(&parts);
         let r = frame.back_rail_cloth_edge_radius;
-        let centre = frame.sections.back.centre_x(frame.back_rail);
+        let center = frame.sections.back.center_x(frame.back_rail);
         let half = frame.sections.back.half_length;
         match (top[0], top[1], top[2]) {
             (
@@ -1407,10 +1407,10 @@ mod part_tests {
             ) => {
                 assert_eq!(rf.to_bits(), r.to_bits());
                 assert_eq!(rb.to_bits(), r.to_bits());
-                assert_eq!(front.x.to_bits(), (centre + half).to_bits());
-                assert_eq!(back.x.to_bits(), (centre - half).to_bits());
-                assert_eq!(a.x.to_bits(), (centre + half).to_bits());
-                assert_eq!(b.x.to_bits(), (centre - half).to_bits());
+                assert_eq!(front.x.to_bits(), (center + half).to_bits());
+                assert_eq!(back.x.to_bits(), (center - half).to_bits());
+                assert_eq!(a.x.to_bits(), (center + half).to_bits());
+                assert_eq!(b.x.to_bits(), (center - half).to_bits());
             }
             other => panic!("the cloth's top is an edge, a face and an edge, not {other:?}"),
         }
@@ -1566,7 +1566,7 @@ mod part_tests {
         }
 
         // And the rail as drawn really does span them, which is what
-        // `centre_x` is for: the width alone would be satisfied by a rail
+        // `center_x` is for: the width alone would be satisfied by a rail
         // sitting in the wrong place.
         let frame = crate::test_fixture::frame();
         let (parts, ranges) = laid(&frame, KeyKind::Natural);

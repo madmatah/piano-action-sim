@@ -6,7 +6,7 @@
 export type FrictionSettings = { 
 /**
  * Their friction as stored: the torque they hold, gram-force
- * millimetres. What Stanwood's protocol reads them as is a reading, on
+ * millimeters. What Stanwood's protocol reads them as is a reading, on
  * the sheet.
  */
 torque_gmm: number, };

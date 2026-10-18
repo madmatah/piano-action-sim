@@ -5,11 +5,11 @@
 //!
 //! A key arrives leaded, with leads whose masses nobody knows, so it is
 //! weighed whole, its leads in it: its mass on a scale, and its front weight
-//! on Stanwood's jig, the levelled key's weight read on the scale under the
+//! on Stanwood's jig, the leveled key's weight read on the scale under the
 //! measuring point [V, Stanwood 2000, p. 21]. Those two give all the statics
 //! read of a key but one number. The front weight times the arm it was read
 //! on, times gravity, is the moment of the key's weight about its balance pin,
-//! its static moment; over the key's weight it stands the centre of mass that
+//! its static moment; over the key's weight it stands the center of mass that
 //! far along the key. The moment is kept as what the key is, with the reading
 //! that gave it as its datum ([`FrontWeightReading`]), the way a friction is
 //! kept as a torque with the radius it was read at
@@ -17,15 +17,15 @@
 //! afterwards, or editing the key, reads the same moment on another arm, and
 //! the front weight the jig reads follows by the lever.
 //!
-//! No lead is modelled. A key's leads are in its weighing, and what one more
+//! No lead is modeled. A key's leads are in its weighing, and what one more
 //! would do somewhere along the key is not a calculation the bench makes.
 //!
 //! # Published whole
 //!
-//! A source that weighed a key and located its centre of mass gives both
-//! numbers of it, the height of the centre included, and its inertia beside
+//! A source that weighed a key and located its center of mass gives both
+//! numbers of it, the height of the center included, and its inertia beside
 //! them ([`KeyMass::Published`]): Hirschkorn's Table A.1 does, for the key
-//! of his action. The statics read its mass and its centre of mass as
+//! of his action. The statics read its mass and its center of mass as
 //! published; nothing is estimated.
 //!
 //! # Not weighed
@@ -38,15 +38,15 @@
 //!
 //! # What a scale does not give
 //!
-//! The height of the centre of mass. On the levelled jig it moves no reading;
-//! on the frame it enters through the key's tilt alone, each millimetre of it
+//! The height of the center of mass. On the leveled jig it moves no reading;
+//! on the frame it enters through the key's tilt alone, each millimeter of it
 //! moving a reading taken on the tilted key by the key's mass times the sine
 //! of the tilt over the measuring arm: about 0.02 g of down weight per
-//! millimetre on a key of 120 g, 2.3° nose-up at the top of its stroke. So a
+//! millimeter on a key of 120 g, 2.3° nose-up at the top of its stroke. So a
 //! weighed key takes it from an estimate, its drawn section's area centroid
 //! ([`super::KeyDesign::section_centroid`]), handed to [`KeyMass::props`],
 //! and the readings the tilt reaches name it as estimated
-//! ([`crate::measure::measurement::Input::CentreOfMassHeight`]).
+//! ([`crate::measure::measurement::Input::CenterOfMassHeight`]).
 
 use super::KeyDesign;
 use crate::geometry::Point;
@@ -60,9 +60,9 @@ pub struct FrontWeightReading {
     /// What the scale read, grams, signed: negative on a key heavy behind,
     /// as Stanwood's protocol for a negative front weight reads it.
     pub grams: f64,
-    /// How far back from the covering's lip the roller stood, metres.
+    /// How far back from the covering's lip the roller stood, meters.
     pub from_lip_m: f64,
-    /// The arm that put the roller at, metres in front of the balance pin, on
+    /// The arm that put the roller at, meters in front of the balance pin, on
     /// the key as it stood when it was weighed.
     pub arm_m: f64,
 }
@@ -71,14 +71,14 @@ pub struct FrontWeightReading {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeyMass {
     /// Weighed and located by a published source, whole: its mass, its
-    /// centre of mass in the key's frame, and its inertia about that centre,
+    /// center of mass in the key's frame, and its inertia about that center,
     /// which the statics do not read.
     Published {
         /// Its mass, kilograms.
         mass: f64,
-        /// Its centre of mass, metres in the key's frame.
-        centre: Point,
-        /// Its inertia about its centre of mass, kg·m²: kept for the
+        /// Its center of mass, meters in the key's frame.
+        center: Point,
+        /// Its inertia about its center of mass, kg·m²: kept for the
         /// dynamics, read by nothing in the statics, shown nowhere.
         inertia: f64,
     },
@@ -90,7 +90,7 @@ pub enum KeyMass {
     Weighed {
         /// Its mass, kilograms.
         mass: f64,
-        /// The moment of its weight about the balance pin, newton-metres,
+        /// The moment of its weight about the balance pin, newton-meters,
         /// positive turning the front down: its front weight times the arm
         /// it was read on, times standard gravity.
         static_moment_n_m: f64,
@@ -110,32 +110,32 @@ pub enum NotAWeighing {
     /// its lip or behind its back end, or not in front of the balance pin:
     /// no front weight is read there.
     RollerOffTheCovering {
-        /// Where it was said to stand, metres back from the covering's lip.
+        /// Where it was said to stand, meters back from the covering's lip.
         from_lip_m: f64,
     },
-    /// The two readings put the centre of mass off the key: in front of its
+    /// The two readings put the center of mass off the key: in front of its
     /// covering's lip, or behind its tail.
-    CentreOfMassOffTheKey {
-        /// Where they put it, metres in front of the balance pin.
+    CenterOfMassOffTheKey {
+        /// Where they put it, meters in front of the balance pin.
         at_m: f64,
     },
 }
 
 impl KeyMass {
-    /// `key`'s mass as a source publishes it: `mass` kilograms, its centre
-    /// of mass at `centre` in the key's frame, its inertia about that centre
+    /// `key`'s mass as a source publishes it: `mass` kilograms, its center
+    /// of mass at `center` in the key's frame, its inertia about that center
     /// `inertia` kg·m²; or why those numbers are no key's: a mass of nothing
-    /// or less, or a centre of mass off the key, in front of its covering's
+    /// or less, or a center of mass off the key, in front of its covering's
     /// lip or behind its tail.
     pub fn published(
         key: &KeyDesign,
         mass: f64,
-        centre: Point,
+        center: Point,
         inertia: f64,
     ) -> Result<Self, NotAWeighing> {
         if !(mass.is_finite()
-            && centre.x.is_finite()
-            && centre.y.is_finite()
+            && center.x.is_finite()
+            && center.y.is_finite()
             && inertia.is_finite())
         {
             return Err(NotAWeighing::NotANumber);
@@ -143,27 +143,27 @@ impl KeyMass {
         if mass <= 0.0 {
             return Err(NotAWeighing::MassNotPositive);
         }
-        if !(key.tail_end..=key.lip()).contains(&centre.x) {
-            return Err(NotAWeighing::CentreOfMassOffTheKey { at_m: centre.x });
+        if !(key.tail_end..=key.lip()).contains(&center.x) {
+            return Err(NotAWeighing::CenterOfMassOffTheKey { at_m: center.x });
         }
         Ok(Self::Published {
             mass,
-            centre,
+            center,
             inertia,
         })
     }
 
     /// `key` weighed whole: `mass_g` grams on a scale, and a front weight of
-    /// `front_weight_g` grams read on the levelled jig, its roller
-    /// `from_lip_m` metres back from the covering's lip; or why those numbers
+    /// `front_weight_g` grams read on the leveled jig, its roller
+    /// `from_lip_m` meters back from the covering's lip; or why those numbers
     /// are no key's.
     ///
     /// The static moment is the front weight times the arm the roller stood
     /// at on `key` as it is now, the datum the weighing keeps. A front weight
     /// may be negative, a key heavy behind, and zero; a mass may not. The
     /// roller stands on the covering, as the measuring point does, and the
-    /// centre of mass the two readings give stands on the key, between its
-    /// tail and its covering's lip: a rigid body's centre of mass lies within
+    /// center of mass the two readings give stands on the key, between its
+    /// tail and its covering's lip: a rigid body's center of mass lies within
     /// it.
     pub fn weighed(
         key: &KeyDesign,
@@ -185,7 +185,7 @@ impl KeyMass {
         let static_moment_n_m = front_weight_g / 1000.0 * G * arm_m;
         let at_m = static_moment_n_m / (mass * G);
         if !(key.tail_end..=key.lip()).contains(&at_m) {
-            return Err(NotAWeighing::CentreOfMassOffTheKey { at_m });
+            return Err(NotAWeighing::CenterOfMassOffTheKey { at_m });
         }
         Ok(Self::Weighed {
             mass,
@@ -198,23 +198,23 @@ impl KeyMass {
         })
     }
 
-    /// The mass and centre of mass the statics take, `centre_height` metres
+    /// The mass and center of mass the statics take, `center_height` meters
     /// above the key's underside standing in for what no scale gives: a
-    /// weighed key's own mass, its centre of mass along the key where its
-    /// static moment over its weight puts it, at `centre_height`; a
-    /// published key's as published, `centre_height` unread; none for a key
+    /// weighed key's own mass, its center of mass along the key where its
+    /// static moment over its weight puts it, at `center_height`; a
+    /// published key's as published, `center_height` unread; none for a key
     /// nobody has weighed.
-    pub fn props(&self, centre_height: f64) -> Option<MassProps> {
+    pub fn props(&self, center_height: f64) -> Option<MassProps> {
         match *self {
             Self::Unweighed => None,
-            Self::Published { mass, centre, .. } => Some(MassProps { mass, com: centre }),
+            Self::Published { mass, center, .. } => Some(MassProps { mass, com: center }),
             Self::Weighed {
                 mass,
                 static_moment_n_m,
                 ..
             } => Some(MassProps {
                 mass,
-                com: Point::new(static_moment_n_m / (mass * G), centre_height),
+                com: Point::new(static_moment_n_m / (mass * G), center_height),
             }),
         }
     }
@@ -238,7 +238,7 @@ mod tests {
 
     /// Weighings of the test key that exercise every sign: heavy in front,
     /// heavy behind, balanced on its pin, each read at another measuring
-    /// point, as grams, grams and metres from the lip.
+    /// point, as grams, grams and meters from the lip.
     const WEIGHINGS: [(f64, f64, f64); 4] = [
         (121.1, 6.5, 0.013),
         (151.1, -8.1, 0.013),
@@ -251,7 +251,7 @@ mod tests {
     /// mechanism with the weighed key's mass reads the typed grams with its
     /// roller where the weighing says it stood, and at another measuring
     /// point the same static moment on the other arm. The bound is derived:
-    /// the moment, the centre of mass, and the jig's reaction and reading
+    /// the moment, the center of mass, and the jig's reaction and reading
     /// take at most sixteen rounded operations, each within `ε/2` of what
     /// it touches, so the two agree within `16 ε` of the front weight.
     #[test]
@@ -300,7 +300,7 @@ mod tests {
     }
 
     /// Consistency: **what no scale gives comes from the estimate, and
-    /// nothing else does.** A weighed key's centre of mass stands at the
+    /// nothing else does.** A weighed key's center of mass stands at the
     /// height it is handed to the bit, its mass is its own; a key nobody has
     /// weighed has no mass at all.
     #[test]
@@ -322,35 +322,35 @@ mod tests {
     }
 
     /// Consistency: **a key published whole is read as published**: its
-    /// mass and centre of mass to the bit, the height it is handed unread; a
-    /// mass of nothing or a centre of mass off the key is no key's.
+    /// mass and center of mass to the bit, the height it is handed unread; a
+    /// mass of nothing or a center of mass off the key is no key's.
     #[test]
     fn a_key_published_whole_is_read_as_published() {
         let key = crate::test_fixture::key();
-        let centre = Point::new(0.0514, 0.0158);
-        let published = KeyMass::published(&key, 0.12008, centre, 0.00275).expect("a key");
+        let center = Point::new(0.0514, 0.0158);
+        let published = KeyMass::published(&key, 0.12008, center, 0.00275).expect("a key");
         for height in [0.0, 0.0125, f64::NAN] {
             let props = published.props(height).expect("a published key has a mass");
             assert_eq!(props.mass.to_bits(), 0.12008_f64.to_bits());
-            assert_eq!(props.com, centre);
+            assert_eq!(props.com, center);
         }
         assert_eq!(
-            KeyMass::published(&key, 0.0, centre, 0.00275),
+            KeyMass::published(&key, 0.0, center, 0.00275),
             Err(NotAWeighing::MassNotPositive)
         );
         assert_eq!(
             KeyMass::published(&key, 0.12008, Point::new(0.300, 0.0158), 0.00275),
-            Err(NotAWeighing::CentreOfMassOffTheKey { at_m: 0.300 })
+            Err(NotAWeighing::CenterOfMassOffTheKey { at_m: 0.300 })
         );
         assert_eq!(
-            KeyMass::published(&key, f64::NAN, centre, 0.00275),
+            KeyMass::published(&key, f64::NAN, center, 0.00275),
             Err(NotAWeighing::NotANumber)
         );
     }
 
     /// Consistency: **numbers no key has are refused, with why.** A value
     /// that is not a number; a mass of nothing or less; a roller in front of
-    /// the covering's lip or behind its back end; a centre of mass the two
+    /// the covering's lip or behind its back end; a center of mass the two
     /// readings put in front of the lip or behind the tail, as 50 g of front
     /// weight on a 40 g key does, or −100 g.
     #[test]
@@ -374,7 +374,7 @@ mod tests {
         }
         for grams in [50.0, -100.0] {
             match weigh(40.0, grams, 0.013) {
-                Err(NotAWeighing::CentreOfMassOffTheKey { at_m }) => assert!(
+                Err(NotAWeighing::CenterOfMassOffTheKey { at_m }) => assert!(
                     at_m > key.lip() || at_m < key.tail_end,
                     "{grams} g: {at_m} m"
                 ),

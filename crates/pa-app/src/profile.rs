@@ -34,12 +34,12 @@
 //!
 //! A source may give a part as a line or a circle rather than by the numbers
 //! the key is described by: Hirschkorn's chamfer is a line through a point
-//! with a normal, his capstan's head a circle about a centre. A profile binds
+//! with a normal, his capstan's head a circle about a center. A profile binds
 //! them as printed, and the walk computes the key's numbers from them as it
 //! builds the key, each kept as computed, with its rule and the input that
 //! places it: the chamfer's rise and run from where the line meets the flat
 //! and stands at the key's end, the capstan's axis and height from the
-//! dome's centre and radius, above its seat. A key height no source gives is
+//! dome's center and radius, above its seat. A key height no source gives is
 //! the one the key stands at as it arrives, read by the seated pose.
 //!
 //! # A base and a difference
@@ -136,7 +136,7 @@ pub const SECTION: &str = "measured-section";
 pub(crate) const WEIGHED_SECTION: &str = "weighed-section";
 
 /// The name of the profile [`crate::instrument::Instrument::standard`]
-/// builds: Hirschkorn's key on his printed frame, whose mass, centre of mass,
+/// builds: Hirschkorn's key on his printed frame, whose mass, center of mass,
 /// inertia, contact points and bushings were measured and published on one
 /// action.
 pub const STANDARD: &str = "hirschkorn";
@@ -207,8 +207,8 @@ pub enum Source {
         /// How.
         rule: &'static str,
         /// The input that places it, whose provenance it shares where one
-        /// does: a capstan's height above its seat, from its dome's centre,
-        /// is known as well as that centre is.
+        /// does: a capstan's height above its seat, from its dome's center,
+        /// is known as well as that center is.
         from: Option<&'static str>,
     },
 }
@@ -303,24 +303,24 @@ pub enum Arrival {
     AsRecorded,
 }
 
-/// The colour a punching paper is supplied in, as its record names it: what
+/// The color a punching paper is supplied in, as its record names it: what
 /// the trade knows a paper's thickness by. The view chooses how to paint
 /// each.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 #[allow(missing_docs)]
-pub enum PaperColour {
+pub enum PaperColor {
     White,
     PastelGreen,
     SkyBlue,
     Camel,
     Black,
-    /// Plain card, above half a millimetre: no longer graded by colour.
+    /// Plain card, above half a millimeter: no longer graded by color.
     Card,
 }
 
-impl PaperColour {
+impl PaperColor {
     fn of(name: &str) -> Option<Self> {
         match name {
             "white" => Some(Self::White),
@@ -377,8 +377,8 @@ pub struct Profile {
     /// Every number of the start, and the inputs its rules read, each with
     /// where it comes from.
     pub provenance: Vec<Provenance>,
-    /// The colour of each paper the drawer holds, in the drawer's order.
-    pub paper_colours: Vec<PaperColour>,
+    /// The color of each paper the drawer holds, in the drawer's order.
+    pub paper_colors: Vec<PaperColor>,
 }
 
 /// Why a profile does not load.
@@ -459,8 +459,8 @@ pub enum LoadError {
     },
     /// Papers that are no drawer.
     NotADrawer(NotADrawer),
-    /// A paper's colour no drawer is graded in.
-    UnknownColour(String),
+    /// A paper's color no drawer is graded in.
+    UnknownColor(String),
     /// A paper on a punching the drawer does not hold.
     PaperNotInTheDrawer(f64),
     /// A key weight ratio read with no load.
@@ -775,17 +775,17 @@ fn record_of<'v>(
 /// What a number measures, and so which units it may be given in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Quantity {
-    /// A length or a position, metres.
+    /// A length or a position, meters.
     Length,
     /// A mass, kilograms.
     Mass,
     /// A weight or a mass in grams, as its name says.
     Grams,
-    /// A torque, newton-metres.
+    /// A torque, newton-meters.
     Torque,
     /// A pure number, as a unit vector's components are.
     Ratio,
-    /// A second moment of mass, kilogram square metres.
+    /// A second moment of mass, kilogram square meters.
     Inertia,
 }
 
@@ -1270,12 +1270,12 @@ fn standing_key_height(start: &Start) -> Result<f64, LoadError> {
 /// Everything an instrument starts from, read off the bindings. Each part
 /// is built with every field named, so a field added to one is a compile
 /// error here until it is bound.
-fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>), LoadError> {
-    // A capstan whose head is a dome may be given by the dome's centre and
-    // radius, as a printed circle: its axis through the centre and its top
+fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>), LoadError> {
+    // A capstan whose head is a dome may be given by the dome's center and
+    // radius, as a printed circle: its axis through the center and its top
     // the radius above it. Its height above its seat follows once the key
     // is built.
-    let dome_centre = if b.has("capstan.dome.x") {
+    let dome_center = if b.has("capstan.dome.x") {
         Some(Point::new(
             b.length("capstan.dome.x")?,
             b.length("capstan.dome.y")?,
@@ -1284,7 +1284,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         None
     };
     let capstan_screw = Capstan {
-        height: match dome_centre {
+        height: match dome_center {
             Some(_) => f64::NAN,
             None => b.length("capstan.height")?,
         },
@@ -1305,7 +1305,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
     let mut key = KeyDesign {
         front_edge: b.length("front_edge")?,
         tail_end,
-        capstan: match dome_centre {
+        capstan: match dome_center {
             Some(c) => c.x,
             None => b.length("capstan.x")?,
         },
@@ -1315,7 +1315,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         stick_height: b.length("stick_height")?,
         capsule_height: b.length("capsule_height")?,
         capsule_length: b.length("capsule_length")?,
-        capsule_centre: b.optional("capsule_centre", Quantity::Length)?,
+        capsule_center: b.optional("capsule_center", Quantity::Length)?,
         back_check_block_height: b.length("back_check_block_height")?,
         back_check_block_back: b.length("back_check_block_back")?,
         back_check_block_length: b.length("back_check_block_length")?,
@@ -1332,24 +1332,24 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         width: b.length("width")?,
         capstan_screw,
     };
-    if let Some(centre) = dome_centre {
+    if let Some(center) = dome_center {
         let Some(radius) = key.capstan_screw.dome_radius else {
             return Err(LoadError::Malformed {
                 param: "capstan.dome.x".to_owned(),
-                why: "a dome given by its centre is given its radius",
+                why: "a dome given by its center is given its radius",
             });
         };
-        key.capstan_screw.height = centre.y + radius - key.capstan_seat();
+        key.capstan_screw.height = center.y + radius - key.capstan_seat();
         b.computed(
             "capstan.x",
             key.capstan,
-            "the capstan's axis, through its dome's centre",
+            "the capstan's axis, through its dome's center",
             Some("capstan.dome.x"),
         );
         b.computed(
             "capstan.height",
             key.capstan_screw.height,
-            "the dome's top, its centre's height plus its radius, above the capstan's seat",
+            "the dome's top, its center's height plus its radius, above the capstan's seat",
             Some("capstan.dome.y"),
         );
     }
@@ -1370,12 +1370,12 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         MassModel::Unweighed => KeyMass::Unweighed,
         MassModel::Published => {
             let mass = b.number("published.mass", Quantity::Mass)?;
-            let centre = Point::new(
-                b.length("published.centre.x")?,
-                b.length("published.centre.y")?,
+            let center = Point::new(
+                b.length("published.center.x")?,
+                b.length("published.center.y")?,
             );
             let inertia = b.number("published.inertia", Quantity::Inertia)?;
-            KeyMass::published(&key, mass, centre, inertia).map_err(LoadError::NotAWeighing)?
+            KeyMass::published(&key, mass, center, inertia).map_err(LoadError::NotAWeighing)?
         }
         MassModel::Weighed => {
             let mass_g = b.number("weighing.mass_g", Quantity::Grams)?;
@@ -1419,14 +1419,14 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
         return Err(LoadError::NoKeyRatioLoad);
     }
     let papers = b.list("drawer", DRAWER, Quantity::Length)?;
-    let mut paper_colours = Vec::with_capacity(papers.len());
+    let mut paper_colors = Vec::with_capacity(papers.len());
     for (_, item) in &papers {
         let name = item
-            .and_then(|i| i.get("colour"))
+            .and_then(|i| i.get("color"))
             .and_then(Value::as_str)
             .unwrap_or_default();
-        paper_colours
-            .push(PaperColour::of(name).ok_or_else(|| LoadError::UnknownColour(name.to_owned()))?);
+        paper_colors
+            .push(PaperColor::of(name).ok_or_else(|| LoadError::UnknownColor(name.to_owned()))?);
     }
     let drawer =
         Drawer::graded(papers.iter().map(|&(t, _)| t).collect()).map_err(LoadError::NotADrawer)?;
@@ -1547,7 +1547,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColour>
             None,
         );
     }
-    Ok((start, paper_colours))
+    Ok((start, paper_colors))
 }
 
 // ---- loading ----------------------------------------------------------------
@@ -1634,7 +1634,7 @@ impl Profile {
             bindings: bindings.into_iter().map(|b| (b, false)).collect(),
             provenance: Vec::new(),
         };
-        let (start, paper_colours) = walk(&mut b, &choices)?;
+        let (start, paper_colors) = walk(&mut b, &choices)?;
         b.finish()?;
         Ok(Self {
             name: b.profile,
@@ -1643,7 +1643,7 @@ impl Profile {
             instruments,
             start,
             provenance: b.provenance,
-            paper_colours,
+            paper_colors,
         })
     }
 
@@ -1719,16 +1719,16 @@ impl Profile {
         })
     }
 
-    /// The colour the drawer's paper of this thickness is supplied in, if
+    /// The color the drawer's paper of this thickness is supplied in, if
     /// the drawer holds one.
-    pub fn paper_colour(&self, thickness: f64) -> Option<PaperColour> {
+    pub fn paper_color(&self, thickness: f64) -> Option<PaperColor> {
         self.start
             .frame
             .drawer
             .thicknesses()
             .iter()
             .position(|t| t.to_bits() == thickness.to_bits())
-            .and_then(|i| self.paper_colours.get(i).copied())
+            .and_then(|i| self.paper_colors.get(i).copied())
     }
 
     /// Where the number `param` of the start comes from, the first so
@@ -1953,8 +1953,8 @@ mod tests {
     }
 
     /// Consistency: **a unit is converted rounding once from the recorded
-    /// decimal**: every millimetre a drawer or a section is recorded in
-    /// reads as the Rust literal in metres reads, to the bit, where
+    /// decimal**: every millimeter a drawer or a section is recorded in
+    /// reads as the Rust literal in meters reads, to the bit, where
     /// dividing the double by a thousand rounds twice; and a value with
     /// more digits than a double holds is refused rather than rounded
     /// twice.
@@ -2167,7 +2167,7 @@ mod tests {
     }
 
     /// Consistency: **a profile that arrives as recorded keeps its papers**:
-    /// the measured section with half a millimetre of paper on each punching, as
+    /// the measured section with half a millimeter of paper on each punching, as
     /// recorded, is built with those papers and no regulation, the papers'
     /// provenance under the name the design's numbers give a paper; and one
     /// recording a paper no drawer holds does not load.
@@ -2241,16 +2241,16 @@ mod tests {
     }
 
     /// Consistency: **the drawer is the record's, each paper with its
-    /// colour**, thinnest first.
+    /// color**, thinnest first.
     #[test]
-    fn the_drawer_and_its_colours_are_the_records() {
+    fn the_drawer_and_its_colors_are_the_records() {
         let p = Profile::standard();
         let drawer = p.start.frame.drawer.thicknesses();
-        assert_eq!(drawer.len(), p.paper_colours.len());
-        assert_eq!(p.paper_colour(0.0002), Some(PaperColour::SkyBlue));
-        assert_eq!(p.paper_colour(0.00008), Some(PaperColour::White));
-        assert_eq!(p.paper_colour(0.00125), Some(PaperColour::Card));
-        assert_eq!(p.paper_colour(0.0003), None);
+        assert_eq!(drawer.len(), p.paper_colors.len());
+        assert_eq!(p.paper_color(0.0002), Some(PaperColor::SkyBlue));
+        assert_eq!(p.paper_color(0.00008), Some(PaperColor::White));
+        assert_eq!(p.paper_color(0.00125), Some(PaperColor::Card));
+        assert_eq!(p.paper_color(0.0003), None);
     }
 
     /// Consistency: **his keystick stands at its full height to where his
@@ -2297,7 +2297,7 @@ mod tests {
     /// the balance pin, and drawn known as it is stated.** The measured
     /// section with its stated absence of a clearance replaced by one from
     /// 175 to 140 mm behind the pin, 3 mm deep, each number stated with its
-    /// reason: the key reads those numbers in metres as the Rust literals
+    /// reason: the key reads those numbers in meters as the Rust literals
     /// read them, to the bit; the instrument builds on it, and its keystick
     /// draws the clearance's front wall, floor and back wall, each placed by
     /// its own number and known as assumed, from the profile that states it.
@@ -2366,7 +2366,7 @@ mod tests {
     /// printed.** The chamfer drawn from Pk5's line passes through Pk5 and
     /// meets the flat where the two printed lines cross; the capstan's axis
     /// is Pk3's, its dome Pk3's radius, its top Pk3's height plus that
-    /// radius; his mass, centre of mass and inertia are Table A.1's, his
+    /// radius; his mass, center of mass and inertia are Table A.1's, his
     /// bushings Table A.9's torque, read at no radius; his key height is
     /// computed, no source giving one. How each is known is what its record
     /// says: published, traced, assumed or derived.
@@ -2406,7 +2406,7 @@ mod tests {
         assert!((key.capstan_contact().y - top).abs() <= 2.0 * f64::EPSILON * top);
         let KeyMass::Published {
             mass,
-            centre,
+            center,
             inertia,
         } = p.start.mass
         else {
@@ -2415,10 +2415,10 @@ mod tests {
         let body = "/mass_properties/bodies/key";
         assert_eq!(mass.to_bits(), at(&format!("{body}/mass")).to_bits());
         assert_eq!(
-            centre,
+            center,
             Point::new(
-                at(&format!("{body}/centre_of_mass/x")),
-                at(&format!("{body}/centre_of_mass/y"))
+                at(&format!("{body}/center_of_mass/x")),
+                at(&format!("{body}/center_of_mass/y"))
             )
         );
         assert_eq!(

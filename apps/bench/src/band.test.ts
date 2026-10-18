@@ -28,7 +28,7 @@ const extreme = (procedure: Procedure, value: number, shown: number, atMm: numbe
 })
 
 describe("the band's extremes", () => {
-  it('are labelled in full, to the hundredth of a gram, never by the gram', () => {
+  it('are labeled in full, to the hundredth of a gram, never by the gram', () => {
     // The owner's section weighed at 130 g with a front weight of 40 g: the
     // up curve's least force stands a few hundred-thousandths of a gram
     // inside -46 g, which the walk reads past, at -46.00019 g, and the sheet

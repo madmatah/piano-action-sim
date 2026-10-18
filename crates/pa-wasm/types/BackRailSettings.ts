@@ -5,14 +5,14 @@
  */
 export type BackRailSettings = { 
 /**
- * The bare rail's height above the keybed, millimetres.
+ * The bare rail's height above the keybed, millimeters.
  */
 height_mm: number, 
 /**
- * Where it stands, millimetres behind the balance pin.
+ * Where it stands, millimeters behind the balance pin.
  */
 behind_mm: number, 
 /**
- * Its cloth's thickness, millimetres.
+ * Its cloth's thickness, millimeters.
  */
 cloth_mm: number, };

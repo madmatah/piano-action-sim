@@ -6,14 +6,14 @@
  */
 export type WeighingRefusal = { "code": "roller_off_the_covering", 
 /**
- * Where it was said to stand, millimetres back from the lip.
+ * Where it was said to stand, millimeters back from the lip.
  */
 from_lip_mm: number, 
 /**
- * How far the covering runs back from its lip, millimetres.
+ * How far the covering runs back from its lip, millimeters.
  */
-covering_mm: number, } | { "code": "centre_of_mass_off_the_key", 
+covering_mm: number, } | { "code": "center_of_mass_off_the_key", 
 /**
- * Where, millimetres from the balance pin, positive in front.
+ * Where, millimeters from the balance pin, positive in front.
  */
 at_mm: number, };

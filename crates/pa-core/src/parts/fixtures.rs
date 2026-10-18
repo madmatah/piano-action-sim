@@ -20,12 +20,12 @@ pub struct Setup {
     pub key: KeyDesign,
     /// Its frame, the papers laid on its punchings.
     pub frame: FrameDesign,
-    /// Where every weight is centred.
+    /// Where every weight is centered.
     pub protocol: TouchweightProtocol,
 }
 
 impl Setup {
-    /// The measuring point, metres in front of the balance pin.
+    /// The measuring point, meters in front of the balance pin.
     pub fn measuring_point(&self) -> f64 {
         self.protocol.measuring_point(&self.key)
     }
@@ -33,7 +33,7 @@ impl Setup {
 
 /// The key's mass, as the bench weighs it: the fixture's test weighing
 /// ([`crate::test_fixture::weighed`]), its static moment taken on the
-/// fixture's key, the height of its centre of mass `key`'s drawn section's
+/// fixture's key, the height of its center of mass `key`'s drawn section's
 /// centroid; `None` for a key whose section encloses nothing.
 pub fn mass_of(key: &KeyDesign) -> Option<MassProps> {
     crate::test_fixture::weighed().props(key.section_centroid()?.y)
@@ -102,7 +102,7 @@ impl OnFrame {
 
 /// `a`'s key on its frame, free to lift off its balance punching as the
 /// bench mounts it, of `kind`, its bushings' friction bounded by `friction`
-/// newton-metres, its mass the test weighing's, or none for `weighed: false`;
+/// newton-meters, its mass the test weighing's, or none for `weighed: false`;
 /// the papers its punchings hold drawn on them.
 pub fn on_frame(a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFrame {
     mounted_as(KeyMount::OnPunching, a, kind, friction, weighed)

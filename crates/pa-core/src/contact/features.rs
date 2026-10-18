@@ -8,7 +8,7 @@ use crate::mechanism::BodyId;
 /// A piece of a surface that a row reads.
 ///
 /// Every piece is drawn: a segment of a part's silhouette, the vertex where
-/// one starts, or the centre of a drawn face.
+/// one starts, or the center of a drawn face.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Piece {
     /// A straight segment, read as a face.
@@ -34,9 +34,9 @@ pub enum Piece {
         /// silhouette.
         seg: u16,
     },
-    /// The centre of a drawn face: where a turned part's face crosses its
+    /// The center of a drawn face: where a turned part's face crosses its
     /// axis, or the middle of the face's chord.
-    Centre {
+    Center {
         /// The part.
         part: PartId,
     },
@@ -67,8 +67,8 @@ pub(crate) struct SideFeatures {
     pub faces: Vec<(Piece, Face)>,
     /// Its arcs and convex vertices.
     pub discs: Vec<(Piece, Disc)>,
-    /// The centre of its drawn face.
-    pub centre: (Piece, Point),
+    /// The center of its drawn face.
+    pub center: (Piece, Point),
 }
 
 /// A pair's two sides, read once when the mechanism is built.
@@ -84,10 +84,10 @@ impl PairFeatures {
     /// Reads both sides of `pair` from `parts`, whose ranges the mechanism
     /// has already checked are drawn.
     pub fn of(pair: &ContactPair, parts: &[Part]) -> Self {
-        let centre_of_b = matches!(pair.geometry, PairGeometry::CentreBearing);
+        let center_of_b = matches!(pair.geometry, PairGeometry::CenterBearing);
         Self {
             a: side(&pair.a, parts, false),
-            b: side(&pair.b, parts, centre_of_b),
+            b: side(&pair.b, parts, center_of_b),
         }
     }
 }
@@ -130,7 +130,7 @@ fn vertex(previous: Seg, next: Seg) -> Option<Disc> {
     let back = f.x * t.x + f.y * t.y;
     if turn > 0.0 || (turn == 0.0 && back < 0.0) {
         Some(Disc {
-            centre: next.start(),
+            center: next.start(),
             radius: 0.0,
             from,
             to,
@@ -203,7 +203,7 @@ fn traverse(range: &SurfaceRef, sil: &[Seg], role: Role) -> Traversal {
 }
 
 /// Reads one side: its faces, its arcs and its convex vertices, in the order
-/// the ranges run; and the centre of its drawn face.
+/// the ranges run; and the center of its drawn face.
 ///
 /// Every range is read as the material it bounds runs ([`traverse`]), so a
 /// face presents the side away from the material, into the void of a cut
@@ -213,7 +213,7 @@ fn traverse(range: &SurfaceRef, sil: &[Seg], role: Role) -> Traversal {
 /// continues a range of the wood, as a mortise's wall continues the
 /// underside at the slot's mouth, the corner between them is the wood's, and
 /// convex.
-fn side(surface: &Surface, parts: &[Part], centre_wanted: bool) -> SideFeatures {
+fn side(surface: &Surface, parts: &[Part], center_wanted: bool) -> SideFeatures {
     let silhouettes: Vec<Vec<Seg>> = surface
         .ranges
         .iter()
@@ -259,7 +259,7 @@ fn side(surface: &Surface, parts: &[Part], centre_wanted: bool) -> SideFeatures 
                         seg: s,
                     },
                     Disc {
-                        centre: c,
+                        center: c,
                         radius: r,
                         from,
                         to,
@@ -316,26 +316,26 @@ fn side(surface: &Surface, parts: &[Part], centre_wanted: bool) -> SideFeatures 
             }
         }
     }
-    let centre = centre(surface, parts, &silhouettes, centre_wanted);
+    let center = center(surface, parts, &silhouettes, center_wanted);
     SideFeatures {
         body,
         faces,
         discs,
-        centre,
+        center,
     }
 }
 
-/// The centre of a side's drawn face: on a turned part, the vertex where the
+/// The center of a side's drawn face: on a turned part, the vertex where the
 /// range crosses the part's axis, its silhouette being symmetric about it;
 /// otherwise the middle of the chord from the side's start to its end.
-fn centre(
+fn center(
     surface: &Surface,
     parts: &[Part],
     silhouettes: &[Vec<Seg>],
     wanted: bool,
 ) -> (Piece, Point) {
     let first = &surface.ranges[0];
-    let piece = Piece::Centre { part: first.part };
+    let piece = Piece::Center { part: first.part };
     if wanted {
         if let Sweep::Revolved { axis_x } = parts[first.part.index()].sweep {
             let sil = &silhouettes[0];
@@ -411,7 +411,7 @@ mod tests {
         let underside = Surface::of(&[range(0, 0..2), range(1, 0..1)]);
         let side = side(&underside, &parts, false);
         assert_eq!(side.faces.len(), 3);
-        let corners: Vec<Point> = side.discs.iter().map(|(_, d)| d.centre).collect();
+        let corners: Vec<Point> = side.discs.iter().map(|(_, d)| d.center).collect();
         assert_eq!(
             corners,
             vec![Point::new(0.0, 0.0), Point::new(3.0, 0.0)],
@@ -421,7 +421,7 @@ mod tests {
         // joint: that is what a chain spares.
         let alone = side_of(&parts, 0, 0..2);
         assert_eq!(alone.discs.len(), 2);
-        assert_eq!(alone.discs[1].1.centre, Point::new(2.0, 0.0));
+        assert_eq!(alone.discs[1].1.center, Point::new(2.0, 0.0));
     }
 
     fn side_of(parts: &[Part], p: u16, segs: core::ops::Range<u16>) -> SideFeatures {
@@ -481,7 +481,7 @@ mod tests {
         let corners: Vec<(Point, Dir, Dir)> = side
             .discs
             .iter()
-            .map(|(_, d)| (d.centre, d.from, d.to))
+            .map(|(_, d)| (d.center, d.from, d.to))
             .collect();
         assert_eq!(
             corners,
@@ -517,7 +517,7 @@ mod tests {
         assert!(
             all.discs
                 .iter()
-                .all(|(_, d)| d.centre != Point::new(1.0, 1.0)),
+                .all(|(_, d)| d.center != Point::new(1.0, 1.0)),
             "the inside corner of the L is not a feature"
         );
     }

@@ -2,7 +2,7 @@
 //! box problem it is solved through.
 //!
 //! - [`dense`]: the least-norm solution of a small linear system, by a
-//!   complete orthogonal decomposition: the split of least utilisation
+//!   complete orthogonal decomposition: the split of least utilization
 //!   between redundant rows.
 //! - [`boxed`]: the box problem, rows of a linear complementarity system with
 //!   their multipliers bounded in boxes, by projected Gauss–Seidel finished by

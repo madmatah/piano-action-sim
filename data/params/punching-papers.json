@@ -1,64 +1,64 @@
 {
-  "what": "Punching papers: the thicknesses a key frame is shimmed with, and the colour each is supplied in.",
-  "why_the_colour_is_data": "A punching paper is identified at the bench by its colour and never measured: the drawer is sorted by colour, and the colour is the thickness. The mapping is therefore a property of the stock a technician buys, not a presentation choice, and the view reads it from here rather than inventing a palette. Above 0.50 mm the grading stops and the papers come as plain card, so thickness can no longer be read off the colour.",
+  "what": "Punching papers: the thicknesses a key frame is shimmed with, and the color each is supplied in.",
+  "why_the_color_is_data": "A punching paper is identified at the bench by its color and never measured: the drawer is sorted by color, and the color is the thickness. The mapping is therefore a property of the stock a technician buys, not a presentation choice, and the view reads it from here rather than inventing a palette. Above 0.50 mm the grading stops and the papers come as plain card, so thickness can no longer be read off the color.",
   "source": {
     "measured_by": "project owner",
     "kind": "trade stock in use at the owner's bench",
     "date": "2026-10-11"
   },
-  "generic_not_a_model": "Punching paper is consumable stock rather than part of any instrument, so unlike the key frame it does not need a named template. Suppliers do differ: another drawer may grade its colours otherwise, which is why the mapping is data here and not a palette hard-coded in the view.",
+  "generic_not_a_model": "Punching paper is consumable stock rather than part of any instrument, so unlike the key frame it does not need a named template. Suppliers do differ: another drawer may grade its colors otherwise, which is why the mapping is data here and not a palette hard-coded in the view.",
   "records": [
     {
       "value": 0.08,
       "unit": "mm",
-      "colour": "white",
+      "color": "white",
       "reliability": "V"
     },
     {
       "value": 0.12,
       "unit": "mm",
-      "colour": "pastel green",
+      "color": "pastel green",
       "reliability": "V"
     },
     {
       "value": 0.2,
       "unit": "mm",
-      "colour": "sky blue",
+      "color": "sky blue",
       "reliability": "V"
     },
     {
       "value": 0.4,
       "unit": "mm",
-      "colour": "camel",
+      "color": "camel",
       "reliability": "V"
     },
     {
       "value": 0.5,
       "unit": "mm",
-      "colour": "black",
+      "color": "black",
       "reliability": "V"
     },
     {
       "value": 0.75,
       "unit": "mm",
-      "colour": "card",
+      "color": "card",
       "reliability": "V"
     },
     {
       "value": 1.0,
       "unit": "mm",
-      "colour": "card",
+      "color": "card",
       "reliability": "V"
     },
     {
       "value": 1.25,
       "unit": "mm",
-      "colour": "card",
+      "color": "card",
       "reliability": "V"
     }
   ],
   "consequences": [
     "The sizes do not divide one another, so the stack for a wanted thickness cannot be built greedily: 0.24 mm is two 0.12 papers exactly, while taking the thickest that fits lands on 0.20 and strands 0.04 mm. pa_core::parts::frame::Drawer::papers_for searches the whole drawer for this reason.",
-    "The steps are whole hundredths of a millimetre, which is what makes that search exact rather than approximate."
+    "The steps are whole hundredths of a millimeter, which is what makes that search exact rather than approximate."
   ]
 }

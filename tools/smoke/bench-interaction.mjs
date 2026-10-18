@@ -16,7 +16,7 @@
  * It drives the page by the engine's identifiers, never by its wording: a
  * control by the path it sets (`data-path`) or the action it runs
  * (`data-action`), a reading by its procedure (`data-procedure`), a message by
- * its code. The wording is the catalogue's and changes with the language; the
+ * its code. The wording is the catalog's and changes with the language; the
  * identifiers do not, so the same test drives the bench in English and in
  * French.
  *
@@ -191,7 +191,7 @@ const showView = (view) =>
 
 /**
  * Clicks inside the punching stack whose papers are at `path`: a paper of
- * `add` millimetres from its drawer, or its `first` or `last` paper lifted
+ * `add` millimeters from its drawer, or its `first` or `last` paper lifted
  * off.
  *
  * The scoping matters: a paper is lifted off *both* stacks by the same action,
@@ -319,7 +319,7 @@ if (!Array.isArray(hisFaults) || hisFaults.length !== 0)
 // At its top seat his key rests on the cloth's rounded front edge, which
 // stands over Pg5, 203.7 mm behind the balance pin, where his printed round
 // bears: a chamfer resting on an edge of 0.5 mm radius touches it within that
-// radius of the edge's centre, along the key.
+// radius of the edge's center, along the key.
 const PG5_BEHIND_MM = 203.7
 const CLOTH_EDGE_RADIUS_MM = 0.5
 const hisBack = await evaluate(`
@@ -546,7 +546,7 @@ for (const procedure of [
   const label = await evaluate(
     `document.querySelector('.row[data-procedure="${procedure}"] .label')?.textContent ?? ''`,
   )
-  if (!start[procedure] || !label) fail(`the sheet has no labelled row ${procedure}`)
+  if (!start[procedure] || !label) fail(`the sheet has no labeled row ${procedure}`)
 }
 
 // The friction control shows what Stanwood's protocol reads the bushings as,
@@ -574,7 +574,7 @@ const expectFrictionShown = async (what, reading) => {
 await expectFrictionShown('once weighed', startRead.key_friction_weight_zeroed_on_the_jig)
 
 // The non-confusion test, run through the whole chain rather than in a unit
-// test: more friction must widen the band and leave its centre alone. D is
+// test: more friction must widen the band and leave its center alone. D is
 // read at the top seat and U at the bottom, where the measuring point's arm
 // differs by under one per cent, so 8 g more friction moves the balance
 // weight in full by under 8 × 1 % / 2 = 0.04 g, and not the gram it is read
@@ -773,8 +773,8 @@ if ((await clickInStack(BALANCE_PAPERS, { add: 0.2 })) !== 'ok') {
   fail('no 0.20 paper in the drawer')
 }
 await settle()
-const levelled = await sheet()
-expectChanged('lay a paper', reweighed, levelled, 'key_height')
+const leveled = await sheet()
+expectChanged('lay a paper', reweighed, leveled, 'key_height')
 
 // And lifting *that* paper back off must restore the key exactly. A regulation
 // that is not reversible is not a regulation.
@@ -787,17 +787,17 @@ if ((await clickInStack(BALANCE_PAPERS, { lift: 'last' })) !== 'ok') {
   fail('no way to lift a paper off')
 }
 await settle()
-const unlevelled = await sheet()
-if (unlevelled.key_height !== reweighed.key_height) {
+const unleveled = await sheet()
+if (unleveled.key_height !== reweighed.key_height) {
   fail(
-    `lifting the paper off left key height at ${unlevelled.key_height}, was ${reweighed.key_height}`,
+    `lifting the paper off left key height at ${unleveled.key_height}, was ${reweighed.key_height}`,
   )
 }
-console.log(`  ok  lift it off: key height back to ${unlevelled.key_height}`)
+console.log(`  ok  lift it off: key height back to ${unleveled.key_height}`)
 
 // Regulation from targets reaches the engine, and so does its refusal. On this
 // frame the front rail pin bottoms in its mortise about 0.8 mm short of a
-// 12 mm dip: the bench must refuse it, say so in millimetres and name the pin,
+// 12 mm dip: the bench must refuse it, say so in millimeters and name the pin,
 // and change nothing. A dip the pin allows is laid, and the sheet reads what
 // the papers give.
 const regulation = () =>
@@ -833,8 +833,8 @@ if (
   fail(`a 12 mm dip was not refused with its shortfall: ${JSON.stringify(refused)}`)
 }
 const afterRefusal = await sheet()
-expectUnchanged('a refused regulation', unlevelled, afterRefusal, 'key_dip')
-expectUnchanged('a refused regulation', unlevelled, afterRefusal, 'key_height')
+expectUnchanged('a refused regulation', unleveled, afterRefusal, 'key_dip')
+expectUnchanged('a refused regulation', unleveled, afterRefusal, 'key_height')
 console.log(`  ok  regulation refused: ${refused.text}`)
 
 if ((await setField(KEY_DIP, 10.6)) !== 'ok') fail('no key dip target')
@@ -1044,7 +1044,7 @@ if (
 console.log(`  ok  no key friction weight on a frame whose stops fight: ${faultControl.text}`)
 if ((await moveSlider(BALANCE_RAIL, balanceRail)) !== 'ok') fail('balance rail slider missing')
 await settle()
-// Put back by its slider in millimetres, the rail may stand a last bit away
+// Put back by its slider in millimeters, the rail may stand a last bit away
 // from where it stood, so the readings are held to a thousandth of a gram:
 // bushings changed in silence would move them by grams. The control reads
 // the bushings again, as the sheet does.
@@ -1063,7 +1063,7 @@ await expectFrictionShown(
 // front pushed back into the capsule, 170 mm from the balance pin, would make
 // the key button and the keytop overlap along the key, by the 14 mm it falls
 // short of the 184 mm they need. The problem is said right after the slider
-// that made the edit, by its code and the overlap in millimetres; the slider
+// that made the edit, by its code and the overlap in millimeters; the slider
 // goes back to where the setting stands, and every reading of the sheet stays
 // as it was, to the bit. The next edit taken clears it.
 const edgeBefore = await slider(FRONT_EDGE)
@@ -1227,13 +1227,13 @@ await settle()
 console.log('  ok  both views drawn')
 
 // What a profile reads of another instrument than the one it describes is
-// marked borrowed, in a colour of its own: his pins and punchings, read from
+// marked borrowed, in a color of its own: his pins and punchings, read from
 // the owner's key frame, which the section draws as it draws every turned
 // part; on the measured section, which describes that frame, they are
 // measured and nothing is borrowed. Counted on the section opened by its link, which
 // faces it. Where the marked drawing differs from the unmarked one, a line is
-// drawn in a mark's colour where the edge colour was, over the same fill and
-// covering as much of the pixel, so the difference is the mark's colour less
+// drawn in a mark's color where the edge color was, over the same fill and
+// covering as much of the pixel, so the difference is the mark's color less
 // the edge's, scaled by that cover: each such pixel is the mark's whose
 // difference from the edge points its way, at a quarter of its length at
 // least.
@@ -1251,7 +1251,7 @@ const paintedOn = async (profile) => {
   await settle()
   const area = await drawnArea()
   if (!area || area.height < 50) fail(`no drawing to capture: ${JSON.stringify(area)}`)
-  const colours = await evaluate(`
+  const colors = await evaluate(`
     JSON.stringify(Object.fromEntries([...document.querySelectorAll('.provenance-legend [data-how]')]
       .map((e) => [e.dataset.how,
         getComputedStyle(e.querySelector('.swatch')).backgroundColor.match(/\\d+/g).map(Number)])))
@@ -1271,7 +1271,7 @@ const paintedOn = async (profile) => {
       }
       const [u, p] = [await pixels('${plain}'), await pixels('${withMarks}')]
       const edge = ${JSON.stringify(rgbOf(EDGE))}
-      const ways = ${JSON.stringify(colours)}
+      const ways = ${JSON.stringify(colors)}
       const counts = Object.fromEntries(Object.keys(ways).map((how) => [how, 0]))
       for (let i = 0; i < u.length; i += 4) {
         const d = [p[i] - u[i], p[i + 1] - u[i + 1], p[i + 2] - u[i + 2]]
@@ -1402,7 +1402,7 @@ const BAND_READS = {
  * measuring arm of at least 0.2 m (statics.rs, RESIDUAL_TOLERANCE); the
  * curve's greatest change over one step and twice its greatest change of
  * slope over one; and rounding, 64 units in the last place of a key under a
- * kilogram at an arm under 0.3 m with bushings under a newton-metre, over
+ * kilogram at an arm under 0.3 m with bushings under a newton-meter, over
  * the measuring arm.
  */
 const bandBound = (curve) => {

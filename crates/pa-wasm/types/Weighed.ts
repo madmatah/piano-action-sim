@@ -13,6 +13,6 @@ mass_g: number,
  */
 front_weight_g: number, 
 /**
- * How far back from the covering's lip the roller stood, millimetres.
+ * How far back from the covering's lip the roller stood, millimeters.
  */
 from_lip_mm: number, };

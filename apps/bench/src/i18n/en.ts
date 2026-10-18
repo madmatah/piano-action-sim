@@ -2,7 +2,7 @@
  * The bench in English: every sentence it shows, composed from the codes and
  * numbers the engine sends.
  *
- * A catalogue in another language has the same shape (`Catalogue`), its
+ * A catalog in another language has the same shape (`Catalog`), its
  * trade terms the trade's own in that language; between English and French
  * they are mapped in `docs/research/A3-nomenclature-and-regulation.md` §6.
  */
@@ -33,7 +33,7 @@ import {
   STATION_MM,
   TEMPORARY_WEIGHT_G,
 } from '../format'
-import { type Catalogue, type Labelled, type Named, type Worded, word } from './catalogue'
+import { type Catalog, type Labeled, type Named, type Worded, word } from './catalog'
 
 /** `x` to the decimals `resolution` is shown to. */
 const to = (x: number, resolution: number): string => fixed(x, decimals(resolution))
@@ -106,7 +106,7 @@ function riding(r: Riding): string {
   return `the key rides on ${stopsNamed([r.front, 'back_rail_cloth'])}, ${fixed(r.lift_mm, 2)} mm above its balance punching: its stops hold it higher than its punching does, so it has no stroke, and no weight takes it from one seat to the other.`
 }
 
-/** How far past a target, in millimetres: to the hundredth, a shortfall
+/** How far past a target, in millimeters: to the hundredth, a shortfall
  * under that said as under a hundredth. */
 function hundredths(mm: number): string {
   return mm < 0.005 ? 'under 0.01 mm' : `${fixed(mm, 2)} mm`
@@ -132,7 +132,7 @@ const STROKE: Named<Stroke> = {
 }
 
 /** Each panel's heading, which a sentence pointing to the panel quotes. */
-const panel: Catalogue['panel'] = {
+const panel: Catalog['panel'] = {
   instrument: 'The instrument',
   sheet: 'Weighing sheet',
   regulation: 'Regulation',
@@ -144,7 +144,7 @@ const panel: Catalogue['panel'] = {
 }
 
 /** Why a reading is refused, or why the key cannot be seated. */
-const refusal: Catalogue['refusal'] = {
+const refusal: Catalog['refusal'] = {
   geometry_degenerate: () => 'the geometry is degenerate.',
   key_not_weighed: () =>
     `nobody has weighed this key, so the bench knows no mass for it: weigh it whole and type the weighing under “${panel.weighing}”.`,
@@ -157,7 +157,7 @@ const refusal: Catalogue['refusal'] = {
       ? `the balance punching stands ${fixed(-at, 2)} mm above the top of the balance pin: a key on it is off its pin and off its frame.`
       : `its stops would hold the key more than ${fixed(at, 2)} mm above its balance punching, where it leaves its balance pin: off its pin and off its frame.`,
   no_stop_below_the_front: () =>
-    "nothing stops the front of the key: the front punching's centre stands off the key's underside, so the key bears on nothing at the bottom of its dip.",
+    "nothing stops the front of the key: the front punching's center stands off the key's underside, so the key bears on nothing at the bottom of its dip.",
   no_stop_under_the_tail: () =>
     "nothing holds the back of the key down: the back rail cloth stands where the key's tail cannot reach it.",
   capstan_not_behind_the_bearing: () =>
@@ -193,7 +193,7 @@ function temporary(w: TemporaryWeight | null): string {
 /** Nothing under the front of the key, which keeps either target out of
  * reach for the same reason. */
 const NO_STOP_BELOW_THE_FRONT =
-  "nothing stops the front of the key, the front punching's centre standing off its underside"
+  "nothing stops the front of the key, the front punching's center standing off its underside"
 
 /**
  * What keeps a regulation target out of reach: a wording for every limit and
@@ -242,7 +242,7 @@ const LIMIT_WHY: {
   },
 }
 
-const regulationWhy: Catalogue['regulation']['why'] = {
+const regulationWhy: Catalog['regulation']['why'] = {
   regulation_infeasible: ({ target, wanted_mm, limited_by, shortfall_mm, search_mm }) =>
     `${fixed(wanted_mm, 2)} mm of ${TARGET[target]} is out of reach, by ${hundredths(shortfall_mm)}: ${LIMIT_WHY[limited_by][target](search_mm)}.`,
   no_seat: ({ why }) =>
@@ -263,8 +263,8 @@ const frictionWhy: Worded<FrictionRefusal> = {
 const weighingWhy: Worded<WeighingRefusal> = {
   roller_off_the_covering: ({ from_lip_mm, covering_mm }) =>
     `a front weight is read on the covering, in front of the balance pin, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
-  centre_of_mass_off_the_key: ({ at_mm }) =>
-    `that front weight on that mass stands the key's centre of mass ${fixed(Math.abs(at_mm), 0)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
+  center_of_mass_off_the_key: ({ at_mm }) =>
+    `that front weight on that mass stands the key's center of mass ${fixed(Math.abs(at_mm), 0)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
 }
 
 /** Two parts that would overlap along the key, as a problem names them. A
@@ -351,7 +351,7 @@ const nothingChanged = (why: EditRefusal): string =>
   `Refused, nothing changed: ${word(editRefusal, why.code, why)}`
 
 /** What each control is worded by, by its label's code. */
-const control: { readonly [K in Label]: Labelled } = {
+const control: { readonly [K in Label]: Labeled } = {
   profile: { label: 'on the bench' },
   measuring_point: { label: 'measuring point, back from the key’s front lip' },
   key_height: { label: 'key height' },
@@ -408,14 +408,14 @@ const verdict: Worded<Verdict> = {
     'lifted off its frame, off its balance pin: no equilibrium in the model holds it there',
 }
 
-export const en: Catalogue = {
+export const en: Catalog = {
   number: fixed,
   list,
 
   booting: 'starting the engine…',
   title: 'Single-key bench',
   protocol:
-    'Weighed by Stanwood’s *Standard Protocols of the New Touchweight Metrology*, February 2000. Every weight is centred on the measuring point, marked on the section, a set distance back from the front lip of the key.',
+    'Weighed by Stanwood’s *Standard Protocols of the New Touchweight Metrology*, February 2000. Every weight is centered on the measuring point, marked on the section, a set distance back from the front lip of the key.',
 
   view: {
     section: 'section',
@@ -482,7 +482,7 @@ export const en: Catalogue = {
     regulate: (fields) => {
       const names = fields.map((f) => control[f].label)
       const one = names.length === 1
-      return `${names.join(' and ')} ${one ? 'needs' : 'need'} a number, in millimetres: nothing is regulated until ${one ? 'it has' : 'they have'} one.`
+      return `${names.join(' and ')} ${one ? 'needs' : 'need'} a number, in millimeters: nothing is regulated until ${one ? 'it has' : 'they have'} one.`
     },
     weigh_key: (fields) => {
       const names = fields.map(weighed)
@@ -505,7 +505,7 @@ export const en: Catalogue = {
     gramWeights:
       'Every weight is read the way gram weights give it: the down weight and the key friction weight as the least whole gram that takes the key down, the up weight as the most whole grams it lifts, balance and friction weight from those two, so to the half gram; the front weight to the tenth, as a scale reads it. The value in full stands small beside each. D is walked up from the key resting on its cloth, U down from the key on its front punching, each a gram at a time until the key goes all the way.',
     keyFrictionTwice: (jig, frame) =>
-      `The key friction weight is read twice. Stanwood’s protocol zeroes the front weight on the levelled jig with a temporary weight${temporary(jig)}, then puts the key back on its frame and finds the least weight that makes it fall. The other cancels the key’s balance where it rests on its frame${temporary(frame)}, which reads the bushings alone. They differ by what the key’s tilt at rest does to the weights’ arms.`,
+      `The key friction weight is read twice. Stanwood’s protocol zeroes the front weight on the leveled jig with a temporary weight${temporary(jig)}, then puts the key back on its frame and finds the least weight that makes it fall. The other cancels the key’s balance where it rests on its frame${temporary(frame)}, which reads the bushings alone. They differ by what the key’s tilt at rest does to the weights’ arms.`,
     indicative: (because) =>
       `These readings are indicative, not measurements: ${because.join('; ')}.`,
     refused: 'refused',
@@ -539,8 +539,8 @@ export const en: Catalogue = {
   },
   because: {
     key_mass: 'nobody has weighed the key',
-    centre_of_mass_height:
-      'the height of the key’s centre of mass, which no scale gives, is estimated from its drawn section',
+    center_of_mass_height:
+      'the height of the key’s center of mass, which no scale gives, is estimated from its drawn section',
     key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
     geometry: 'some of its dimensions have no record',
   },
@@ -557,7 +557,7 @@ export const en: Catalogue = {
       `Laid ${fixed(r.balance_mm, 2)} mm of paper under the balance punching and ${fixed(r.front_mm, 2)} mm on the front punching: ${fixed(r.key_height_mm, 2)} mm of key height and ${fixed(r.key_dip_mm, 2)} mm of dip, as near ${fixed(r.asked_key_height_mm, 2)} and ${fixed(r.asked_key_dip_mm, 2)} mm as the drawer's papers come from below.`,
     why: regulationWhy,
     layingNote:
-      'The bench lays the papers as a technician does: the key height first, on the balance punching, then the dip on the front punching with the key as it then stands, each the closest stack the drawer makes from below. So it lands within one paper of each target, not on it, and the sheet shows both. A target no stack reaches is refused, with what keeps it out and by how many millimetres, and nothing is changed.',
+      'The bench lays the papers as a technician does: the key height first, on the balance punching, then the dip on the front punching with the key as it then stands, each the closest stack the drawer makes from below. So it lands within one paper of each target, not on it, and the sheet shows both. A target no stack reaches is refused, with what keeps it out and by how many millimeters, and nothing is changed.',
     pileNote:
       'A punching stack is a **pile of papers**, not a thickness. The operation is “lay a two-tenths”, never “set it to 0.37”, so these are the papers in the drawer and the pile you have built.',
   },
@@ -573,7 +573,7 @@ export const en: Catalogue = {
 
   friction: {
     why: frictionWhy,
-    note: 'The key friction weight is typed as Stanwood’s protocol reads it, zeroed on the levelled jig: the bench sets the bushings to the torque at which that protocol, run on this key, reads back what is typed, and the sheet shows it. The bushings then stay as they are. Moving the measuring point or changing the key changes the grams they read, as it would at the bench, and this slider follows the sheet.',
+    note: 'The key friction weight is typed as Stanwood’s protocol reads it, zeroed on the leveled jig: the bench sets the bushings to the torque at which that protocol, run on this key, reads back what is typed, and the sheet shows it. The bushings then stay as they are. Moving the measuring point or changing the key changes the grams they read, as it would at the bench, and this slider follows the sheet.',
   },
 
   punchings: {
@@ -602,8 +602,8 @@ export const en: Catalogue = {
     weighed: (massG, frontWeightG, fromLipMm) =>
       `Weighed: ${to(massG, MASS_G)} g, its front weight ${to(frontWeightG, MASS_G)} g read ${to(fromLipMm, FROM_LIP_MM)} mm back from the lip.`,
     published: (massG) =>
-      `As published: ${massG === null ? 'its mass' : `${to(massG, MASS_G)} g`}, and its centre of mass, its height included, as its source gives them.`,
-    note: "The **key mass** is the whole key on a scale, capstan and leads included: the weight gravity pulls at its centre of mass. The **front weight** is the levelled key's weight on the jig's scale, the key turning on its balance pin and the roller under the measuring point; times the arm it was read on, it is the key's static moment about the pin, which places its centre of mass along the key. **Read at** is where the roller stood, back from the covering's lip: the arm it was read on. The bench keeps that static moment, so moving the measuring point afterwards, or changing the key, reads the same moment on another arm, and the front weight on the sheet follows by the lever. The height of the centre of mass, which no scale gives, stays what the key came with: published, where its source gives one, or else estimated from the key's drawn section, which the sheet marks on every reading it reaches. It acts only through the key's tilt on its frame, a few hundredths of a gram of down weight per millimetre.",
+      `As published: ${massG === null ? 'its mass' : `${to(massG, MASS_G)} g`}, and its center of mass, its height included, as its source gives them.`,
+    note: "The **key mass** is the whole key on a scale, capstan and leads included: the weight gravity pulls at its center of mass. The **front weight** is the leveled key's weight on the jig's scale, the key turning on its balance pin and the roller under the measuring point; times the arm it was read on, it is the key's static moment about the pin, which places its center of mass along the key. **Read at** is where the roller stood, back from the covering's lip: the arm it was read on. The bench keeps that static moment, so moving the measuring point afterwards, or changing the key, reads the same moment on another arm, and the front weight on the sheet follows by the lever. The height of the center of mass, which no scale gives, stays what the key came with: published, where its source gives one, or else estimated from the key's drawn section, which the sheet marks on every reading it reaches. It acts only through the key's tilt on its frame, a few hundredths of a gram of down weight per millimeter.",
   },
 
   frame: {
@@ -655,12 +655,12 @@ export const en: Catalogue = {
       kf === null
         ? 'the bushings’ friction is an interval, not a value; Stanwood’s protocol cannot read it on this frame'
         : `the bushings’ friction is an interval, not a value: Stanwood’s protocol reads it as a key friction weight of ${kf} g`,
-    centreNote: (overlaps) =>
-      `The punchings are read at their centre: a felt washer under a key carries the load over its whole face, and the bench takes it at the middle, under the balance pin for the balance punching. A key standing out of level on one overlaps the drawn felt's edge by what the felt would compress${
+    centerNote: (overlaps) =>
+      `The punchings are read at their center: a felt washer under a key carries the load over its whole face, and the bench takes it at the middle, under the balance pin for the balance punching. A key standing out of level on one overlaps the drawn felt's edge by what the felt would compress${
         overlaps.length === 0
           ? ''
           : `, here ${overlaps.map((o) => `${to(o.overlap_mm, LENGTH_MM)} mm at the ${CONTACT[o.pair]}`).join(' and ')}`
-      }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. The contacts marked on the view are where the key bears, and what stands within a millimetre of it.`,
+      }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. The contacts marked on the view are where the key bears, and what stands within a millimeter of it.`,
     notWeighed:
       'This key is not weighed: what a weight on it does depends on the key’s own balance, which only a weighing gives, so the key is drawn where its back rests on its cloth, as key height is read, whatever weight is typed. Weigh it to try the weights.',
     noPressNote:

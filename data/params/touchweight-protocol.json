@@ -1,12 +1,12 @@
 {
-  "what": "The conventions Stanwood's touchweight protocols are run under: where on the key every weight is centred, and the load the key weight ratio is read with.",
+  "what": "The conventions Stanwood's touchweight protocols are run under: where on the key every weight is centered, and the load the key weight ratio is read with.",
   "source": {
     "author": "David C. Stanwood",
     "doc": "Standard Protocols of the New Touchweight Metrology",
     "published": "Piano Technicians Journal, February 2000, pp. 20-23",
     "local_copy": "data/references/stanwood/2000-02 - Standard Protocols of the New Touchweight Metrology.pdf"
   },
-  "supersedes": "The 1996 paper, The New Touchweight Metrology (Piano Technicians Journal, June 1996), centres the weights 13 mm in from 'the front vertical edge of the key' and reads the key weight ratio with 100 g. These protocols replace both.",
+  "supersedes": "The 1996 paper, The New Touchweight Metrology (Piano Technicians Journal, June 1996), centers the weights 13 mm in from 'the front vertical edge of the key' and reads the key weight ratio with 100 g. These protocols replace both.",
   "records": [
     {
       "name": "measuring_point_from_lip",

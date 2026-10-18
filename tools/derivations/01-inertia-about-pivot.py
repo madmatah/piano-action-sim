@@ -1,7 +1,7 @@
 """Moments of inertia about each body's own pivot, Hirschkorn 2004 (Boston GP-178).
 
-Table A.1 gives each body's mass, its inertia about its centre of mass, and the
-centre of mass in the body's own frame. Every one of those frames has its origin
+Table A.1 gives each body's mass, its inertia about its center of mass, and the
+center of mass in the body's own frame. Every one of those frames has its origin
 at the body's pivot (Figure A.1), so the parallel-axis theorem gives the
 inertia about the pivot directly: I_pivot = I_cm + m |cm|^2. That holds for the
 wippen too: its pivot is the frame origin, and Pw2, Pw3 in Table A.4 are the
@@ -17,7 +17,7 @@ Pure arithmetic: import math and nothing else. Run with python3 -I.
 """
 import math
 
-# Table A.1: mass (kg), inertia about the centre of mass (kg m^2), centre of mass (m)
+# Table A.1: mass (kg), inertia about the center of mass (kg m^2), center of mass (m)
 BODIES = {
     "key": (0.12008, 2.75e-3, (0.0514, 0.0158)),
     "wippen": (0.01196, 1.69e-5, (0.0502, -0.0018)),
@@ -30,4 +30,4 @@ print("=== Inertia about each body's own pivot (frame origin = pivot) ===")
 for name, (m, i_cm, cm) in BODIES.items():
     r = math.hypot(cm[0], cm[1])
     print(f"  {name:16s} m = {m * 1000:7.2f} g   I_pivot = {i_cm + m * r * r:.4e} kg m^2"
-          f"   centre of mass {r * 1000:5.1f} mm from the pivot")
+          f"   center of mass {r * 1000:5.1f} mm from the pivot")

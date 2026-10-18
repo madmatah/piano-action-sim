@@ -4,35 +4,35 @@
 //!
 //! A gap here is a signed distance: positive apart, negative overlapping, and
 //! it keeps its sign however deep the overlap. An unsigned distance from a
-//! circle's centre to a segment, less the radius, grows again past one radius
+//! circle's center to a segment, less the radius, grows again past one radius
 //! of penetration and turns its normal round: right at contact, and wrong for
 //! anything that has to see how deep two parts overlap. So:
 //!
 //! | Primitive | What it pairs | Gap |
 //! |---|---|---|
-//! | [`disc_on_face`] | a disc (an arc, or a convex vertex taken as a disc of radius zero whose sector is its exterior angle) against a straight face into whose span the disc's centre projects | `(c − a)·n − r` |
-//! | [`disc_on_disc`] | two discs, the line of their centres inside both sectors | `‖c_a − c_b‖ − r_a − r_b` |
-//! | [`centre_on_face`] | the centre of a drawn face against the supporting line of a straight face, while the centre projects into its span | `(p − a)·n` |
+//! | [`disc_on_face`] | a disc (an arc, or a convex vertex taken as a disc of radius zero whose sector is its exterior angle) against a straight face into whose span the disc's center projects | `(c − a)·n − r` |
+//! | [`disc_on_disc`] | two discs, the line of their centers inside both sectors | `‖c_a − c_b‖ − r_a − r_b` |
+//! | [`center_on_face`] | the center of a drawn face against the supporting line of a straight face, while the center projects into its span | `(p − a)·n` |
 //!
 //! The first and the last measure to a line, so they are signed at every
-//! depth. The second keeps its sign until the two centres meet, a penetration
+//! depth. The second keeps its sign until the two centers meet, a penetration
 //! of `r_a + r_b`, and has no row past that. A corner sunk deeper than a
-//! 0.5 mm edge arc's centre stands over one of the faces beside the arc, and
+//! 0.5 mm edge arc's center stands over one of the faces beside the arc, and
 //! [`disc_on_face`] reads it there only while the face's normal, turned
-//! round, lies in the corner's own angle: past an edge's centre a pair can
+//! round, lies in the corner's own angle: past an edge's center a pair can
 //! lose a corner altogether (`docs/FOUNDATIONS.md` §6.6).
 //!
 //! # Conventions
 //!
 //! Every primitive answers for two sides, A and B, in the world. The normal
-//! runs from B towards A; the point is midway between the two surfaces on that
+//! runs from B toward A; the point is midway between the two surfaces on that
 //! normal, which is where the dynamics prototype puts it (its assumption A5):
 //! any point on the normal gives the same lever arms, and the midway one is
 //! the one the sliding speed is taken at. So the surface point of A is
 //! `point + gap/2 · normal` and that of B is `point − gap/2 · normal`.
 //!
 //! Each primitive returns `None` when its pair of features is not where the
-//! two surfaces meet: a disc whose centre projects off the face, or whose
+//! two surfaces meet: a disc whose center projects off the face, or whose
 //! sector does not hold the direction it would touch along. A contact made of
 //! several features is the minimum over the rows its features give
 //! ([`crate::contact`]); no primitive here searches.
@@ -42,7 +42,7 @@
 
 use super::{Dir, Point};
 
-/// A disc: a centre, a radius, and the sector of directions from the centre
+/// A disc: a center, a radius, and the sector of directions from the center
 /// its boundary covers, counter-clockwise from `from` to `to`.
 ///
 /// An arc of a drawn outline is a disc whose sector is the arc's sweep. A
@@ -51,11 +51,11 @@ use super::{Dir, Point};
 /// segment that starts there.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Disc {
-    /// The centre, metres.
-    pub centre: Point,
-    /// The radius, metres. Zero for a vertex.
+    /// The center, meters.
+    pub center: Point,
+    /// The radius, meters. Zero for a vertex.
     pub radius: f64,
-    /// Where the sector starts, seen from the centre.
+    /// Where the sector starts, seen from the center.
     pub from: Dir,
     /// Where it ends, counter-clockwise from `from`.
     pub to: Dir,
@@ -63,7 +63,7 @@ pub struct Disc {
 
 /// A straight face: a segment from `a` to `b`, and the side it presents.
 ///
-/// `normal` points out of the material the face bounds, towards whatever may
+/// `normal` points out of the material the face bounds, toward whatever may
 /// touch it: the right-hand normal of a segment of a counter-clockwise
 /// outline, the left-hand one of a cut's, whose material lies outside it.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -79,9 +79,9 @@ pub struct Face {
 /// Where two features of two sides meet: what a contact row is built from.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Proximity {
-    /// Signed gap, metres: positive apart, negative overlapping.
+    /// Signed gap, meters: positive apart, negative overlapping.
     pub gap: f64,
-    /// Unit normal, from side B towards side A.
+    /// Unit normal, from side B toward side A.
     pub normal: Dir,
     /// The point midway between the two surfaces on the normal.
     pub point: Point,
@@ -148,16 +148,16 @@ fn along(c: Point, face: &Face) -> Option<f64> {
 
 /// A disc of side A against a straight face of side B.
 ///
-/// The disc's centre has to project into the face's span, and the direction
-/// from the centre towards the face, the face's normal turned round, has to
+/// The disc's center has to project into the face's span, and the direction
+/// from the center toward the face, the face's normal turned round, has to
 /// lie in the disc's sector: otherwise the point of the disc that would touch
 /// is not on the drawn arc, or not at the drawn vertex, and another feature
-/// carries the contact. The gap is the centre's signed height above the
+/// carries the contact. The gap is the center's signed height above the
 /// face's line less the radius; the normal is the face's. With the roles the
 /// other way round, a disc of B against a face of A, the gap and the point
 /// are the same and the normal turns round: [`Proximity::reversed`].
 pub fn disc_on_face(disc: &Disc, face: &Face) -> Option<Proximity> {
-    let t = along(disc.centre, face)?;
+    let t = along(disc.center, face)?;
     if !(0.0..=1.0).contains(&t) {
         return None;
     }
@@ -165,26 +165,26 @@ pub fn disc_on_face(disc: &Disc, face: &Face) -> Option<Proximity> {
     if !in_sector(Point::new(-n.x, -n.y), disc.from, disc.to) {
         return None;
     }
-    let height = dot(sub(disc.centre, face.a), n);
+    let height = dot(sub(disc.center, face.a), n);
     let gap = height - disc.radius;
     let back = disc.radius + 0.5 * gap;
     Some(Proximity {
         gap,
         normal: face.normal,
-        point: Point::new(disc.centre.x - back * n.x, disc.centre.y - back * n.y),
+        point: Point::new(disc.center.x - back * n.x, disc.center.y - back * n.y),
     })
 }
 
 /// A disc of side A against a disc of side B.
 ///
-/// The line of centres has to leave A's centre inside A's sector, pointing
-/// towards B, and B's inside B's, pointing towards A: then the two points it
+/// The line of centers has to leave A's center inside A's sector, pointing
+/// toward B, and B's inside B's, pointing toward A: then the two points it
 /// crosses the circles at are on the drawn arcs, or at the drawn vertices.
-/// Two centres that coincide have no line between them, and no row: that is
+/// Two centers that coincide have no line between them, and no row: that is
 /// a penetration of the two radii added, where another feature carries the
 /// contact.
 pub fn disc_on_disc(a: &Disc, b: &Disc) -> Option<Proximity> {
-    let d = sub(a.centre, b.centre);
+    let d = sub(a.center, b.center);
     let normal = Dir::new(d.x, d.y)?;
     let n = normal.vector();
     if !in_sector(Point::new(-n.x, -n.y), a.from, a.to) || !in_sector(n, b.from, b.to) {
@@ -195,29 +195,29 @@ pub fn disc_on_disc(a: &Disc, b: &Disc) -> Option<Proximity> {
     Some(Proximity {
         gap,
         normal,
-        point: Point::new(b.centre.x + out * n.x, b.centre.y + out * n.y),
+        point: Point::new(b.center.x + out * n.x, b.center.y + out * n.y),
     })
 }
 
-/// The centre of a drawn face of side B against a straight face of side A.
+/// The center of a drawn face of side B against a straight face of side A.
 ///
 /// The rigid idealization of a felt that spreads its load: the key bears on
-/// a washer at its centre, whatever its attitude, and the gap is the centre's
+/// a washer at its center, whatever its attitude, and the gap is the center's
 /// signed height above the key's face, measured along the key's normal. The
-/// centre has to project into the face's span: a punching standing past the
+/// center has to project into the face's span: a punching standing past the
 /// end of the key's underside has no row.
-pub fn centre_on_face(centre: Point, face: &Face) -> Option<Proximity> {
-    let t = along(centre, face)?;
+pub fn center_on_face(center: Point, face: &Face) -> Option<Proximity> {
+    let t = along(center, face)?;
     if !(0.0..=1.0).contains(&t) {
         return None;
     }
     let n = face.normal.vector();
-    let gap = dot(sub(centre, face.a), n);
+    let gap = dot(sub(center, face.a), n);
     let half = 0.5 * gap;
     Some(Proximity {
         gap,
         normal: Dir::new(-n.x, -n.y)?,
-        point: Point::new(centre.x - half * n.x, centre.y - half * n.y),
+        point: Point::new(center.x - half * n.x, center.y - half * n.y),
     })
 }
 
@@ -268,9 +268,9 @@ mod tests {
 
     /// A disc whose sector is all but a sliver round a direction no test
     /// here touches along: as near a whole circle as a sector can be.
-    fn round(centre: Point, radius: f64) -> Disc {
+    fn round(center: Point, radius: f64) -> Disc {
         Disc {
-            centre,
+            center,
             radius,
             from: Dir::new(0.8, -0.6 + 1e-9).expect("a direction"),
             to: Dir::new(0.8, -0.6 - 1e-9).expect("a direction"),
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn a_disc_above_a_face_has_its_height_less_its_radius_for_gap() {
         let disc = round(Point::new(0.25, 0.75), 0.25);
-        let p = disc_on_face(&disc, &floor()).expect("the centre is over the face");
+        let p = disc_on_face(&disc, &floor()).expect("the center is over the face");
         assert!(close(p.gap, 0.5), "{p:?}");
         assert_eq!(p.normal, UP);
         assert!(close(p.point.x, 0.25) && close(p.point.y, 0.25), "{p:?}");
@@ -317,7 +317,7 @@ mod tests {
         assert!(previous < -4.0 * r, "the sweep went deeper than the radius");
     }
 
-    /// A disc whose centre projects off the face has no row: the face's end
+    /// A disc whose center projects off the face has no row: the face's end
     /// carries that contact, as a vertex or an arc of its own.
     #[test]
     fn a_disc_off_the_end_of_a_face_has_no_row() {
@@ -331,7 +331,7 @@ mod tests {
     #[test]
     fn an_arc_touches_only_through_its_own_sweep() {
         let quarter = Disc {
-            centre: Point::new(0.0, 0.5),
+            center: Point::new(0.0, 0.5),
             radius: 0.1,
             from: Dir::X,
             to: Dir::Y,
@@ -380,10 +380,10 @@ mod tests {
         assert!(!in_sector(Point::new(0.0, 1.0), from, to));
     }
 
-    /// Two discs: the distance between centres less both radii, the normal
-    /// from B's centre to A's, the point midway between the circles.
+    /// Two discs: the distance between centers less both radii, the normal
+    /// from B's center to A's, the point midway between the circles.
     #[test]
-    fn two_discs_meet_on_their_line_of_centres() {
+    fn two_discs_meet_on_their_line_of_centers() {
         let a = round(Point::new(3.0, 4.0), 1.0);
         let b = round(Point::new(0.0, 0.0), 2.0);
         let p = disc_on_disc(&a, &b).expect("both sectors hold the line");
@@ -394,9 +394,9 @@ mod tests {
         assert!(close(p.point.x, 1.8) && close(p.point.y, 2.4), "{p:?}");
     }
 
-    /// Disc against disc keeps its sign while the centres stay apart.
+    /// Disc against disc keeps its sign while the centers stay apart.
     #[test]
-    fn two_discs_overlapping_have_a_negative_gap_until_their_centres_meet() {
+    fn two_discs_overlapping_have_a_negative_gap_until_their_centers_meet() {
         let b = round(Point::new(0.0, 0.0), 0.3);
         for k in 1..10 {
             let x = f64::from(k) * 0.05;
@@ -412,13 +412,13 @@ mod tests {
     #[test]
     fn a_vertex_touches_through_its_exterior_angle() {
         let corner = Disc {
-            centre: Point::new(0.0, 0.0),
+            center: Point::new(0.0, 0.0),
             radius: 0.0,
             from: Dir::X,
             to: Dir::Y,
         };
         let above = Disc {
-            centre: Point::new(0.0, 2.0),
+            center: Point::new(0.0, 2.0),
             radius: 0.5,
             from: Dir::NEG_X,
             to: Dir::X,
@@ -426,7 +426,7 @@ mod tests {
         let p = disc_on_disc(&corner, &above).expect("straight above, in both sectors");
         assert!(close(p.gap, 1.5), "{p:?}");
         let behind = Disc {
-            centre: Point::new(-2.0, 0.0),
+            center: Point::new(-2.0, 0.0),
             ..above
         };
         assert!(
@@ -435,25 +435,22 @@ mod tests {
         );
     }
 
-    /// The centre of a face against another face: its signed height above
-    /// that face's line, with no radius, the normal from the centre's side.
+    /// The center of a face against another face: its signed height above
+    /// that face's line, with no radius, the normal from the center's side.
     #[test]
-    fn a_centre_bearing_reads_the_height_of_the_centre() {
+    fn a_center_bearing_reads_the_height_of_the_center() {
         let key = Face {
             a: Point::new(-1.0, 1.0),
             b: Point::new(1.0, 1.0),
             normal: Dir::NEG_Y,
         };
-        let p = centre_on_face(Point::new(0.5, 0.25), &key).expect("under the face");
+        let p = center_on_face(Point::new(0.5, 0.25), &key).expect("under the face");
         assert!(close(p.gap, 0.75), "{p:?}");
-        assert_eq!(
-            p.normal, UP,
-            "from the centre's side, B, towards the key, A"
-        );
+        assert_eq!(p.normal, UP, "from the center's side, B, toward the key, A");
         assert!(close(p.on_a().y, 1.0) && close(p.on_b().y, 0.25), "{p:?}");
-        let deep = centre_on_face(Point::new(0.5, 3.0), &key).expect("under the face");
+        let deep = center_on_face(Point::new(0.5, 3.0), &key).expect("under the face");
         assert!(close(deep.gap, -2.0), "signed at every depth: {deep:?}");
-        assert!(centre_on_face(Point::new(1.5, 0.25), &key).is_none());
+        assert!(center_on_face(Point::new(1.5, 0.25), &key).is_none());
     }
 
     /// Swapping the sides keeps the gap and the point and turns the normal.

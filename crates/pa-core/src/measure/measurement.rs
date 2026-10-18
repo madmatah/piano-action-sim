@@ -33,7 +33,7 @@ use crate::solve::SolveReport;
 /// Which reading, by which procedure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ProcedureId {
-    /// Front weight, on Stanwood's jig: the levelled key's own weight read at
+    /// Front weight, on Stanwood's jig: the leveled key's own weight read at
     /// the measuring point.
     FrontWeight,
     /// Key weight ratio, force convention, on the tared jig with 10 g at the
@@ -52,7 +52,7 @@ pub enum ProcedureId {
     /// Friction weight, `(D − U) / 2`, from the two as read.
     FrictionWeight,
     /// Key friction weight by Stanwood's protocol: the front weight zeroed
-    /// with a temporary weight on the levelled jig, then the down weight on
+    /// with a temporary weight on the leveled jig, then the down weight on
     /// the frame.
     KeyFrictionWeightZeroedOnTheJig,
     /// Key friction weight with the temporary weight chosen to zero the
@@ -113,7 +113,7 @@ impl ProcedureId {
     /// depend on the key's mass, nor does the key friction weight zeroed on
     /// the frame, whose temporary weight cancels the key's balance whatever
     /// it is. Front weight reads the key level, so its mass and static moment
-    /// and not the height of its centre of mass. Every weighing on the frame
+    /// and not the height of its center of mass. Every weighing on the frame
     /// reads the key tilted, and that height with it; Stanwood's key friction
     /// weight too: its temporary weight cancels the level key's moment, and
     /// what is left of the key's at its rest attitude is in the reading.
@@ -129,7 +129,7 @@ impl ProcedureId {
             | Self::DownWeightOnTheBand
             | Self::UpWeightOnTheBand => &[
                 Input::KeyMass,
-                Input::CentreOfMassHeight,
+                Input::CenterOfMassHeight,
                 Input::KeyFriction,
                 Input::Geometry,
             ],
@@ -143,8 +143,8 @@ impl ProcedureId {
 pub enum Unit {
     /// Grams at the measuring point: the weighing algebra's unit.
     Gram,
-    /// Metres.
-    Metre,
+    /// Meters.
+    Meter,
     /// A ratio, dimensionless.
     One,
 }
@@ -154,7 +154,7 @@ impl Unit {
     pub fn code(self) -> &'static str {
         match self {
             Self::Gram => "g",
-            Self::Metre => "m",
+            Self::Meter => "m",
             Self::One => "",
         }
     }
@@ -177,7 +177,7 @@ pub enum Rounding {
     /// possible.
     FromReadings,
     /// Not rounded: key height and key dip, read to the display's
-    /// hundredth of a millimetre, the thinnest paper being what the trade
+    /// hundredth of a millimeter, the thinnest paper being what the trade
     /// can tell apart.
     None,
 }
@@ -221,12 +221,12 @@ impl Rounding {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Input {
     /// The key's mass and its static moment about the balance pin, which
-    /// stands its centre of mass along the key: what a scale and the front
+    /// stands its center of mass along the key: what a scale and the front
     /// weight give.
     KeyMass,
-    /// The height of the key's centre of mass, which no scale gives: a
+    /// The height of the key's center of mass, which no scale gives: a
     /// reading of the key tilted on its frame reads it.
-    CentreOfMassHeight,
+    CenterOfMassHeight,
     /// The friction of the key's bushings.
     KeyFriction,
     /// The dimensions of the key and its frame the procedure reads.
@@ -238,7 +238,7 @@ impl Input {
     pub fn code(self) -> &'static str {
         match self {
             Self::KeyMass => "key_mass",
-            Self::CentreOfMassHeight => "centre_of_mass_height",
+            Self::CenterOfMassHeight => "center_of_mass_height",
             Self::KeyFriction => "key_friction",
             Self::Geometry => "geometry",
         }
@@ -253,7 +253,7 @@ pub enum Basis {
     /// Read from a published source, with its record.
     Published,
     /// Derived from other values by a rule: the height of a weighed key's
-    /// centre of mass, from its drawn section's area centroid.
+    /// center of mass, from its drawn section's area centroid.
     Estimated,
     /// Assumed, pending measurement.
     Assumed,
@@ -274,8 +274,8 @@ impl Basis {
 pub struct Bases {
     /// The key's mass and static moment.
     pub key_mass: Basis,
-    /// The height of the key's centre of mass.
-    pub centre_of_mass_height: Basis,
+    /// The height of the key's center of mass.
+    pub center_of_mass_height: Basis,
     /// The friction of the key's bushings.
     pub key_friction: Basis,
     /// The dimensions of the key and its frame.
@@ -287,7 +287,7 @@ impl Bases {
     pub fn of(&self, input: Input) -> Basis {
         match input {
             Input::KeyMass => self.key_mass,
-            Input::CentreOfMassHeight => self.centre_of_mass_height,
+            Input::CenterOfMassHeight => self.center_of_mass_height,
             Input::KeyFriction => self.key_friction,
             Input::Geometry => self.geometry,
         }
@@ -328,7 +328,7 @@ impl Trust {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mount {
     /// On Stanwood's front weight jig, turning without friction about its
-    /// balance pin, levelled.
+    /// balance pin, leveled.
     Jig,
     /// On its frame.
     Frame(KeyMount),
@@ -364,22 +364,22 @@ pub struct Walked {
 /// How a driven sweep went, for a reading taken on the band.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Swept {
-    /// How far the measuring point travelled between two readings, metres.
+    /// How far the measuring point traveled between two readings, meters.
     pub step: f64,
     /// The readings each way: every whole step strictly inside the window.
     pub samples: u32,
     /// The window: how far the measuring point travels from the top seat
-    /// to the bottom one, metres.
+    /// to the bottom one, meters.
     pub window: f64,
     /// Where on the stroke the reading fell: how far the measuring point
-    /// stood below the top seat, metres.
+    /// stood below the top seat, meters.
     pub at: f64,
 }
 
 /// Which way a temporary weight was chosen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Zeroed {
-    /// To make the levelled key's front weight read zero on the jig,
+    /// To make the leveled key's front weight read zero on the jig,
     /// Stanwood's.
     OnTheJig,
     /// To cancel the key's balance where it rests at the top of its stroke
@@ -406,7 +406,7 @@ pub struct TemporaryWeight {
 pub struct Conditions {
     /// Where the key was read.
     pub mount: Mount,
-    /// The measuring point, metres back from the covering's lip.
+    /// The measuring point, meters back from the covering's lip.
     pub measuring_point_from_lip_m: f64,
     /// The contacts holding the seat the reading is taken at or starts from:
     /// the cloth at the top, whichever stop bottomed at the bottom.
@@ -425,7 +425,7 @@ pub struct Conditions {
 
 impl Conditions {
     /// The conditions of a reading taken in `mount` at a measuring point
-    /// `from_lip` metres back from the lip, and nothing else.
+    /// `from_lip` meters back from the lip, and nothing else.
     pub fn at(mount: Mount, from_lip: f64) -> Self {
         Self {
             mount,
@@ -472,7 +472,7 @@ mod tests {
 
     /// Consistency: **read as the trade reads it.** A down weight of 46.3 g
     /// reads 47 g, an up weight of 21.6 g reads 21 g; a threshold just past
-    /// a whole gram reads the next one, and a negative one rounds towards
+    /// a whole gram reads the next one, and a negative one rounds toward
     /// the key going down by itself: −0.2 g reads 0 g, never −0 g. A front
     /// weight reads to the tenth, a ratio to the hundredth.
     #[test]
@@ -532,13 +532,13 @@ mod tests {
     /// measurement, and one that reads an assumed or estimated input names
     /// it, in the order the procedure reads them; an input set by the
     /// bench's user is his to answer for. A key weighed by hand, the height
-    /// of its centre of mass estimated, reads its front weight as a
+    /// of its center of mass estimated, reads its front weight as a
     /// measurement and its down weight as an indication, naming that height.
     #[test]
     fn trust_names_what_is_not_measured() {
         let measured = Bases {
             key_mass: Basis::Measured,
-            centre_of_mass_height: Basis::Published,
+            center_of_mass_height: Basis::Published,
             key_friction: Basis::SetByHand,
             geometry: Basis::Published,
         };
@@ -548,7 +548,7 @@ mod tests {
         );
         let weighed = Bases {
             key_mass: Basis::SetByHand,
-            centre_of_mass_height: Basis::Estimated,
+            center_of_mass_height: Basis::Estimated,
             ..measured
         };
         assert_eq!(
@@ -558,12 +558,12 @@ mod tests {
         assert_eq!(
             Trust::of(ProcedureId::DownWeight.reads(), &weighed),
             Trust::Indicative {
-                because: vec![Input::CentreOfMassHeight]
+                because: vec![Input::CenterOfMassHeight]
             }
         );
         let assumed = Bases {
             key_mass: Basis::Assumed,
-            centre_of_mass_height: Basis::Estimated,
+            center_of_mass_height: Basis::Estimated,
             key_friction: Basis::Assumed,
             geometry: Basis::Assumed,
         };

@@ -9,6 +9,6 @@ export type Marker = {
  */
 body: number, 
 /**
- * Where, millimetres, in the body's frame.
+ * Where, millimeters, in the body's frame.
  */
 at_mm: [number, number], };

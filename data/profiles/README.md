@@ -51,8 +51,8 @@ as measured. `key_kind` is `natural` or
 refused until the key is weighed on the bench), `weighed` (bound by
 `weighing.mass_g`,
 `weighing.front_weight_g` and `weighing.from_lip`) or `published` (a source's
-mass and centre of mass in the key's frame, its height included, and its
-inertia: `published.mass`, `published.centre.x`, `published.centre.y`,
+mass and center of mass in the key's frame, its height included, and its
+inertia: `published.mass`, `published.center.x`, `published.center.y`,
 `published.inertia`); `arrival` is `regulated` (the papers are those the
 regulation solve lays to the targets) or `as_recorded` (bound by
 `balance_punching.papers` and `front_punching.papers`, each paper one the
@@ -81,7 +81,7 @@ validation layer gives it (`pa_core::validate::numbers`), in one of three ways:
 - **A stated absence**, for what a part may lack: a rail's crown or pin, a
   felt on the key's tail, a clearance in the key's top, a dome on the
   capstan's head; or for where the key button stands,
-  centred on the pin where `capsule_centre` is none. A rail's pin is round where
+  centered on the pin where `capsule_center` is none. A rail's pin is round where
   `<rail>.pin.diameter` is bound, oblong where `<rail>.pin.length` and
   `<rail>.pin.thickness` are, and absent where `<rail>.pin` is bound to none;
   the clearance cut in the key's top for the wippen rail, between the
@@ -102,21 +102,21 @@ built, each kept with the rule and the input that places it:
   and `tail_rise_run`, which follow from where the line meets the flat and
   stands at the key's end.
 - **A capstan by its dome**: `capstan.dome.x`, `capstan.dome.y`, the dome's
-  centre, with `capstan.dome_radius`, in place of `capstan.x` and
-  `capstan.height`, the axis through the centre and the top the radius above
+  center, with `capstan.dome_radius`, in place of `capstan.x` and
+  `capstan.height`, the axis through the center and the top the radius above
   it, above the capstan's seat.
 - **A key height as the key stands**: `key_height` bound to none, where no
   source gives one, on a profile that arrives as recorded. The target is the
   key height the seated pose reads on the key as it arrives, so regulating it
   lays the dip and leaves the key height where it stands.
 
-Positions are signed from the balance pin, positive towards the player.
+Positions are signed from the balance pin, positive toward the player.
 Units are checked against the parameter's quantity: a length in `mm` or `m`, a
 mass in `g` or `kg`, a parameter whose name ends in `_g` in grams, a torque in
 `N·m`, a second moment of mass in `kg·m²`, a unit
 vector's component `dimensionless`. Each is converted to SI by moving the decimal point
 of the value as written and reading it once, so a value recorded in
-millimetres reads to the bits of the same length written in metres; a value
+millimeters reads to the bits of the same length written in meters; a value
 with more than fifteen significant digits is refused.
 
 The bushings are bound either by `friction.level_weight_g`, the grams they

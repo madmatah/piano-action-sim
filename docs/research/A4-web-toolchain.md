@@ -4,7 +4,7 @@ Research annex to `docs/FOUNDATIONS.md`, which holds wherever the two disagree.
 It surveys the toolchain for a Rust domain compiled to WebAssembly under a
 browser front end: versions, WebAssembly features, threads, the monorepo,
 rendering, geometry, units and tests. Section 8 sums up what the tree uses,
-labelled **built**, **planned**, **not used** or **ruled out**, consistently
+labeled **built**, **planned**, **not used** or **ruled out**, consistently
 with FOUNDATIONS §3.10, §3.11 and §7.
 
 Versions, dates and browser support are dated observations, recorded on
@@ -14,7 +14,7 @@ toolchain it ran on.
 
 Markers: [V] verified against the source named beside it (a registry, the
 browser compatibility data, a package's own files, official documentation, or a
-local execution); [S] assumed, an architectural judgement; [?] not established,
+local execution); [S] assumed, an architectural judgment; [?] not established,
 with the reason beside it. A sentence beginning **"Do not use"** marks a figure
 or an argument that is wrong and easy to derive again.
 
@@ -359,7 +359,7 @@ provides `three.webgpu.d.ts` and `three.tsl.d.ts` [V, the installed packages'
 ## 5. Geometry: the section is the outline
 
 **Built.** Every outline is computed in Rust and crosses the boundary in
-millimetres. The view extrudes each part's sagittal outline across its width
+millimeters. The view extrudes each part's sagittal outline across its width
 (`THREE.ExtrudeGeometry`) and turns the capstan's profile about its axis
 (`THREE.LatheGeometry`); the section view looks at those solids straight on,
 through an orthographic camera, so what it shows is the outline itself. The

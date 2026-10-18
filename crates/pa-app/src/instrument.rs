@@ -106,11 +106,11 @@ pub struct BenchReadout {
     /// ([`Action::WeighKey`]); `None` until it is weighed.
     pub key_mass_g: Option<f64>,
     /// Gap at the front rail punching where the key stands now, under the
-    /// touch weight, millimetres: the felt's drawn top, at its centre, to the
+    /// touch weight, millimeters: the felt's drawn top, at its center, to the
     /// key's underside. Zero when the key is down on it; `None` when the
-    /// punching stands where no underside passes over its centre.
+    /// punching stands where no underside passes over its center.
     pub gap_front_mm: Option<f64>,
-    /// Gap at the back rail cloth where the key stands now, millimetres: the
+    /// Gap at the back rail cloth where the key stands now, millimeters: the
     /// least of the cloth's drawn top to the key's drawn underside, chamfer
     /// included. `None` when no feature of the two can meet.
     pub gap_back_mm: Option<f64>,
@@ -122,9 +122,9 @@ pub struct BenchReadout {
     /// torque ([`AxisFriction`]), so moving the measuring point changes this
     /// and not the bushings.
     pub key_friction_weight_g: f64,
-    /// Key height the regulation was asked for, millimetres.
+    /// Key height the regulation was asked for, millimeters.
     pub key_height_target_mm: f64,
-    /// Key dip the regulation was asked for, millimetres.
+    /// Key dip the regulation was asked for, millimeters.
     pub key_dip_target_mm: f64,
     /// What holds the key where the weight on its measuring point has left
     /// it: a stop, or its friction; `None` for a key nobody has weighed,
@@ -142,14 +142,14 @@ pub struct BenchReadout {
     /// How far the key's bearing face is from lying flat on its cloth,
     /// seated at the top of its stroke, degrees.
     ///
-    /// Positive is the face rising towards the player, so its rear end is the
+    /// Positive is the face rising toward the player, so its rear end is the
     /// low one and that is what bears. The chamfer under the tail exists so
     /// that this is zero — the owner's own account of why it is there — and it
     /// is reported rather than enforced: reaching it is a property of the key's
     /// shape against the rest attitude the frame produces, and a real keyboard
     /// may miss.
     pub bedding_at_the_back_deg: f64,
-    /// Where the key bears on the back rail cloth, millimetres **behind** the
+    /// Where the key bears on the back rail cloth, millimeters **behind** the
     /// balance pin.
     ///
     /// Not the middle of the cloth unless the two faces are flat on one
@@ -171,7 +171,7 @@ pub struct Riding {
     /// The front stop it rides on: the front punching, or the front rail pin
     /// in its mortise or on the wood beside it.
     pub front: ContactCode,
-    /// How far above its balance punching it stands, metres.
+    /// How far above its balance punching it stands, meters.
     pub lift: f64,
 }
 
@@ -202,7 +202,7 @@ impl SeatReport {
         Some(self.back?.slope?.atan().to_degrees())
     }
 
-    /// Where the key bears on its cloth at the top, millimetres behind the
+    /// Where the key bears on its cloth at the top, millimeters behind the
     /// balance pin ([`BenchReadout::bears_at_the_back_mm`]).
     pub fn bears_at_the_back_mm(&self) -> Option<f64> {
         self.back.map(|back| -back.point.x * 1000.0)
@@ -222,14 +222,14 @@ impl SeatReport {
 pub struct Touch {
     /// What holds it.
     pub verdict: TouchVerdict,
-    /// The gap at the front punching, millimetres
+    /// The gap at the front punching, millimeters
     /// ([`BenchReadout::gap_front_mm`]).
     pub gap_front_mm: Option<f64>,
-    /// The gap at the back rail cloth, millimetres
+    /// The gap at the back rail cloth, millimeters
     /// ([`BenchReadout::gap_back_mm`]).
     pub gap_back_mm: Option<f64>,
     /// How far the measuring point stands below where it stands with the
-    /// key seated at the top of its stroke, millimetres: where the weight
+    /// key seated at the top of its stroke, millimeters: where the weight
     /// has left the key on the band's travel ([`Instrument::band`]). `None`
     /// where the key cannot be seated at the top.
     pub travel_mm: Option<f64>,
@@ -267,7 +267,7 @@ pub enum TouchVerdict {
     RidesOnBothStops {
         /// The front stop it rides on.
         front: ContactCode,
-        /// How far above its balance punching it stands, millimetres.
+        /// How far above its balance punching it stands, millimeters.
         lift_mm: f64,
     },
     /// Off its balance punching, held by what it touches, with its friction
@@ -282,7 +282,7 @@ pub enum TouchVerdict {
         /// Whether they need its friction to hold it there: false where
         /// they balance its weight and the weight on it alone.
         needs_friction: bool,
-        /// How far above its balance punching it stands, millimetres.
+        /// How far above its balance punching it stands, millimeters.
         lift_mm: f64,
     },
     /// The key is lifted off its frame: no equilibrium in the model holds it
@@ -296,7 +296,7 @@ pub enum TouchVerdict {
 
 /// Where the key stands on its frame: its coordinates as the last static
 /// increment left them, the placement they give each body, how far above
-/// its balance punching that left the key, metres, and what each contact
+/// its balance punching that left the key, meters, and what each contact
 /// row carried there.
 #[derive(Debug, Clone, PartialEq)]
 struct State {
@@ -311,13 +311,13 @@ struct State {
 #[derive(Debug, Clone, PartialEq)]
 pub enum NotRegulated {
     /// A target no stack reaches: which, what keeps it out of reach, and how
-    /// far it lies out of reach in its own reading, metres.
+    /// far it lies out of reach in its own reading, meters.
     Infeasible {
         /// Which target.
         target: Target,
         /// What keeps it out of reach.
         limited_by: Limit,
-        /// How far, metres.
+        /// How far, meters.
         shortfall_m: f64,
     },
     /// The solve cannot run at all on this key and frame.
@@ -334,11 +334,11 @@ pub struct ShownContact {
     pub on_key: Point,
     /// Where the frame's surface is, in the keybed's frame.
     pub on_frame: Point,
-    /// The signed gap between the two, metres: negative where the drawn parts
+    /// The signed gap between the two, meters: negative where the drawn parts
     /// overlap.
     pub gap: f64,
     /// The row's unit normal, in the keybed's frame, from the frame's
-    /// surface towards the key's.
+    /// surface toward the key's.
     pub normal: Point,
     /// The force the row pushed the key with in the last equilibrium,
     /// newtons: its multiplier, one admissible split of the loads
@@ -357,12 +357,12 @@ pub enum ContactState {
     Overlapping,
 }
 
-/// How near zero a gap must be for the contact to count as closed, metres:
+/// How near zero a gap must be for the contact to count as closed, meters:
 /// a tenth of a micron.
 ///
 /// A thousandth of the thinnest paper in the drawer, far below anything the
 /// section can show, and a hundred million times the rounding of a contact
-/// the statics have closed, which leaves a few femtometres.
+/// the statics have closed, which leaves a few femtometers.
 pub const CLOSED_WITHIN: f64 = 1e-7;
 
 impl ShownContact {
@@ -404,11 +404,11 @@ pub struct Outline {
     pub code: PartCode,
     /// Material, void or lining.
     pub role: Role,
-    /// What it is made of. The view chooses its colour from this.
+    /// What it is made of. The view chooses its color from this.
     pub material: Material,
     /// How the outline becomes a solid.
     pub sweep: Sweep,
-    /// Closed polygon, metres, in the body's frame; for a turned part, its
+    /// Closed polygon, meters, in the body's frame; for a turned part, its
     /// profile in radius and height about the sweep's axis.
     pub points: Vec<Point>,
     /// The segment of the part's outline each point starts or lies on.
@@ -451,11 +451,11 @@ pub enum Stack {
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum Action {
     /// Lays one more paper from the drawer on a stack, its thickness one the
-    /// drawer holds, millimetres. Key levelling, or key dip.
+    /// drawer holds, millimeters. Key leveling, or key dip.
     AddPaper {
         /// The stack.
         stack: Stack,
-        /// The paper's thickness, millimetres.
+        /// The paper's thickness, millimeters.
         thickness_mm: f64,
     },
     /// Lifts paper `index`, counted from the bottom, off a stack.
@@ -470,7 +470,7 @@ pub enum Action {
     /// until the key is regulated again, shimming being a separate
     /// operation on a real bench too.
     PlaceFrameUnderKey,
-    /// Regulates the key to a key height and a key dip, millimetres: key
+    /// Regulates the key to a key height and a key dip, millimeters: key
     /// height on the balance punching first, then the dip on the front
     /// punching on the key as it then stands, each laid in papers from the
     /// drawer, the closest total from below ([`pa_core::regulation`]). The
@@ -479,19 +479,19 @@ pub enum Action {
     /// how much; a dip the front pin forbids is never laid as the nearest
     /// stack and shown as a miss.
     Regulate {
-        /// Key height, millimetres.
+        /// Key height, millimeters.
         key_height_mm: f64,
-        /// Key dip, millimetres.
+        /// Key dip, millimeters.
         key_dip_mm: f64,
     },
     /// Weighs the key whole, as it arrives, its leads in it: its mass on a
-    /// scale, and its front weight read on Stanwood's levelled jig, the
+    /// scale, and its front weight read on Stanwood's leveled jig, the
     /// roller that far back from the covering's lip ([`KeyMass::weighed`]).
     /// The instrument keeps the mass and the static moment the front weight
     /// gives on the arm it was read at, that reading its datum: moving the
     /// measuring point afterwards, or editing the key, reads the same moment
     /// on another arm, and the front weight on the sheet follows by the
-    /// lever. The height of the centre of mass, which no scale gives, is
+    /// lever. The height of the center of mass, which no scale gives, is
     /// the one the profile publishes where it publishes one, and otherwise
     /// estimated from the key's drawn section
     /// ([`KeyDesign::section_centroid`]).
@@ -501,12 +501,12 @@ pub enum Action {
         /// Its front weight as the jig's scale read it, grams.
         front_weight_g: f64,
         /// How far back from the covering's lip the roller stood,
-        /// millimetres.
+        /// millimeters.
         from_lip_mm: f64,
     },
     /// Sets the bushings from a key friction weight, grams at the measuring
     /// point, as the trade measures it: by Stanwood's protocol, zeroed on the
-    /// levelled jig, the least weight that makes the key fall from its
+    /// leveled jig, the least weight that makes the key fall from its
     /// cloth. The bushings become the torque at which that protocol, run on
     /// this key, reads it in full ([`Weighing::bushings_reading`]), stored
     /// with the measuring point it was typed at: moving the measuring point
@@ -678,7 +678,7 @@ impl Fnv {
             Piece::Segment { part, seg } => (0, part, seg),
             Piece::Arc { part, seg } => (1, part, seg),
             Piece::Vertex { part, seg } => (2, part, seg),
-            Piece::Centre { part } => (3, part, 0),
+            Piece::Center { part } => (3, part, 0),
         };
         self.bytes(&[kind]);
         self.u64(u64::from(part.0));
@@ -734,7 +734,7 @@ pub struct Instrument {
     /// The frame it sits on, the papers laid on its punchings with it: the
     /// coordinate regulation sets, held there once.
     frame: FrameDesign,
-    /// How the key is weighed: where on it every weight is centred. Held
+    /// How the key is weighed: where on it every weight is centered. Held
     /// once, because every touchweight reads it, so none can be weighed at a
     /// point the others are not.
     protocol: TouchweightProtocol,
@@ -1020,7 +1020,7 @@ impl Instrument {
                 };
                 match which {
                     // The mass, kilograms; the front weight, grams as the
-                    // scale read it; the roller's distance, metres.
+                    // scale read it; the roller's distance, meters.
                     WeighingField::Mass => return Some(mass * 1000.0),
                     WeighingField::FrontWeight => return Some(datum.grams),
                     WeighingField::FromLip => datum.from_lip_m,
@@ -1031,7 +1031,7 @@ impl Instrument {
         Some(entry.from_si(si))
     }
 
-    /// The papers on `stack`, metres each, bottom first.
+    /// The papers on `stack`, meters each, bottom first.
     pub fn papers(&self, stack: Stack) -> &[f64] {
         &self.punching(stack).papers
     }
@@ -1190,7 +1190,7 @@ impl Instrument {
                 thickness_mm,
             } => {
                 // The drawer's own thickness, as the settings send it in
-                // millimetres or as it is in metres; anything else is said
+                // millimeters or as it is in meters; anything else is said
                 // why by the drawer.
                 let thickness_m = thickness_mm / 1000.0;
                 let drawer = &self.frame.drawer;
@@ -1352,7 +1352,7 @@ impl Instrument {
         self.frame.front_punching.papers = stacks.front.papers.clone();
     }
 
-    /// The targets of the regulation last laid, metres.
+    /// The targets of the regulation last laid, meters.
     pub fn targets(&self) -> Targets {
         self.targets
     }
@@ -1372,7 +1372,7 @@ impl Instrument {
         &self.protocol
     }
 
-    /// The measuring point, metres in front of the balance pin: the
+    /// The measuring point, meters in front of the balance pin: the
     /// protocol's, on this key ([`TouchweightProtocol::measuring_point`]).
     pub fn measuring_point(&self) -> f64 {
         self.protocol.measuring_point(&self.key)
@@ -1624,7 +1624,7 @@ impl Instrument {
         let bottom_angle = seats.bottom.q[mounted.angle.0];
         SeatReport {
             riding: Self::riding_at(seats),
-            // Nose-down positive; a product, not a platform's maths library.
+            // Nose-down positive; a product, not a platform's math library.
             out_of_level_deg: (-bottom_angle).to_degrees(),
             bottom_held_by: seats.bottom.held_by.clone(),
             back: Self::back_bearing(mounted, seats),
@@ -1735,7 +1735,7 @@ impl Instrument {
     /// bushings' friction the bench's bound.
     ///
     /// The key turns about its balance pin, at the origin of its frame, and
-    /// bears on its balance punching at the punching's centre, on the pin's
+    /// bears on its balance punching at the punching's center, on the pin's
     /// axis: where the felt is drawn, which is where every key the bench
     /// builds bears.
     fn on_frame(&self) -> Result<OnItsFrame, MechanismProblem> {
@@ -1749,23 +1749,23 @@ impl Instrument {
         )
     }
 
-    /// The key's mass and centre of mass as the statics take them
+    /// The key's mass and center of mass as the statics take them
     /// ([`KeyMass::props`]): as a source publishes them, whole; as it was
-    /// weighed, at the height [`Self::centre_of_mass_height`] gives, which
+    /// weighed, at the height [`Self::center_of_mass_height`] gives, which
     /// no scale does. `None` until the key is weighed, and where the key's
     /// section encloses nothing.
     fn mass_props(&self) -> Option<MassProps> {
-        self.mass.props(self.centre_of_mass_height()?)
+        self.mass.props(self.center_of_mass_height()?)
     }
 
-    /// The height of the key's centre of mass, which no scale gives: the
+    /// The height of the key's center of mass, which no scale gives: the
     /// one its profile publishes, where it publishes one, which a key of
     /// that profile weighed again on the bench keeps; otherwise its drawn
     /// section's area centroid's, an estimate ([`KeyDesign::section_centroid`]).
     /// `None` where the section encloses nothing.
-    fn centre_of_mass_height(&self) -> Option<f64> {
+    fn center_of_mass_height(&self) -> Option<f64> {
         match self.profile.start.mass {
-            KeyMass::Published { centre, .. } => Some(centre.y),
+            KeyMass::Published { center, .. } => Some(center.y),
             KeyMass::Unweighed | KeyMass::Weighed { .. } => {
                 self.key.section_centroid().map(|c| c.y)
             }
@@ -1832,11 +1832,11 @@ impl Instrument {
             .collect()
     }
 
-    /// How far each punching the key bears on, read at its centre, overlaps
-    /// it where the key is drawn, metres: what its felt would compress under
-    /// a key out of level on it, which the rigid reading at the centre
+    /// How far each punching the key bears on, read at its center, overlaps
+    /// it where the key is drawn, meters: what its felt would compress under
+    /// a key out of level on it, which the rigid reading at the center
     /// leaves aside ([`edge_overlaps`]). Under the key at rest on its
-    /// balance punching, nose-up by its dip, a quarter of a millimetre.
+    /// balance punching, nose-up by its dip, a quarter of a millimeter.
     pub fn edge_overlaps(&self) -> Vec<(ContactCode, f64)> {
         let Some(mounted) = self.key_on_frame() else {
             return Vec::new();
@@ -1911,7 +1911,7 @@ impl Instrument {
 
     /// What the bench's inputs rest on: the key's mass and static moment as
     /// a source publishes them or as the bench's user weighed it; the
-    /// height of its centre of mass as published where the profile
+    /// height of its center of mass as published where the profile
     /// publishes one, estimated from its drawn section otherwise, since no
     /// scale gives it; its friction the profile's until it is set; its
     /// dimensions partly without a record, assumptions its profile states
@@ -1926,7 +1926,7 @@ impl Instrument {
                 KeyMass::Weighed { .. } => Basis::SetByHand,
                 KeyMass::Published { .. } => Basis::Published,
             },
-            centre_of_mass_height: if published(self.mass) || published(self.profile.start.mass) {
+            center_of_mass_height: if published(self.mass) || published(self.profile.start.mass) {
                 Basis::Published
             } else {
                 Basis::Estimated
@@ -1970,9 +1970,9 @@ impl Instrument {
     }
 
     /// The gaps at the front punching and at the back rail cloth where the
-    /// key is drawn, millimetres, read off the contact rows at the attitude
+    /// key is drawn, millimeters, read off the contact rows at the attitude
     /// it stands in: `None` where no underside passes over the punching's
-    /// centre, or where no feature of the cloth and the key can meet.
+    /// center, or where no feature of the cloth and the key can meet.
     fn gaps_mm(&self, mounted: &Mounted) -> (Option<f64>, Option<f64>) {
         let rows = Self::rows_at(mounted, &self.drawn(mounted), f64::INFINITY);
         let gap_mm = |code| Some(rows.gap(pair_of(mounted, code)?)? * 1000.0);
@@ -2003,7 +2003,7 @@ impl Instrument {
 
     /// How far the measuring point stands below where it stands with the
     /// key seated at the top of its stroke, where the key is drawn,
-    /// millimetres; `None` where the key cannot be seated at the top.
+    /// millimeters; `None` where the key cannot be seated at the top.
     fn travel_mm(&self, k: &OnItsFrame) -> Option<f64> {
         let point = self.protocol.measuring_point_on_key(&self.key);
         let top = Seating {
@@ -2080,8 +2080,8 @@ impl Instrument {
         self.mass_props().map(|props| props.mass * 1000.0)
     }
 
-    /// How far back from the front lip of the key every weight is centred,
-    /// metres: the protocol's measuring point.
+    /// How far back from the front lip of the key every weight is centered,
+    /// meters: the protocol's measuring point.
     pub fn measuring_point_from_lip(&self) -> f64 {
         self.protocol.measuring_point_from_lip
     }
@@ -2144,7 +2144,7 @@ pub(crate) mod read {
             .expect("bushings that hold a weight");
     }
 
-    /// `stack` laid again from the drawer for `total` metres of paper: every
+    /// `stack` laid again from the drawer for `total` meters of paper: every
     /// paper lifted off, then the drawer's closest stack from below laid,
     /// one action a paper.
     pub(crate) fn lay(b: &mut Instrument, stack: Stack, total: f64) {
@@ -2183,7 +2183,7 @@ pub(crate) mod read {
     }
 
     /// The static moment of `b`'s weighed key about its balance pin,
-    /// kilogram-metres: its mass times where its centre of mass stands
+    /// kilogram-meters: its mass times where its center of mass stands
     /// along the key.
     pub(crate) fn static_moment_kg_m(b: &Instrument) -> f64 {
         match b.key_mass() {
@@ -2202,12 +2202,12 @@ pub(crate) mod read {
         }
     }
 
-    /// Its value: grams, the ratio, or metres.
+    /// Its value: grams, the ratio, or meters.
     pub(crate) fn value(b: &Instrument, p: ProcedureId) -> f64 {
         measured(b, p).value
     }
 
-    /// A height or a dip, millimetres.
+    /// A height or a dip, millimeters.
     pub(crate) fn mm(b: &Instrument, p: ProcedureId) -> f64 {
         1000.0 * value(b, p)
     }
@@ -2286,7 +2286,7 @@ mod tests {
     /// past the up weight it comes up onto its cloth, and between them it
     /// **stays exactly where the last weight left it**, on either stop — that
     /// gap is the friction, and it is the most visible consequence of
-    /// modelling dry friction as set-valued rather than as a `tanh`. A
+    /// modeling dry friction as set-valued rather than as a `tanh`. A
     /// regularized model would creep instead.
     ///
     /// D is read by the walk from the key resting on its cloth, U from the
@@ -2413,13 +2413,13 @@ mod tests {
         );
     }
 
-    /// Widening the friction widens the band, and leaves its centre where
+    /// Widening the friction widens the band, and leaves its center where
     /// the seats' tilt lets it: D is read at the top seat and U at the
     /// bottom, where the measuring point stands a little nearer the pin's
     /// vertical at the top, so the extra friction reads a hair heavier there.
     /// The bound is derived from the seats' arms, with the walks' resolution.
     #[test]
-    fn more_friction_makes_a_wider_band_around_the_same_centre() {
+    fn more_friction_makes_a_wider_band_around_the_same_center() {
         let mut b = Instrument::weighed_section();
         let band = |b: &Instrument| {
             [
@@ -2447,7 +2447,7 @@ mod tests {
             * (1.0 / arm(seats.top.q[angle]) - 1.0 / arm(seats.bottom.q[angle]));
         assert!(
             (bw1 - bw0 - tilt).abs() <= 2.0 * read::resolution(),
-            "the centre moved by {} g, the seats' arms account for {tilt} g",
+            "the center moved by {} g, the seats' arms account for {tilt} g",
             bw1 - bw0
         );
         assert!(tilt.abs() < 0.05, "a few hundredths of a gram: {tilt}");
@@ -2460,7 +2460,7 @@ mod tests {
     /// within `ε/2` of it; and read 7 mm further back, the same static moment
     /// on the shorter arm. The front weight then rests on nothing estimated
     /// about the key's mass, while every weighing on the frame still names
-    /// the height of its centre of mass, which no scale gives. The weighing
+    /// the height of its center of mass, which no scale gives. The weighing
     /// is kept as typed.
     #[test]
     fn a_key_weighed_whole_is_read_as_it_was_weighed() {
@@ -2489,7 +2489,7 @@ mod tests {
             read::measured(&b, ProcedureId::DownWeight).trust,
             Trust::Indicative {
                 because: vec![
-                    Input::CentreOfMassHeight,
+                    Input::CenterOfMassHeight,
                     Input::KeyFriction,
                     Input::Geometry
                 ]
@@ -2515,7 +2515,7 @@ mod tests {
     /// Consistency: **a key weighed again at what its sheet reads reads the
     /// same sheet.** Weighed at its own mass and the sheet's front weight in
     /// full, at the measuring point the sheet reads, its mass and its static
-    /// moment are what they were to round-off and the height of its centre
+    /// moment are what they were to round-off and the height of its center
     /// of mass is the same: the front weight and the key weight ratio read
     /// the same to round-off; key height and dip the same seats, closed by
     /// the static solve within `GAP_TOLERANCE`, seen at the key front
@@ -2623,7 +2623,7 @@ mod tests {
     /// Consistency, and what the owner sees: **a weighing no key has is
     /// refused, with why, and nothing changes.** A mass of nothing, a front
     /// weight read off the covering, a front weight that would stand the
-    /// centre of mass past the lip or past the tail, and a value that is not
+    /// center of mass past the lip or past the tail, and a value that is not
     /// a number: each time the bench says why, by the refusal's code and its
     /// numbers, and the sheet, the readout and the key's mass stay as they
     /// were.
@@ -2633,7 +2633,7 @@ mod tests {
             |b: &Instrument| format!("{:?} {:?} {:?}", b.key_mass(), b.sheet(), b.readout());
         let mut b = Instrument::weighed_section();
         let before = everything(&b);
-        // A weighing typed, grams, grams and metres, and whether a refusal
+        // A weighing typed, grams, grams and meters, and whether a refusal
         // is the one it must be.
         type Case = ((f64, f64, f64), fn(&EditRefusal) -> bool);
         let cases: [Case; 5] = [
@@ -2647,11 +2647,11 @@ mod tests {
             }),
             (
                 (40.0, 50.0, 0.013),
-                |w| matches!(w, EditRefusal::Weighing(NotAWeighing::CentreOfMassOffTheKey { at_m }) if *at_m > 0.0),
+                |w| matches!(w, EditRefusal::Weighing(NotAWeighing::CenterOfMassOffTheKey { at_m }) if *at_m > 0.0),
             ),
             (
                 (121.1, -150.0, 0.013),
-                |w| matches!(w, EditRefusal::Weighing(NotAWeighing::CentreOfMassOffTheKey { at_m }) if *at_m < 0.0),
+                |w| matches!(w, EditRefusal::Weighing(NotAWeighing::CenterOfMassOffTheKey { at_m }) if *at_m < 0.0),
             ),
             ((f64::NAN, 6.5, 0.013), |w| {
                 *w == EditRefusal::Problem(Problem::NotFinite {
@@ -2737,7 +2737,7 @@ mod tests {
     ///
     /// The bound is derived. The touch weight and the seat's preparation
     /// loads put the key on the same rigid stop, and each static solve
-    /// closes it within `GAP_TOLERANCE` (a picometre), which an arm of at
+    /// closes it within `GAP_TOLERANCE` (a picometer), which an arm of at
     /// least 0.2 m from the bearing to the stop turns into an angle.
     #[test]
     fn a_weight_takes_the_key_to_its_seats_and_no_further() {
@@ -2852,7 +2852,7 @@ mod tests {
     /// on the pin's axis, clears the drawn pin's top, 9 mm above its
     /// punching on the tests' bench. Pulled up at its measuring point past
     /// what its punching carries, the key turns up on its cloth off its
-    /// punching as far as its friction lets it: under a millimetre at
+    /// punching as far as its friction lets it: under a millimeter at
     /// 62.7 g, 8.5 mm at 62.85 g. A little more and it would turn up past
     /// the pin's top, 13 mm at 63 g, where it has left its pin: the bench
     /// says the weight lifts it off its frame, and draws it where the last
@@ -2910,7 +2910,7 @@ mod tests {
     /// Consistency: **a key its friction holds off its punching stays
     /// there.** Pulled 62.7 g at its measuring point, a few hundredths of a
     /// gram past what its punching carries, the key turns up on its cloth
-    /// and leaves its punching by under a millimetre, where its friction
+    /// and leaves its punching by under a millimeter, where its friction
     /// holds it. Pulled 60.7 g, inside the band its friction holds it in,
     /// it stays where it was to the bit, still lifted, on its cloth: the
     /// increment starts from where the last one left the key's slide, never
@@ -3025,7 +3025,7 @@ mod tests {
 
     /// Adding paper under the balance punching raises the key, as on the bench.
     #[test]
-    fn key_levelling_works_through_the_bench() {
+    fn key_leveling_works_through_the_bench() {
         let mut b = Instrument::weighed_section();
         let before = read::mm(&b, ProcedureId::KeyHeight);
         let paper = b.frame().balance_punching.paper();
@@ -3130,7 +3130,7 @@ mod contact_readout_tests {
         );
     }
 
-    /// Consistency: **a front pin a few tenths of a millimetre into the wood
+    /// Consistency: **a front pin a few tenths of a millimeter into the wood
     /// beside its slot draws the key on the pin, never through it.** Its
     /// front end 0.3 mm into the wood in front of the slot, its top well up
     /// in the slot: the bench puts the key on such a frame as the seats do,
@@ -3378,7 +3378,7 @@ mod contact_readout_tests {
     /// cloth holding the tail 5 mm above the balance bearing, the key at rest
     /// rides on the cloth and the front punching, 2.27 mm above its balance
     /// punching: the view marks those two closed, and the punching, more than
-    /// the millimetre the view marks below the key, not at all; the key is
+    /// the millimeter the view marks below the key, not at all; the key is
     /// drawn that far above it, where a straight underside laid on the two
     /// stops would stand 0.81 mm clear of the cloth, under the chamfer. Read
     /// off the drawn outlines, the drawn underside,
@@ -3438,7 +3438,7 @@ mod contact_readout_tests {
         // within a micron of it, a thousandth of the 0.81 mm a straight
         // underside left. The key bears on the cloth's front edge, just past
         // the face, nose-down by its ride: over the face's end it stands the
-        // edge's radius times the turn's square above it, tens of nanometres.
+        // edge's radius times the turn's square above it, tens of nanometers.
         let drawn = b.outlines();
         let poses = b.poses();
         let cloth = drawn
@@ -3581,7 +3581,7 @@ mod contact_readout_tests {
     /// touching one, that stop's gap reads zero, not "small", and the other
     /// stands open. If it did not, the drawn position and the physics would
     /// be two different states. A static solve closes a gap within a
-    /// picometre, `1e-9` mm.
+    /// picometer, `1e-9` mm.
     #[test]
     fn the_reported_gaps_agree_with_where_the_key_is_held() {
         let mut b = Instrument::weighed_section();
@@ -3664,14 +3664,14 @@ mod contact_readout_tests {
 
     /// The contacts the view marks are where the key touches: resting on its
     /// cloth, the cloth's back edge closed on the chamfer, and nothing else
-    /// of the cloth within a millimetre (the cloth's front edge is no contact
+    /// of the cloth within a millimeter (the cloth's front edge is no contact
     /// of its own, its nearest point to the chamfer being where it meets the
-    /// face, and the face falling away from it towards the back edge); down
-    /// on its punching, the punching closed at its centre; and the balance
-    /// punching closed at its centre all along, the key bearing on it. A
+    /// face, and the face falling away from it toward the back edge); down
+    /// on its punching, the punching closed at its center; and the balance
+    /// punching closed at its center all along, the key bearing on it. A
     /// closed contact's two points coincide.
     ///
-    /// The one other row within a millimetre at rest is the front pin's,
+    /// The one other row within a millimeter at rest is the front pin's,
     /// open, beside the front wall of its mortise: the slot moves back along
     /// the pin by the height of the pin's top corner above the bearing times
     /// the key's turn, 0.04 rad at rest, which brings the wall to within
@@ -3694,7 +3694,7 @@ mod contact_readout_tests {
         );
         let at_rest = b.contacts();
         let section = b.frame().sections.back;
-        let back_edge = section.centre_x(b.frame().back_rail) - section.half_length;
+        let back_edge = section.center_x(b.frame().back_rail) - section.half_length;
         for c in &at_rest {
             if c.code == ContactCode::FrontPinOnTheWood {
                 assert!(
@@ -3708,14 +3708,14 @@ mod contact_readout_tests {
                 assert_eq!(c.state(), ContactState::Closed, "{c:?}");
                 assert!(
                     c.on_frame.x.abs() < 1e-12,
-                    "at the punching's centre: {c:?}"
+                    "at the punching's center: {c:?}"
                 );
                 continue;
             }
             assert_eq!(
                 c.code,
                 ContactCode::BackRailCloth,
-                "nothing else within a millimetre"
+                "nothing else within a millimeter"
             );
             match c.state() {
                 ContactState::Closed => {
@@ -3749,17 +3749,17 @@ mod contact_readout_tests {
             ]
         );
         let f = b.frame();
-        let centre = Point::new(
+        let center = Point::new(
             f.sections.front.pin_x(f.front_rail, KeyKind::Natural),
             f.front_bearing_height(),
         );
         for c in b.contacts() {
             if c.state() == ContactState::Closed && c.code == ContactCode::FrontRailPunching {
                 assert!(
-                    (c.on_frame.x - centre.x).abs() < 1e-12,
-                    "at the punching's centre"
+                    (c.on_frame.x - center.x).abs() < 1e-12,
+                    "at the punching's center"
                 );
-                assert!((c.on_frame.y - centre.y).abs() < 1e-12);
+                assert!((c.on_frame.y - center.y).abs() < 1e-12);
             }
         }
     }
@@ -4071,7 +4071,7 @@ mod regulation_tests {
     }
 
     /// Consistency, and what the owner sees: **a dip the front pin forbids is
-    /// refused, with its shortfall in millimetres, and nothing changes.** On
+    /// refused, with its shortfall in millimeters, and nothing changes.** On
     /// the bench as built, 12 mm of dip is deeper than the front rail pin
     /// lets the key go before it bottoms in its mortise, by 0.79 mm: refused,
     /// naming the pin, and the papers, the targets, the key and every reading
@@ -4187,7 +4187,7 @@ mod protocol_roundtrip_tests {
     /// The procedure zeroes the key's balance first, precisely so that the
     /// answer is friction and not balance: zeroed on the frame, the key
     /// weighed 30 g heavier with 17 g more front weight leaves it where it
-    /// was, to the walk's resolution. Stanwood's, zeroed on the levelled jig,
+    /// was, to the walk's resolution. Stanwood's, zeroed on the leveled jig,
     /// keeps what the tilt does to the key and the temporary weight, a few
     /// tenths of a gram here, under the gram it is read to.
     #[test]
@@ -4338,9 +4338,9 @@ mod state_tests {
     /// Consistency: **a weight on a frame nobody touched is solved as one
     /// increment from where the key stands, every time.** Lifted and pressed
     /// in turn, the key travels from stop to stop with its friction acting,
-    /// and the last step of a travel may land it a few nanometres into the
+    /// and the last step of a travel may land it a few nanometers into the
     /// stop: the box problem accepts its multipliers to a fraction of their
-    /// scale, which a soft metric turns into nanometres of gap. The increment
+    /// scale, which a soft metric turns into nanometers of gap. The increment
     /// must close that overlap, not stop on it until its cap, after which the
     /// bench would start the key again by its loading rule, friction off.
     /// These weights on these two benches reach such a landing, so a solver
@@ -4912,7 +4912,7 @@ mod edit_tests {
     /// front pin standing 40 mm proud of its rail, out through what its
     /// mortise allows, is a state: the key rides on it. A front rail moved
     /// 60 mm back under a key that does not fit it is a frame drifted from
-    /// its key, its fault named in millimetres. A regulation that cannot be
+    /// its key, its fault named in millimeters. A regulation that cannot be
     /// laid is refused, not the frame.
     #[test]
     fn everything_an_assembled_keyboard_can_be_is_taken() {
@@ -5215,7 +5215,7 @@ mod edit_tests {
     /// Consistency, the validation layer on load: **an instrument is not
     /// built from a design no part could be built as**, any more than it
     /// is edited into one: a felt thinner than nothing, a capstan screwed
-    /// down to a millimetre, a key front in its key button, a key shortened
+    /// down to a millimeter, a key front in its key button, a key shortened
     /// at the back by 10 mm, its back check block left where the action
     /// puts it, which runs its thinned tail 10 mm under the block. Lengthened
     /// at the back by 30 mm instead, on a frame placed under it, the key is
@@ -5278,7 +5278,7 @@ mod edit_tests {
     /// the pin and stands over the full height to 128.53 mm, over the tail
     /// from there, and in the back check block, which ends 186.87 mm behind
     /// the pin, from 182.95 mm: so the slider, from 60 to 200 mm by the
-    /// millimetre, takes the capstan from 60 to 128 mm, and refuses it over
+    /// millimeter, takes the capstan from 60 to 128 mm, and refuses it over
     /// the tail from 129 to 182 mm and in the block from 183 mm.
     #[test]
     fn his_capstan_slider_is_refused_only_on_lowered_wood_or_in_a_part() {
@@ -5804,8 +5804,8 @@ mod section_tests {
     /// `GAP_TOLERANCE` and seen at the key front through the lever from the
     /// cloth, under 2.3 times it, and from the front rail, 258 over 225 mm;
     /// and the key friction weight zeroed on the frame within twice the
-    /// walk's resolution, its temporary weight cancelling the weighed key's
-    /// balance where it rests, as nothing needs cancelling on a key with no
+    /// walk's resolution, its temporary weight canceling the weighed key's
+    /// balance where it rests, as nothing needs canceling on a key with no
     /// mass. Weighed, the key is given a touch verdict and a mass.
     #[test]
     fn what_reads_no_mass_reads_the_same_weighed_or_not() {
@@ -5841,15 +5841,15 @@ mod section_tests {
         assert!(weighed.touch().is_some());
     }
 
-    /// Consistency: **a weighed key's centre of mass stands at its drawn
+    /// Consistency: **a weighed key's center of mass stands at its drawn
     /// section's centroid's height, and every reading on the tilted key
     /// says so.** The statics take its mass and its static moment as weighed
     /// and the height from [`KeyDesign::section_centroid`], to the bit; the
     /// down weight, read on the key tilted on its frame, is indicative for
     /// that height among its inputs, and the front weight, read on the
-    /// levelled jig, is not.
+    /// leveled jig, is not.
     #[test]
-    fn a_weighed_keys_centre_of_mass_stands_at_its_sections_centroid() {
+    fn a_weighed_keys_center_of_mass_stands_at_its_sections_centroid() {
         let b = Instrument::weighed_section();
         let props = b.mass_props().expect("a weighed key");
         let centroid = b.key().section_centroid().expect("the key encloses wood");
@@ -5858,7 +5858,7 @@ mod section_tests {
             Trust::Indicative { because } => because,
             Trust::Metrological => Vec::new(),
         };
-        assert!(because(ProcedureId::DownWeight).contains(&Input::CentreOfMassHeight));
-        assert!(!because(ProcedureId::FrontWeight).contains(&Input::CentreOfMassHeight));
+        assert!(because(ProcedureId::DownWeight).contains(&Input::CenterOfMassHeight));
+        assert!(!because(ProcedureId::FrontWeight).contains(&Input::CenterOfMassHeight));
     }
 }

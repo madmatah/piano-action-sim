@@ -6,7 +6,7 @@
     "date": "2026-10-11"
   },
   "generic_not_a_model": "Key frames differ a great deal between makers, so these are a generic base and not any maker's specification: one measured frame standing in for a plausible grand.",
-  "note_on_the_two_rows": "Every rail carries a row of pins for the naturals and a second row, set back towards the player's far side, for the sharps. The offset between them is what decides how wide the rail must be, because one rail serves both: half the offset plus a punching's radius is the least half-length that keeps a punching on the wood.",
+  "note_on_the_two_rows": "Every rail carries a row of pins for the naturals and a second row, set back toward the player's far side, for the sharps. The offset between them is what decides how wide the rail must be, because one rail serves both: half the offset plus a punching's radius is the least half-length that keeps a punching on the wood.",
   "records": [
     {
       "name": "balance_punching_diameter",
@@ -153,6 +153,6 @@
   "a_rail_is_placed_under_a_key_and_then_stays_where_it_is": {
     "rule": "front rail = the key's front mortise; back rail = the key's tail end + back_rail_from_the_tail.",
     "why_it_is_a_default_and_not_a_definition": "Running it is how a frame is BUILT, and nobody should have to type a coordinate to get a keyboard that goes together. It is not how a frame is MAINTAINED: rails are screwed to a keybed and do not follow a key that has been changed afterwards. So the positions are stored, they drift, and the faults name the mismatch - the project's standing rule that upstream settings drift rather than cascade, applied to geometry.",
-    "what_it_catches": "Lengthening a key by 100 mm leaves the front rail pin 98.5 mm outside the mortise and the front rail punching 78 mm off the flat of the underside. Both are reported in millimetres past the limit, so the number says whether a dimension was mis-typed or a keyboard mis-designed."
+    "what_it_catches": "Lengthening a key by 100 mm leaves the front rail pin 98.5 mm outside the mortise and the front rail punching 78 mm off the flat of the underside. Both are reported in millimeters past the limit, so the number says whether a dimension was mis-typed or a keyboard mis-designed."
   }
 }

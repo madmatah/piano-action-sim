@@ -5,7 +5,7 @@
  */
 export type ProtocolSettings = { 
 /**
- * How far back from the covering's lip every weight is centred,
- * millimetres: the measuring point of every touchweight.
+ * How far back from the covering's lip every weight is centered,
+ * millimeters: the measuring point of every touchweight.
  */
 measuring_point_from_lip_mm: number, };

@@ -91,7 +91,7 @@ bodies to the frame, and every other interaction is a contact. The simulator kee
 the same tree with the jack's and the lever's angles taken relative to the wippen,
 as Hirschkorn does [V, Hirschkorn 2004 §2.1, Eq. 2.1] (planned, FOUNDATIONS §3.6).
 
-**Both groups report the same modelling gap**: Thorin blocks the vertical
+**Both groups report the same modeling gap**: Thorin blocks the vertical
 translation of the key, replacing the small felt under the key at the balance rail
 with a metal ring of the same thickness, because the experiments proved hard to
 repeat with it; he concedes that "such a modification would not be acceptable in
@@ -137,7 +137,7 @@ easily felt by the pianist and must also be considered in the model, because the
 piano technicians adjust it carefully."*
 
 **Contact geometries**: three primitives are enough, in both models:
-- **circle** (centre in polar coordinates ρ, θ from the centre of the contact zone
+- **circle** (center in polar coordinates ρ, θ from the center of the contact zone
   P, and a radius)
 - **segment / line** (an angle θ in the body frame and a length λ)
 - **hybrid**: an arc and two tangent straight lines (for the jack's top and the
@@ -251,7 +251,7 @@ Compared at equal force, from 10 to 100 N, Hirschkorn's jack/knuckle law is 3.1 
 3.6 times stiffer in tangent stiffness than Thorin's knuckle felt (§3.1) [E, 05].
 **Do not use** "a factor of 56" between them: it is the ratio of the cubic
 coefficients, 3.92e11 against 7e9. The two laws come from different actions,
-benches and law forms, and enter the data as two labelled material sets, never
+benches and law forms, and enter the data as two labeled material sets, never
 merged (FOUNDATIONS §4.3).
 
 ### 3.3 What recalibrating the damping shows
@@ -277,7 +277,7 @@ recalibrated model keeps the piano blow's discrepancy. One damping constant cann
 serve from pianissimo to fortissimo [E, 07], and the felt law is a hypothesis to
 test on Hirschkorn's piano and forte blows (FOUNDATIONS §4.3).
 
-### 3.4 The real behaviour of felt
+### 3.4 The real behavior of felt
 
 The three characteristics Hirschkorn observes [V, Hirschkorn 2004 §2.2.2]:
 1. **nonlinear spring**: "*It also does not follow any simple power function*";
@@ -300,8 +300,8 @@ A published speed-independent model is **Masoudi & McPhee**, "A Novel
 Micromechanical Model of Nonlinear Compression Hysteresis in Compliant Interfaces of
 Multibody Systems", *Multibody System Dynamics*, DOI 10.1007/s11044-015-9483-6 [V,
 `masoudi_preprint.pdf`]:
-- fibre-network micromechanics (after Carnaby and Pan), hysteresis through
-  **fibre-to-fibre friction** → a **speed-independent** response [V, abstract];
+- fiber-network micromechanics (after Carnaby and Pan), hysteresis through
+  **fiber-to-fiber friction** → a **speed-independent** response [V, abstract];
 - `P_loading = σ_el + r_sc·n·λ³·C_s` and `P_unloading = σ_eu − r_sc·n·λ³·C_s`
   (Eqs. 9–10), with σ_el ≠ σ_eu;
 - it works in **macroscopic pressure (Pa) against volume fraction**; identified on a
@@ -349,7 +349,7 @@ tightness of the felt bushings (ie., large pin in a small hole), which is consta
 once the action is assembled*" [V, Hirschkorn 2004 §2.2.4]. ← **a constant friction
 torque per pivot, not proportional to a load.** His joints carry no static peak:
 B1 = B2 = 0, A "derived directly from the kinetic frictional torque in the joint",
-measured as the force that turns the joint at a known distance from its centre
+measured as the force that turns the joint at a known distance from its center
 [V, Hirschkorn 2004 §A.4, Table A.9].
 
 ### 4.2 The published dry torques, and where each comes from (N·m)
@@ -457,7 +457,7 @@ configuration (FOUNDATIONS §6.1).
 
 ## 6. DAMPER AND PEDALS
 
-**Damper: modelled in Thorin's thesis only** [V, Thorin 2013 §4.5.7], and left out
+**Damper: modeled in Thorin's thesis only** [V, Thorin 2013 §4.5.7], and left out
 of the 2017 article "for the sake of simplicity and clarity of the conclusions",
 which therefore simulates the action with the damper pedal engaged [V, Thorin 2017
 §2].
@@ -466,7 +466,7 @@ which therefore simulates the action with the damper pedal engaged [V, Thorin 20
 |---|---|
 | mass m_D | **50.06 g** (Lozada's table: 50.6 g [V, Lozada 2007, Table 2.3]) ← the second heaviest body after the key |
 | inertia I_D,DO | 2.04 × 10⁻⁴ kg·m² |
-| centre of gravity (DG) | (50.0 ; 0.0) mm from the axis DO |
+| center of gravity (DG) | (50.0 ; 0.0) mm from the axis DO |
 | contact with the key (DK) | (78.1 ; 0.0) mm from DO, circle ρ = 5 mm, θ = 1.57 rad |
 | rest stop (DS) | (43.0 ; −22.0) mm, circle ρ = 100 mm, θ = 1.57 rad |
 | angle at rest θ_D(0) | −0.23 rad [V, Thorin 2013 §4.5.9] |
@@ -491,16 +491,16 @@ simulate **one isolated note**. This is therefore:
     dynamics, only where the hammer meets the strings and which part of its felt
     (FOUNDATIONS §7.6; what else moves with it is a question for the owner,
     FOUNDATIONS §9).
-- half pedalling and the effect of the open dampers on sympathetic resonance are
+- half pedaling and the effect of the open dampers on sympathetic resonance are
   subjects of their own, not covered.
 
 ---
 
 ## 7. THE PARAMETER SETS
 
-### 7.1 Hirschkorn 2004, Appendix A: the **Boston** GP-178 action, key 52, in collaboration with Steinway & Sons New York [V, Hirschkorn 2004 §2, acknowledgements]
+### 7.1 Hirschkorn 2004, Appendix A: the **Boston** GP-178 action, key 52, in collaboration with Steinway & Sons New York [V, Hirschkorn 2004 §2, acknowledgments]
 
-**Table A.1, inertias** (I about the centre of mass; centre of mass in the body
+**Table A.1, inertias** (I about the center of mass; center of mass in the body
 frame) [V, Hirschkorn 2004, Table A.1]:
 
 | Body | mass (kg) | I_cm (kg·m²) | CoG x (m) | CoG y (m) |
@@ -514,7 +514,7 @@ frame) [V, Hirschkorn 2004, Table A.1]:
 About their own pivots, by the parallel-axis theorem: key 3.0972e-3, wippen
 4.7078e-5, jack 1.7874e-6, lever 4.1217e-6 and hammer 1.5409e-4 kg·m² [E, 01].
 
-Measurement method [V, Hirschkorn 2004 §A.1]: masses on a lab scale; centres of
+Measurement method [V, Hirschkorn 2004 §A.1]: masses on a lab scale; centers of
 mass by suspending each body from a thread at two points; inertias by
 **pendulum oscillation**, `I_p = m·g·l·(T/2π)²`, then `I_cm = I_p − m·l²` (parallel
 axes). Geometry [V, Hirschkorn 2004 §A.2]: the bodies **scanned on a flatbed
@@ -532,7 +532,7 @@ hybrid, r = 0.0552 m, arc 1.300–1.571 rad.
 Figure A.1 draws it; the ground pins are Pg1 (key), Pg2 (wippen) and Pg3 (hammer),
 and in the wippen's frame **Pw2 is the jack's pin and Pw3 the lever's**, both listed
 as "Pin Location" [V, Hirschkorn 2004, Figure A.1, Tables A.2–A.4]. The key's frame
-is centred on the balance pin: the front punching's contact Pk4 sits at +0.2175 m,
+is centered on the balance pin: the front punching's contact Pk4 sits at +0.2175 m,
 against the ground's Pg4 at +0.2172 m, and the capstan Pk3 at −0.1176 m. Pk2, listed
 as "Pin Location" in the key's table at (0.2278 ; 0.0261), is drawn in Figure A.1 at
 the top of the key front, under the arrow of the force the model is driven by [V,
@@ -561,16 +561,16 @@ each value's lineage:
 |---|---|---|---|---|---|---|
 | Key | 0.083 kg | 3.36E−03 kg·m² | (19.0 ; 14.0) | 0.006 (§4.2) | 0.22 | mass estimated by Thorin, 20 % below Lozada's 0.103 kg; inertia Lozada's, measured on his 103 g key; viscous friction measured (§4.2) |
 | Wippen | 19.8 g | 3.97E−04 | (53.0 ; 7.0) | 0.0992 printed | 4.93E−05 | Lozada's; the friction assumed (§4.2); the inertia implies an impossible radius of gyration (below) |
-| Jack | 5.0 g | 5.0E−06 | (0 ; 0) | 9.9E−04 | 4.93E−05 | **placeholders**: category IV, "not to be studied", round values, centre of mass at the pin |
+| Jack | 5.0 g | 5.0E−06 | (0 ; 0) | 9.9E−04 | 4.93E−05 | **placeholders**: category IV, "not to be studied", round values, center of mass at the pin |
 | Lever | 10 g | 5.0E−06 | (0 ; 0) | 9.9E−04 | 4.93E−05 | **placeholders**, as the jack's |
 | Hammer | 14.24 g | 1.65E−04 | (−95.7 ; 23.7) | 9.9E−04 | 4.93E−05 | Lozada's free-pendulum identification, the one axis friction measured |
 | Damper | 50.06 g | 2.04E−04 | (50.0 ; 0) | 0.0992 printed | 4.93E−05 | Lozada's; the friction assumed (§4.2) |
 
-Thorin classes the jack's and the lever's mass, inertia, centre of mass and
+Thorin classes the jack's and the lever's mass, inertia, center of mass and
 friction in category IV, "fixed parameters not to be studied" [V, Thorin 2013
 §4.4.1, Figures 4.13, 4.15]. The wippen's inertia, 3.97e-4 kg·m² about its axis
-for 19.8 g with its centre of mass 53.5 mm away, implies a radius of gyration
-about the centre of mass of √((3.97e-4 − 0.0198 × 0.0535²)/0.0198) ≈ 131 mm, for a
+for 19.8 g with its center of mass 53.5 mm away, implies a radius of gyration
+about the center of mass of √((3.97e-4 − 0.0198 × 0.0535²)/0.0198) ≈ 131 mm, for a
 part about 100 mm long (FOUNDATIONS §6.3).
 
 **Contact points** [V, Thorin 2013 §4.5.2–§4.5.8, Figures 4.9–4.21]:
@@ -603,8 +603,8 @@ Reduced inertias: J₁ = 3.36E−3 · J₂ = 3.97E−4 · J₃ = 1.65E−4 kg·m
 
 | Quantity | Hirschkorn (Boston) | Thorin (Renner) |
 |---|---|---|
-| Hammer head, from the axis | 136.8 mm to the centre of its contact circle (Ph4) | 137.8 mm to the centre of its contact zone (HS) |
-| Knuckle, from the hammer axis | 19.3 mm to the centre of its circle (Ph2) | 20.2 mm to the centre of its contact zone (HJ) |
+| Hammer head, from the axis | 136.8 mm to the center of its contact circle (Ph4) | 137.8 mm to the center of its contact zone (HS) |
+| Knuckle, from the hammer axis | 19.3 mm to the center of its circle (Ph2) | 20.2 mm to the center of its contact zone (HJ) |
 | Key inertia about its axis | 3.10E−3 kg·m², 120 g key [E, 01] | 3.36E−3 kg·m², Lozada's 103 g key |
 | Capstan, horizontal distance from the key axis | 117.6 mm | 128.7 mm |
 | Front rail punching from the key axis | 217.5 mm | 241.5 mm |
@@ -631,7 +631,7 @@ the literature and the trade's metrology validating each other": a band of 5.0 t
 7.0 cannot see a 10 % error in an arm (FOUNDATIONS §6.4). The action ratio is read
 off an assembled model, by virtual work.
 
-⚠️ **The ratio is not a constant.** α₂₁ and α₃₁ are small-angle linearisations about
+⚠️ **The ratio is not a constant.** α₂₁ and α₃₁ are small-angle linearizations about
 the rest position [V, Thorin 2013 §2.3, Eq. 2.1]. Held constant over the stroke the
 key drives before let-off (the dip less the aftertouch), α₃₁ would have the hammer
 travel about 14 % further than it does to reach let-off, with mid-range regulation
@@ -658,10 +658,10 @@ Renner grand demonstrator's six bodies [V, Timmermans 2021 §5.1, Table 3]:
 | Repetition lever | 3 g | 4.32 kg·mm² |
 
 The paper does not say about which point the inertias are taken, nor where any
-centre of mass lies, nor any pivot or contact position: the set cannot build an
-action. Read about the centre of mass, the radii of gyration are plausible, √(I/m):
+center of mass lies, nor any pivot or contact position: the set cannot build an
+action. Read about the center of mass, the radii of gyration are plausible, √(I/m):
 key 150 mm, wippen 30 mm, hammer 43 mm; read about the axis, the wippen's 30 mm
-would put its centre of mass within 30 mm of its flange, which Thorin's set (53 mm,
+would put its center of mass within 30 mm of its flange, which Thorin's set (53 mm,
 §7.2) does not. **[?]** which of the two, until the authors say. Beside Thorin's
 Renner set it gives a second, independent wippen: 12 g against Lozada's 19.8 g, and
 an inertia about 37 times smaller than Lozada's 3.97E−4 kg·m², the value §7.2 shows
@@ -692,7 +692,7 @@ of the back check, at sliding speeds the paper calls small beside those of play
 | Masoudi & Birkett 2015 (rigid) | 910 s [V, Thorin 2017, Table 1] | — | **about 4550**, Thorin's estimate from a 200 ms figure [V, Thorin 2017 §1] |
 | Masoudi & Birkett 2015 (flexible shank) | 1720 s [V, Thorin 2017, Table 1] | — | about 8600 by the same estimate (1720/910 = 1.9 times the rigid model) |
 | **Thorin 2017 (non-smooth, XDE 3D)** | **20 s for 1 s** [V, Thorin 2017 §6] | 2010 computer, 2.1 GHz Core i5 | **20** |
-| Thorin, **before** the felt laws and the synchronisation were implemented | — | same | **1.2** [V, Thorin 2013 §6.4.1, p. 110] |
+| Thorin, **before** the felt laws and the synchronization were implemented | — | same | **1.2** [V, Thorin 2013 §6.4.1, p. 110] |
 | Timmermans, Dehez, Fisette 2020 (haptic keyboard) | **[?]** real time reported; not in the corpus, unchecked (FOUNDATIONS §10) | — | — |
 | Timmermans, Ceulemans, Fisette 2021 (grand, 6 rigid bodies, 13 contacts) | **0.87 s for 1 s** with the fixed-step W-method, 0.72 s with an error-controlled Rosenbrock integrator; the upright model 10 s for 1 s [V, Timmermans 2021 §3.2, Table 1] | not given | none: faster than real time (0.87) |
 
@@ -700,7 +700,7 @@ of the back check, at sliding speeds the paper calls small beside those of play
 Thorin's words "about two orders of magnitude faster than the regularizing approach,
 as reported in the literature" [V, Thorin 2017 §6]. Thorin attributes his remaining
 factor of 20 to the implementation: the felt laws, re-set in a linear element at
-every step, and the synchronisation slowed the computation down from about 1.2
+every step, and the synchronization slowed the computation down from about 1.2
 times real time, and XDE works in 3D for a planar model; he expects more than 15
 from the first and more than 3 from the second [V, Thorin 2013 §6.4.1, p. 110].
 **Do not use** "UCLouvain 2018, compiled symbolic ROBOTRAN, 1.15 s for 1 s": no
@@ -715,12 +715,12 @@ source in the corpus gives it.
   printed); non-penetration `g(x) ∈ ℝ₊¹²`; normal reactions `r_N ∈ N_{ℝ₊¹²}(g(x))`
   (the normal cone); tangential Coulomb
   `[Hᵀ(x)v]_{3i−2,3i−1} ∈ N_{B(μ(r_N)_i)}((r_T)_{2i−1,2i})` [V, Thorin 2017 §2.5].
-- Discretisation: **Jean's (1999) time-stepping**, Moreau–Jean. Linear
+- Discretization: **Jean's (1999) time-stepping**, Moreau–Jean. Linear
   interpolations `x_{n+α} = x_n + α·Δt·λ_x`, `v_{n+α} = v_n + α·Δt·λ_v` [V, Thorin 2017
   §4, Eqs. 15–16].
 - Scheme parameters: **θ = 1** (stability of the smooth dynamics), **γ = 1** →
   "*constraints are satisfied at the end of every time step*" [V, Thorin 2017 §4].
-- Solution: linearisation of H and of the smooth dynamics about the previous
+- Solution: linearization of H and of the smooth dynamics about the previous
   iterate, a **Newton loop** → a **One-Step Non-Smooth Problem**, reformulated with an
   **augmented Lagrangian** and solved by a **Gauss–Seidel-like algorithm** (Studer
   2009, ch. 4, as cited) [V, Thorin 2017 §4].
@@ -811,8 +811,8 @@ nonlinearity and hysteresis within ±1 % of full scale, the scale usually 10 N) 
 **KLT** tracking · **NI USB-6211** acquisition at 50 kHz.
 Post-processing [V, Thorin 2017 §3.2]: the **50 Hz** and **0 Hz** components
 identified on the signal preceding the blow and subtracted; velocity by **total
-variation regularisation** (Chartrand 2011: 30 iterations, 200 sub-iterations, a
-regularisation parameter of 5 × 10⁻⁵, ε = 10⁻⁹; the thesis prints the same values
+variation regularization** (Chartrand 2011: 30 iterations, 200 sub-iterations, a
+regularization parameter of 5 × 10⁻⁵, ε = 10⁻⁹; the thesis prints the same values
 [V, Thorin 2013 §2.2, p. 21]).
 
 Usable data [V, Thorin 2017 §5]:
@@ -993,7 +993,7 @@ position drive its force is "off the measured force" [V, Thorin 2017 §5; Thorin
 ## 12. SENSITIVITY TO THE REGULATION: what Thorin's analysis measures
 
 Thorin, thesis §6.5. Cost function: `J = Σ|F_mes(t_i) − F_sim(t_i)| / Σ|F_mes(t_i)|`
-(Eq. 6.4; the 1-norm, "*because we did not want to penalise large discrepancies too
+(Eq. 6.4; the 1-norm, "*because we did not want to penalize large discrepancies too
 much*"), t_b = 0 s, t_e = 0.22 s (*piano*) and 0.13 s (*forte*), measurements at
 50 kHz downsampled to the simulation's 2 kHz [V, Thorin 2013 §6.5.1]. Each category I
 parameter is varied **in steps of 0.1 mm up to ±2 mm** around its measured value:
@@ -1052,20 +1052,20 @@ instrument's regulation error (FOUNDATIONS §5.3).
 **Quotation to keep** [V, Thorin 2013 §6.5.3, p. 118]: "*Table 6.2 also highlights
 the high accuracy required for the regulation of the piano action: for many
 parameters, a variation of 0.2 mm leads to a completely different dynamical
-behaviour.*"
+behavior.*"
 
 **What the analysis does show:**
-- For many geometrical parameters, a change of less than a millimetre blocks the
+- For many geometrical parameters, a change of less than a millimeter blocks the
   action and prevents the hammer from escaping properly [V, Thorin 2013 §6.5.6].
   The parameters whose measured values sat farthest from the minimum are
   "*interestingly all related to the escapement, which is known to be very
   delicate*" [V, Thorin 2013 §6.5.3]. That is where the best numerical accuracy
-  **and** the best visualisation are needed.
+  **and** the best visualization are needed.
 - J is **convex** only along a few directions: S_K+y (key dip), L_Wy (lever button),
   S_K−y (back rail cloth), K_Oy (height of the key's axis), K_Wθ (capstan contact
   angle), and so also L_Hy [V, Thorin 2013 §6.5.6, p. 119 and its footnote].
   Everywhere else it is **flat or irregular**: "*common methods of convex
-  optimisation should probably not be applied to the piano action using J*" [V,
+  optimization should probably not be applied to the piano action using J*" [V,
   Thorin 2013 §6.5.6]. **No regulation by gradient descent**: a scripted regulation
   sequence or a grid search does the job (FOUNDATIONS §5.3).
 - The mass of the auxiliary felt bodies has **no influence** (under 1.6 % over
@@ -1234,7 +1234,7 @@ its leads in it (FOUNDATIONS §2.1).
 **Sensitivity to the regulation**
 | Test | Target | Kind | Source |
 |---|---|---|---|
-| V3.1 **Jamming of the action** | on a model of Thorin's demonstrator, the action jams within his typical blocking lengths (0.2 to 0.8 mm on the escapement parameters); on any action, the escapement jams for changes well under a millimetre | consistency on his action; a property of the escapement | Thorin 2013, Table 6.2, §6.5.6 [V] |
+| V3.1 **Jamming of the action** | on a model of Thorin's demonstrator, the action jams within his typical blocking lengths (0.2 to 0.8 mm on the escapement parameters); on any action, the escapement jams for changes well under a millimeter | consistency on his action; a property of the escapement | Thorin 2013, Table 6.2, §6.5.6 [V] |
 | V3.2 Shape of the cost function | convex along S_K+y, L_Wy, S_K−y, K_Oy, K_Wθ (and L_Hy); flat or irregular elsewhere | consistency, on his action | Thorin 2013 §6.5.6 [V] |
 | V3.3 Trade perceptibility | ΔR = 0.3 and ΔSW = 0.5 g produce a **measurable** change in the outputs | consistency | Stanwood 2014, "Results and Analysis", p. 3 [V] |
 | V3.4 Convergence of the regulation procedure | the scripted procedure reaches every target from a state out of regulation | consistency | Thorin 2013, Appendix A; Hirschkorn 2004 §2.3 [V] |
@@ -1251,7 +1251,7 @@ kinematics negligibly" as a robustness test: it compares positions under force d
 **Repetition and low force (where the literature fails)**
 | Test | Target | Kind | Source |
 |---|---|---|---|
-| V4.1 Double blow | reproduce Hirschkorn's Figs. 4.13–4.15, **knowing that his model fails there**, by his own diagnosis through friction too low or not modelled; doing better is a contribution | validation | Hirschkorn 2004 §4.3 [V] |
+| V4.1 Double blow | reproduce Hirschkorn's Figs. 4.13–4.15, **knowing that his model fails there**, by his own diagnosis through friction too low or not modeled; doing better is a contribution | validation | Hirschkorn 2004 §4.3 [V] |
 | V4.2 Friction budget | the friction weight of an assembled model, over all five pivots and the sliding contacts, against a measured F | validation | FOUNDATIONS §6.5 |
 | V4.3 Static threshold test | the greatest mass that can be placed without starting the descent, and the least that prevents the return: **impossible to simulate with regularized friction** in a static solve, the test that justifies set-valued friction | consistency, a protocol run on the model | Thorin 2017 §2.5 [V] |
 
@@ -1276,7 +1276,7 @@ friction, the rest coming from the sliding contacts and the mortises" (§4.3).
   hundred times too large, the jack's and the lever's inertial values placeholders,
   the wippen's inertia impossible (§4.2, §7.2; FOUNDATIONS §5.2 c, §6.3).
 - The two contact laws come from different actions, benches and law forms, and enter
-  the data as **two labelled material sets, never merged** (FOUNDATIONS §4.3). **Do
+  the data as **two labeled material sets, never merged** (FOUNDATIONS §4.3). **Do
   not use** "Thorin's parameter set, supplemented by Hirschkorn's Table A.8 for the
   contact laws": it merges two material sets.
 
@@ -1340,7 +1340,7 @@ Stanwood's normal zone, so the literature and the trade's metrology triangulate"
 1. **The felt law is a pluggable strategy.** Hirschkorn's (a cubic × (1 + Dẋ)) and
    Thorin/Brenon's (kδ^r + bδ²δ̇) are **not interchangeable** without re-identification,
    and a rate-independent law is a third; all three coexist behind the same interface,
-   as labelled material sets (planned, FOUNDATIONS §4.3).
+   as labeled material sets (planned, FOUNDATIONS §4.3).
 2. **Regulation is expressed as TARGETS; the coordinate is normative.** Both authors
    regulate their model after measuring it, because the surface of a felt cannot be
    located more finely than the measurement allows (§13). The domain exposes "key dip
@@ -1349,7 +1349,7 @@ Stanwood's normal zone, so the literature and the trade's metrology triangulate"
    key height and key dip, solved to punching stacks; planned for the other targets
    (FOUNDATIONS §3.4).
 3. **Never a constant leverage ratio.** The published α values are small-angle
-   linearisations: held constant over the driven stroke, α₃₁ overshoots the hammer's
+   linearizations: held constant over the driven stroke, α₃₁ overshoots the hammer's
    travel to let-off by about 14 % [E, 06]. **Do not use** "the discrepancy is blatant,
    57.6 mm predicted against 45–47 mm regulated": it uses the whole dip, aftertouch
    included (§7.4). The instantaneous ratio is recomputed from the contact geometry at

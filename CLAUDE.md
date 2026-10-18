@@ -11,7 +11,7 @@ trade's own protocols, and come back with the expected values.**
 ## Documents and commits
 
 - **Present tense, no history**: justification stays, narration goes. Every
-  component a published document describes is labelled **built** or
+  component a published document describes is labeled **built** or
   **planned**; an unsettled decision is a **hypothesis** with its test. *Not
   mechanically checked.*
 - **`private/` is one-way**: gitignored and its own repository, it may cite
@@ -25,8 +25,9 @@ trade's own protocols, and come back with the expected values.**
 - **A commit message says why**: the reason, the constraint, the observation
   or the rejected alternative that the diff cannot show. The diff already says
   what changed; a message that restates it is noise. *Not mechanically checked.*
-- **English** throughout, except the French interface catalogue (planned) and
-  the bilingual glossaries. *Not mechanically checked.*
+- **American English** throughout, except the French interface catalog
+  (planned), the bilingual glossaries, and a quotation or a title copied from
+  a source, which keeps its spelling. *Not mechanically checked.*
 - **"Done" means a test or a grep in the tree shows it**, never a message.
 
 ## Code
@@ -48,7 +49,7 @@ trade's own protocols, and come back with the expected values.**
    model, never a parameter read back; each reading carries its value in
    full, what the trade reads it as, its conditions, its trust and the
    solver's fingerprint; where a displayed value is still an input, as a
-   key's mass, published or weighed, and the estimated height of its centre
+   key's mass, published or weighed, and the estimated height of its center
    of mass, FOUNDATIONS §2.2 says so. The readings' closed
    forms are test oracles, compiled for `pa-core`'s tests only. Check:
    `the_bench_measures_its_own_friction_by_the_protocol`,
@@ -93,7 +94,7 @@ trade's own protocols, and come back with the expected values.**
    says why; `the_fingerprint_names_the_frozen_numbers` fails when a cap,
    tolerance or count changes and the solver's fingerprint does not.
 9. **SI unless the name says otherwise.** Geometry and mechanics are SI; a value
-   in a trade unit (grams in the weighing algebra; millimetres and grams at the
+   in a trade unit (grams in the weighing algebra; millimeters and grams at the
    boundary, in the display and in saved files) carries it in its name
    (`down_weight_g`, `key_dip_mm`), and a measurement its unit beside its
    value. An unsuffixed trade-unit field is a bug, as is a `*_torque`
@@ -138,7 +139,7 @@ He is the authority on the trade: vocabulary, priorities and what a part looks
 like are his call; ask when a term is in doubt. The French–English mapping is
 `docs/research/A3-nomenclature-and-regulation.md` §6, its open questions in
 `docs/vocabulary-worksheet.md`; do not restate it, and cite no source for a
-trade term. Speak in trade quantities and his names; say what a modelling
+trade term. Speak in trade quantities and his names; say what a modeling
 choice changes for regulating, not which code moved; ask for his measurements
 before drawing a part. Build by sub-assembly, engine and view together
 (FOUNDATIONS §8): he validates by looking, so each stage ends on a number he can
@@ -159,7 +160,7 @@ Thorin's demonstrator touchweights read as wear (§5.2); "only the support sprin
 moves BW" (§6.1); the spurious gap-gradient term (§6.2); Pw2 as the wippen
 pivot, 5.84 (§6.4); "~40 % of friction unexplained", F ≈ 9 g, Hirschkorn's
 friction law without its bracket (§6.5); the face beside an edge arc as the
-row that always carries a corner sunk past the arc's centre (§6.6). Check: a
+row that always carries a corner sunk past the arc's center (§6.6). Check: a
 grep for a listed value finds only its warning; *not enforced*.
 
 ## Layout

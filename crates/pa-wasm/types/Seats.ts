@@ -25,6 +25,6 @@ back_bearing: BackBearing,
  */
 bedding_at_the_back_deg: number, 
 /**
- * Where it bears on the cloth, millimetres behind the balance pin.
+ * Where it bears on the cloth, millimeters behind the balance pin.
  */
 bears_at_the_back_mm: number, };

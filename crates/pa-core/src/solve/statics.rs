@@ -4,7 +4,7 @@
 //! # What one increment solves
 //!
 //! From the state `q_k`, under the loads `L`, the next state is a local
-//! minimiser, reached from `q_k` by descent, of
+//! minimizer, reached from `q_k` by descent, of
 //!
 //! ```text
 //! Π(q) = V(q; L) + Σ_i b_i |q_i − q_k,i|
@@ -49,7 +49,7 @@
 //! - **`P`** is geometric, never a mass: for an angle the square of its
 //!   *reach*, the farthest a point of what it turns stands from its axis; for
 //!   a length, one. So `P d²` is the square of how far the step moves the
-//!   farthest point, and `ρ` a stiffness in newtons per metre.
+//!   farthest point, and `ρ` a stiffness in newtons per meter.
 //! - **`ρ`** starts at the load scale over the row margin, a step of about
 //!   one margin; it is divided by [`LOWER`] when a step is accepted,
 //!   multiplied by [`RAISE`] when one is rejected, and raised, in proportion
@@ -93,13 +93,13 @@
 //! the step and the gaps pass and the residual does not, the residual is
 //! measured again with every gap already closed to within the tolerance taken
 //! as closed: the step's own includes the force of closing what rounding
-//! leaves of a gap, a few hundredths of a femtometre, which through a row
-//! with a centimetre's arm, at the metric an increment starts with, stands
+//! leaves of a gap, a few hundredths of a femtometer, which through a row
+//! with a centimeter's arm, at the metric an increment starts with, stands
 //! above the tolerance without being a force out of balance. It is
 //! refused with a code otherwise: [`Refusal::NotConverged`] at
 //! [`ITERATION_CAP`] steps; [`Refusal::NoEquilibrium`] when the rows admit no
 //! motion (two stops that fight) or the state leans on a coordinate's limit,
-//! the edge of the modelled world. A metrological path never shows an
+//! the edge of the modeled world. A metrological path never shows an
 //! unconverged number.
 //!
 //! # Determinism
@@ -121,11 +121,11 @@ use crate::G;
 /// The most proximal steps one increment takes.
 pub const ITERATION_CAP: u32 = 100;
 
-/// The step under which an increment has stopped moving, metres: as far as
+/// The step under which an increment has stopped moving, meters: as far as
 /// the farthest point of the mechanism may still move.
 pub const STEP_TOLERANCE: f64 = 1e-12;
 
-/// How far past closing a gap may stand at a converged state, metres.
+/// How far past closing a gap may stand at a converged state, meters.
 pub const GAP_TOLERANCE: f64 = 1e-12;
 
 /// The stationarity residual left on a coordinate, over its reach, as a
@@ -146,7 +146,7 @@ pub(crate) const RAISES_PER_STEP: u32 = 64;
 pub(crate) const FIT: f64 = 1.000_001;
 
 /// The box problem's sweeps stop once one moves no point by more than this,
-/// metres: a thousandth of [`STEP_TOLERANCE`].
+/// meters: a thousandth of [`STEP_TOLERANCE`].
 pub(crate) const SWEEP_TOLERANCE: f64 = 1e-15;
 
 /// How far a step's merit may stand above the merit it starts from and the
@@ -158,7 +158,7 @@ pub(crate) const SWEEP_TOLERANCE: f64 = 1e-15;
 /// units in the last place of their terms are one merit as far as they can be
 /// computed. A key loaded a hundred-thousandth of a gram past its breakaway
 /// starts moving with a step whose energy, the excess force times a
-/// picometre, is a hundredth of that rounding: compared bit for bit, rounding
+/// picometer, is a hundredth of that rounding: compared bit for bit, rounding
 /// alone decides it, each step it turns back is a step a quarter as long, and
 /// the key never leaves its seat.
 pub(crate) const MERIT_ROUNDING: f64 = 8.0;
@@ -186,7 +186,7 @@ pub enum Holder {
         /// Which features meet.
         feature: Feature,
     },
-    /// A coordinate's limit, the edge of the modelled world.
+    /// A coordinate's limit, the edge of the modeled world.
     Limit {
         /// The coordinate.
         coord: CoordId,
@@ -200,13 +200,13 @@ pub enum Holder {
 pub struct Support {
     /// The row.
     pub by: Holder,
-    /// Its gap at the state, metres; a limit's taken at its coordinate's
+    /// Its gap at the state, meters; a limit's taken at its coordinate's
     /// reach.
     pub gap: f64,
     /// The force it pushes with, newtons: zero on a row standing open.
     pub force: f64,
     /// Which way a contact pushes side A, the unit normal from side B
-    /// towards it, in the world; zero for a limit.
+    /// toward it, in the world; zero for a limit.
     pub normal: Point,
 }
 
@@ -217,10 +217,10 @@ pub struct Equilibrium {
     pub q: Vec<f64>,
     /// The rows of the last subproblem, contacts first in the mechanism's
     /// order, then limits. Their forces are one admissible split: where rows
-    /// are redundant, the split of least utilisation.
+    /// are redundant, the split of least utilization.
     pub supports: Vec<Support>,
     /// The generalized force each coordinate's friction applies, one per
-    /// coordinate: newton-metres on an angle, newtons on a length.
+    /// coordinate: newton-meters on an angle, newtons on a length.
     pub friction: Vec<f64>,
     /// The generalized force each prescription applies, one per coordinate,
     /// zero on a free one. On a prescribed coordinate that carries friction
@@ -236,9 +236,9 @@ pub enum Refusal {
     /// The mechanism, its prescriptions or its loads cannot be solved as
     /// given.
     Mechanism(Problem),
-    /// No equilibrium in the modelled world: the rows named admit no motion
+    /// No equilibrium in the modeled world: the rows named admit no motion
     /// (two stops that fight), or the state comes to rest leaning on a
-    /// coordinate's limit, where nothing modelled stands.
+    /// coordinate's limit, where nothing modeled stands.
     NoEquilibrium {
         /// The rows that fight, or the limit leaned on.
         on: Vec<Holder>,
@@ -264,7 +264,7 @@ enum Kind {
 }
 
 /// A point the mechanism carries, for the reach: a vertex of a drawn part, an
-/// arc's centre with its radius, a centre of mass, a load's point.
+/// arc's center with its radius, a center of mass, a load's point.
 #[derive(Debug, Clone, Copy)]
 struct Reached {
     body: BodyId,
@@ -379,7 +379,7 @@ fn moves(m: &Mechanism, c: usize, b: BodyId) -> bool {
 }
 
 /// How fast the farthest point moves per unit of coordinate `c`, at `pose`:
-/// for an angle, its reach, metres per radian; for a length, one.
+/// for an angle, its reach, meters per radian; for a length, one.
 fn speed(m: &Mechanism, pose: &Pose, c: usize, points: &[Reached]) -> f64 {
     if m.coords()[c].kind == CoordKind::Length {
         return 1.0;
@@ -736,7 +736,7 @@ impl Statics {
             // or where a row standing open carries a load, is no progress,
             // however it scores: the box problem accepts its multipliers to a
             // fraction of their scale, which a soft metric turns into
-            // nanometres of overlap, or microns of gap left open under a
+            // nanometers of overlap, or microns of gap left open under a
             // contact that pushes, unresolved step after step while the
             // metric only softens. Only a stiffer one tightens it.
             let stalled = step <= STEP_TOLERANCE && (least_gap < -GAP_TOLERANCE || loaded_open);
@@ -747,12 +747,12 @@ impl Statics {
                 pose = trial_pose;
                 core::mem::swap(&mut self.rows, &mut self.trial_rows);
                 rho /= LOWER;
-                let travelled: f64 = free_ids
+                let traveled: f64 = free_ids
                     .iter()
                     .enumerate()
                     .map(|(k, &c)| speeds[k] * (q[c] - anchor[c]).abs())
                     .sum();
-                if travelled > ROW_MARGIN {
+                if traveled > ROW_MARGIN {
                     anchor.copy_from_slice(&q);
                     report.anchors += 1;
                 }
@@ -890,7 +890,7 @@ impl Statics {
     }
 
     /// How far open the widest contact or limit row stands at the state
-    /// among those its multipliers `nu` load, metres; zero where none is
+    /// among those its multipliers `nu` load, meters; zero where none is
     /// loaded. A row is loaded when its multiplier passes the residual's
     /// tolerance of the load scale `load`: a force under that, applied
     /// through a row whose gradient over the reach is at most one, moves the
@@ -974,8 +974,8 @@ impl Statics {
     ///
     /// The subproblem's own residual is its metric times its step, and its
     /// step closes every gap, however little is left of it. A gap closed to
-    /// the rounding of positions a quarter of a metre out, some hundredths of
-    /// a femtometre, closed through a row whose arm is a centimetre, moves
+    /// the rounding of positions a quarter of a meter out, some hundredths of
+    /// a femtometer, closed through a row whose arm is a centimeter, moves
     /// the farthest point of the mechanism fifteen or more times as far, and
     /// at the metric an increment starts with, the force of that motion
     /// stands above a part in 10¹² of the loads. It is no force out of
@@ -988,7 +988,7 @@ impl Statics {
     /// already within it are read as closed. It runs only where the
     /// subproblem's own residual fails: an increment that passed on its
     /// first test still does, and one that went on to take steps of a few
-    /// femtometres, until its metric had fallen far enough, now ends where it
+    /// femtometers, until its metric had fallen far enough, now ends where it
     /// stands.
     #[allow(clippy::too_many_arguments)]
     fn with_gaps_closed(
@@ -1053,7 +1053,7 @@ impl Statics {
         Some((residual, solved.exact))
     }
 
-    /// How far a step may move the farthest point of the mechanism, metres:
+    /// How far a step may move the farthest point of the mechanism, meters:
     /// the least budget of every declared pair and every limit.
     ///
     /// A pair with a row within the row margin may approach by the margin and
@@ -1062,8 +1062,8 @@ impl Statics {
     /// linearization does not hold. A pair further off may approach until it
     /// stands one margin apart: by its least gap where it has rows at any
     /// distance, by the boxes round its pieces where it has none. So no pair
-    /// is stepped over, and a key falling freely towards a stop a centimetre
-    /// away does so in steps of a centimetre, not of a millimetre.
+    /// is stepped over, and a key falling freely toward a stop a centimeter
+    /// away does so in steps of a centimeter, not of a millimeter.
     fn step_bound(
         &self,
         m: &Mechanism,
@@ -1262,7 +1262,7 @@ pub(crate) mod tests {
     }
 
     /// A rod along its body's `x` from its pin to `l`, its end a half disc of
-    /// radius `r` centred on the axis at `l`.
+    /// radius `r` centered on the axis at `l`.
     fn rod(body: usize, l: f64, r: f64) -> Part {
         let cap = Seg::Arc {
             c: Point::new(l, 0.0),
@@ -1398,7 +1398,7 @@ pub(crate) mod tests {
         );
     }
 
-    /// A pendulum: a rod of length `l` on a pin at the origin, its centre of
+    /// A pendulum: a rod of length `l` on a pin at the origin, its center of
     /// mass `d` out along it, its end a half disc of radius `r`; under it a
     /// floor whose top stands at `floor`.
     fn pendulum(mass: f64, d: f64, l: f64, r: f64, floor: f64, friction: f64) -> Mechanism {
@@ -1431,7 +1431,7 @@ pub(crate) mod tests {
 
     /// C5, consistency: **a pendulum comes to rest on its stop.** From
     /// level, gravity turns it down until its rounded end meets the floor,
-    /// where the centre of its end stands one radius above the floor:
+    /// where the center of its end stands one radius above the floor:
     /// `l sin θ = floor + r`. The floor then carries `m g d / l`, the weight
     /// times its arm over the end's: virtual work, since the contact's lever
     /// arm is `l cos θ` and gravity's `d cos θ`.
@@ -1488,7 +1488,7 @@ pub(crate) mod tests {
     /// `T`, a friction bound `b` at its pin, and a weight `w` hung `a` along
     /// it: friction holds it while `|w g a + T| ≤ b`, exactly where it was;
     /// a hair past either edge it turns to the stop that way. The friction
-    /// it applies while held balances the rest exactly. Its centre of mass
+    /// it applies while held balances the rest exactly. Its center of mass
     /// and the weight stand above the pin, as a key's do, so that gravity's
     /// curvature is negative and a lever that starts to turn does not stall
     /// before its stop.
@@ -1727,11 +1727,11 @@ pub(crate) mod tests {
 
     /// Consistency: **a still state out of balance is not taken for a rest.**
     /// Under a metric 10¹² times stiffer than the solver's own, the
-    /// pendulum's first step moves its end by under a femtometre while
+    /// pendulum's first step moves its end by under a femtometer while
     /// gravity is nowhere near balanced: the step and the gaps pass, the
     /// residual does not, so the residual is read again with every gap
     /// already closed to within [`GAP_TOLERANCE`] taken as closed. That must
-    /// fail too, from level, where no row is near, and from half a millimetre
+    /// fail too, from level, where no row is near, and from half a millimeter
     /// above the floor, where the floor's row is within the margin but open:
     /// only a gap closed to the tolerance may be read as closed, and only a
     /// residual within its tolerance makes a rest. The solve goes on, each
@@ -1856,7 +1856,7 @@ pub(crate) mod tests {
     }
 
     /// With nothing to stop it, the pendulum falls to its limit, the edge of
-    /// the modelled world, and the increment is refused, naming the limit.
+    /// the modeled world, and the increment is refused, naming the limit.
     #[test]
     fn a_state_leaning_on_a_limit_is_no_equilibrium() {
         // The floor far below the end's reach.
@@ -1878,9 +1878,9 @@ pub(crate) mod tests {
     /// rest there in one increment.** With the front rail 0.9 to 1.5 mm in
     /// front of where the bench builds it, a lift raises the key until the
     /// slot's front wall meets the pin's front top corner, on a row whose arm
-    /// about the bearing is under two centimetres. The next lift starts on
+    /// about the bearing is under two centimeters. The next lift starts on
     /// that wall, its gap closed to the rounding of positions a quarter of a
-    /// metre out, some hundredths of a femtometre either way. Closing such a
+    /// meter out, some hundredths of a femtometer either way. Closing such a
     /// gap through that arm turns the key fifteen times as far at its
     /// farthest point, and the proximal force of that motion, the first
     /// step's metric times it, can stand above the residual's tolerance of a

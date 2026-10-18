@@ -15,7 +15,7 @@ export type Conditions = {
  */
 mount: Mount, 
 /**
- * The measuring point, millimetres back from the covering's lip.
+ * The measuring point, millimeters back from the covering's lip.
  */
 measuring_point_from_lip_mm: number, 
 /**

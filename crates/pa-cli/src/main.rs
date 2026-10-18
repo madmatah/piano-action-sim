@@ -272,7 +272,7 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
         match &reading.result {
             Ok(m) => {
                 let (scale, unit, decimals) = match m.unit {
-                    Unit::Metre => (1000.0, "mm", 2),
+                    Unit::Meter => (1000.0, "mm", 2),
                     Unit::Gram => (1.0, "g", decimals_of(m.resolution)),
                     Unit::One => (1.0, "", decimals_of(m.resolution)),
                 };
@@ -324,12 +324,12 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
     }
     match bench.readout() {
         Some(_) => match (bench.key_mass(), bench.key_mass_g()) {
-            (KeyMass::Published { centre, .. }, Some(mass_g)) => println!(
-                "  {:<22}{:>8.2} g    as published, its centre of mass at ({:.1}, {:.1}) mm",
+            (KeyMass::Published { center, .. }, Some(mass_g)) => println!(
+                "  {:<22}{:>8.2} g    as published, its center of mass at ({:.1}, {:.1}) mm",
                 "key mass",
                 mass_g,
-                centre.x * 1000.0,
-                centre.y * 1000.0
+                center.x * 1000.0,
+                center.y * 1000.0
             ),
             (KeyMass::Weighed { datum, .. }, Some(mass_g)) => println!(
                 "  {:<22}{:>8.2} g    weighed whole, its front weight {:.2} g read {:.1} mm \

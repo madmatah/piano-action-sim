@@ -5,7 +5,7 @@
 //! Rigid statics leave some splits of a load indeterminate. A key standing
 //! on its punching under a weight its friction could hold is held by the
 //! punching, by its bushings' friction, or by any mixture of the two: the
-//! static solve reports one admissible split, the one of least utilisation,
+//! static solve reports one admissible split, the one of least utilization,
 //! and it is no answer to the question a technician asks
 //! (`docs/FOUNDATIONS.md` §2.1). So a verdict is built from what does not
 //! depend on the split: which contacts are closed, how far the key stands
@@ -31,12 +31,12 @@
 //! with no friction at all, which does not depend on how a solve split them.
 //! All three are determinate.
 //!
-//! # What a centre bearing leaves aside
+//! # What a center bearing leaves aside
 //!
-//! A punching read at its centre is a rigid stand-in for a felt that spreads
+//! A punching read at its center is a rigid stand-in for a felt that spreads
 //! its load. A key standing out of level on it overlaps the drawn felt's edge
 //! by what the felt would compress, half the washer's width times the tilt:
-//! about a quarter of a millimetre under the test key at rest on its
+//! about a quarter of a millimeter under the test key at rest on its
 //! balance punching. [`edge_overlaps`] says how much, so that the
 //! idealization does not pass for a drawing error.
 
@@ -44,7 +44,7 @@ use crate::contact::{ContactCode, PairGeometry, Rows, ROW_MARGIN};
 use crate::mechanism::PointLoad;
 use crate::parts::mounts::Mounted;
 
-/// How near closing a contact must stand to count as touching, metres: a
+/// How near closing a contact must stand to count as touching, meters: a
 /// tenth of a micron, a thousandth of the thinnest paper, and far above the
 /// rounding a static solve leaves on a closed contact.
 pub const TOUCHING: f64 = 1e-7;
@@ -66,7 +66,7 @@ pub enum Holding {
         /// The stop it touches, if it touches one.
         touching: Option<ContactCode>,
         /// How far the loads' generalized force stands from the edge of the
-        /// box past which the key moves, newton-metres on the key's angle:
+        /// box past which the key moves, newton-meters on the key's angle:
         /// away from the stop it touches, the only way it can move; either
         /// way, the nearer, where it touches none.
         margin: f64,
@@ -77,7 +77,7 @@ pub enum Holding {
         /// The front stop it rides on: the front punching, or the front rail
         /// pin in its mortise or on the wood beside it.
         front: ContactCode,
-        /// How far above its balance punching it stands, metres.
+        /// How far above its balance punching it stands, meters.
         lift: f64,
     },
     /// Off its balance punching, held by what it touches, with its friction
@@ -94,7 +94,7 @@ pub enum Holding {
         /// its slot do; true where they cannot, as its cloth alone, pushing
         /// at one place, cannot hold a pull turning the key about it.
         needs_friction: bool,
-        /// How far above its balance punching it stands, metres.
+        /// How far above its balance punching it stands, meters.
         lift: f64,
     },
 }
@@ -219,14 +219,14 @@ fn balanced_by(rows: &Rows, closed: &[usize], forces: &[f64]) -> bool {
     false
 }
 
-/// How far each centre bearing the key stands on overlaps it at `q`, metres:
-/// for every pair read at its centre whose centre bears, within
+/// How far each center bearing the key stands on overlaps it at `q`, meters:
+/// for every pair read at its center whose center bears, within
 /// [`TOUCHING`] of closing, how far the drawn face stands past the key's
 /// underside ([`crate::mechanism::Mechanism::face_overlap`]), in the
 /// mechanism's order of pairs.
 ///
 /// What the felt would compress where the key stands out of level on it,
-/// which the rigid reading at the centre leaves aside: half the face's width
+/// which the rigid reading at the center leaves aside: half the face's width
 /// times the tilt, so always present under a key at rest on its balance
 /// punching, nose-up by its dip.
 pub fn edge_overlaps(mounted: &Mounted, q: &[f64]) -> Vec<(ContactCode, f64)> {
@@ -239,7 +239,7 @@ pub fn edge_overlaps(mounted: &Mounted, q: &[f64]) -> Vec<(ContactCode, f64)> {
             let pair = u16::try_from(p).expect("fewer than 65 536 pairs");
             let declared = &m.pairs()[p];
             let bears = rows.gap(pair).is_some_and(|g| g <= TOUCHING);
-            (declared.geometry == PairGeometry::CentreBearing && bears)
+            (declared.geometry == PairGeometry::CenterBearing && bears)
                 .then(|| (declared.code, m.face_overlap(&pose, pair)))
         })
         .collect()
@@ -512,13 +512,13 @@ mod tests {
 
     /// Consistency: **the balance punching's drawn edge overlaps a key at
     /// rest on it by half its width times the tilt**, what a felt would
-    /// compress and the rigid centre bearing leaves aside, about a quarter of
-    /// a millimetre on the test key; the front punching, which a key at
+    /// compress and the rigid center bearing leaves aside, about a quarter of
+    /// a millimeter on the test key; the front punching, which a key at
     /// rest does not bear on, is not named. Down on its front punching, the
     /// key stands level to a few thousandths of a degree, and that punching's
     /// edge overlaps it by its own half width times that tilt.
     #[test]
-    fn a_tilted_key_overlaps_the_edge_of_a_centre_bearing_by_the_tilt() {
+    fn a_tilted_key_overlaps_the_edge_of_a_center_bearing_by_the_tilt() {
         let (k, _) = bench();
         let m = &k.mounted;
         let seats = k
@@ -559,7 +559,7 @@ mod tests {
         let (_, balance) = at_rest[0];
         assert!(
             balance > 0.0002 && balance < 0.0003,
-            "a quarter of a millimetre: {balance}"
+            "a quarter of a millimeter: {balance}"
         );
     }
 }

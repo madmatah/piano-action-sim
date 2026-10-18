@@ -43,7 +43,7 @@ says so.
 
     Why the contact friction stays explicit in (B), measured, not assumed:
     Eq. 2.10 rises from zero slip with the slope A (1 + B1) / v_t, about 5e4
-    per m/s at the jack/knuckle. Linearised into C, the friction becomes
+    per m/s at the jack/knuckle. Linearized into C, the friction becomes
     linear in the new slip and unbounded, so a single step can hold a contact
     that Eq. 2.10 would let slide, above the law's own peak. On the forte-like
     force drive the head's speed at the strike then reads 2.2642, 2.2580,
@@ -51,7 +51,7 @@ says so.
     converging. Left explicit, the law saturates at its peak and (B) reads
     2.2635, 2.2639, 2.2643, 2.2643 and 2.2643 m/s over the same steps, (A)
     2.2638 to 2.2643. `python3 -I scenarios.py slope-study` reruns the
-    comparison; the linearised variant is Model(implicit_friction_slope=True).
+    comparison; the linearized variant is Model(implicit_friction_slope=True).
 
 Drives (model.py, A8):
     FreeDrive        nothing applied.
@@ -253,7 +253,7 @@ def _key_friction_interval(model, v_key):
 
 def _finger_force(model, q, key_need_Nm, v_key):
     """Finger force interval at Pk2 from the torque the key's row needs beyond
-    every modelled force, key_need = τ_finger + τ_axis_friction."""
+    every modeled force, key_need = τ_finger + τ_axis_friction."""
     lo, hi = _key_friction_interval(model, v_key)
     arm = model.finger_arm(q)
     return (lo - key_need_Nm) / arm, (hi - key_need_Nm) / arm

@@ -18,7 +18,7 @@ is right.
   loaded contact sticks its friction changes sign from one step to the next: 218,419
   reversals in the 485,000 steps of the forte press at 1 µs. Its 1 µs references are then
   not converged: in the forte press checking moves by 0.090 mm between 1 and 0.25 µs, at
-  first order, towards the set model's value, and the piano press's hammer speed at the
+  first order, toward the set model's value, and the piano press's hammer speed at the
   string sits on a plateau the chatter sets, which a step of 0.25 µs does not leave (the
   section on contact friction below). A and B hold every observable within resolution of
   those references up to 5 µs at most, in any scenario. With contact friction a set, as the
@@ -69,7 +69,7 @@ box problem at velocity level: one row per free joint (bound A_i dt) and one per
 frictional contact (its slip row, bound mu f_n dt). A projected Gauss-Seidel sweep guesses
 which rows stick, and an exact active-set pass, pivoting from that guess, finishes the
 solve. Where stuck rows are redundant (a joint and a contact holding the same body) it takes
-the split of least utilisation, sum (lambda_i / bound_i)^2, so the split, and the finger
+the split of least utilization, sum (lambda_i / bound_i)^2, so the split, and the finger
 force that depends on it, does not drift from step to step. The checks at the end of this
 file test it.
 
@@ -82,7 +82,7 @@ file test it.
 | key force, forte and piano presses | the same force in 0.2 ms windows (5 kHz, the rate of Hirschkorn's load cell) over the descent, compared window by window, split at let-off | 0.1 N | the trade has no reading of force in a blow; the measured curve it will be compared with, Thorin's position-driven key force, comes from a sensor specified within ±1 % of its usual 10 N scale (docs/research/A2 §9.2), so a step moving the curve by less cannot change that comparison. The piano press's key force peaks at 5.7 N, within that scale; the forte press's at 86 N, past it, so 0.1 N is stricter there than that sensor |
 | let-off | the hammer-to-string distance at the instant the jack leaves the knuckle (contact 7 opens after the toe has met the button), interpolated within the step (FOUNDATIONS §1.3) | 0.08 mm | the thinnest punching paper, the finest regulation quantum the trade uses anywhere in the action (FOUNDATIONS §1.3); the trade specifies hammer-side distances to 1/32" (0.79 mm) at best (docs/research/A3 §2.1), so it is a strict choice |
 | aftertouch (the let-off instant) | the key travel at Pk2 from the let-off instant to the bottom (9.65 mm, the key 0.3 mm into the front punching); in the forte by force, whose bottom is not prescribed, the key travel at let-off | 0.08 mm | a punching paper: aftertouch is set through the key dip, with papers |
-| hammer at let-off, at the string | the speed of the hammer's striking point towards the string (the rate of contact 12's gap) at the let-off instant and at the instant the gap closes, interpolated | 1 % | the trade has no reading of it; the reproducing piano that records it, the Bösendorfer SE, counts the time over the last 5 mm at 25.6 kHz, a quantum of v²/128 m/s: 0.8 % at 1 m/s, 1.6 % at 2 m/s (docs/research/A5 §7.2) |
+| hammer at let-off, at the string | the speed of the hammer's striking point toward the string (the rate of contact 12's gap) at the let-off instant and at the instant the gap closes, interpolated | 1 % | the trade has no reading of it; the reproducing piano that records it, the Bösendorfer SE, counts the time over the last 5 mm at 25.6 kHz, a quantum of v²/128 m/s: 0.8 % at 1 m/s, 1.6 % at 2 m/s (docs/research/A5 §7.2) |
 | drop (slow press) | the hammer-to-string distance with the key held at the bottom after let-off, the hammer resting on the repetition lever, mean over the last 20 ms of the hold | 0.08 mm | as let-off |
 | checking | the hammer-to-string distance with the key held at the bottom after the blow, the hammer caught by the back check, mean over the last 20 ms of the hold | 0.08 mm | as let-off |
 | rest after release | the hammer-to-string distance at the end of the run, the key released and the action back at rest (the largest joint speed at the end of the set model's 1 µs runs is 2.5e-18 rad/s; as built, where contact friction chatters, 3.8e-03 rad/s; the runs start from the frictionless equilibrium, the hammer 48.16 mm from the string) | 0.08 mm | as let-off |
@@ -471,10 +471,10 @@ stable step there is a few nanoseconds (`README.md`, `scenarios.py chatter-study
 | piano press | 615,000 | 242,660 | 239,607 | 52 | 52 |
 | forte by force | 800,000 | 406,843 | 406,550 | 75 | 75 |
 
-As the step falls below 1 µs the as-built model's checking keeps moving towards the set
+As the step falls below 1 µs the as-built model's checking keeps moving toward the set
 model's: 16.382, 16.440 and 16.471 mm at 1, 0.5 and 0.25 µs in the forte press under A,
 against 16.501 mm with A-set (tables above). It converges, slowly: chatter lets the hammer
-held by the back check creep towards the string through the hold, by an amount proportional
+held by the back check creep toward the string through the hold, by an amount proportional
 to the step (`README.md`, "Reading its output"), so each halving of the step moves checking
 by about half as much as the last (+0.059 then +0.031 mm under A, +0.062 then +0.033 mm
 under B). Extrapolated at first order, A and B as built reach 16.503 and 16.503 mm in the
@@ -560,7 +560,7 @@ its catch stays within 27 µs of the reference. B's step is therefore set by acc
 before stability matters, and A-set stays stable up to 160 µs, above the step its own
 accuracy allows.
 
-## The stiffest linearised modes
+## The stiffest linearized modes
 
 Along each scenario's A-set run at 5 µs (every 20 µs; every 100 µs in the slow press), the
 largest generalized eigenvalue of (K, M): K the stiffness of the loaded contact laws and the
@@ -568,7 +568,7 @@ repetition spring at the forces the run produces (`model.py`, `Evaluation.K`), M
 matrix, over the coordinates free at that instant (the key's own excluded while it is driven
 in position). The contacts carrying the mode are those holding at least 10 % of its
 stiffness. The explicit step's linear stability limit is the largest step at which
-integrator A's step, linearised there with the contact damping C as explicit as A has it,
+integrator A's step, linearized there with the contact damping C as explicit as A has it,
 keeps every mode bounded, the contact damping included.
 
 | scenario | highest mode (Hz) | at (ms) | carried by | least explicit limit (µs) | at (ms) | carried by |
@@ -623,7 +623,7 @@ modes and these limits, and the study reruns in minutes.
 Operations an engine would do per step, counted from what each step of these runs did (each
 add, multiply, divide or compare counted once): pose: 5 angles, the two pins the wippen
 carries (16); 13 signed gaps: 10 line/circle (32 each), 1 circle/circle (30), 2 hybrids (40
-each) (430); mass matrix: 5 centres of mass, 7 Jacobian columns, 11 entries (90); velocity
+each) (430); mass matrix: 5 centers of mass, 7 Jacobian columns, 11 entries (90); velocity
 terms, gravity, springs, the finger's arm (100); then 70 per loaded contact (lever arms,
 rate, law, generalized force), 25 per loaded frictional contact for explicit Eq. 2.10 (plus
 one tanh), and for B 125 to assemble its system plus 30 per loaded contact; a Cholesky

@@ -13,10 +13,10 @@ Pure arithmetic: import math and nothing else. Run with python3 -I.
 """
 I_h = 1.5409e-4   # hammer inertia about its pivot, kg m^2 (script 01)
 m_h = 0.01174     # hammer mass, kg (Table A.1)
-d_cm = 0.1022     # centre of mass along the hammer frame's x axis, m (Table A.1); the
+d_cm = 0.1022     # center of mass along the hammer frame's x axis, m (Table A.1); the
                   # weight term is under 1 N, so the hammer's rest tilt does not matter here
 r_k = 0.01817     # moment arm of the jack/knuckle normal about the hammer pivot, m (script 10)
-r_s = 0.1368      # pivot to the centre of the hammer head's contact circle, m (Table A.7, |Ph4|)
+r_s = 0.1368      # pivot to the center of the hammer head's contact circle, m (Table A.7, |Ph4|)
 g = 9.81
 
 print("=== Force at the knuckle for a given hammer-head acceleration ===")

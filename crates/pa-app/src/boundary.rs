@@ -10,7 +10,7 @@
 //! crosses as a code with its parameters,
 //! `{"code":"pin_outside_mortise","by_mm":16.5}`, the parameters in the
 //! trade's units with the unit in their names, and the interface words it
-//! from one catalogue per language (`apps/bench/src/i18n/`). A code carries
+//! from one catalog per language (`apps/bench/src/i18n/`). A code carries
 //! every number its wording needs, the instrument's own limits included, so
 //! no wording of a code holds a number of the engine's.
 //!
@@ -77,7 +77,7 @@ use crate::instrument::{
     EditRefusal as CoreEditRefusal, Instrument, NotRegulated, Outcome, Riding as CoreRiding,
     SeatReport, Stack, TouchVerdict, KEY,
 };
-use crate::profile::{Known, PaperColour, Profile};
+use crate::profile::{Known, PaperColor, Profile};
 use crate::registry::{self, path, Control, Entry, Field, Label, Panel, Weighing as WeighingField};
 
 /// A document as the interface reads it: JSON, the shape of its generated
@@ -89,14 +89,14 @@ pub fn json<T: Serialize>(document: &T) -> String {
     serde_json::to_string(document).unwrap_or_else(|_| "null".to_owned())
 }
 
-/// Metres to millimetres.
-fn mm(metres: f64) -> f64 {
-    metres * 1000.0
+/// Meters to millimeters.
+fn mm(meters: f64) -> f64 {
+    meters * 1000.0
 }
 
-/// Metres to millimetres, narrowed for drawing.
-fn mm32(metres: f64) -> f32 {
-    (metres * 1000.0) as f32
+/// Meters to millimeters, narrowed for drawing.
+fn mm32(meters: f64) -> f32 {
+    (meters * 1000.0) as f32
 }
 
 // ---- codes shared by the documents -----------------------------------------
@@ -194,7 +194,7 @@ impl From<PartCode> for Part {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum Procedure {
-    /// Front weight, on Stanwood's levelled jig.
+    /// Front weight, on Stanwood's leveled jig.
     FrontWeight,
     /// Key weight ratio, force convention, on the tared jig.
     KeyWeightRatio,
@@ -210,7 +210,7 @@ pub enum Procedure {
     BalanceWeight,
     /// Friction weight, from the down and up weights as read.
     FrictionWeight,
-    /// Key friction weight by Stanwood's protocol, zeroed on the levelled
+    /// Key friction weight by Stanwood's protocol, zeroed on the leveled
     /// jig.
     KeyFrictionWeightZeroedOnTheJig,
     /// Key friction weight zeroed where the key rests on its frame.
@@ -253,7 +253,7 @@ impl From<ProcedureId> for Procedure {
 pub struct Riding {
     /// The front stop it rides on, its back rail cloth the other.
     pub front: Contact,
-    /// How far above its balance punching it stands, millimetres.
+    /// How far above its balance punching it stands, millimeters.
     pub lift_mm: f64,
 }
 
@@ -323,11 +323,11 @@ pub enum Refusal {
     /// The key would stand off its balance pin, and off its frame.
     LiftsOffItsFrame {
         /// How far above its balance punching the key leaves its pin,
-        /// millimetres: negative where the punching stands above the pin's
+        /// millimeters: negative where the punching stands above the pin's
         /// top, by that much.
         leaves_its_pin_mm: f64,
     },
-    /// The front punching's centre stands off the key's underside: nothing
+    /// The front punching's center stands off the key's underside: nothing
     /// stops the front of the key at the bottom.
     NoStopBelowTheFront,
     /// The back rail cloth stands where the key's tail cannot reach it.
@@ -375,7 +375,7 @@ pub enum Refusal {
         /// On the way down or up.
         stroke: Stroke,
         /// How far the measuring point stood below the top seat,
-        /// millimetres.
+        /// millimeters.
         travel_mm: f64,
         /// The force the finger would need there, grams, positive pressing
         /// down.
@@ -386,7 +386,7 @@ pub enum Refusal {
     SweepLiftsOffItsFrame,
     /// No top of the key stands where the temporary weight goes.
     NoKeyTopAtTheStation {
-        /// Where it goes, millimetres from the balance pin, positive in
+        /// Where it goes, millimeters from the balance pin, positive in
         /// front.
         station_mm: f64,
     },
@@ -515,8 +515,8 @@ pub struct Settings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct ProtocolSettings {
-    /// How far back from the covering's lip every weight is centred,
-    /// millimetres: the measuring point of every touchweight.
+    /// How far back from the covering's lip every weight is centered,
+    /// millimeters: the measuring point of every touchweight.
     pub measuring_point_from_lip_mm: f64,
 }
 
@@ -532,9 +532,9 @@ pub struct ExperimentSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct RegulationSettings {
-    /// Key height, millimetres.
+    /// Key height, millimeters.
     pub key_height_mm: f64,
-    /// Key dip, millimetres.
+    /// Key dip, millimeters.
     pub key_dip_mm: f64,
 }
 
@@ -542,7 +542,7 @@ pub struct RegulationSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct KeySettings {
-    /// Its front edge, millimetres in front of the balance pin.
+    /// Its front edge, millimeters in front of the balance pin.
     pub front_edge_mm: f64,
     /// Its capstan.
     pub capstan: CapstanSettings,
@@ -571,7 +571,7 @@ pub enum MassKnown {
     Unweighed,
     /// Weighed whole on the bench, as typed.
     Weighed,
-    /// Weighed and located by a published source, whole, its centre of
+    /// Weighed and located by a published source, whole, its center of
     /// mass's height included.
     Published,
 }
@@ -580,9 +580,9 @@ pub enum MassKnown {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct CapstanSettings {
-    /// Where it stands, millimetres behind the balance pin.
+    /// Where it stands, millimeters behind the balance pin.
     pub behind_mm: f64,
-    /// How far it stands above the keystick, millimetres.
+    /// How far it stands above the keystick, millimeters.
     pub height_mm: f64,
 }
 
@@ -590,7 +590,7 @@ pub struct CapstanSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct MortiseSettings {
-    /// Its depth above the underside, millimetres.
+    /// Its depth above the underside, millimeters.
     pub depth_mm: f64,
 }
 
@@ -599,7 +599,7 @@ pub struct MortiseSettings {
 #[cfg_attr(test, derive(TS))]
 pub struct FrictionSettings {
     /// Their friction as stored: the torque they hold, gram-force
-    /// millimetres. What Stanwood's protocol reads them as is a reading, on
+    /// millimeters. What Stanwood's protocol reads them as is a reading, on
     /// the sheet.
     pub torque_gmm: f64,
 }
@@ -612,7 +612,7 @@ pub struct Weighed {
     pub mass_g: f64,
     /// Its front weight as the jig's scale read it, grams.
     pub front_weight_g: f64,
-    /// How far back from the covering's lip the roller stood, millimetres.
+    /// How far back from the covering's lip the roller stood, millimeters.
     pub from_lip_mm: f64,
 }
 
@@ -637,7 +637,7 @@ pub struct FrameSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct BalanceRailSettings {
-    /// The bare rail's height above the keybed, millimetres.
+    /// The bare rail's height above the keybed, millimeters.
     pub height_mm: f64,
 }
 
@@ -645,11 +645,11 @@ pub struct BalanceRailSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct FrontRailSettings {
-    /// The bare rail's height above the keybed, millimetres.
+    /// The bare rail's height above the keybed, millimeters.
     pub height_mm: f64,
-    /// Where it stands, millimetres in front of the balance pin.
+    /// Where it stands, millimeters in front of the balance pin.
     pub at_mm: f64,
-    /// How far its pin stands above the bare rail, millimetres.
+    /// How far its pin stands above the bare rail, millimeters.
     pub pin_height_mm: f64,
 }
 
@@ -657,11 +657,11 @@ pub struct FrontRailSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct BackRailSettings {
-    /// The bare rail's height above the keybed, millimetres.
+    /// The bare rail's height above the keybed, millimeters.
     pub height_mm: f64,
-    /// Where it stands, millimetres behind the balance pin.
+    /// Where it stands, millimeters behind the balance pin.
     pub behind_mm: f64,
-    /// Its cloth's thickness, millimetres.
+    /// Its cloth's thickness, millimeters.
     pub cloth_mm: f64,
 }
 
@@ -670,12 +670,12 @@ pub struct BackRailSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct PunchingSettings {
-    /// The felt washer, millimetres.
+    /// The felt washer, millimeters.
     pub felt_mm: f64,
-    /// The papers, millimetres each, in the order they were laid, bottom
+    /// The papers, millimeters each, in the order they were laid, bottom
     /// first.
     pub papers_mm: Vec<f64>,
-    /// Their total, millimetres, as the engine sums it.
+    /// Their total, millimeters, as the engine sums it.
     pub paper_total_mm: f64,
 }
 
@@ -762,11 +762,11 @@ impl Settings {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum SettingUnit {
-    /// Millimetres.
+    /// Millimeters.
     Mm,
     /// Grams.
     G,
-    /// Gram-force millimetres.
+    /// Gram-force millimeters.
     Gmm,
 }
 
@@ -820,7 +820,7 @@ pub enum Step {
     Continuous,
     /// By the papers a drawer holds.
     Drawer {
-        /// Their thicknesses, millimetres, thinnest first.
+        /// Their thicknesses, millimeters, thinnest first.
         sizes_mm: Vec<f64>,
     },
 }
@@ -1086,9 +1086,9 @@ impl Param {
         Self {
             path: e.path.to_owned(),
             unit: match e.unit {
-                registry::Unit::Millimetre => SettingUnit::Mm,
+                registry::Unit::Millimeter => SettingUnit::Mm,
                 registry::Unit::Gram => SettingUnit::G,
-                registry::Unit::GramMillimetre => SettingUnit::Gmm,
+                registry::Unit::GramMillimeter => SettingUnit::Gmm,
             },
             quantity: match quantity {
                 CoreQuantity::Length => Quantity::Length,
@@ -1209,9 +1209,9 @@ pub enum Unit {
     /// Grams at the measuring point.
     #[serde(rename = "g")]
     Gram,
-    /// Millimetres.
+    /// Millimeters.
     #[serde(rename = "mm")]
-    Millimetre,
+    Millimeter,
     /// A ratio, without a unit.
     #[serde(rename = "ratio")]
     Ratio,
@@ -1257,8 +1257,8 @@ impl From<CoreRounding> for Rounding {
 pub enum Input {
     /// The key's mass and its static moment about the balance pin.
     KeyMass,
-    /// The height of the key's centre of mass.
-    CentreOfMassHeight,
+    /// The height of the key's center of mass.
+    CenterOfMassHeight,
     /// The friction of the key's bushings.
     KeyFriction,
     /// The dimensions of the key and its frame.
@@ -1269,7 +1269,7 @@ impl From<CoreInput> for Input {
     fn from(i: CoreInput) -> Self {
         match i {
             CoreInput::KeyMass => Self::KeyMass,
-            CoreInput::CentreOfMassHeight => Self::CentreOfMassHeight,
+            CoreInput::CenterOfMassHeight => Self::CenterOfMassHeight,
             CoreInput::KeyFriction => Self::KeyFriction,
             CoreInput::Geometry => Self::Geometry,
         }
@@ -1307,7 +1307,7 @@ impl From<&CoreTrust> for Trust {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum Mount {
-    /// On Stanwood's jig, levelled, turning without friction about its
+    /// On Stanwood's jig, leveled, turning without friction about its
     /// balance pin.
     OnTheJig,
     /// On its frame, turning about a fixed axis through its balance bearing.
@@ -1347,16 +1347,16 @@ pub struct Walk {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct Swept {
-    /// How far the measuring point travelled between two readings,
-    /// millimetres.
+    /// How far the measuring point traveled between two readings,
+    /// millimeters.
     pub step_mm: f64,
     /// The readings each way.
     pub samples: u32,
     /// How far the measuring point travels from the top seat to the bottom
-    /// one, millimetres.
+    /// one, millimeters.
     pub window_mm: f64,
     /// Where on the stroke the reading fell: how far the measuring point
-    /// stood below the top seat, millimetres.
+    /// stood below the top seat, millimeters.
     pub at_mm: f64,
 }
 
@@ -1365,7 +1365,7 @@ pub struct Swept {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum Zeroing {
-    /// The levelled key's front weight on the jig, Stanwood's.
+    /// The leveled key's front weight on the jig, Stanwood's.
     OnTheJig,
     /// The key's balance where it rests on its frame.
     OnTheFrame,
@@ -1377,7 +1377,7 @@ pub enum Zeroing {
 pub struct TemporaryWeight {
     /// Its mass, grams.
     pub mass_g: f64,
-    /// Where it stands, millimetres from the balance pin, positive in front.
+    /// Where it stands, millimeters from the balance pin, positive in front.
     pub at_mm: f64,
     /// What it zeroes.
     pub zeroed: Zeroing,
@@ -1389,7 +1389,7 @@ pub struct TemporaryWeight {
 pub struct Conditions {
     /// Where the key was read.
     pub mount: Mount,
-    /// The measuring point, millimetres back from the covering's lip.
+    /// The measuring point, millimeters back from the covering's lip.
     pub measuring_point_from_lip_mm: f64,
     /// The contacts holding the seat the reading is taken at or starts from.
     pub held_by: Vec<Contact>,
@@ -1451,7 +1451,7 @@ impl Reading {
     fn read(m: &Measurement) -> Self {
         let (scale, unit) = match m.unit {
             CoreUnit::Gram => (1.0, Unit::Gram),
-            CoreUnit::Metre => (1000.0, Unit::Millimetre),
+            CoreUnit::Meter => (1000.0, Unit::Millimeter),
             CoreUnit::One => (1.0, Unit::Ratio),
         };
         let c = &m.conditions;
@@ -1544,7 +1544,7 @@ impl Sheet {
 #[cfg_attr(test, derive(TS))]
 pub struct BandPoint {
     /// How far the measuring point stands below where it stands at the top
-    /// seat, millimetres.
+    /// seat, millimeters.
     pub travel_mm: f64,
     /// The force on the measuring point that drives the key through that
     /// travel, grams, positive pressing down.
@@ -1565,9 +1565,9 @@ impl From<&Sample> for BandPoint {
 #[cfg_attr(test, derive(TS))]
 pub struct Curves {
     /// How far the measuring point travels from the top seat to the bottom
-    /// one, millimetres: the window both curves lie in.
+    /// one, millimeters: the window both curves lie in.
     pub window_mm: f64,
-    /// How far it travels between two readings, millimetres.
+    /// How far it travels between two readings, millimeters.
     pub step_mm: f64,
     /// The down curve, from the first step off the top seat down.
     pub down: Vec<BandPoint>,
@@ -1635,25 +1635,25 @@ impl Band {
 pub enum Fault {
     /// The front rail pin is not inside the key's front mortise.
     PinOutsideMortise {
-        /// By how much, millimetres.
+        /// By how much, millimeters.
         by_mm: f64,
     },
     /// The back rail cloth reaches in front of where the tail's chamfer
     /// begins.
     ClothInFrontOfChamfer {
-        /// By how much, millimetres.
+        /// By how much, millimeters.
         by_mm: f64,
     },
     /// The back rail cloth reaches past the end of the key.
     ClothBehindKey {
-        /// By how much, millimetres.
+        /// By how much, millimeters.
         by_mm: f64,
     },
     /// A punching stands partly off the flat of the key's underside.
     PunchingOffUnderside {
         /// Which punching.
         rail: Part,
-        /// By how much, millimetres.
+        /// By how much, millimeters.
         by_mm: f64,
     },
 }
@@ -1699,7 +1699,7 @@ pub enum Verdict {
     RidesOnBothStops {
         /// The front stop it rides on.
         front: Contact,
-        /// How far above its balance punching it stands, millimetres.
+        /// How far above its balance punching it stands, millimeters.
         lift_mm: f64,
     },
     /// Off its balance punching, held by what it touches.
@@ -1709,7 +1709,7 @@ pub enum Verdict {
         touching: Vec<Contact>,
         /// Whether they need its friction to hold it there.
         needs_friction: bool,
-        /// How far above its balance punching it stands, millimetres.
+        /// How far above its balance punching it stands, millimeters.
         lift_mm: f64,
     },
     /// Off its frame: no equilibrium in the model holds it on its balance
@@ -1752,14 +1752,14 @@ impl From<&TouchVerdict> for Verdict {
 pub struct Touch {
     /// What holds it.
     pub verdict: Verdict,
-    /// The gap at the front punching, read at its centre, millimetres;
-    /// `null` where no underside passes over its centre.
+    /// The gap at the front punching, read at its center, millimeters;
+    /// `null` where no underside passes over its center.
     pub gap_front_mm: Option<f64>,
-    /// The gap at the back rail cloth, millimetres; `null` where no feature
+    /// The gap at the back rail cloth, millimeters; `null` where no feature
     /// of the two can meet.
     pub gap_back_mm: Option<f64>,
     /// How far the measuring point stands below where it stands with the
-    /// key seated at the top of its stroke, millimetres: where the weight
+    /// key seated at the top of its stroke, millimeters: where the weight
     /// has left the key on the band's travel; `null` where the key cannot
     /// be seated at the top.
     pub travel_mm: Option<f64>,
@@ -1802,7 +1802,7 @@ pub struct Seats {
     /// How far its bearing face is from lying flat on the cloth there,
     /// degrees; positive is its rear end digging in.
     pub bedding_at_the_back_deg: f64,
-    /// Where it bears on the cloth, millimetres behind the balance pin.
+    /// Where it bears on the cloth, millimeters behind the balance pin.
     pub bears_at_the_back_mm: f64,
 }
 
@@ -1821,13 +1821,13 @@ impl Seats {
     }
 }
 
-/// A punching read at its centre whose drawn edge overlaps the key.
+/// A punching read at its center whose drawn edge overlaps the key.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct EdgeOverlap {
     /// Which punching.
     pub pair: Contact,
-    /// How far its drawn edge stands into the key, millimetres: what its
+    /// How far its drawn edge stands into the key, millimeters: what its
     /// felt would compress under a key out of level on it.
     pub overlap_mm: f64,
 }
@@ -1895,12 +1895,12 @@ impl Diagnostics {
 
 // ---- the state -------------------------------------------------------------
 
-/// Where one body's frame stands: its origin, millimetres, and the cosine
+/// Where one body's frame stands: its origin, millimeters, and the cosine
 /// and sine of its rotation. The view applies it as given and computes none.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct Pose {
-    /// The origin, millimetres.
+    /// The origin, millimeters.
     pub origin_mm: [f32; 2],
     /// The rotation's cosine.
     pub cos: f32,
@@ -1914,7 +1914,7 @@ pub struct Pose {
 pub struct Marker {
     /// The body, an index into the state's poses.
     pub body: u32,
-    /// Where, millimetres, in the body's frame.
+    /// Where, millimeters, in the body's frame.
     pub at_mm: [f32; 2],
 }
 
@@ -1939,16 +1939,16 @@ pub enum ContactState {
 pub struct MarkedContact {
     /// Which contact.
     pub pair: Contact,
-    /// Where the key's surface is, millimetres.
+    /// Where the key's surface is, millimeters.
     pub on_key_mm: [f32; 2],
-    /// Where the frame's surface is, millimetres.
+    /// Where the frame's surface is, millimeters.
     pub on_frame_mm: [f32; 2],
-    /// The signed gap between them, millimetres: negative where the drawn
+    /// The signed gap between them, millimeters: negative where the drawn
     /// parts overlap.
     pub gap_mm: f32,
     /// Closed, open or overlapping.
     pub state: ContactState,
-    /// The row's unit normal, from the frame's surface towards the key's.
+    /// The row's unit normal, from the frame's surface toward the key's.
     pub normal: [f32; 2],
     /// The force the row pushed the key with in the last equilibrium,
     /// grams-force: its multiplier, one admissible split of the loads where
@@ -1966,7 +1966,7 @@ pub struct State {
     pub poses: Vec<Pose>,
     /// The measuring point, on the key: where the engine weighs.
     pub measuring_point: Marker,
-    /// The contacts within a millimetre of closing, where the key is drawn.
+    /// The contacts within a millimeter of closing, where the key is drawn.
     pub contacts: Vec<MarkedContact>,
 }
 
@@ -2029,7 +2029,7 @@ pub enum Role {
     Lining,
 }
 
-/// What a part is made of; the view picks its colour.
+/// What a part is made of; the view picks its color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
@@ -2145,7 +2145,7 @@ impl Source {
     }
 }
 
-/// One part, in millimetres, in its own body's frame, arcs cut into lines.
+/// One part, in millimeters, in its own body's frame, arcs cut into lines.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct Outline {
@@ -2157,21 +2157,21 @@ pub struct Outline {
     pub role: Role,
     /// What it is made of.
     pub material: Material,
-    /// For a paper punching, its own thickness, millimetres: the trade knows
-    /// a paper by its colour, and its colour by its thickness.
+    /// For a paper punching, its own thickness, millimeters: the trade knows
+    /// a paper by its color, and its color by its thickness.
     pub paper_mm: Option<f32>,
-    /// For a paper punching, the colour its record says a paper of that
+    /// For a paper punching, the color its record says a paper of that
     /// thickness is supplied in (`data/params/punching-papers.json`); none
     /// for a part that is no paper, or a paper the drawer does not hold.
-    pub paper_colour: Option<PaperColour>,
+    pub paper_color: Option<PaperColor>,
     /// How the outline becomes a solid.
     pub sweep: Sweep,
-    /// Extrusion across the sagittal plane, millimetres; zero when turned.
+    /// Extrusion across the sagittal plane, millimeters; zero when turned.
     pub width_mm: f32,
-    /// Where a turned part's axis stands along its body's `x`, millimetres;
+    /// Where a turned part's axis stands along its body's `x`, millimeters;
     /// zero when extruded.
     pub axis_x_mm: f32,
-    /// Flat `[x0, y0, x1, y1, …]`, millimetres, in the body's frame; for a
+    /// Flat `[x0, y0, x1, y1, …]`, millimeters, in the body's frame; for a
     /// turned part, its profile in radius and height.
     pub points_mm: Vec<f32>,
     /// The segment of the part's outline each point starts or lies on.
@@ -2225,9 +2225,9 @@ impl Scene {
                             CoreMaterial::Paper { thickness } => Some(mm32(thickness)),
                             _ => None,
                         },
-                        paper_colour: match o.material {
+                        paper_color: match o.material {
                             CoreMaterial::Paper { thickness } => {
-                                instrument.profile().paper_colour(thickness)
+                                instrument.profile().paper_color(thickness)
                             }
                             _ => None,
                         },
@@ -2320,13 +2320,13 @@ pub enum RegulationRefusal {
     RegulationInfeasible {
         /// Which target.
         target: Target,
-        /// What was asked of it, millimetres, as it was asked.
+        /// What was asked of it, millimeters, as it was asked.
         wanted_mm: f64,
         /// What keeps it out of reach.
         limited_by: Limit,
-        /// How far out of reach, in its own reading, millimetres.
+        /// How far out of reach, in its own reading, millimeters.
         shortfall_mm: f64,
-        /// The most paper the search lays on a stack, millimetres.
+        /// The most paper the search lays on a stack, millimeters.
         search_mm: f64,
     },
     /// The key could not be seated at one of the stacks the search tried.
@@ -2337,7 +2337,7 @@ pub enum RegulationRefusal {
 }
 
 impl RegulationRefusal {
-    /// Why a regulation to a key height and a key dip, millimetres as they
+    /// Why a regulation to a key height and a key dip, millimeters as they
     /// were asked, was not laid; a target that is not a number never
     /// reaches the solve ([`Problem::NotFinite`]).
     pub fn of(why: &NotRegulated, key_height_mm: f64, key_dip_mm: f64) -> Self {
@@ -2374,14 +2374,14 @@ impl RegulationRefusal {
 pub enum WeighingRefusal {
     /// The jig's roller would stand off the covering's top.
     RollerOffTheCovering {
-        /// Where it was said to stand, millimetres back from the lip.
+        /// Where it was said to stand, millimeters back from the lip.
         from_lip_mm: f64,
-        /// How far the covering runs back from its lip, millimetres.
+        /// How far the covering runs back from its lip, millimeters.
         covering_mm: f64,
     },
-    /// The two readings stand the key's centre of mass off the key.
-    CentreOfMassOffTheKey {
-        /// Where, millimetres from the balance pin, positive in front.
+    /// The two readings stand the key's center of mass off the key.
+    CenterOfMassOffTheKey {
+        /// Where, millimeters from the balance pin, positive in front.
         at_mm: f64,
     },
 }
@@ -2396,8 +2396,8 @@ impl WeighingRefusal {
                 from_lip_mm: mm(from_lip_m),
                 covering_mm: mm(instrument.key().keytop_length),
             },
-            NotAWeighing::CentreOfMassOffTheKey { at_m } => {
-                Self::CentreOfMassOffTheKey { at_mm: mm(at_m) }
+            NotAWeighing::CenterOfMassOffTheKey { at_m } => {
+                Self::CenterOfMassOffTheKey { at_mm: mm(at_m) }
             }
             NotAWeighing::NotANumber | NotAWeighing::MassNotPositive => {
                 unreachable!("{why:?} reached the weighing")
@@ -2493,9 +2493,9 @@ pub enum Problem {
     },
     /// A paper no drawer holds.
     NotInTheDrawer {
-        /// The thickness asked for, millimetres.
+        /// The thickness asked for, millimeters.
         thickness_mm: f64,
-        /// What the drawer holds, millimetres.
+        /// What the drawer holds, millimeters.
         drawer_mm: Vec<f64>,
     },
     /// A key weighed at no mass, or less.
@@ -2513,7 +2513,7 @@ pub enum Problem {
         /// The part in front.
         front: Part,
         /// How far the front end of the part behind stands in front of the
-        /// back end of the part in front, millimetres along the key: how far
+        /// back end of the part in front, millimeters along the key: how far
         /// they overlap, where neither runs past the other's far end.
         by_mm: f64,
     },
@@ -2521,12 +2521,12 @@ pub enum Problem {
     FeatureOutsideKeystick {
         /// The feature.
         part: Part,
-        /// How far off, millimetres along the key.
+        /// How far off, millimeters along the key.
         by_mm: f64,
     },
     /// The capstan stands wholly behind the back check block.
     CapstanBehindBackCheckBlock {
-        /// How far forward it must come to clear the block, millimetres
+        /// How far forward it must come to clear the block, millimeters
         /// along the key.
         by_mm: f64,
     },
@@ -2534,56 +2534,56 @@ pub enum Problem {
     /// it, and not on the keystick's full height.
     CapstanOffTheFullHeight {
         /// How far forward it must come for its head to stand wholly over
-        /// the full height, millimetres along the key.
+        /// the full height, millimeters along the key.
         by_mm: f64,
     },
     /// The capstan's dome is narrower than its head.
     CapstanDomeNarrowerThanItsHead {
-        /// The dome's radius, millimetres.
+        /// The dome's radius, millimeters.
         dome_mm: f64,
-        /// The head's radius, millimetres.
+        /// The head's radius, millimeters.
         head_mm: f64,
     },
     /// The capstan stands in a glued block.
     CapstanInBlock {
         /// The block.
         block: Part,
-        /// How far its head stands into it, millimetres along the key.
+        /// How far its head stands into it, millimeters along the key.
         by_mm: f64,
     },
     /// The clearance in the keystick's top is no cut: its front end not in
     /// front of its back end, or its depth nothing or less.
     ClearanceNotACut {
-        /// Its front end less its back end, millimetres along the key.
+        /// Its front end less its back end, millimeters along the key.
         length_mm: f64,
-        /// Its depth below the keystick's full top, millimetres.
+        /// Its depth below the keystick's full top, millimeters.
         depth_mm: f64,
     },
     /// The clearance in the keystick's top is cut through it.
     ClearanceThroughKeystick {
-        /// Its depth below the keystick's full top, millimetres.
+        /// Its depth below the keystick's full top, millimeters.
         depth_mm: f64,
         /// The wood under its back end, where the keystick is thinnest under
         /// it: its full height, less the chamfer's rise where that runs
-        /// under it, millimetres.
+        /// under it, millimeters.
         wood_mm: f64,
-        /// How far it reaches past the keystick's underside, millimetres.
+        /// How far it reaches past the keystick's underside, millimeters.
         by_mm: f64,
     },
     /// The front mortise is cut through the top of the keystick.
     MortiseThroughKeyTop {
-        /// Its depth, millimetres.
+        /// Its depth, millimeters.
         depth_mm: f64,
-        /// The keystick's wood it is cut into, millimetres.
+        /// The keystick's wood it is cut into, millimeters.
         wood_mm: f64,
-        /// How far it reaches past the wood's top, millimetres.
+        /// How far it reaches past the wood's top, millimeters.
         by_mm: f64,
     },
     /// The measuring point stands off the covering.
     MeasuringPointOffCovering {
-        /// Where it was asked for, millimetres back from the lip.
+        /// Where it was asked for, millimeters back from the lip.
         from_lip_mm: f64,
-        /// How far the covering runs back from its lip, millimetres.
+        /// How far the covering runs back from its lip, millimeters.
         covering_mm: f64,
     },
     /// The instrument has no such path.
@@ -2818,17 +2818,17 @@ pub enum Acted {
     Done,
     /// The regulation laid its papers.
     Laid {
-        /// The paper laid under the balance punching, millimetres.
+        /// The paper laid under the balance punching, millimeters.
         balance_mm: f64,
-        /// The paper laid on the front punching, millimetres.
+        /// The paper laid on the front punching, millimeters.
         front_mm: f64,
-        /// The key height the papers give, millimetres.
+        /// The key height the papers give, millimeters.
         key_height_mm: f64,
-        /// The key dip the papers give, millimetres.
+        /// The key dip the papers give, millimeters.
         key_dip_mm: f64,
-        /// The key height asked for, millimetres, as it was asked.
+        /// The key height asked for, millimeters, as it was asked.
         asked_key_height_mm: f64,
-        /// The key dip asked for, millimetres, as it was asked.
+        /// The key dip asked for, millimeters, as it was asked.
         asked_key_dip_mm: f64,
     },
     /// Refused, and nothing changed.
@@ -3100,7 +3100,7 @@ mod tests {
         }
         for i in [
             CoreInput::KeyMass,
-            CoreInput::CentreOfMassHeight,
+            CoreInput::CenterOfMassHeight,
             CoreInput::KeyFriction,
             CoreInput::Geometry,
         ] {
@@ -3108,12 +3108,12 @@ mod tests {
         }
         for (u, code) in [
             (CoreUnit::Gram, "\"g\""),
-            (CoreUnit::Metre, "\"mm\""),
+            (CoreUnit::Meter, "\"mm\""),
             (CoreUnit::One, "\"ratio\""),
         ] {
             let unit = match u {
                 CoreUnit::Gram => Unit::Gram,
-                CoreUnit::Metre => Unit::Millimetre,
+                CoreUnit::Meter => Unit::Millimeter,
                 CoreUnit::One => Unit::Ratio,
             };
             assert_eq!(written(&unit), code);
@@ -3121,7 +3121,7 @@ mod tests {
     }
 
     /// Consistency: **a code crosses with its parameters, in the trade's
-    /// units with the unit in their names**: a fault in millimetres, a
+    /// units with the unit in their names**: a fault in millimeters, a
     /// regulation refused with its target as it was asked, what keeps it
     /// out, its shortfall and the search's reach, a problem with the part
     /// that limits it and the shortfall.
@@ -3808,14 +3808,14 @@ mod tests {
 
     /// Consistency: **the band crosses as codes and numbers.** Its two
     /// readings by their procedures, read as the sheet's walks are read to
-    /// the gram, with the sweep that took them; its curves in millimetres of
+    /// the gram, with the sweep that took them; its curves in millimeters of
     /// travel and grams, the down curve from the first step off the top seat
     /// down and the up curve from the first step off the bottom seat up,
     /// inside the window; and where the key has no stroke, both readings
     /// refused for it, saying how the key rides, and no curves. The touch's
     /// travel puts the key at the bottom of the window where the weight on
     /// it takes it down, and at its top seat where a pull brings it back,
-    /// within a millionth of a millimetre.
+    /// within a millionth of a millimeter.
     #[test]
     fn the_band_crosses_as_codes_and_numbers() {
         let bench = Instrument::weighed_section();

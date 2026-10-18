@@ -10,7 +10,7 @@ use super::{CoordId, Mechanism, PointLoad, Pose, Problem};
 pub struct Prescribed {
     /// Which coordinate.
     pub coord: CoordId,
-    /// The value it is held at: radians for an angle, metres for a length.
+    /// The value it is held at: radians for an angle, meters for a length.
     pub value: f64,
 }
 
@@ -21,7 +21,7 @@ pub struct Held {
     /// Where every body is.
     pub pose: Pose,
     /// The generalized force each prescription applies to the mechanism, one
-    /// per coordinate: newton-metres on an angle, newtons on a length.
+    /// per coordinate: newton-meters on an angle, newtons on a length.
     ///
     /// It balances the loads' generalized force on that coordinate, so it is
     /// minus it: positive turns an angle counter-clockwise, which lifts the
@@ -142,7 +142,7 @@ mod tests {
                 &[],
             )
             .expect("held level");
-        // Level, so the height of the centre of mass has no arm.
+        // Level, so the height of the center of mass has no arm.
         let expected = 0.120 * G * 0.020;
         assert!(
             (held.reaction(CoordId(0)) - expected).abs() <= 4.0 * f64::EPSILON * expected,

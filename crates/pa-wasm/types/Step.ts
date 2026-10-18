@@ -5,6 +5,6 @@
  */
 export type Step = { "step": "continuous" } | { "step": "drawer", 
 /**
- * Their thicknesses, millimetres, thinnest first.
+ * Their thicknesses, millimeters, thinnest first.
  */
 sizes_mm: Array<number>, };

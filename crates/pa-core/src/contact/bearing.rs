@@ -24,7 +24,7 @@ use crate::geometry::{Face, Point};
 use crate::mechanism::{Mechanism, Placement, Pose};
 
 /// How far the far edge of a stop's face may stand from closing when the
-/// near one has closed, for the two faces to count as bedded flat, metres:
+/// near one has closed, for the two faces to count as bedded flat, meters:
 /// two and a half microns.
 ///
 /// On the back rail's 24 mm of cloth that is a slope of a ten-thousandth
@@ -50,7 +50,7 @@ pub enum HowItBears {
 pub struct Bearing {
     /// Which of the three ways.
     pub how: HowItBears,
-    /// The governing row's gap, metres: zero to the rounding when the key
+    /// The governing row's gap, meters: zero to the rounding when the key
     /// stands on the stop.
     pub gap: f64,
     /// Where the load sits, in the world: the governing row's point.
@@ -58,7 +58,7 @@ pub struct Bearing {
     /// The slope of the key's bearing face over the stop's face: the tangent
     /// of the angle from the stop's face to the key's, counter-clockwise
     /// positive, so over a level stop positive means the key's face rises
-    /// towards the player and its rear end is the low one. A slope and not an
+    /// toward the player and its rear end is the low one. A slope and not an
     /// angle, because `pa-core` reaches no platform `atan`. `None` where the
     /// stop presents no straight face to measure from.
     pub slope: Option<f64>,
@@ -89,8 +89,8 @@ fn ends_of(piece: Piece, discs: &[(Piece, crate::geometry::Disc)]) -> Vec<Point>
         .flat_map(|(_, d)| {
             let (f, t) = (d.from.vector(), d.to.vector());
             [
-                Point::new(d.centre.x + d.radius * f.x, d.centre.y + d.radius * f.y),
-                Point::new(d.centre.x + d.radius * t.x, d.centre.y + d.radius * t.y),
+                Point::new(d.center.x + d.radius * f.x, d.center.y + d.radius * f.y),
+                Point::new(d.center.x + d.radius * t.x, d.center.y + d.radius * t.y),
             ]
         })
         .collect()
@@ -160,8 +160,8 @@ impl Mechanism {
     /// length; one of A's discs is on the key's own corner. The slope is A's
     /// bearing face over B's: on an edge, the face the edge bears on over the
     /// face it rounds; on a corner, the face of the corner that runs on
-    /// towards the stop over the stop's face. `None` when the pair has no
-    /// row, or bears through its centre: a centre bearing is declared to bear
+    /// toward the stop over the stop's face. `None` when the pair has no
+    /// row, or bears through its center: a center bearing is declared to bear
     /// there.
     pub fn bearing(&self, pose: &Pose, rows: &Rows, pair: u16) -> Option<Bearing> {
         let i = rows.governing(pair)?;
@@ -187,12 +187,12 @@ impl Mechanism {
             point: row.point,
             slope,
         };
-        if matches!(piece_b, Piece::Centre { .. }) {
+        if matches!(piece_b, Piece::Center { .. }) {
             return None;
         }
         if piece_a.is_disc() {
             // A corner of the key: its slope is the corner's face that runs
-            // on towards the stop, over the stop's face.
+            // on toward the stop, over the stop's face.
             let stop = match piece_b {
                 Piece::Segment { .. } => {
                     b.faces.iter().find(|(p, _)| *p == piece_b).map(|(_, f)| *f)
@@ -205,7 +205,7 @@ impl Mechanism {
             }
             .map(placed_b);
             let corner = place_a.world(ends_of(piece_a, &a.discs).first().copied()?);
-            let towards = stop.map_or(row.point, |f| {
+            let toward = stop.map_or(row.point, |f| {
                 let (s, e) = f.ends();
                 Point::new(0.5 * (s.x + e.x), 0.5 * (s.y + e.y))
             });
@@ -217,7 +217,7 @@ impl Mechanism {
                         let (s, e) = h.ends();
                         let far = if same(s, corner) { e } else { s };
                         let run = sub(far, corner);
-                        dot(sub(towards, corner), run) / dot(run, run).sqrt()
+                        dot(sub(toward, corner), run) / dot(run, run).sqrt()
                     };
                     reach(f).total_cmp(&reach(g))
                 });
@@ -263,7 +263,7 @@ impl Mechanism {
 
 /// Of the faces meeting a disc of side B, the one that faces side A best:
 /// whose outward normal, turned into the world, lies closest to the row's
-/// normal from B towards A. The top of a strip, not its side.
+/// normal from B toward A. The top of a strip, not its side.
 fn facing(faces: &[Face], placement: &Placement, normal: Point) -> Option<Face> {
     faces.iter().copied().max_by(|f, g| {
         let score = |h: &Face| dot(placement.rotate(h.normal.vector()), normal);
@@ -273,13 +273,13 @@ fn facing(faces: &[Face], placement: &Placement, normal: Point) -> Option<Face> 
 
 impl Mechanism {
     /// How far side B's drawn faces stand past side A's faces at `pose`,
-    /// metres: the deepest point of a B face, within the span of an A face,
+    /// meters: the deepest point of a B face, within the span of an A face,
     /// on the material side of that face's line; zero where none does.
     ///
-    /// For a pair read at its centre ([`super::PairGeometry::CentreBearing`])
+    /// For a pair read at its center ([`super::PairGeometry::CenterBearing`])
     /// this is the drawn face's overlap with the key that its idealization
-    /// leaves aside. Bounded, while the centre bears, by half the face's
-    /// width times the key's tilt; past every bound once the centre stands
+    /// leaves aside. Bounded, while the center bears, by half the face's
+    /// width times the key's tilt; past every bound once the center stands
     /// off the key's underside, where the pair bears on nothing and the key
     /// would come down through the face as drawn.
     ///

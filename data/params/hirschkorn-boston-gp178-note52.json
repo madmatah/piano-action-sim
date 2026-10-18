@@ -19,7 +19,7 @@
     "how_transcribed": "Read off the typeset pages rendered as images, not off a text extraction, which loses alignment, signs and brackets. A text extraction served only to locate pages and to cross-check the numbers, and agrees with every one."
   },
   "frame_convention": {
-    "rule": "Every point is given in the frame of the body that carries it, and each body's frame has its origin at that body's own pivot, as Figure A.1 (p. 68) draws it. x and y are in metres, as printed. The ground's frame has its origin at the key's pivot: Pg1 is (0, 0).",
+    "rule": "Every point is given in the frame of the body that carries it, and each body's frame has its origin at that body's own pivot, as Figure A.1 (p. 68) draws it. x and y are in meters, as printed. The ground's frame has its origin at the key's pivot: Pg1 is (0, 0).",
     "as_printed": "All coordinates are listed in relation to the frame shown on each body in Figure A.1. (§A.2, p. 70)",
     "pivots": [
       {"body": "key", "turns_on": "Pg1", "pin_carried_by": "ground", "table": "A.2"},
@@ -36,7 +36,7 @@
     "no_point_1": "No moving body's table lists a point numbered 1; they start at Pk2, Pw2, Pj2, Pr2 and Ph2. A moving body's pivot appears only as the origin of its own frame and as a pin of the body that carries it.",
     "spelling": "Hirschkorn writes 'whippen'. This file writes 'wippen', and keeps his spelling where it quotes him."
   },
-  "units_and_numbers": "SI, as printed: metres, kilograms, kg·m², radians and N·m; the regulation targets in millimetres, as printed. Each number is written as its table prints it, trailing zeros and exponent form included, so that it reads against its page: positions and radii to four decimals of a metre (0.1 mm), unit vectors to three decimals. Where a table prints no unit for a quantity that has one (Table A.8's curve parameters and damping factor, Table A.9's A), the record says unit_printed: false and gives the unit its defining equation requires; see ambiguities. The unit vectors, Table A.8's A, B1 and B2, and Table A.9's B1 and B2 are dimensionless, and no table prints a unit for them.",
+  "units_and_numbers": "SI, as printed: meters, kilograms, kg·m², radians and N·m; the regulation targets in millimeters, as printed. Each number is written as its table prints it, trailing zeros and exponent form included, so that it reads against its page: positions and radii to four decimals of a meter (0.1 mm), unit vectors to three decimals. Where a table prints no unit for a quantity that has one (Table A.8's curve parameters and damping factor, Table A.9's A), the record says unit_printed: false and gives the unit its defining equation requires; see ambiguities. The unit vectors, Table A.8's A, B1 and B2, and Table A.9's B1 and B2 are dimensionless, and no table prints a unit for them.",
   "surfaces": {
     "locator": {"section": "A.2", "pages": [70, 72]},
     "Circle": "A simple circular surface defined by the centre of the circle and radius.",
@@ -49,11 +49,11 @@
     "table": "A.1",
     "title": "Inertia Properties of Action Components",
     "page": 67,
-    "centre_of_mass_frame": "Centre-of-mass coordinates are in the body's own frame, 'as defined in Figure A.1' (p. 67), like the points of Tables A.3 to A.7.",
-    "moment_of_inertia_axis": "About the body's centre of mass: §A.1 calculates Icm from the inertia measured by swinging the body (Eqs. A.1, A.2). The column heading itself names no axis; see ambiguities.",
+    "center_of_mass_frame": "Center-of-mass coordinates are in the body's own frame, 'as defined in Figure A.1' (p. 67), like the points of Tables A.3 to A.7.",
+    "moment_of_inertia_axis": "About the body's center of mass: §A.1 calculates Icm from the inertia measured by swinging the body (Eqs. A.1, A.2). The column heading itself names no axis; see ambiguities.",
     "method": {
       "mass": "Measured using a simple lab scale (p. 67).",
-      "centre_of_mass": "Located by suspending the bodies by a thread from two different points, drawing a vertical line under the fulcrum, and measuring the location of the intersection (pp. 67, 69).",
+      "center_of_mass": "Located by suspending the bodies by a thread from two different points, drawing a vertical line under the fulcrum, and measuring the location of the intersection (pp. 67, 69).",
       "moment_of_inertia": "Each body was 'suspended from a string and swung like a pendulum'. Its moment of inertia 'about the pivot point' is Ip = m g l (T/2π)² (Eq. A.1), with m the mass, g the gravitational constant, l 'the distance from the pivot point to the centre of mass of the body' and T the period of oscillation; then Icm = Ip − m l² (Eq. A.2) (p. 69)."
     },
     "key_load_cell": "For the experiments a load cell was fastened to the key front with an adhesive strip, 'small and light enough (1.1 g) to be insignificant when added to the key' (§3.1.2, p. 31). Table A.1 does not say whether the key's mass includes it.",
@@ -61,7 +61,7 @@
       "key": {
         "mass": {"value": 0.12008, "unit": "kg", "locator": {"table": "A.1", "row": "Key", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
         "moment_of_inertia": {"value": 2.75E-03, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Key", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
-        "centre_of_mass": {
+        "center_of_mass": {
           "x": {"value": 0.0514, "unit": "m", "locator": {"table": "A.1", "row": "Key", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
           "y": {"value": 0.0158, "unit": "m", "locator": {"table": "A.1", "row": "Key", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
         }
@@ -69,7 +69,7 @@
       "wippen": {
         "mass": {"value": 0.01196, "unit": "kg", "locator": {"table": "A.1", "row": "Whippen", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
         "moment_of_inertia": {"value": 1.69E-05, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Whippen", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
-        "centre_of_mass": {
+        "center_of_mass": {
           "x": {"value": 0.0502, "unit": "m", "locator": {"table": "A.1", "row": "Whippen", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
           "y": {"value": -0.0018, "unit": "m", "locator": {"table": "A.1", "row": "Whippen", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
         }
@@ -77,7 +77,7 @@
       "jack": {
         "mass": {"value": 0.00265, "unit": "kg", "locator": {"table": "A.1", "row": "Jack", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
         "moment_of_inertia": {"value": 7.78E-07, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Jack", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
-        "centre_of_mass": {
+        "center_of_mass": {
           "x": {"value": 0.0008, "unit": "m", "locator": {"table": "A.1", "row": "Jack", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
           "y": {"value": 0.0195, "unit": "m", "locator": {"table": "A.1", "row": "Jack", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
         }
@@ -85,7 +85,7 @@
       "repetition_lever": {
         "mass": {"value": 0.00371, "unit": "kg", "locator": {"table": "A.1", "row": "Repetition", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
         "moment_of_inertia": {"value": 4.10E-06, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Repetition", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
-        "centre_of_mass": {
+        "center_of_mass": {
           "x": {"value": 0.0021, "unit": "m", "locator": {"table": "A.1", "row": "Repetition", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
           "y": {"value": -0.0012, "unit": "m", "locator": {"table": "A.1", "row": "Repetition", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
         }
@@ -93,7 +93,7 @@
       "hammer": {
         "mass": {"value": 0.01174, "unit": "kg", "locator": {"table": "A.1", "row": "Hammer", "column": "Mass (kg)", "page": 67}, "reliability": "V"},
         "moment_of_inertia": {"value": 2.90E-05, "unit": "kg·m²", "locator": {"table": "A.1", "row": "Hammer", "column": "Mass Moment of Inertia (kg·m²)", "page": 67}, "reliability": "V"},
-        "centre_of_mass": {
+        "center_of_mass": {
           "x": {"value": -0.1022, "unit": "m", "locator": {"table": "A.1", "row": "Hammer", "column": "Centre of Mass (m), x", "page": 67}, "reliability": "V"},
           "y": {"value": 0.0145, "unit": "m", "locator": {"table": "A.1", "row": "Hammer", "column": "Centre of Mass (m), y", "page": 67}, "reliability": "V"}
         }
@@ -106,7 +106,7 @@
       "table": "A.2",
       "title": "Geometric Properties of Ground",
       "page": 70,
-      "frame": "Origin at Pg1, the key's pivot. Figure A.1 draws x towards Pg4, which is under the key front, and y upwards.",
+      "frame": "Origin at Pg1, the key's pivot. Figure A.1 draws x toward Pg4, which is under the key front, and y upwards.",
       "points": {
         "Pg1": {
           "description": "Pin Location",
@@ -183,7 +183,7 @@
       "table": "A.3",
       "title": "Geometric Properties of Key",
       "page": 71,
-      "frame": "Origin at the key's pivot, Pg1 on the ground, drawn on the key's underside at the balance point. x along the key towards its front (Pk4, Pk2), y upwards.",
+      "frame": "Origin at the key's pivot, Pg1 on the ground, drawn on the key's underside at the balance point. x along the key toward its front (Pk4, Pk2), y upwards.",
       "points": {
         "Pk2": {
           "description": "Pin Location",
@@ -234,7 +234,7 @@
       "table": "A.4",
       "title": "Geometric Properties of Whippen",
       "page": 71,
-      "frame": "Origin at the wippen's pivot, Pg2 on the ground: the pin hole at the wippen's left end in Figure A.1, the end opposite Pw2. x towards Pw2, y upwards.",
+      "frame": "Origin at the wippen's pivot, Pg2 on the ground: the pin hole at the wippen's left end in Figure A.1, the end opposite Pw2. x toward Pw2, y upwards.",
       "points": {
         "Pw2": {
           "description": "Pin Location",
@@ -281,7 +281,7 @@
       "table": "A.5",
       "title": "Geometric Properties of Jack",
       "page": 71,
-      "frame": "Origin at the jack's pivot, Pw2 on the wippen, at the corner of the jack's L. x towards the toe (Pj3), y along the jack towards its top (Pj2, Pj5).",
+      "frame": "Origin at the jack's pivot, Pw2 on the wippen, at the corner of the jack's L. x toward the toe (Pj3), y along the jack toward its top (Pj2, Pj5).",
       "points": {
         "Pj2": {
           "description": "Hybrid Contact",
@@ -326,7 +326,7 @@
       "table": "A.6",
       "title": "Geometric Properties of Repetition Lever",
       "page": 72,
-      "frame": "Origin at the repetition lever's pivot, Pw3 on the wippen: its pin hole, between Pr3 and Pr2. x along the lever towards Pr2, Pr4 and Pr5.",
+      "frame": "Origin at the repetition lever's pivot, Pw3 on the wippen: its pin hole, between Pr3 and Pr2. x along the lever toward Pr2, Pr4 and Pr5.",
       "points": {
         "Pr2": {
           "description": "Hybrid Contact",
@@ -659,7 +659,7 @@
       "ω_t": "the threshold rotational speed; no value is given (not_given)",
       "A, B1, B2": "constants determined from the measured torque in the joint"
     },
-    "measurement": "The rotational friction parameter A is derived directly from the kinetic frictional torque in the joint, determined by measuring the force required to rotate the joint at a known distance from its centre. Static friction, as described by B1 and B2, was not included in these joints (§A.4, p. 74).",
+    "measurement": "The rotational friction parameter A is derived directly from the kinetic frictional torque in the joint, determined by measuring the force required to rotate the joint at a known distance from its center. Static friction, as described by B1 and B2, was not included in these joints (§A.4, p. 74).",
     "measurement_radius": "Not given: the force was measured 'at a known distance from the centre of the joint', and only the torque is printed.",
     "bushings": "The friction in the joints is primarily determined by the tightness of the felt bushings, which is constant once the action is assembled (§2.2.4, p. 26).",
     "rows": {
@@ -801,13 +801,13 @@
       "what": "units Tables A.8 and A.9 do not print",
       "where": "Table A.8 (a, b, c, Damping Factor), Table A.9 (A), pp. 73-74",
       "reading": "a in N/m³, b in N/m², c in N/m, D in s/m, A in N·m",
-      "resolved": "The units Eqs. 2.4, 2.5 and 2.12 require with the appendix's SI: the fit in newtons of a penetration in metres, D ẋ dimensionless with ẋ in m/s, T a torque. For the fit, Figure 2.6 (p. 22), the curves of the contact under the key front, agrees with contact 2's coefficients read this way."
+      "resolved": "The units Eqs. 2.4, 2.5 and 2.12 require with the appendix's SI: the fit in newtons of a penetration in meters, D ẋ dimensionless with ẋ in m/s, T a torque. For the fit, Figure 2.6 (p. 22), the curves of the contact under the key front, agrees with contact 2's coefficients read this way."
     },
     {
       "what": "the axis of Table A.1's moment of inertia",
       "where": "Table A.1, p. 67; §A.1, p. 69",
-      "reading": "about the body's centre of mass",
-      "resolved": "The column heading names no axis. §A.1 states that the moments of inertia about the centre of mass, Icm, were calculated from the pendulum's Ip with the parallel axis theorem (Eq. A.2)."
+      "reading": "about the body's center of mass",
+      "resolved": "The column heading names no axis. §A.1 states that the moments of inertia about the center of mass, Icm, were calculated from the pendulum's Ip with the parallel axis theorem (Eq. A.2)."
     },
     {
       "what": "contact 13's surface types",

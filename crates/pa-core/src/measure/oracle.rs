@@ -25,15 +25,15 @@ pub struct KeyWeighing {
     /// Static moment of the key about the **balance pin**, kg·m, positive
     /// forwards. This is the jig's pivot.
     pub static_moment_about_pin: f64,
-    /// Balance pin to measuring point, metres.
+    /// Balance pin to measuring point, meters.
     pub measuring_arm: f64,
-    /// Balance pin to capstan, metres, as the positive distance behind the pin.
+    /// Balance pin to capstan, meters, as the positive distance behind the pin.
     pub capstan_arm: f64,
 }
 
 impl KeyWeighing {
-    /// What the jig's scale reads when `load_g` grams sit at `at` metres
-    /// along the levelled key, with the scale tared, in grams.
+    /// What the jig's scale reads when `load_g` grams sit at `at` meters
+    /// along the leveled key, with the scale tared, in grams.
     ///
     /// Moments about the pin, with a downward load at `at` and the roller
     /// pushing up at the measuring point: `load · at − R · arm = 0`. So the
@@ -43,7 +43,7 @@ impl KeyWeighing {
         load_g * at / self.measuring_arm
     }
 
-    /// Front weight in grams, signed: the key's whole weight at its centre of
+    /// Front weight in grams, signed: the key's whole weight at its center of
     /// gravity, read through the same reading as any other load.
     pub fn front_weight_g(&self) -> f64 {
         self.jig_reading_g(
@@ -114,11 +114,11 @@ pub fn pivot_rest(
 }
 
 /// The key on a pivot whose bearing stands at `bearing`: the height of the
-/// front punching's top, its centre `punching_x` along the keybed, that
+/// front punching's top, its center `punching_x` along the keybed, that
 /// stops the key front's top `dip` below `top_height`. The bottom attitude
 /// from the key front's height, the root nearest `near`; then the
 /// underside's flat, the line through the bearing at that attitude, read at
-/// the punching's centre, where a felt read at its centre bears.
+/// the punching's center, where a felt read at its center bears.
 pub fn pivot_punching_for_dip(
     front_top: Point,
     bearing: f64,
@@ -179,7 +179,7 @@ fn nearest(roots: [Option<f64>; 2], near: f64) -> Option<f64> {
 
 /// The placement the regulation solve replaced, kept to test it by: the two
 /// contact conditions in their small-angle form, solved for the two stack
-/// totals, metres, balance then front; `None` where they have no answer.
+/// totals, meters, balance then front; `None` where they have no answer.
 ///
 /// It takes the key top as level at both seats, dropping its height times
 /// one less the cosine of the attitude, and so misses the targets by that
@@ -248,12 +248,12 @@ impl Branches {
 /// `D = (b − M) / (g d)` and rises below `U = (−b − M) / (g d)`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct KeyOnFrame {
-    /// The moment of the key's weight about its pin, newton-metres, positive
+    /// The moment of the key's weight about its pin, newton-meters, positive
     /// turning the front down.
     pub weight_moment_n_m: f64,
-    /// The pin to the measuring point, metres.
+    /// The pin to the measuring point, meters.
     pub measuring_arm_m: f64,
-    /// The bushings' friction bound, newton-metres.
+    /// The bushings' friction bound, newton-meters.
     pub friction_n_m: f64,
 }
 

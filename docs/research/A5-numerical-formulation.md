@@ -37,7 +37,7 @@ figures recomputed), 07 (regularized friction; additive against multiplicative
 damping; the static friction peaks of the sliding contacts), 08 (the hammer-head
 acceleration a force at the knuckle implies), 10 (Hirschkorn's action assembled
 at rest: the rest pose, the mass matrix, the lever arms, the effective mass along
-each contact normal and the highest linearised modes).
+each contact normal and the highest linearized modes).
 
 ---
 
@@ -91,7 +91,7 @@ sibling children of the wippen.
 
 Notation: `O_w` is the wippen's pivot, the origin of its frame (`Pg2` in
 Hirschkorn's ground frame); `J` and `L` are the jack's and the lever's pins, `Pw2`
-and `Pw3` in the wippen's frame; `G_b` is body b's centre of mass. Every one of
+and `Pw3` in the wippen's frame; `G_b` is body b's center of mass. Every one of
 Hirschkorn's frames has its origin at its body's pivot [V, Hirschkorn 2004,
 Figure A.1, Tables A.2–A.4]. Then:
 
@@ -100,7 +100,7 @@ Figure A.1, Tables A.2–A.4]. Then:
 - `M_ww(q) = I_w^cm + m_w ‖G_w − O_w‖² + Σ_{b∈{j,r}} [ I_b^cm + m_b ‖G_b(q) − O_w‖² ]`
 - `M_wj(q) = I_j^cm + m_j (G_j − O_w)·(G_j − J)`; `M_wr(q)` likewise, with `L`
 
-With **r** the child's pin seen from the wippen's pivot and **u** its centre of
+With **r** the child's pin seen from the wippen's pivot and **u** its center of
 mass seen from its pin, the coupling is `I_cm + m(‖u‖² + r·u)` and the child's
 share of the wippen's diagonal `I_cm + m‖r + u‖²` (FOUNDATIONS §3.6). **Do not
 use** `I_cm + m(r·u)` and `I_cm + m‖r‖²`: they fit neither relative nor absolute
@@ -111,7 +111,7 @@ frame's origin (FOUNDATIONS §6.4).
 
 On Hirschkorn's action at rest, `M_ww = 8.80e-5`, `M_wj = 2.10e-7`,
 `M_wr = 4.52e-6`, `I_j = 1.79e-6` and `I_r = 4.12e-6 kg·m²` [E, 10]. About their
-centres of mass, the jack and the lever have `7.78e-7` and `4.10e-6 kg·m²` [V,
+centers of mass, the jack and the lever have `7.78e-7` and `4.10e-6 kg·m²` [V,
 Hirschkorn 2004, Table A.1].
 
 Solving `M x = b` is a closed form. The jack's and the lever's rows give
@@ -242,7 +242,7 @@ angular interval [1.571; 3.142] rad with its two tangent lines, against the circ
 [1.300; 1.571] against the same knuckle [V, Hirschkorn 2004, Tables A.5–A.7]. Thorin
 describes the jack under the roller as two perpendicular lines joined by a circular
 arc [V, Thorin 2017 §2.4].
-Algorithm: classify the angular position of `c_B` relative to the arc's centre and
+Algorithm: classify the angular position of `c_B` relative to the arc's center and
 its angular extent, and fall back on (b) or (a). **The construction is C1**, since
 the lines are tangent to the arc: the normal never jumps. The jack sliding under
 the knuckle needs exactly that, since a jump of the normal would be a jump of the
@@ -357,7 +357,7 @@ wippen. That method, with `Pw2` taken for the wippen's pivot, gives 0.73 g at th
 jack/knuckle at rest, a value the contact reaches only on the jack's side wall
 (FOUNDATIONS §4.1, §6.4; `tools/derivations/README.md`).
 
-### 2.3 Contact stiffnesses, linearised modes, and the step
+### 2.3 Contact stiffnesses, linearized modes, and the step
 
 Method: do **not evaluate a stiffness at an arbitrary penetration**. That yields
 absurdities: 1 mm at the lever/knuckle is 1037 N, which never happens. Evaluate it
@@ -385,7 +385,7 @@ Those forces are assumptions: 100 N at the jack/knuckle means a hammer-head
 acceleration of about 1,600 m/s² [E, 08].
 
 With these stiffnesses on the contacts named and the assembled mass matrix, the
-highest linearised mode of Hirschkorn's action at rest is 1174 Hz with the
+highest linearized mode of Hirschkorn's action at rest is 1174 Hz with the
 capstan, the front punching and the jack/knuckle loaded (contacts 1, 2, 7), 2240 Hz
 with the repetition lever and the drop screw loaded too (1, 2, 7, 10, 11), and
 2268 Hz with all thirteen at once, an upper bound [E, 10]. These are the starting
@@ -460,8 +460,8 @@ the update `z ← z·exp(−dt/τ0) + (1 − exp(−dt/τ0))·u^p`, with `u^p` h
 over the step: at a step much longer than `τ0` it sets `z` to `u^p` at every step,
 leaves the static branch `F0·δ·u^p` alone, and removes most of the dissipation the
 hereditary law exists to model (FOUNDATIONS §4.3). Nor read a contact duration off
-the linearised half-period of the static branch against a rigid wall (0.1 to
-0.3 ms across the compass at 5 m/s): for a hardening spring the linearisation at
+the linearized half-period of the static branch against a rigid wall (0.1 to
+0.3 ms across the compass at 5 m/s): for a hardening spring the linearization at
 peak compression is the stiffest point of the stroke, so it understates the
 contact, and it drops the hereditary term, which carries the dissipation.
 
@@ -533,7 +533,7 @@ Computing times reported in the literature:
 The non-smooth formalism "proved to allow for simulations of about two orders of
 magnitude faster than the regularizing approach, as reported in the literature"
 [V, Thorin 2017 §6]. Real time on a laptop is Thorin's expectation, not his
-result: before the felt laws and the synchronisation were implemented, which
+result: before the felt laws and the synchronization were implemented, which
 slowed the computation, his simulations ran at about 1.2 times real time, and he
 expects a gain of more than 15 from implementing the felt laws in the engine's
 kernel and of more than 3 from computing in 2D rather than 3D [V, Thorin 2013
@@ -586,7 +586,7 @@ That is down weight and up weight. A regularized law has zero friction at zero
 speed, so a static solve with it collapses D onto U (FOUNDATIONS §3.5). **Do not
 use** "with regularized friction the 30 g gap between D and U vanishes" for a
 dynamic simulation: with a threshold speed of 10⁻⁶ rad/s the key keeps the
-threshold, creeping under a micrometre in ten seconds under a gram of excess
+threshold, creeping under a micrometer in ten seconds under a gram of excess
 [E, 07]. The objection that stands is another on Thorin's list: "At least one
 non-physical parameter (the so-called regularization parameter) is introduced,
 weakening the robustness of the simulation. This might prove critical in a
@@ -688,7 +688,7 @@ filtered out [V, Hirschkorn 2004 §2.2.3, Eq. 2.7]. Recalibrated for a piano blo
 the factors come out four to five times larger [V, Hirschkorn 2004 §4.2.2]: one
 damping constant cannot serve from pianissimo to fortissimo [E, 07].
 
-Options and judgement:
+Options and judgment:
 - **Hunt–Crossley / Lankarani–Nikravesh**: velocity-dependent, simple, calibrated
   as Hirschkorn does; one calibration holds at one dynamic level only.
 - **Gonthier et al.**: rejected by Hirschkorn for a structural reason worth
@@ -704,7 +704,7 @@ Options and judgement:
   doubt on its ability to reproduce Dunlop's own results [V, Hirschkorn 2004
   §2.2.2].
 - **Masoudi and McPhee's micromechanical model**: a published speed-independent
-  model of felt hysteresis, from fibre-to-fibre friction, with separate loading and
+  model of felt hysteresis, from fiber-to-fiber friction, with separate loading and
   unloading laws and an algorithm for the transitions between them, identified for
   hammer felt and applied to an upright piano action [V, Masoudi & McPhee, abstract,
   Eqs. 9–10, Figures 6–7]. **Do not use** "no published rate-independent felt
@@ -1095,7 +1095,7 @@ Thorin's study is the model for it: 0.4, 2 and 10 kHz, the force on the key very
 similar at 2 and 10 kHz and significantly off at 0.4 kHz [V, Thorin 2013 §6.4.1,
 Figure 6.10; Thorin 2017, Figure 12]. A difference that persists as the step falls
 points at a hidden regularization parameter or a convergence criterion that varies
-with the step. **Do not use** "convergence towards 5–10 µs, visible degradation
+with the step. **Do not use** "convergence toward 5–10 µs, visible degradation
 beyond 20–40 µs, instability beyond about 80 µs (2/ω of the jack/knuckle contact)":
 those figures come from the per-contact table and the stability limit refuted in
 §2.3.
@@ -1121,7 +1121,7 @@ terms of the subtree.
   filmed at high speed but not compared [V, Hirschkorn 2004 §3.2.2, ch. 4].
 - **Goebl's timing relations** (§7.3), in particular the **change of sign** of the
   offset between hammer–string contact and key bottom from piano to forte.
-- **Hammer–string contact duration**, if the string is modelled: **[?]** the
+- **Hammer–string contact duration**, if the string is modeled: **[?]** the
   figures (about 4 ms in the bass, under 1 ms in the treble) are Askenfelt and
   Jansson's, not in the corpus (§2.4).
 
@@ -1246,6 +1246,6 @@ detects at once a model that mixes the two, where a developer would never see it
 With a constant friction bound both hold but for the tilt between the key's two
 seats, where D and U are read, a tolerance derived from the seats' arms; they
 guard against coding mix-ups until friction depends on load (FOUNDATIONS §5.3).
-Settings are not optimised by gradient descent: Thorin's cost function is convex
+Settings are not optimized by gradient descent: Thorin's cost function is convex
 along a few parameters and flat along many [V, Thorin 2013 §6.5.6]; a scripted
 regulation sequence or a grid search does the job (FOUNDATIONS §5.3).

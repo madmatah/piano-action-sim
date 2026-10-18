@@ -5,10 +5,10 @@
  */
 export type RegulationSettings = { 
 /**
- * Key height, millimetres.
+ * Key height, millimeters.
  */
 key_height_mm: number, 
 /**
- * Key dip, millimetres.
+ * Key dip, millimeters.
  */
 key_dip_mm: number, };

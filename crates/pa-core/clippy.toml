@@ -1,7 +1,7 @@
 # Determinism in the domain (CLAUDE.md rule 8, docs/FOUNDATIONS.md §4.4).
 #
 # Every `f64` method below computes a function IEEE-754 does not require to be
-# rounded exactly, so its last bit comes from whichever maths library the
+# rounded exactly, so its last bit comes from whichever math library the
 # target links: glibc, macOS's libm, or in WebAssembly the copy the compiler
 # builds into the module, and they differ. The `libm` crate computes each of
 # them the same way everywhere, so production code calls `libm::sin` and never
@@ -11,30 +11,30 @@
 # A test that needs one of these for a reference value says so with
 # `#[allow(clippy::disallowed_methods)]` on the helper that calls it.
 disallowed-methods = [
-  { path = "f64::sin", reason = "platform maths library; call libm::sin" },
-  { path = "f64::cos", reason = "platform maths library; call libm::cos" },
-  { path = "f64::tan", reason = "platform maths library; call libm::tan" },
-  { path = "f64::sin_cos", reason = "platform maths library; call libm::sincos" },
-  { path = "f64::asin", reason = "platform maths library; call libm::asin" },
-  { path = "f64::acos", reason = "platform maths library; call libm::acos" },
-  { path = "f64::atan", reason = "platform maths library; call libm::atan" },
-  { path = "f64::atan2", reason = "platform maths library; call libm::atan2" },
-  { path = "f64::sinh", reason = "platform maths library; call libm::sinh" },
-  { path = "f64::cosh", reason = "platform maths library; call libm::cosh" },
-  { path = "f64::tanh", reason = "platform maths library; call libm::tanh" },
-  { path = "f64::asinh", reason = "platform maths library; call libm::asinh" },
-  { path = "f64::acosh", reason = "platform maths library; call libm::acosh" },
-  { path = "f64::atanh", reason = "platform maths library; call libm::atanh" },
-  { path = "f64::exp", reason = "platform maths library; call libm::exp" },
-  { path = "f64::exp2", reason = "platform maths library; call libm::exp2" },
-  { path = "f64::exp_m1", reason = "platform maths library; call libm::expm1" },
-  { path = "f64::ln", reason = "platform maths library; call libm::log" },
-  { path = "f64::ln_1p", reason = "platform maths library; call libm::log1p" },
-  { path = "f64::log", reason = "platform maths library; call libm::log and divide" },
-  { path = "f64::log2", reason = "platform maths library; call libm::log2" },
-  { path = "f64::log10", reason = "platform maths library; call libm::log10" },
-  { path = "f64::powf", reason = "platform maths library; call libm::pow" },
+  { path = "f64::sin", reason = "platform math library; call libm::sin" },
+  { path = "f64::cos", reason = "platform math library; call libm::cos" },
+  { path = "f64::tan", reason = "platform math library; call libm::tan" },
+  { path = "f64::sin_cos", reason = "platform math library; call libm::sincos" },
+  { path = "f64::asin", reason = "platform math library; call libm::asin" },
+  { path = "f64::acos", reason = "platform math library; call libm::acos" },
+  { path = "f64::atan", reason = "platform math library; call libm::atan" },
+  { path = "f64::atan2", reason = "platform math library; call libm::atan2" },
+  { path = "f64::sinh", reason = "platform math library; call libm::sinh" },
+  { path = "f64::cosh", reason = "platform math library; call libm::cosh" },
+  { path = "f64::tanh", reason = "platform math library; call libm::tanh" },
+  { path = "f64::asinh", reason = "platform math library; call libm::asinh" },
+  { path = "f64::acosh", reason = "platform math library; call libm::acosh" },
+  { path = "f64::atanh", reason = "platform math library; call libm::atanh" },
+  { path = "f64::exp", reason = "platform math library; call libm::exp" },
+  { path = "f64::exp2", reason = "platform math library; call libm::exp2" },
+  { path = "f64::exp_m1", reason = "platform math library; call libm::expm1" },
+  { path = "f64::ln", reason = "platform math library; call libm::log" },
+  { path = "f64::ln_1p", reason = "platform math library; call libm::log1p" },
+  { path = "f64::log", reason = "platform math library; call libm::log and divide" },
+  { path = "f64::log2", reason = "platform math library; call libm::log2" },
+  { path = "f64::log10", reason = "platform math library; call libm::log10" },
+  { path = "f64::powf", reason = "platform math library; call libm::pow" },
   { path = "f64::powi", reason = "its rounding depends on how the compiler expands it; multiply, or call libm::pow" },
-  { path = "f64::cbrt", reason = "platform maths library; call libm::cbrt" },
-  { path = "f64::hypot", reason = "platform maths library; take the sqrt of the sum of squares" },
+  { path = "f64::cbrt", reason = "platform math library; call libm::cbrt" },
+  { path = "f64::hypot", reason = "platform math library; take the sqrt of the sum of squares" },
 ]

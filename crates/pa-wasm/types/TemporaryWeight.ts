@@ -10,7 +10,7 @@ export type TemporaryWeight = {
  */
 mass_g: number, 
 /**
- * Where it stands, millimetres from the balance pin, positive in front.
+ * Where it stands, millimeters from the balance pin, positive in front.
  */
 at_mm: number, 
 /**

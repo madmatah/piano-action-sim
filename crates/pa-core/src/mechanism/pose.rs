@@ -137,7 +137,7 @@ impl Mechanism {
     }
 
     /// How fast `point` moves in the world per unit of `coord`, at `pose`:
-    /// one column of its Jacobian, metres per radian or metres per metre.
+    /// one column of its Jacobian, meters per radian or meters per meter.
     ///
     /// The lever-arm identity, extended to any ancestor joint. If `coord` is
     /// the angle of a revolute joint between the ground and `point`'s body
@@ -235,7 +235,7 @@ mod tests {
         let turned = m.pose(&q).placement(BodyId(2)).origin;
         let expected = Point::new(0.05 + 0.03, 0.02 + 0.15);
         // The quarter turn is π/2 to the nearest double, whose cosine is
-        // 6e-17, not zero: 1e-15 covers it on arms under a metre.
+        // 6e-17, not zero: 1e-15 covers it on arms under a meter.
         assert!(
             (turned.x - expected.x).abs() < 1e-15 && (turned.y - expected.y).abs() < 1e-15,
             "{turned:?} against {expected:?}"

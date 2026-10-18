@@ -30,7 +30,7 @@ Prints:
   3. the gap gradients of contacts 7 and 10 (their lever arms);
   4. the effective mass along every contact normal;
   5. the reflected masses on the two sides of the jack/knuckle contact;
-  6. the highest linearised mode with chosen contacts loaded at assumed forces;
+  6. the highest linearized mode with chosen contacts loaded at assumed forces;
   7. the key between its two stops on his rigid frame: its attitude at rest,
      contact 3 closed, and at the bottom, contact 2 closed, both read off the
      key's coordinate alone, and how far Pk2, where his finger presses, falls
@@ -69,7 +69,7 @@ def shape(p):
     return (xy, value(p["radius"]), (value(p["arc"]["start"]), value(p["arc"]["end"])))
 
 
-# ---- Tables A.2-A.7: every point, in the frame of the body that carries it (metres) ----
+# ---- Tables A.2-A.7: every point, in the frame of the body that carries it (meters) ----
 POINT = {name: (code, KIND[p["description"]], shape(p))
          for body, code in BODY.items()
          for name, p in HK["geometry"][body]["points"].items()}
@@ -91,11 +91,11 @@ P_J, P_R = pivot("jack", "wippen"), pivot("repetition_lever", "wippen")
 
 def inertia(body):
     r = HK["mass_properties"]["bodies"][body]
-    cm = r["centre_of_mass"]
+    cm = r["center_of_mass"]
     return value(r["mass"]), value(r["moment_of_inertia"]), (value(cm["x"]), value(cm["y"]))
 
 
-# ---- Table A.1: mass (kg), inertia about the centre of mass (kg m^2), centre of mass ----
+# ---- Table A.1: mass (kg), inertia about the center of mass (kg m^2), center of mass ----
 MASS = {BODY[b]: inertia(b) for b in ("key", "wippen", "jack", "repetition_lever", "hammer")}
 # ---- Table A.8: the two points each contact joins, and the elastic branch
 # f = a d^3 + b d^2 + c d of its law ----
@@ -107,7 +107,7 @@ NAME = {1: "capstan / wippen heel", 2: "key front / front rail punching", 3: "ke
         7: "jack / knuckle", 8: "jack toe / let-off button", 9: "jack / lever window",
         10: "lever / knuckle", 11: "lever / drop screw", 12: "hammer / string", 13: "shank / rest rail"}
 # [S] Assumed peak contact forces at fortissimo, newtons. Assumptions, not
-# measurements: they decide the stiffness each contact is linearised at.
+# measurements: they decide the stiffness each contact is linearized at.
 F_ASSUMED = {1: 60, 2: 50, 3: 5, 4: 15, 5: 3, 6: 3, 7: 100, 8: 25, 9: 3, 10: 25, 11: 15, 12: 800, 13: 2}
 N = 5  # key, wippen, jack (relative), lever (relative), hammer
 
@@ -157,10 +157,10 @@ def gap_line_circle(f, bl, p, n, bc, c, r):
     return dot(sub(point(f, bc, c), point(f, bl, p)), vector(f, bl, n)) - r
 
 
-def gap_hybrid_circle(f, bh, centre, radius, arc, bc, c, r):
+def gap_hybrid_circle(f, bh, center, radius, arc, bc, c, r):
     """An arc joined to two tangent lines (Hirschkorn's hybrid), against a circle."""
     o, t = f[bh]
-    d = rot(-t, sub(point(f, bc, c), point(f, bh, centre)))
+    d = rot(-t, sub(point(f, bc, c), point(f, bh, center)))
     phi = math.atan2(d[1], d[0])
     if phi < -math.pi / 2:
         phi += 2 * math.pi
@@ -333,7 +333,7 @@ if __name__ == "__main__":
         print(f"  #{c:2d} {NAME[c]:16s} " + "  ".join(f"{v * 1e3:+7.2f}" for v in gradient(c, q0)))
     print("  (the radial distance from the jack's pin to its contact arc is"
           f" {math.hypot(*POINT['Pj2'][2][0]) * 1e3:.1f} mm;")
-    print("   the jack's own arm on its flat top is a few millimetres)")
+    print("   the jack's own arm on its flat top is a few millimeters)")
 
     print("\n=== 4. Effective mass along each contact normal, 1/(grad g . M^-1 grad g) ===")
     for c in range(1, 14):
@@ -350,7 +350,7 @@ if __name__ == "__main__":
     print(f"  hammer side (hammer alone):                          {hammer * 1e3:6.1f} g")
     print(f"  ratio {hammer / driver:.0f} : 1")
 
-    print("\n=== 6. Highest linearised mode at rest, contacts at their ASSUMED fff forces ===")
+    print("\n=== 6. Highest linearized mode at rest, contacts at their ASSUMED fff forces ===")
     for label, cs in (("key down, jack driving (1, 2, 7)", [1, 2, 7]),
                       ("let-off region (1, 2, 7, 10, 11)", [1, 2, 7, 10, 11]),
                       ("all thirteen at once, an upper bound", list(range(1, 14)))):

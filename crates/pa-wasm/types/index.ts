@@ -41,7 +41,7 @@ export type { Mount } from "./Mount";
 export type { Outline } from "./Outline";
 export type { Panel } from "./Panel";
 export type { PanelLayout } from "./PanelLayout";
-export type { PaperColour } from "./PaperColour";
+export type { PaperColor } from "./PaperColor";
 export type { Param } from "./Param";
 export type { Part } from "./Part";
 export type { Pose } from "./Pose";

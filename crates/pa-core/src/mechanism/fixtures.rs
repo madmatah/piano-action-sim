@@ -46,7 +46,7 @@ fn mass(mass: f64, x: f64, y: f64) -> Option<MassProps> {
 ///   balance punching;
 /// - `e` (body 5), a pin on the ground, on a branch of its own.
 ///
-/// Sizes are an action's: arms of a few centimetres to a few decimetres,
+/// Sizes are an action's: arms of a few centimeters to a few decimeters,
 /// masses of a few grams to a hundred.
 pub fn chain() -> Mechanism {
     let pin = |x: f64, y: f64, coord: usize| Joint::Revolute {
@@ -120,7 +120,7 @@ pub fn random_q(m: &Mechanism, rng: &mut XorShift) -> Vec<f64> {
         .collect()
 }
 
-/// The lengths of `point`'s chain added up, metres: the point's own offset,
+/// The lengths of `point`'s chain added up, meters: the point's own offset,
 /// every pivot it hangs from, and every slide's origin and travel.
 ///
 /// By the triangle inequality it bounds the point's distance from the world's

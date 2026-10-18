@@ -33,7 +33,7 @@ use crate::geometry::Seg;
 
 /// A way the frame and the key do not go together.
 ///
-/// Distances are metres, and each is *how far past the limit*, so a fault's
+/// Distances are meters, and each is *how far past the limit*, so a fault's
 /// number is always positive and shrinking it is always the repair.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Fault {
@@ -43,7 +43,7 @@ pub enum Fault {
     /// slot, or by nothing at all. On the bench this is what a key reads like
     /// when its length has been changed without the frame following.
     PinOutsideTheMortise {
-        /// How far past the end of the slot the pin stands, metres.
+        /// How far past the end of the slot the pin stands, meters.
         by: f64,
     },
     /// The back rail cloth reaches in front of where the tail's chamfer begins.
@@ -52,7 +52,7 @@ pub enum Fault {
     /// it can only ever be met by the kink, which is the one thing the chamfer
     /// exists to prevent.
     ClothInFrontOfTheChamfer {
-        /// How far in front of the kink the cloth's face reaches, metres.
+        /// How far in front of the kink the cloth's face reaches, meters.
         by: f64,
     },
     /// The back rail cloth reaches past the end of the key.
@@ -60,14 +60,14 @@ pub enum Fault {
     /// Then the key's own corner carries it, on a lever arm that is the key's
     /// length and not the rail's position.
     ClothBehindTheKey {
-        /// How far past the tail the cloth's face reaches, metres.
+        /// How far past the tail the cloth's face reaches, meters.
         by: f64,
     },
     /// A punching stands partly off the flat of the key's underside.
     PunchingOffTheUnderside {
         /// Which punching.
         rail: PartCode,
-        /// How far past the end of the flat it reaches, metres.
+        /// How far past the end of the flat it reaches, meters.
         by: f64,
     },
 }
@@ -194,7 +194,7 @@ mod tests {
     /// Lengthening a key leaves the front rail where it was bolted, and the
     /// bench says by how much.
     ///
-    /// **This is the behaviour, not a defect.** Rails are screwed to a keybed;
+    /// **This is the behavior, not a defect.** Rails are screwed to a keybed;
     /// nothing about cutting a longer key moves them. A model that quietly
     /// slid the rail along would draw a keyboard that cannot exist and call it
     /// correct — and it would hide the one thing a keyboard designer is here
@@ -272,7 +272,7 @@ mod tests {
             faults.iter().any(
                 |f| matches!(f, Fault::ClothInFrontOfTheChamfer { by } if (by - half).abs() < 1e-9)
             ),
-            "cloth centred on the kink reaches half a rail past it; got {faults:?}"
+            "cloth centered on the kink reaches half a rail past it; got {faults:?}"
         );
 
         let behind = FrameDesign {
@@ -284,7 +284,7 @@ mod tests {
             faults
                 .iter()
                 .any(|f| matches!(f, Fault::ClothBehindTheKey { by } if (by - half).abs() < 1e-9)),
-            "cloth centred on the tail reaches half a rail past it; got {faults:?}"
+            "cloth centered on the tail reaches half a rail past it; got {faults:?}"
         );
     }
 
@@ -312,7 +312,7 @@ mod tests {
                 .unwrap_or(0.0);
             assert!(
                 by < previous,
-                "moving the rail towards the mortise must shrink the miss, \
+                "moving the rail toward the mortise must shrink the miss, \
                  and {front_rail} m read {by} m after {previous} m"
             );
             previous = by;

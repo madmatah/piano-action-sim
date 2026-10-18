@@ -16,7 +16,7 @@
 //! it. So the key on its frame has two coordinates: a slide carrying the key
 //! up and down the balance pin's axis, and the key's angle about the slide's
 //! origin. The balance punching is a unilateral contact like the other stops,
-//! read at the centre of its drawn top. A frame whose stops fight, a key lifted
+//! read at the center of its drawn top. A frame whose stops fight, a key lifted
 //! off its punching and a key seated on it come out of the same static solve:
 //! the key rides on its two outer stops off the punching where they hold it
 //! higher than the punching would, on the parts as drawn.
@@ -24,7 +24,7 @@
 //! # Solved on its punching first
 //!
 //! While the punching carries the key, the key turns about the punching's
-//! centre, which stands on the slide's axis: the key on its punching is then
+//! center, which stands on the slide's axis: the key on its punching is then
 //! the key on a pivot there. [`Mounted::solve`] tries that first, the slide
 //! held on the punching and every other contact read as it is. Where the
 //! punching then pushes the key up, that equilibrium meets every condition of
@@ -52,7 +52,7 @@ pub struct Mounted {
     /// The mechanism.
     pub mechanism: Mechanism,
     /// The key's body. Its frame is the key's own: origin at the balance pin
-    /// on the key's underside, `x` towards the player.
+    /// on the key's underside, `x` toward the player.
     pub key: BodyId,
     /// The key's angle, positive nose-up.
     pub angle: CoordId,
@@ -65,16 +65,16 @@ pub struct Mounted {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lift {
     /// The slide's coordinate: the height of the key frame's origin above
-    /// the keybed, metres.
+    /// the keybed, meters.
     pub coord: CoordId,
     /// The slide's value with the key on its balance punching: the height of
-    /// the punching's drawn top, metres.
+    /// the punching's drawn top, meters.
     pub on_punching: f64,
     /// The balance punching's pair: the mechanism's last.
     pub pair: u16,
     /// The key held on its punching: the same bodies, coordinates and parts,
     /// every pair but the punching's, solved with the slide held at
-    /// [`Self::on_punching`]. `None` where the punching's centre does not
+    /// [`Self::on_punching`]. `None` where the punching's center does not
     /// stand on the slide's axis, where the key held on it would not be the
     /// key turning about it.
     turning: Option<Mechanism>,
@@ -123,7 +123,7 @@ pub enum KeyMount {
     /// Free to lift off its balance punching ([`on_punching`]): a massless
     /// slide up the balance pin's axis, carrying the key turning about the
     /// slide's origin, and the punching a unilateral contact read at the
-    /// centre of its drawn top. The mount every procedure on the frame reads.
+    /// center of its drawn top. The mount every procedure on the frame reads.
     OnPunching,
 }
 
@@ -139,9 +139,9 @@ impl KeyMount {
 }
 
 /// How far the key may turn either way on its frame, radians: 15°, the edge
-/// of the modelled world. Far past any stroke (a key's dip turns it about
+/// of the modeled world. Far past any stroke (a key's dip turns it about
 /// 2.3°), it bounds what a static solve searches, and a key that leans on it
-/// stands on nothing modelled.
+/// stands on nothing modeled.
 pub const KEY_ANGLE_LIMIT: f64 = core::f64::consts::PI / 12.0;
 
 /// The steps of the scan [`nominal_pose`] makes over the key's range: a
@@ -153,9 +153,9 @@ pub(crate) const NOMINAL_STEP: f64 = core::f64::consts::PI / 180.0;
 /// [`lowered_onto_its_frame`], clears it, where no attitude a whole degree
 /// apart clears below where the key leaves its balance pin. Each step keeps
 /// 0.618 of the bracket, two degrees wide: 22 steps leave under a
-/// microradian, under a micron at the front of a key half a metre long,
+/// microradian, under a micron at the front of a key half a meter long,
 /// where the lift a whole degree's step costs at the key's stops, up to half
-/// a degree times their arm from the pin, is a millimetre or two.
+/// a degree times their arm from the pin, is a millimeter or two.
 pub(crate) const ATTITUDE_REFINEMENTS: u32 = 22;
 
 /// The ratio of the golden section, `(√5 − 1) / 2`: the part of its bracket
@@ -188,7 +188,7 @@ impl Mounted {
         q
     }
 
-    /// How far above its balance punching the key stands at `q`, metres:
+    /// How far above its balance punching the key stands at `q`, meters:
     /// the slide less its value on the punching; zero on a mount with no
     /// slide.
     pub fn lift_at(&self, q: &[f64]) -> f64 {
@@ -198,7 +198,7 @@ impl Mounted {
     }
 
     /// How far above its balance punching the key leaves its balance pin,
-    /// metres: the top of the slide's range, where the key's balance hole
+    /// meters: the top of the slide's range, where the key's balance hole
     /// clears the pin's drawn top ([`on_punching`]), less the slide's value
     /// on the punching. Negative where the punching stands above the pin's
     /// top, the key on it already off its pin; `None` on a mount with no
@@ -227,7 +227,7 @@ impl Mounted {
         }
     }
 
-    /// This key with its bushings' friction bounded by `bound` newton-metres
+    /// This key with its bushings' friction bounded by `bound` newton-meters
     /// instead, everything else kept bit for bit; or why not
     /// ([`Mechanism::with_friction`]).
     pub fn with_friction(mut self, bound: f64) -> Result<Self, Problem> {
@@ -249,7 +249,7 @@ impl Mounted {
     /// slide's reaction then pushes the key up, or is nothing, that
     /// equilibrium is the full problem's: the punching's gap is closed, its
     /// multiplier that reaction over the cosine of the key's angle, and its
-    /// centre on the slide's axis gives the angle nothing to carry. The
+    /// center on the slide's axis gives the angle nothing to carry. The
     /// equilibrium returned then holds that push as the slide's reaction, and
     /// its supports do not list the punching.
     ///
@@ -267,7 +267,7 @@ impl Mounted {
     /// what the pairs read ([`Mechanism::overlap`]), and the key in any part
     /// of its frame, a punching's felt and papers whole, so that a key sunk
     /// right through a felt thicker than itself, which leaves the punching's
-    /// centre clear, is not one. There the refusal of the key on its punching
+    /// center clear, is not one. There the refusal of the key on its punching
     /// stands. It is solved in up to [`FREE_PIECES`] pieces of the static
     /// solve's cap of steps, each going on from where the last stopped.
     ///
@@ -512,10 +512,10 @@ pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
 /// frame then has the key off its pin.
 ///
 /// Clear of every part, the punchings' felts and papers whole: the pairs read
-/// a punching at its centre, which a key sunk right through a felt thicker
+/// a punching at its center, which a key sunk right through a felt thicker
 /// than the key leaves clear. A key tilted on a punching clears its felt's
 /// drawn edge only half the washer's width times the tilt above where it
-/// stands on the felt's centre, so one riding that close under its pin's top
+/// stands on the felt's center, so one riding that close under its pin's top
 /// is not lowered onto its frame below it. The balance rail pin alone is
 /// left out, which stands hidden in the key's wood, the balance mortise not
 /// being drawn.
@@ -523,7 +523,7 @@ pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
 /// The start a placement goes back to when the nominal pose, an attitude on
 /// the punching whose overlap the rows read within their margin, gives the
 /// key no seat: an overlap no motion of the key on its frame resolves, such
-/// as a front rail pin standing a few tenths of a millimetre into the wood
+/// as a front rail pin standing a few tenths of a millimeter into the wood
 /// beside its mortise, its top well up in the slot, which overlaps the wood
 /// along the key where no turn moves the wood along the key and no lift
 /// short of the pin's top clears it; or a nominal pose lowered onto its
@@ -537,7 +537,7 @@ pub fn lowered_onto_its_frame(mounted: &Mounted) -> Option<Vec<f64>> {
     lowered(mounted, lift, &mounted.level(), (&key, &frame), 0.0)
 }
 
-/// How deep the key stands in its frame at `q`, metres: what the pairs read,
+/// How deep the key stands in its frame at `q`, meters: what the pairs read,
 /// the key's parts in every part of its frame but the balance rail pin
 /// ([`lowered_onto_its_frame`]), and how far the key reaches below the
 /// keybed.
@@ -546,7 +546,7 @@ fn sunk_in_its_frame(mounted: &Mounted, q: &[f64]) -> f64 {
     overlap_at(&mounted.mechanism, &key, &frame, q)
 }
 
-/// How deep the key's drawn parts stand in its frame's at `q`, metres, read
+/// How deep the key's drawn parts stand in its frame's at `q`, meters, read
 /// as [`nominal_pose`] reads them: what the pairs read, the key in its front
 /// and back rails, which no pair declares, and how far it reaches below the
 /// keybed.
@@ -650,10 +650,10 @@ fn attitude_of_least_overlap(mounted: &Mounted, m: &Mechanism, level: &[f64]) ->
 /// where the key leaves its balance pin, the attitude is narrowed instead:
 /// within a degree either side of the one at which the key, at that limit,
 /// overlaps its frame least, by [`ATTITUDE_REFINEMENTS`] golden-section
-/// steps towards the attitude of least overlap there. A key riding on two
+/// steps toward the attitude of least overlap there. A key riding on two
 /// stops clears them only near the attitude at which it rides, and each
 /// whole degree either side of it costs the angle between them times the
-/// stops' arms of lift, up to a millimetre or two: a key riding that close
+/// stops' arms of lift, up to a millimeter or two: a key riding that close
 /// under its pin's top clears its frame below it at no whole degree. `None`
 /// where the key clears its frame below that limit at no attitude, whole or
 /// narrowed: it clears it only off its pin.
@@ -753,7 +753,7 @@ fn lowered(
 /// hung from it by a revolute joint whose axis is `bearing`, in the keybed's
 /// frame, where the key's frame has its origin; its angle bounded by
 /// [`KEY_ANGLE_LIMIT`] either way, and its bushings' dry friction, a torque
-/// bound `friction` in newton-metres, acting on it.
+/// bound `friction` in newton-meters, acting on it.
 ///
 /// `parts` are the frame's on the ground and the key's on body 1, as
 /// [`super::FrameDesign::parts`] and [`super::KeyDesign::parts`] build them;
@@ -790,11 +790,11 @@ pub fn pivot(
 /// The key on its frame, free to lift off its balance punching
 /// ([`KeyMount::OnPunching`]): the ground, which carries the frame; a
 /// massless slide, body 1, standing on the keybed at `axis_x` along it and
-/// travelling up the balance pin's axis, its coordinate the height of the
+/// traveling up the balance pin's axis, its coordinate the height of the
 /// key frame's origin above the keybed, from the keybed to `pin_top`, with
 /// no friction; and the key, body 2, turning about the slide's origin, its
 /// angle bounded by [`KEY_ANGLE_LIMIT`] either way, its bushings' dry
-/// friction, a torque bound `friction` in newton-metres, acting on it.
+/// friction, a torque bound `friction` in newton-meters, acting on it.
 ///
 /// `parts` are the frame's on the ground and the key's on body 2; `pairs`
 /// the key's contacts with its frame but the punching's ([`key_on_frame`]),
@@ -852,10 +852,10 @@ pub fn on_punching(
     let pair = u16::try_from(all.len() - 1).expect("fewer than 65 536 pairs");
     let mechanism =
         Mechanism::new(bodies.clone(), coords.clone())?.with_contacts(parts.clone(), all)?;
-    // The punching's centre, in the ground's frame, where its pair reads it.
-    let centre = mechanism.features[usize::from(pair)].b.centre.1;
+    // The punching's center, in the ground's frame, where its pair reads it.
+    let center = mechanism.features[usize::from(pair)].b.center.1;
     let on_the_axis =
-        centre.x.to_bits() == axis_x.to_bits() && centre.y.to_bits() == bearing.to_bits();
+        center.x.to_bits() == axis_x.to_bits() && center.y.to_bits() == bearing.to_bits();
     let turning = if on_the_axis {
         Some(Mechanism::new(bodies, coords)?.with_contacts(parts, others)?)
     } else {
@@ -898,7 +898,7 @@ pub struct OnItsFrame {
 /// `key` on `frame` in `mount`, its key standing on the row of pins of
 /// `kind`, the papers its punchings hold drawn on them; the key's mass
 /// `mass`, `None` for a key nobody has weighed; its bushings' friction a
-/// torque bound of `friction` newton-metres.
+/// torque bound of `friction` newton-meters.
 ///
 /// The one place a key is put on its frame for a procedure to read, so that
 /// the bench's readings and the regulation solve that lays its papers read
@@ -983,8 +983,8 @@ fn pair(code: ContactCode, a: Surface, b: Surface, geometry: PairGeometry) -> Co
 /// The key's contacts with its frame but its balance punching, each a pair
 /// of the ranges the two sets of parts declare, the key on side A.
 ///
-/// - **The front rail punching**: the felt's drawn top, read at its centre,
-///   against the underside's flat ([`PairGeometry::CentreBearing`]): a key
+/// - **The front rail punching**: the felt's drawn top, read at its center,
+///   against the underside's flat ([`PairGeometry::CenterBearing`]): a key
 ///   landing level loads the whole washer, and the pair says the load is at
 ///   its middle.
 /// - **The back rail cloth**: the cloth's drawn top, its face and its two
@@ -1010,7 +1010,7 @@ pub fn key_on_frame(key: &KeyRanges, frame: &FrameRanges) -> Vec<ContactPair> {
             ContactCode::FrontRailPunching,
             Surface::of(&key.underside_flat),
             Surface::one(frame.front_bearing.clone()),
-            PairGeometry::CentreBearing,
+            PairGeometry::CenterBearing,
         ),
         pair(
             ContactCode::BackRailCloth,
@@ -1038,9 +1038,9 @@ pub fn key_on_frame(key: &KeyRanges, frame: &FrameRanges) -> Vec<ContactPair> {
     pairs
 }
 
-/// The key's balance punching: the felt's drawn top, read at its centre, on
+/// The key's balance punching: the felt's drawn top, read at its center, on
 /// the balance pin's axis, against the underside's flat
-/// ([`PairGeometry::CentreBearing`]), the key on side A.
+/// ([`PairGeometry::CenterBearing`]), the key on side A.
 ///
 /// A felt washer under a key spreads its load, and the pair says the load is
 /// at the washer's middle, where the key's frame has its origin: a rigid
@@ -1054,7 +1054,7 @@ pub fn balance_punching(key: &KeyRanges, frame: &FrameRanges) -> ContactPair {
         ContactCode::BalanceRailPunching,
         Surface::of(&key.underside_flat),
         Surface::one(frame.balance_bearing.clone()),
-        PairGeometry::CentreBearing,
+        PairGeometry::CenterBearing,
     )
 }
 
@@ -1163,12 +1163,12 @@ mod tests {
             .q
     }
 
-    /// The edges of the back rail cloth's face, metres along the key: the
-    /// back one and the front one, where the drawn arcs are centred.
+    /// The edges of the back rail cloth's face, meters along the key: the
+    /// back one and the front one, where the drawn arcs are centered.
     fn cloth_edges(a: &Setup) -> (f64, f64) {
         let section = a.frame.sections.back;
-        let centre = section.centre_x(a.frame.back_rail);
-        (centre - section.half_length, centre + section.half_length)
+        let center = section.center_x(a.frame.back_rail);
+        (center - section.half_length, center + section.half_length)
     }
 
     /// Consistency: **every contact surface of the key on its frame is a
@@ -1241,7 +1241,7 @@ mod tests {
     /// fight, lifted off its punching or turned across its stroke, every row
     /// of every pair has its two surface points on the two drawn outlines,
     /// within half a spacing of a sample of each, the farthest a point of a
-    /// curve can stand from the nearest sample; and a centre bearing's row
+    /// curve can stand from the nearest sample; and a center bearing's row
     /// stands at the middle of the drawn face, within the same. The oracle
     /// shares no code with the rows: it samples what is drawn.
     #[test]
@@ -1293,12 +1293,12 @@ mod tests {
                         "{name}, {:?}: a row's points are off the drawn outlines: {row:?}",
                         pair.code
                     );
-                    if let Some(centre) = o.centre {
-                        let (dx, dy) = (on_b.x - centre.x, on_b.y - centre.y);
+                    if let Some(center) = o.center {
+                        let (dx, dy) = (on_b.x - center.x, on_b.y - center.y);
                         assert!(
                             (dx * dx + dy * dy).sqrt() <= on,
                             "{name}, {:?}: the row bears at {on_b:?}, the face's middle is \
-                             {centre:?}",
+                             {center:?}",
                             pair.code
                         );
                     }
@@ -1403,7 +1403,7 @@ mod tests {
                             -row.gap
                         );
                         // The corner or edge is the row's disc; on a face
-                        // against a face's centre, the centre.
+                        // against a face's center, the center.
                         let f = row.feature;
                         let key = match (f.a.is_disc(), f.b.is_disc()) {
                             (true, false) => Feature { a: f.a, b: f.a },
@@ -1455,8 +1455,8 @@ mod tests {
     /// The chamfer under the tail is there so the key beds flat on its
     /// cloth: at the one rail height that stands the key at the chamfer's own
     /// angle, both edges of the cloth close on the chamfer and the rows call
-    /// it flat; half a millimetre lower the tail digs in at the cloth's back
-    /// edge, half a millimetre higher it rides on the front edge.
+    /// it flat; half a millimeter lower the tail digs in at the cloth's back
+    /// edge, half a millimeter higher it rides on the front edge.
     #[test]
     fn bedding_flat_on_the_cloth_is_both_edges_closing_on_the_chamfer() {
         let mut a = regulated();
@@ -1541,12 +1541,12 @@ mod tests {
     }
 
     /// Consistency: **a punching standing past the end of the key has no
-    /// row**, the span condition of a centre bearing. With the key's front a
-    /// third of a millimetre behind the felt's centre, the centre projects
+    /// row**, the span condition of a center bearing. With the key's front a
+    /// third of a millimeter behind the felt's center, the center projects
     /// past the underside both at rest and with the key level, and the pair
     /// reads nothing: no stop stands in front of the key. A third of a
-    /// millimetre the other way, it reads one. The key's front is placed
-    /// against the felt's drawn centre, its pin's axis, which no stop of the
+    /// millimeter the other way, it reads one. The key's front is placed
+    /// against the felt's drawn center, its pin's axis, which no stop of the
     /// key's own reads.
     #[test]
     fn a_punching_past_the_end_of_the_key_has_no_row() {
@@ -1568,22 +1568,22 @@ mod tests {
                 assert_eq!(
                     rows.gap(front).is_some(),
                     reads,
-                    "the key's front {behind} m behind the punching's centre, at {theta} rad"
+                    "the key's front {behind} m behind the punching's center, at {theta} rad"
                 );
             }
         }
     }
 
     /// The limit `docs/FOUNDATIONS.md` §6.6 warns of: a corner sunk deeper
-    /// than an edge arc's centre has a row only while a face beside the arc
+    /// than an edge arc's center has a row only while a face beside the arc
     /// lies in the corner's own angle. The key's tail corner, a quarter of a
-    /// millimetre in front of where the cloth's face ends, sunk past the front
-    /// edge's centre with the key nose-up, faces neither the cloth's face nor
+    /// millimeter in front of where the cloth's face ends, sunk past the front
+    /// edge's center with the key nose-up, faces neither the cloth's face nor
     /// its front side, and the cloth reads no row although the corner is
     /// inside the drawn cloth. The statics never put it there; a reading that
     /// sees it makes this test fail, and the warning goes with it.
     #[test]
-    fn a_corner_sunk_past_an_edge_centre_can_have_no_row() {
+    fn a_corner_sunk_past_an_edge_center_can_have_no_row() {
         let mut a = regulated();
         let r = a.frame.back_rail_cloth_edge_radius;
         let (_, face_front) = cloth_edges(&a);
@@ -1621,7 +1621,7 @@ mod tests {
         }
         assert!(
             sunk > 0,
-            "no attitude sank the corner past the edge's centre"
+            "no attitude sank the corner past the edge's center"
         );
     }
 

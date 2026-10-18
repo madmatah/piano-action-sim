@@ -80,17 +80,17 @@ pub enum PairGeometry {
     /// every disc: the rigid contact of two drawn outlines. A concave corner,
     /// and anything of a cut but its straight segments, is never a feature.
     Features,
-    /// The centre of side B's drawn face against the supporting line of side
-    /// A's segments, while the centre projects into their span.
+    /// The center of side B's drawn face against the supporting line of side
+    /// A's segments, while the center projects into their span.
     ///
     /// The rigid idealization of a felt that spreads its load: a key landing
     /// level loads a washer over its whole face, so its resultant is at the
-    /// centre, and the pair says so rather than letting the washer's edge
+    /// center, and the pair says so rather than letting the washer's edge
     /// carry it. The point is read from the drawn face, so nothing parallel
     /// to the drawing exists. Where the key stands out of level on such a
     /// pair, the drawn face's edge overlaps the key by what a felt would
     /// compress.
-    CentreBearing,
+    CenterBearing,
 }
 
 /// The law a contact's force follows.
@@ -108,7 +108,7 @@ pub enum ContactLaw {
 ///
 /// It holds nothing but ranges of drawn outlines, so whatever a contact reads
 /// is something drawn. Side A and side B are the two bodies; every row of the
-/// pair has its normal from B towards A. The key's pairs put the key on A.
+/// pair has its normal from B toward A. The key's pairs put the key on A.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContactPair {
     /// What it is.

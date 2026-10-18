@@ -1,12 +1,12 @@
 /**
- * The wording the page shows, from its catalogue. English is the one built:
- * every component reads `t`, so a second catalogue replaces it whole.
+ * The wording the page shows, from its catalog. English is the one built:
+ * every component reads `t`, so a second catalog replaces it whole.
  */
-import type { Catalogue } from './catalogue'
+import type { Catalog } from './catalog'
 import { en } from './en'
 
-export type { Catalogue, Labelled, Laid, Reported } from './catalogue'
-export { unitBeside, word } from './catalogue'
+export type { Catalog, Labeled, Laid, Reported } from './catalog'
+export { unitBeside, word } from './catalog'
 
-/** The catalogue in use. */
-export const t: Catalogue = en
+/** The catalog in use. */
+export const t: Catalog = en

@@ -1,11 +1,11 @@
 /**
- * What a catalogue must word: every sentence the bench shows, and every code
+ * What a catalog must word: every sentence the bench shows, and every code
  * the engine sends.
  *
  * The engine sends codes and numbers, never sentences
- * (`crates/pa-app/src/boundary.rs`), and a catalogue, one per language, words
+ * (`crates/pa-app/src/boundary.rs`), and a catalog, one per language, words
  * them in its language. A code family is typed from the generated types, so a
- * code the engine gains and a catalogue does not word fails `pnpm typecheck`.
+ * code the engine gains and a catalog does not word fails `pnpm typecheck`.
  *
  * Emphasis is marked in the wording itself, `**bold**` and `*italic*`, and
  * nothing else, so that a translation moves it with the words it belongs to.
@@ -69,20 +69,20 @@ export interface Reported {
  * What a control is worded by: its label, and, where the unit beside its
  * value reads as more than the unit, how, given the unit's own word.
  */
-export interface Labelled {
+export interface Labeled {
   readonly label: string
   unit?(unit: string): string
 }
 
 /** The unit beside a control's value: its wording's, or the unit alone. */
-export function unitBeside(labelled: Labelled, unit: string): string {
-  return labelled.unit === undefined ? unit : labelled.unit(unit)
+export function unitBeside(labeled: Labeled, unit: string): string {
+  return labeled.unit === undefined ? unit : labeled.unit(unit)
 }
 
 /** A regulation laid: the papers, and what they give. */
 export type Laid = Extract<Acted, { outcome: 'laid' }>
 
-export interface Catalogue {
+export interface Catalog {
   /** `x` to `decimals` places as this language writes a number, never -0. */
   number(x: number, decimals: number): string
   /** Items as a sentence lists them: "a", "a and b", "a, b and c". */
@@ -144,7 +144,7 @@ export interface Catalogue {
   readonly panel: Named<Panel>
   /** What each control is worded by, by the code the engine labels it
    * with. */
-  readonly control: { readonly [K in Label]: Labelled }
+  readonly control: { readonly [K in Label]: Labeled }
 
   readonly sheet: {
     readonly measuringPointNote: string
@@ -289,8 +289,8 @@ export interface Catalogue {
     bushings(keyFrictionWeight: string | null): string
     /** Why a key nobody has weighed has no touch verdict. */
     readonly notWeighed: string
-    /** The note on centre bearings, with the edges overlapping the key. */
-    centreNote(overlaps: readonly { pair: Contact; overlap_mm: number }[]): string
+    /** The note on center bearings, with the edges overlapping the key. */
+    centerNote(overlaps: readonly { pair: Contact; overlap_mm: number }[]): string
     readonly noPressNote: string
   }
 }

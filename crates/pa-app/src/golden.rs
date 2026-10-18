@@ -5,7 +5,7 @@
 //!
 //! The engine is rebuilt in steps, and each step is meant to move the
 //! numbers it names and nothing else. A number that moves by accident moves
-//! quietly: a key height a hundredth of a millimetre off reads as plausible,
+//! quietly: a key height a hundredth of a millimeter off reads as plausible,
 //! and a test written against the old code with a tolerance lets it through.
 //! So every reading of these benches is recorded bit for bit
 //! (`tests/golden/`, one file per bench), and `tests/golden.rs` fails on any
@@ -22,14 +22,14 @@
 //! bench cannot seat its key), the reason it cannot, how the key rides on
 //! its stops where they fight (written only there), the faults, where the
 //! key is drawn and the papers on both punchings; last, the down and up
-//! weights read on the band, the driven sweep's, where the sweep travelled
+//! weights read on the band, the driven sweep's, where the sweep traveled
 //! and where each fell, or why the band cannot be drawn. Numbers are written as the
 //! shortest decimal that reads back to the same double, then as its bit
 //! pattern.
 //!
 //! One reading is recorded one step earlier than the sheet shows it. The
 //! bench turns the bedding at the back into degrees with `atan`, from the
-//! platform's maths library, whose last bit is allowed to differ between
+//! platform's math library, whose last bit is allowed to differ between
 //! machines. The sheet records the slope the engine computes, which holds bit
 //! for bit wherever the tests run; the degrees are a function of it and of
 //! nothing else. The out-of-level at the bottom is the bottom seat's angle
@@ -47,8 +47,8 @@
 //! same key weighed by a stated typical weighing; and weighed back-heavy.
 //! Each is built as an interface builds it, through the instrument's own
 //! calls, a path set or an action taken: the value a fixture sets is the
-//! one it computes in metres, sent in the path's millimetres, which turn
-//! back into the same metres to the bit.
+//! one it computes in meters, sent in the path's millimeters, which turn
+//! back into the same meters to the bit.
 
 use std::fmt::Write as _;
 
@@ -139,7 +139,7 @@ fn mortise_limited_dip() -> Instrument {
     let pin = bench.frame().sections.front.pin_height;
     bench
         .set(path::FRONT_PIN_HEIGHT, (pin + 0.002) * 1000.0)
-        .expect("a front pin two millimetres prouder");
+        .expect("a front pin two millimeters prouder");
     bench
 }
 
@@ -167,7 +167,7 @@ fn measured_section() -> Instrument {
 /// 118.0 g on the scale and a front weight of 25.4 g read 13 mm back from
 /// its lip, the order of a leaded natural of the middle of a grand keyboard,
 /// under Stanwood's front weight ceiling of 28.1 g at note 45. The height of
-/// its centre of mass is its drawn section's centroid, estimated.
+/// its center of mass is its drawn section's centroid, estimated.
 fn measured_section_weighed() -> Instrument {
     weighed(118.0, 25.4)
 }

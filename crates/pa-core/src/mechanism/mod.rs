@@ -13,9 +13,9 @@
 //! # Frames
 //!
 //! A body's frame has its origin at its own joint, and everything on the body
-//! (its centre of mass, the points loads act at) is written in that frame,
+//! (its center of mass, the points loads act at) is written in that frame,
 //! once. The key's frame is the one [`crate::parts::KeyDesign`] is written in:
-//! origin at the balance pin on the key's underside, `x` towards the player,
+//! origin at the balance pin on the key's underside, `x` toward the player,
 //! `y` up. Angles turn counter-clockwise in that view, so a positive angle
 //! lifts the front of a key.
 //!
@@ -30,7 +30,7 @@
 //!   `O` the joint's pivot in the world; for a prismatic one, its axis in the
 //!   world; for any other coordinate, zero.
 //! - **Loads** ([`Mechanism::generalized_forces`], [`Mechanism::potential`]):
-//!   gravity at every body's centre of mass, and forces at material points
+//!   gravity at every body's center of mass, and forces at material points
 //!   whose direction stays fixed in the world.
 //! - **Prescribed coordinates and their reactions** ([`Mechanism::hold`]): a
 //!   coordinate held at a value for one procedure, and the generalized force
@@ -80,25 +80,25 @@ pub struct CoordId(pub usize);
 pub enum CoordKind {
     /// The angle of a revolute joint, radians, counter-clockwise positive.
     Angle,
-    /// The travel of a prismatic joint along its axis, metres.
+    /// The travel of a prismatic joint along its axis, meters.
     Length,
 }
 
-/// One generalized coordinate: what it measures, the range the modelled
+/// One generalized coordinate: what it measures, the range the modeled
 /// world gives it, and the dry friction of its joint.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Coord {
     /// Whether it is an angle or a length.
     pub kind: CoordKind,
-    /// The least and the greatest value it may take, radians or metres: the
-    /// edge of the modelled world on either side. A static solve reads each
+    /// The least and the greatest value it may take, radians or meters: the
+    /// edge of the modeled world on either side. A static solve reads each
     /// as a unilateral row, and refuses a state that leans on one
-    /// ([`crate::solve::Refusal::NoEquilibrium`]), since nothing modelled
+    /// ([`crate::solve::Refusal::NoEquilibrium`]), since nothing modeled
     /// stands there. Infinite for a coordinate only ever prescribed, as the
     /// jig's; a solve that leaves a coordinate free needs both finite, so
     /// that what it searches is bounded.
     pub limits: (f64, f64),
-    /// The bound of its joint's dry friction: a torque in newton-metres on an
+    /// The bound of its joint's dry friction: a torque in newton-meters on an
     /// angle, a force in newtons on a length. Set-valued: while the joint is
     /// still it takes any value within plus or minus this
     /// (`docs/FOUNDATIONS.md` §3.5). Zero for a joint that turns freely.
@@ -147,10 +147,10 @@ impl Coord {
 /// mechanism's coordinate carries is the bound alone ([`Coord::friction`]).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AxisFriction {
-    /// The bound, newton-metres: any torque within plus or minus this holds
+    /// The bound, newton-meters: any torque within plus or minus this holds
     /// the pin still.
     pub bound_n_m: f64,
-    /// The radius a weight read it at, metres; `None` where the source gives
+    /// The radius a weight read it at, meters; `None` where the source gives
     /// a torque and no radius, as Hirschkorn's table does.
     pub radius_m: Option<f64>,
 }
@@ -245,7 +245,7 @@ impl Joint {
 pub struct MassProps {
     /// Mass, kg.
     pub mass: f64,
-    /// Centre of mass, in the body's frame.
+    /// Center of mass, in the body's frame.
     pub com: Point,
 }
 
@@ -331,7 +331,7 @@ pub enum Problem {
         /// The coordinate.
         coord: CoordId,
     },
-    /// A pivot, an origin, a mass or a centre of mass that is not a finite
+    /// A pivot, an origin, a mass or a center of mass that is not a finite
     /// number.
     NotFinite {
         /// The body.
@@ -427,7 +427,7 @@ fn point_is_finite(p: Point) -> bool {
     p.x.is_finite() && p.y.is_finite()
 }
 
-/// A body's mass is absent, or positive and finite with a finite centre.
+/// A body's mass is absent, or positive and finite with a finite center.
 fn check_mass(id: BodyId, mass: Option<MassProps>) -> Result<(), Problem> {
     if let Some(m) = mass {
         if !(m.mass.is_finite() && point_is_finite(m.com)) {
@@ -546,7 +546,7 @@ impl Mechanism {
     }
 
     /// This mechanism with the dry friction of `coord`'s joint bounded by
-    /// `bound` newton-metres instead; or why not: a coordinate it does not
+    /// `bound` newton-meters instead; or why not: a coordinate it does not
     /// have, or a bound that is negative or not a finite number. Everything
     /// else is kept as it was, bit for bit: a procedure that tries the same
     /// key on other bushings reads the same parts, contacts and masses.

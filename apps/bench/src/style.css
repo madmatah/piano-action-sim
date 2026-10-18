@@ -243,7 +243,7 @@ button:hover {
   border: none;
 }
 
-/* A keyboard that could not be built. Alert-coloured and not hideable: the
+/* A keyboard that could not be built. Alert-colored and not hideable: the
    sheet beside it still reports numbers, and those numbers describe a thing
    that is not a piano. */
 .faults {
@@ -327,7 +327,7 @@ button.action {
 }
 
 /* The band, drawn in place of the section: one more sheet, its curves the
-   only colour on it. */
+   only color on it. */
 .viewtabs {
   z-index: 2;
 }

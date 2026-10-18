@@ -13,15 +13,15 @@ export type MarkedContact = {
  */
 pair: Contact, 
 /**
- * Where the key's surface is, millimetres.
+ * Where the key's surface is, millimeters.
  */
 on_key_mm: [number, number], 
 /**
- * Where the frame's surface is, millimetres.
+ * Where the frame's surface is, millimeters.
  */
 on_frame_mm: [number, number], 
 /**
- * The signed gap between them, millimetres: negative where the drawn
+ * The signed gap between them, millimeters: negative where the drawn
  * parts overlap.
  */
 gap_mm: number, 
@@ -30,7 +30,7 @@ gap_mm: number,
  */
 state: ContactState, 
 /**
- * The row's unit normal, from the frame's surface towards the key's.
+ * The row's unit normal, from the frame's surface toward the key's.
  */
 normal: [number, number], 
 /**

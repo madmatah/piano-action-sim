@@ -46,7 +46,7 @@ fn si(record: &Value, pointer: &str) -> f64 {
     }
 }
 
-/// A printed point of his, metres, in its body's frame.
+/// A printed point of his, meters, in its body's frame.
 fn point(record: &Value, body: &str, name: &str) -> Point {
     let at = format!("/geometry/{body}/points/{name}");
     Point::new(
@@ -56,7 +56,7 @@ fn point(record: &Value, body: &str, name: &str) -> Point {
 }
 
 /// A length his profile states, in SI: `param`'s stated value, in
-/// millimetres there.
+/// millimeters there.
 fn stated(profile: &Value, param: &str) -> f64 {
     let v = profile["values"]
         .as_array()
@@ -64,7 +64,7 @@ fn stated(profile: &Value, param: &str) -> f64 {
         .iter()
         .find(|v| v["param"] == param)
         .unwrap_or_else(|| panic!("{param} bound"));
-    assert_eq!(v["unit"], "mm", "{param} in millimetres");
+    assert_eq!(v["unit"], "mm", "{param} in millimeters");
     v["value"].as_f64().expect("a stated value") / 1000.0
 }
 
@@ -84,13 +84,13 @@ fn turned(t: f64, p: Point) -> Point {
 
 /// The angle, radians nose-up, at which the key's line through `through`
 /// with the normal `n` as printed, turned about its pivot, touches a round
-/// of radius `r` about `centre`: his model's stop, closed as script 10 and
+/// of radius `r` about `center`: his model's stop, closed as script 10 and
 /// the prototype close it. A bisection of a hundred halvings over a tenth
 /// of a radian.
-fn on_a_round(through: Point, n: Point, centre: Point, r: f64, lo: f64, hi: f64) -> f64 {
+fn on_a_round(through: Point, n: Point, center: Point, r: f64, lo: f64, hi: f64) -> f64 {
     let gap = |t: f64| {
         let (p, m) = (turned(t, through), turned(t, n));
-        (centre.x - p.x) * m.x + (centre.y - p.y) * m.y - r
+        (center.x - p.x) * m.x + (center.y - p.y) * m.y - r
     };
     let (mut lo, mut hi) = (lo, hi);
     let lo_positive = gap(lo) > 0.0;
@@ -106,7 +106,7 @@ fn on_a_round(through: Point, n: Point, centre: Point, r: f64, lo: f64, hi: f64)
 }
 
 /// His key between its stops: attitudes, radians nose-up, and the dip at
-/// Pk2, metres.
+/// Pk2, meters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Stops {
     rest: f64,
@@ -132,15 +132,15 @@ fn fall(p: Point, rest: f64, bottom: f64) -> f64 {
 ///   his profile rounds the cloth's edges to, never from the bench's frame:
 ///   each felt's top where his round's top is, the washer over Pg4 and the
 ///   cloth wholly under the chamfer, its front edge, an arc of that radius,
-///   centred over Pg5, as the bench's must be; at rest the key, nose-up,
-///   bears with its chamfer, Pk5's line, which rises towards the tail, on
+///   centered over Pg5, as the bench's must be; at rest the key, nose-up,
+///   bears with its chamfer, Pk5's line, which rises toward the tail, on
 ///   that edge, as a line touches a round; at the bottom it bears on the
-///   front punching read at its centre, as the bench reads every punching.
+///   front punching read at its center, as the bench reads every punching.
 ///   The felts' difference from his rounds, these less those, is the bound:
 ///   the bench's seats stand where script 10's do, moved by that
 ///   difference, to within what script 10 prints them to and what the
-///   static solve closes a contact to (a picometre over arms of a fifth of
-///   a metre); and where the prototype's do, moved by it, to within what
+///   static solve closes a contact to (a picometer over arms of a fifth of
+///   a meter); and where the prototype's do, moved by it, to within what
 ///   the prototype's compliant contacts compress under the key at rest, over
 ///   the arm of the contact compressed. The bench's washer and the cloth's
 ///   front edge are held to Pg4 and Pg5 where it draws them, which names a
@@ -148,7 +148,7 @@ fn fall(p: Point, rest: f64, bottom: f64) -> f64 {
 /// - **Table A.1's static moment** over the measuring arm is the front
 ///   weight the jig reads, to round-off; and the key weight ratio is the
 ///   capstan's arm over the measuring arm. These see what the attitudes
-///   cannot: a centre of mass read in another frame.
+///   cannot: a center of mass read in another frame.
 fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
     let record: Value = serde_json::from_str(RECORD).expect("his record");
     let fixture: Value = serde_json::from_str(FIXTURE).expect("the fixture");
@@ -201,9 +201,9 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
 
     // The felts, in closed form from his printed points, as the owner chose
     // them: a flat washer and a flat cloth strip, each with its top where
-    // his round has its, the washer read at its centre over Pg4; the cloth
+    // his round has its, the washer read at its center over Pg4; the cloth
     // lying wholly under the chamfer, its front edge, rounded to the radius
-    // his profile states, centred over Pg5; the key, nose-up at rest,
+    // his profile states, centered over Pg5; the key, nose-up at rest,
     // bearing with its chamfer on that edge. The chamfer is the line the
     // bench draws, through the kink where Pk5's line meets Pk4's flat, its
     // normal made unit; his rounds keep it as printed, as script 10 does.
@@ -241,8 +241,8 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
         .front
         .pin_x(frame.front_rail, KeyKind::Natural);
     let back = &frame.sections.back;
-    let edge_x = back.centre_x(frame.back_rail) + back.half_length;
-    // The cloth's front edge is drawn where its centre and half-length put
+    let edge_x = back.center_x(frame.back_rail) + back.half_length;
+    // The cloth's front edge is drawn where its center and half-length put
     // it, one addition, held to Pg5 within that addition's rounding.
     if front_x != pg4.x || (edge_x - pg5.x).abs() > f64::EPSILON * pg5.x.abs() {
         return Err(format!(
@@ -273,8 +273,8 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
     };
 
     // Script 10, moved by the felts' difference, to within its print and
-    // the static solve's closure, a picometre over an arm of a fifth of a
-    // metre; then the prototype, moved by it, within its compression.
+    // the static solve's closure, a picometer over an arm of a fifth of a
+    // meter; then the prototype, moved by it, within its compression.
     let closed = 1e-12 / 0.2;
     let compressed = |gap_mm: &str, arm: f64| printed("prototype", gap_mm).abs() / 1000.0 / arm;
     let rest_bound = compressed("rest_back_gap_mm", pg5.x.abs() - r5) + 0.5 * rad;
@@ -325,13 +325,13 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
 
     // Table A.1, through the jig.
     let mass = si(&record, "/mass_properties/bodies/key/mass");
-    let centre_x = si(&record, "/mass_properties/bodies/key/centre_of_mass/x");
+    let center_x = si(&record, "/mass_properties/bodies/key/center_of_mass/x");
     let arm = b.measuring_point();
     let read = |p| match b.sheet().get(p) {
         Some(Ok(m)) => Ok(m.value),
         other => Err(format!("{p:?}: {other:?}")),
     };
-    let front_weight = mass * 1000.0 * centre_x / arm;
+    let front_weight = mass * 1000.0 * center_x / arm;
     let fw = read(ProcedureId::FrontWeight)?;
     if (fw - front_weight).abs() > 64.0 * f64::EPSILON * front_weight.abs() {
         return Err(format!(
@@ -385,11 +385,11 @@ mod tests {
     /// 9.3064 mm: 1.7 µm more. At rest it bears on the cloth's front edge,
     /// over Pg5, where his round meets its chamfer 0.06 mm further forward.
     /// The difference is his rounds' own. A line resting on a round passes
-    /// over the round's centre above its top, by the radius times (1/cos of
+    /// over the round's center above its top, by the radius times (1/cos of
     /// its slope - 1): on his rounds of 5 mm, 0.39 µm at the back, the
     /// chamfer standing 0.72 degrees from level at rest, and 0.39 µm at the
     /// front, the flat 0.71 degrees at the bottom; on the cloth's edge of
-    /// 0.5 mm 0.04 µm, and on the washer read at its centre nothing. And
+    /// 0.5 mm 0.04 µm, and on the washer read at its center nothing. And
     /// script 10 reads Pk5's normal as printed, 0.99984 long, which stands
     /// the chamfer 0.8 µm further off its round.
     #[test]
@@ -403,14 +403,14 @@ mod tests {
     }
 
     /// Consistency: **the cross-check catches a frame read in another
-    /// convention, or a micrometre off.** Table A.1's centre of mass read
+    /// convention, or a micrometer off.** Table A.1's center of mass read
     /// from the key's front rather than from its pivot moves no stop, and
     /// the front weight shows it; Pg5's height read upside down, its round's
     /// top 5.5 mm above the balance bearing rather than below, puts the key's
     /// tail where no seat is, or another one; the back rail placed by its
-    /// centre at Pg5's x, as a rail under a round would be, rather than by
+    /// center at Pg5's x, as a rail under a round would be, rather than by
     /// its cloth's front edge, puts the cloth's face under the chamfer's
-    /// kink; and a rail a micrometre off, in height at the front or at the
+    /// kink; and a rail a micrometer off, in height at the front or at the
     /// back, or along the key at the back, moves the bench's seats off the
     /// felts his printed points place by more than script 10 prints them to,
     /// or the cloth's front edge off Pg5.
@@ -418,8 +418,8 @@ mod tests {
     fn the_cross_check_catches_a_frame_read_in_another_convention() {
         for (param, binding) in [
             (
-                "published.centre.x",
-                r#"{ "param": "published.centre.x", "value": 186.4, "unit": "mm",
+                "published.center.x",
+                r#"{ "param": "published.center.x", "value": 186.4, "unit": "mm",
                      "reliability": "S", "why": "planted: Table A.1's 51.4 mm read back from the key front at 237.8 mm" }"#,
             ),
             (
@@ -435,17 +435,17 @@ mod tests {
             (
                 "front_rail.height",
                 r#"{ "param": "front_rail.height", "value": 23.221, "unit": "mm", "reliability": "E",
-                     "rule": "planted: 23.22 + 0.001", "why": "planted: a micrometre off" }"#,
+                     "rule": "planted: 23.22 + 0.001", "why": "planted: a micrometer off" }"#,
             ),
             (
                 "back_rail.height",
                 r#"{ "param": "back_rail.height", "value": 20.301, "unit": "mm", "reliability": "E",
-                     "rule": "planted: 20.3 + 0.001", "why": "planted: a micrometre off" }"#,
+                     "rule": "planted: 20.3 + 0.001", "why": "planted: a micrometer off" }"#,
             ),
             (
                 "back_rail.x",
                 r#"{ "param": "back_rail.x", "value": -215.699, "unit": "mm", "reliability": "E",
-                     "rule": "planted: -215.7 + 0.001", "why": "planted: a micrometre off" }"#,
+                     "rule": "planted: -215.7 + 0.001", "why": "planted: a micrometer off" }"#,
             ),
         ] {
             let caught = built(&planted(param, binding)).and_then(|b| c11(&b).map(|_| ()));

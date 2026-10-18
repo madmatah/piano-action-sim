@@ -5,6 +5,6 @@
  */
 export type BalanceRailSettings = { 
 /**
- * The bare rail's height above the keybed, millimetres.
+ * The bare rail's height above the keybed, millimeters.
  */
 height_mm: number, };

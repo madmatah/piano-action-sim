@@ -5,10 +5,10 @@
  */
 export type CapstanSettings = { 
 /**
- * Where it stands, millimetres behind the balance pin.
+ * Where it stands, millimeters behind the balance pin.
  */
 behind_mm: number, 
 /**
- * How far it stands above the keystick, millimetres.
+ * How far it stands above the keystick, millimeters.
  */
 height_mm: number, };

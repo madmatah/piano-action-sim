@@ -3,7 +3,7 @@ packages:
   # The wasm crate participates as an ordinary package, so Turborepo can order
   # the TypeScript build after the wasm build and cache its `pkg/` output. This
   # needs no Turborepo future flag: `experimentalCargoWorkspaces` maps `build` to
-  # `cargo build`, which produces the wrong artefact for a cdylib and leaves
+  # `cargo build`, which produces the wrong artifact for a cdylib and leaves
   # library builds uncached anyway.
   - "crates/pa-wasm"
 

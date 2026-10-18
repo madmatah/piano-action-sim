@@ -52,8 +52,8 @@ generic base, not any maker's specification. What is still to measure is
 listed in each file (`still_to_measure`); the measured section's profile says
 beside each assumption what would replace it: first, one of these keys
 weighed whole (its mass, its front weight by Stanwood's protocol, and how far
-back from the covering's lip the weight was centred), and the distance from
-the centre of its balance hole to its key front.
+back from the covering's lip the weight was centered), and the distance from
+the center of its balance hole to its key front.
 
 ## Record shape
 
@@ -102,10 +102,10 @@ Five conventions come up as soon as a real instrument is measured:
 |---|---|
 | `stanwood-weight-curves.json` | Stanwood's strike-weight and hammer-weight curve standards, all 88 notes × 13 levels, transcribed from the published table and cross-checked |
 | `key-frame-sections.json` | the three rails as parts: pin shapes and sizes, punching and hole diameters, and the offset between the naturals' and the sharps' rows, measured on one key frame |
-| `punching-papers.json` | the punching papers a regulation is shimmed with: eight thicknesses, and the colour each is supplied in |
+| `punching-papers.json` | the punching papers a regulation is shimmed with: eight thicknesses, and the color each is supplied in |
 | `key-section.json` | the keystick in profile: the wood's thickness, the covering and key front, the capsule, the block that carries the back check, the thinned tail and its felt, the chamfer under it, the front mortise, and where the capstan stands behind the balance pin; still to measure, the clearance cut in the top for the wippen rail |
 | `touchweight-protocol.json` | the conventions Stanwood's touchweight protocols run under: the measuring point 13 mm or 1/2 inch back from the front lip of the key, and the 10 g the key weight ratio is read with |
-| `hirschkorn-boston-gp178-note52.json` | all of Hirschkorn's Appendix A, the engine's base action: masses, centres of mass and inertias (A.1), the points and surfaces of the ground and the five bodies, each in its own body's frame with the frame convention stated at the top (A.2–A.7), the thirteen contact laws with their friction (A.8), the axis frictions (A.9), the springs, and his regulation; 235 values, each with its table, row and page, and what the thesis does not give. `tools/derivations/10` reads it |
+| `hirschkorn-boston-gp178-note52.json` | all of Hirschkorn's Appendix A, the engine's base action: masses, centers of mass and inertias (A.1), the points and surfaces of the ground and the five bodies, each in its own body's frame with the frame convention stated at the top (A.2–A.7), the thirteen contact laws with their friction (A.8), the axis frictions (A.9), the springs, and his regulation; 235 values, each with its table, row and page, and what the thesis does not give. `tools/derivations/10` reads it |
 | `hirschkorn-key-outline.json` | Hirschkorn's key where his tables give no number for its shape, traced from his Figure A.1: the positions of the figure's markers and of the key's outline in pixels of the page rendered at 600 dpi, with how they were read, and the numbers his profile binds from them or derives from them by a rule it states, each `E` by `tools/derivations/11`, which reads the pixels and his record, fits the trace on three printed points and prints the residuals at the others as its uncertainty |
 
 ## Planned records

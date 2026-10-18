@@ -16,7 +16,7 @@ export type Refusal = { "code": "geometry_degenerate" } | { "code": "key_not_wei
 fighting: Array<Contact>, } | { "code": "lifts_off_its_frame", 
 /**
  * How far above its balance punching the key leaves its pin,
- * millimetres: negative where the punching stands above the pin's
+ * millimeters: negative where the punching stands above the pin's
  * top, by that much.
  */
 leaves_its_pin_mm: number, } | { "code": "no_stop_below_the_front" } | { "code": "no_stop_under_the_tail" } | { "code": "capstan_not_behind_the_bearing" } | { "code": "measuring_point_not_in_front" } | { "code": "not_converged", 
@@ -51,7 +51,7 @@ on: Array<Contact>, } | { "code": "walk_lifts_off_its_frame" } | { "code": "swee
 stroke: Stroke, 
 /**
  * How far the measuring point stood below the top seat,
- * millimetres.
+ * millimeters.
  */
 travel_mm: number, 
 /**
@@ -60,7 +60,7 @@ travel_mm: number,
  */
 force_g: number, } | { "code": "sweep_lifts_off_its_frame" } | { "code": "no_key_top_at_the_station", 
 /**
- * Where it goes, millimetres from the balance pin, positive in
+ * Where it goes, millimeters from the balance pin, positive in
  * front.
  */
 station_mm: number, } | { "code": "from_a_refused_reading", 

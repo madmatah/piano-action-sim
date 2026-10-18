@@ -18,7 +18,7 @@ What it does, in order:
      (OBS, and RESULTS.md). A and A-set also run at steps between the sweep's
      (STABILITY_US), to find where they first diverge.
   2. The descent study: why the forte press descends in 30 ms and the piano in 160 ms.
-  3. The stiffest linearised modes along each scenario, and the explicit step's linear
+  3. The stiffest linearized modes along each scenario, and the explicit step's linear
      stability limit there.
   4. Operation counts per step, from what each step actually did.
   5. Consistency checks of the variant below.
@@ -33,7 +33,7 @@ The four integrators. model.py and integrators.py are used unchanged:
                peak over A (1.000, 1.686, 1.725, 1.128). That is Eq. 2.10's limit as v_t
                goes to zero, which has no threshold speed left. It is a variant tested here
                to inform a decision the owner owes (whether contact friction is a set or a
-               regularised law); it is not a change of the model.
+               regularized law); it is not a change of the model.
 """
 
 from __future__ import annotations
@@ -199,7 +199,7 @@ def exact_pass(w, u_free, bound, lam0, rows):
     """The box problem solved exactly by pivoting on its active set, from the one the
     impulses lam0 show: each row stuck (speed exactly zero, impulse inside its box) or
     sliding (impulse on a bound). The stuck rows' impulses are the exact solution of least
-    utilisation sum (lam_i/bound_i)^2, unique even where stuck rows are redundant (a joint
+    utilization sum (lam_i/bound_i)^2, unique even where stuck rows are redundant (a joint
     and a contact holding the same body), so the split between them cannot drift from
     step to step. Each pivot moves the row with the largest natural residual
     |lam_i - clip(lam_i - u_i/w_ii)| / bound_i to the other state; when every residual is
@@ -428,7 +428,7 @@ def stepper(variant):
 COST_TERMS = (
     ("pose: 5 angles, the two pins the wippen carries", 16),
     ("13 signed gaps: 10 line/circle (32 each), 1 circle/circle (30), 2 hybrids (40 each)", 430),
-    ("mass matrix: 5 centres of mass, 7 Jacobian columns, 11 entries", 90),
+    ("mass matrix: 5 centers of mass, 7 Jacobian columns, 11 entries", 90),
     ("velocity terms, gravity, springs, the finger's arm", 100),
 )
 COMMON_FLOPS = sum(f for _, f in COST_TERMS)
@@ -665,7 +665,7 @@ def run(name, variant, dt, down_s=None, hold_s=None, release=True, modal_every=0
 
 
 # =============================================================================
-# Linearised modes
+# Linearized modes
 # =============================================================================
 
 
@@ -1065,7 +1065,7 @@ def run_all(n_jobs):
 # =============================================================================
 
 
-def analyse(out):
+def analyze(out):
     sweep = {(s[1], s[2], round(s[3] * 1e6, 3)): r for s, r in out.items() if s[0] == "sweep"}
     A = {}
     for name in SCENARIOS:
@@ -1452,7 +1452,7 @@ def write_results(out, sweep, A, wall_s, n_jobs):
     # "set by the contact damping": without it, the limit for that mode would be 1/(pi f)
     assert 2.0 * lim_all["limit"] < 1.0 / (np.pi * lim_all["f"])
     assert all(0.8 < x < 1.2 for x in (stroke_order, after_order))  # "first order in the step"
-    for v_t in sorted({k[0] for k in thr}):  # resolving the law moves the strike speed towards the set's
+    for v_t in sorted({k[0] for k in thr}):  # resolving the law moves the strike speed toward the set's
         assert thr[(v_t, 0.25)]["v string"] < thr[(v_t, 1)]["v string"] < A["piano"]["obs"][("A", 1)]["v string"]
 
     def us_list(xs):
@@ -1499,7 +1499,7 @@ model is right.
   a loaded contact sticks its friction changes sign from one step to the next:
   {flips[("forte", "A")]:,} reversals in the {steps_1us["forte"]:,} steps of the forte press at 1 µs.
   Its 1 µs references are then not converged: in the forte press checking moves by
-  {abs(a_check[0.25] - a_check[1]):.3f} mm between 1 and 0.25 µs, at first order, towards the set
+  {abs(a_check[0.25] - a_check[1]):.3f} mm between 1 and 0.25 µs, at first order, toward the set
   model's value, and the piano press's hammer speed at the string sits on a plateau the chatter
   sets, which a step of 0.25 µs does not leave (the section on contact friction below). A and
   B hold every observable within resolution of those references up to {asbuilt_best} µs at
@@ -1558,7 +1558,7 @@ velocity level: one row per free joint (bound A_i dt) and one per loaded frictio
 (its slip row, bound mu f_n dt). A projected Gauss-Seidel sweep guesses which rows stick, and
 an exact active-set pass, pivoting from that guess, finishes the solve. Where stuck rows are
 redundant (a joint and a contact holding the same body) it takes the split of least
-utilisation, sum (lambda_i / bound_i)^2, so the split, and the finger force that depends on
+utilization, sum (lambda_i / bound_i)^2, so the split, and the finger force that depends on
 it, does not drift from step to step. The checks at the end of this file test it.
 """)
 
@@ -1594,7 +1594,7 @@ it, does not drift from step to step. The checks at the end of this file test it
           "the front punching); in the forte by force, whose bottom is not prescribed, the key travel at "
           "let-off", "0.08 mm", "a punching paper: aftertouch is set through the key dip, with papers"],
          ["hammer at let-off, at the string",
-          "the speed of the hammer's striking point towards the string (the rate of contact 12's gap) at "
+          "the speed of the hammer's striking point toward the string (the rate of contact 12's gap) at "
           "the let-off instant and at the instant the gap closes, interpolated", "1 %",
           "the trade has no reading of it; the reproducing piano that records it, the Bösendorfer SE, counts "
           "the time over the last 5 mm at 25.6 kHz, a quantum of v²/128 m/s: 0.8 % at 1 m/s, 1.6 % at 2 m/s "
@@ -1777,11 +1777,11 @@ stable step there is a few nanoseconds (`README.md`, `scenarios.py chatter-study
     table(md_table(["scenario", "steps"] + list(VARIANTS), rows, ["l", "r", "r", "r", "r", "r"]))
     paper = [x["paper_us"] for x in asb.values()]
     para(f"""
-As the step falls below 1 µs the as-built model's checking keeps moving towards the set
+As the step falls below 1 µs the as-built model's checking keeps moving toward the set
 model's: {a_check[1]:.3f}, {a_check[0.5]:.3f} and {a_check[0.25]:.3f} mm at 1, 0.5 and 0.25 µs
 in the forte press under A, against {a_forte[("A-set", 1)]["checking"]:.3f} mm with A-set
 (tables above). It converges, slowly: chatter lets the hammer held by the back check creep
-towards the string through the hold, by an amount proportional to the step (`README.md`,
+toward the string through the hold, by an amount proportional to the step (`README.md`,
 "Reading its output"), so each halving of the step moves checking by about half as much as
 the last ({asb[("forte", "A")]["d1"]:+.3f} then {asb[("forte", "A")]["d2"]:+.3f} mm under A,
 {asb[("forte", "B")]["d1"]:+.3f} then {asb[("forte", "B")]["d2"]:+.3f} mm under B). Extrapolated at
@@ -1881,7 +1881,7 @@ is therefore set by accuracy long before stability matters, and A-set stays stab
 """)
 
     # ------------------------------------------------------------------ modes
-    w("## The stiffest linearised modes")
+    w("## The stiffest linearized modes")
     w("")
     para(f"""
 Along each scenario's A-set run at 5 µs (every 20 µs; every 100 µs in the slow press), the
@@ -1890,7 +1890,7 @@ repetition spring at the forces the run produces (`model.py`, `Evaluation.K`), M
 matrix, over the coordinates free at that instant (the key's own excluded while it is driven
 in position). The contacts carrying the mode are those holding at least 10 % of its
 stiffness. The explicit step's linear stability limit is the largest step at which integrator
-A's step, linearised there with the contact damping C as explicit as A has it, keeps every
+A's step, linearized there with the contact damping C as explicit as A has it, keeps every
 mode bounded, the contact damping included.
 """)
     rows = []
@@ -2167,7 +2167,7 @@ def main(argv=None):
             import pickle
             with open(a.save, "wb") as fh:
                 pickle.dump((out, wall_runs, n_jobs), fh)
-    sweep, analysis = analyse(out)
+    sweep, analysis = analyze(out)
     lines = write_results(out, sweep, analysis, wall_runs, n_jobs)
     (HERE / "RESULTS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"RESULTS.md written; the runs took {wall_runs:.0f} s on {n_jobs} worker processes")

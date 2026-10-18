@@ -6,15 +6,15 @@
  */
 export type PunchingSettings = { 
 /**
- * The felt washer, millimetres.
+ * The felt washer, millimeters.
  */
 felt_mm: number, 
 /**
- * The papers, millimetres each, in the order they were laid, bottom
+ * The papers, millimeters each, in the order they were laid, bottom
  * first.
  */
 papers_mm: Array<number>, 
 /**
- * Their total, millimetres, as the engine sums it.
+ * Their total, millimeters, as the engine sums it.
  */
 paper_total_mm: number, };

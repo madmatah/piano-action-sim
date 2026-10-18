@@ -13,7 +13,7 @@ export type RegulationRefusal = { "code": "regulation_infeasible",
  */
 target: Target, 
 /**
- * What was asked of it, millimetres, as it was asked.
+ * What was asked of it, millimeters, as it was asked.
  */
 wanted_mm: number, 
 /**
@@ -21,11 +21,11 @@ wanted_mm: number,
  */
 limited_by: Limit, 
 /**
- * How far out of reach, in its own reading, millimetres.
+ * How far out of reach, in its own reading, millimeters.
  */
 shortfall_mm: number, 
 /**
- * The most paper the search lays on a stack, millimetres.
+ * The most paper the search lays on a stack, millimeters.
  */
 search_mm: number, } | { "code": "no_seat", 
 /**
