@@ -3620,7 +3620,7 @@ mod contact_readout_tests {
             .any(|v| matches!(v, Some(TouchVerdict::HeldByFriction { .. }))));
     }
 
-    /// Consistency, and the check of `CLAUDE.md` rule 1: **every contact
+    /// Consistency, and the check of `.claude/rules/physics.md` > One part definition feeds contacts and drawing: **every contact
     /// surface is a range of a drawn part.**
     ///
     /// By type, a contact pair holds nothing but ranges of parts. Here, on
@@ -4907,7 +4907,7 @@ mod edit_tests {
         }
     }
 
-    /// Consistency, rule 10 of the repository: **everything an assembled
+    /// Consistency, and the check of `.claude/rules/metrology.md` > Upstream settings drift, they do not cascade: **everything an assembled
     /// keyboard can be is taken, computed and reported, not refused.** A
     /// front pin standing 40 mm proud of its rail, out through what its
     /// mortise allows, is a state: the key rides on it. A front rail moved

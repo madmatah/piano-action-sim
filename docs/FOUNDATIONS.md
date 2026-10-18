@@ -1687,6 +1687,14 @@ apps/bench         the bench page: React, react-three-fiber
 tools/smoke        drives the real page over the Chrome DevTools protocol
 scripts/verify.sh  every gate, run locally by `pnpm verify`
 scripts/smoke.sh   the browser smoke test: the built bench in a headless Chrome
+docs               this document, the research annexes A1 to A5, the vocabulary
+                   worksheet
+tools/derivations  the script behind every [E] number, run with python3 -I
+tools/dynamics-prototype  the one-note dynamics prototype, in Python, and its
+                   results
+data/references    the primary corpus: ignored by git, third-party copyright
+CLAUDE.md, .claude the agents' manual, the rules files with their checks, the
+                   session settings
 ```
 
 The adapters add no physics and the React tree computes none of the numbers it
@@ -1852,7 +1860,8 @@ the code it is worded by, and where a form's field reads its first value. A key 
 measuring point, as Stanwood's protocol reads it, through the action that
 inverts the protocol; what the registry stores is the torque. The papers are
 a list on each punching, held once in the frame and changed only by laying or
-lifting a paper; ratios have no path (rule 11).
+lifting a paper; ratios have no path, being outputs
+(`.claude/rules/metrology.md` > Ratios are outputs).
 
 `validate` (`pa_core::validate`) runs on every edit and on every design an
 instrument is built from, before any solve, and refuses what no part could be

@@ -4,7 +4,7 @@
 /// procedure's several added together.
 ///
 /// Every loop that stops on a test has a cap and reports its count
-/// (`CLAUDE.md` rule 8): a reading that converged says how, and one that did
+/// (`.claude/rules/physics.md` > Determinism): a reading that converged says how, and one that did
 /// not is refused rather than shown.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SolveReport {

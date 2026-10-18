@@ -900,7 +900,7 @@ mod tests {
         }
     }
 
-    /// Consistency, and the check of `CLAUDE.md` rule 2: **the regulated key
+    /// Consistency, and the check of `.claude/rules/metrology.md` > Regulation is trade targets solved to geometry: **the regulated key
     /// meets its targets, then lands within one paper of them.**
     ///
     /// Meets: the paper the bisection asks for, read back by the seated pose,

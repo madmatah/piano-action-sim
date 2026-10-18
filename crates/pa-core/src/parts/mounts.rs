@@ -1235,7 +1235,7 @@ mod tests {
         }
     }
 
-    /// Consistency, `CLAUDE.md` rule 1's check by the brute-force oracle:
+    /// Consistency, the check of `.claude/rules/physics.md` > One part definition feeds contacts and drawing by the brute-force oracle:
     /// **every contact lies on its drawn outline.** Wherever the key stands,
     /// seated at the top and at the bottom, riding on a frame whose stops
     /// fight, lifted off its punching or turned across its stroke, every row
