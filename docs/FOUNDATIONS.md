@@ -1704,6 +1704,16 @@ Clippy with warnings as errors, the tests and the WebAssembly build for Rust,
 and Biome, the type-check, the build, the tests and the smoke test for the web;
 `scripts/verify.sh` runs the same gates locally.
 
+**Review.** The gates check what a tool can; the rules no tool can check, which
+`.claude/rules/` marks *not mechanically checked*, are checked by
+`/expert-review` before a branch reaches `main`. It runs in a subagent that
+never saw the code being written, and sends one read-only expert per domain in
+parallel: the generalists (correctness, conventions, architecture, tests,
+security, documentation, performance) and the project's own (metrology,
+physics, provenance, vocabulary), each reading the rules files of its domain.
+Every finding that would block or should be fixed is verified before it is
+reported, so the report claims nothing it has not checked.
+
 **The golden sheet** records every reading of the default bench, Hirschkorn's
 key as it arrives, and of six fixture benches in full bits, in
 `crates/pa-app/tests/golden/`: on his key, a frame whose stops fight, a dip
