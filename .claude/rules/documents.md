@@ -52,3 +52,6 @@ Each statement has one home, so that it never drifts from a copy.
 - **A skill holds one procedure,** in `.claude/skills/<name>/SKILL.md`. Its `description` is what Claude reads to decide when to use the skill: in the third person, it says what the skill is for and when to use it, in the words a user would say, and never lists its steps, which belong in the body. *Not mechanically checked.*
 - **It cites the rules it applies** by file and heading, and does not restate them. *Not mechanically checked.*
 
+## Pull request template
+
+- **Timings stay out of the checklist** of `.github/pull_request_template.md`, since they depend on the machine and on its state. *Not mechanically checked.*
