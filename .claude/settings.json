@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$(git rev-parse --show-toplevel)\" && if [ ! -e node_modules/.modules.yaml ]; then pnpm install --frozen-lockfile && echo \"Installed the dependencies of this checkout.\" || echo \"Installing the dependencies failed: run pnpm install --frozen-lockfile in this checkout to see why.\"; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
