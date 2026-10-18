@@ -17,9 +17,10 @@ trade's own protocols, and come back with the expected values.**
 - **`private/` is one-way**: gitignored and its own repository, it may cite
   `docs/`; no published file cites it (this file, the agents' way in, is the
   exception), and a refuted claim gets an inline *do not use* warning instead.
-  `git mv` into it leaves the file tracked: untrack it too. Check: `grep -rln
-  'private/' README.md docs data tools crates apps scripts` and `git ls-files
-  private` find nothing.
+  `git mv` into it leaves the file tracked: untrack it too. Never run `git
+  clean` with `-ff` at the root: a double `-f` deletes nested repositories,
+  `private/` among them. Check: `grep -rln 'private/' README.md docs data
+  tools crates apps scripts` and `git ls-files private` find nothing.
 - **Nothing committed names the owner's instruments or other projects.** Check:
   `git diff --cached | grep -iFf private/forbidden-names.txt` finds nothing.
 - **A commit message says why**: the reason, the constraint, the observation
