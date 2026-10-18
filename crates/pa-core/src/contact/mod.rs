@@ -167,7 +167,7 @@ pub enum Role {
 
 /// What a part is made of.
 ///
-/// A property of the part; what colour a material is drawn in is the view's
+/// A property of the part; what color a material is drawn in is the view's
 /// choice. Two parts of one material are the same stuff: the key button and
 /// the back check block are of one wood, and it is not the keystick's.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -191,10 +191,10 @@ pub enum Material {
     HardFelt,
     /// The back rail cloth.
     Cloth,
-    /// A punching paper. The trade identifies a paper by its colour, and the
-    /// colour is its thickness, so the stock is named by the thickness.
+    /// A punching paper. The trade identifies a paper by its color, and the
+    /// color is its thickness, so the stock is named by the thickness.
     Paper {
-        /// The paper's thickness, metres.
+        /// The paper's thickness, meters.
         thickness: f64,
     },
 }
@@ -205,7 +205,7 @@ pub enum Sweep {
     /// Swept sideways across the keyboard: keys, rails, the back rail cloth,
     /// an oblong pin. The outline is in its body's `x` and `y`.
     Extruded {
-        /// Extent across the keyboard, metres. Zero where the part has none
+        /// Extent across the keyboard, meters. Zero where the part has none
         /// the model knows: a cut, which only the section draws.
         width: f64,
     },
@@ -213,7 +213,7 @@ pub enum Sweep {
     /// capstan. The outline is the **profile** in radius and height, the
     /// height in the body's `y`; see [`Part::silhouette`].
     Revolved {
-        /// Where the axis stands, metres along the body's `x`.
+        /// Where the axis stands, meters along the body's `x`.
         axis_x: f64,
     },
 }
@@ -268,10 +268,10 @@ fn about_axis(seg: Seg, axis_x: f64, side: f64) -> Seg {
             b: shifted(Point::new(side * b.x, b.y), axis_x),
         },
         Seg::Arc { c, r, from, to } => {
-            let centre = shifted(Point::new(side * c.x, c.y), axis_x);
+            let center = shifted(Point::new(side * c.x, c.y), axis_x);
             if side > 0.0 {
                 Seg::Arc {
-                    c: centre,
+                    c: center,
                     r,
                     from,
                     to,
@@ -284,7 +284,7 @@ fn about_axis(seg: Seg, axis_x: f64, side: f64) -> Seg {
                     crate::geometry::Dir::new(-v.x, v.y).unwrap_or(d)
                 };
                 Seg::Arc {
-                    c: centre,
+                    c: center,
                     r,
                     from: flip(to),
                     to: flip(from),
@@ -390,7 +390,7 @@ pub enum AnchorCode {
     /// touchweight's measuring point is taken back from.
     Lip,
     /// The top of the capstan on its axis: where the wippen's heel bears, and
-    /// where the key weight ratio's 10 g is centred.
+    /// where the key weight ratio's 10 g is centered.
     CapstanContact,
 }
 

@@ -17,7 +17,7 @@
  * settings hold, the key friction weight's as the sheet reads it, each
  * reading the sheet's, and nothing here keeps a copy of either to drift from
  * them; the typed fields hold only what is typed until it is sent. Every
- * sentence is the catalogue's (`i18n/`), composed from the codes and numbers
+ * sentence is the catalog's (`i18n/`), composed from the codes and numbers
  * the engine sends.
  */
 
@@ -51,7 +51,7 @@ import { type Answer, type Around, type Edits, Panel, type Read, Refused, shown 
 import { ANGLE_DEG, decimals, LENGTH_MM, MASS_G } from './format'
 import { type Reported, t, word } from './i18n'
 import { madeBy } from './layout'
-import { CONTACT_COLOUR, HOW_COLOUR } from './palette'
+import { CONTACT_COLOR, HOW_COLOR } from './palette'
 import { Rich } from './Rich'
 import { SagittalView, type ViewMode } from './SagittalView'
 
@@ -527,7 +527,7 @@ export function App() {
             {s.key.mass_known === 'unweighed' && (
               <p className="note not-weighed">{t.touch.notWeighed}</p>
             )}
-            <p className="note">{t.touch.centreNote(d.edge_overlaps)}</p>
+            <p className="note">{t.touch.centerNote(d.edge_overlaps)}</p>
             <p className="note">{t.touch.noPressNote}</p>
           </>
         ),
@@ -595,19 +595,18 @@ export function App() {
               </button>
               <span className="hint">{t.view.hint}</span>
               <span className="legend">
-                <i style={{ background: CONTACT_COLOUR.closed }} /> {t.view.bears}
-                <i style={{ background: CONTACT_COLOUR.open }} /> {t.view.open}
-                <i style={{ background: CONTACT_COLOUR.overlapping }} /> {t.view.overlapping}
+                <i style={{ background: CONTACT_COLOR.closed }} /> {t.view.bears}
+                <i style={{ background: CONTACT_COLOR.open }} /> {t.view.open}
+                <i style={{ background: CONTACT_COLOR.overlapping }} /> {t.view.overlapping}
               </span>
             </>
           )}
         </div>
         {marked && !shownBand && (
           <div className="provenance-legend">
-            {(Object.keys(HOW_COLOUR) as Array<keyof typeof HOW_COLOUR>).map((how) => (
+            {(Object.keys(HOW_COLOR) as Array<keyof typeof HOW_COLOR>).map((how) => (
               <span key={how} data-how={how}>
-                <span className="swatch" style={{ background: HOW_COLOUR[how] }} />{' '}
-                {t.view.how[how]}
+                <span className="swatch" style={{ background: HOW_COLOR[how] }} /> {t.view.how[how]}
               </span>
             ))}
           </div>

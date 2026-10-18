@@ -51,7 +51,7 @@
 //!    pose, the breakaway walk and the driven sweep ([`measure::weighing`]),
 //!    each coming back as a [`measure::measurement::Measurement`] or refused
 //!    with its reason. Their closed forms are test oracles only.
-//! 4. **Dry friction at the key's centres is set-valued**: an interval of
+//! 4. **Dry friction at the key's centers is set-valued**: an interval of
 //!    admissible torque, never a regularized law, a box row of the static
 //!    solve ([`solve::statics`]), stored as a torque with the radius it was
 //!    read at ([`mechanism::AxisFriction`]).

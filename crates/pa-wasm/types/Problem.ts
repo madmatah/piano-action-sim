@@ -31,11 +31,11 @@ min: number | null,
  */
 max: number | null, } | { "code": "not_in_the_drawer", 
 /**
- * The thickness asked for, millimetres.
+ * The thickness asked for, millimeters.
  */
 thickness_mm: number, 
 /**
- * What the drawer holds, millimetres.
+ * What the drawer holds, millimeters.
  */
 drawer_mm: Array<number>, } | { "code": "mass_not_positive", 
 /**
@@ -52,7 +52,7 @@ back: Part,
 front: Part, 
 /**
  * How far the front end of the part behind stands in front of the
- * back end of the part in front, millimetres along the key: how far
+ * back end of the part in front, millimeters along the key: how far
  * they overlap, where neither runs past the other's far end.
  */
 by_mm: number, } | { "code": "feature_outside_keystick", 
@@ -61,25 +61,25 @@ by_mm: number, } | { "code": "feature_outside_keystick",
  */
 part: Part, 
 /**
- * How far off, millimetres along the key.
+ * How far off, millimeters along the key.
  */
 by_mm: number, } | { "code": "capstan_behind_back_check_block", 
 /**
- * How far forward it must come to clear the block, millimetres
+ * How far forward it must come to clear the block, millimeters
  * along the key.
  */
 by_mm: number, } | { "code": "capstan_off_the_full_height", 
 /**
  * How far forward it must come for its head to stand wholly over
- * the full height, millimetres along the key.
+ * the full height, millimeters along the key.
  */
 by_mm: number, } | { "code": "capstan_dome_narrower_than_its_head", 
 /**
- * The dome's radius, millimetres.
+ * The dome's radius, millimeters.
  */
 dome_mm: number, 
 /**
- * The head's radius, millimetres.
+ * The head's radius, millimeters.
  */
 head_mm: number, } | { "code": "capstan_in_block", 
 /**
@@ -87,49 +87,49 @@ head_mm: number, } | { "code": "capstan_in_block",
  */
 block: Part, 
 /**
- * How far its head stands into it, millimetres along the key.
+ * How far its head stands into it, millimeters along the key.
  */
 by_mm: number, } | { "code": "clearance_not_a_cut", 
 /**
- * Its front end less its back end, millimetres along the key.
+ * Its front end less its back end, millimeters along the key.
  */
 length_mm: number, 
 /**
- * Its depth below the keystick's full top, millimetres.
+ * Its depth below the keystick's full top, millimeters.
  */
 depth_mm: number, } | { "code": "clearance_through_keystick", 
 /**
- * Its depth below the keystick's full top, millimetres.
+ * Its depth below the keystick's full top, millimeters.
  */
 depth_mm: number, 
 /**
  * The wood under its back end, where the keystick is thinnest under
  * it: its full height, less the chamfer's rise where that runs
- * under it, millimetres.
+ * under it, millimeters.
  */
 wood_mm: number, 
 /**
- * How far it reaches past the keystick's underside, millimetres.
+ * How far it reaches past the keystick's underside, millimeters.
  */
 by_mm: number, } | { "code": "mortise_through_key_top", 
 /**
- * Its depth, millimetres.
+ * Its depth, millimeters.
  */
 depth_mm: number, 
 /**
- * The keystick's wood it is cut into, millimetres.
+ * The keystick's wood it is cut into, millimeters.
  */
 wood_mm: number, 
 /**
- * How far it reaches past the wood's top, millimetres.
+ * How far it reaches past the wood's top, millimeters.
  */
 by_mm: number, } | { "code": "measuring_point_off_covering", 
 /**
- * Where it was asked for, millimetres back from the lip.
+ * Where it was asked for, millimeters back from the lip.
  */
 from_lip_mm: number, 
 /**
- * How far the covering runs back from its lip, millimetres.
+ * How far the covering runs back from its lip, millimeters.
  */
 covering_mm: number, } | { "code": "unknown_path", 
 /**

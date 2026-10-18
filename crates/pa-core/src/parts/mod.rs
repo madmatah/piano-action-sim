@@ -13,16 +13,16 @@
 //!
 //! A key is weighed whole, its leads in it: its mass and its front weight,
 //! which gives its static moment about the balance pin ([`key_mass`]); or a
-//! source publishes it whole, its centre of mass's height included. Until it
+//! source publishes it whole, its center of mass's height included. Until it
 //! is weighed it has no mass, and what reads one is refused. An outline draws
 //! a key and never weighs it: the one number of a weighed key no scale gives,
-//! the height of its centre of mass, is estimated from its drawn section's
+//! the height of its center of mass, is estimated from its drawn section's
 //! area centroid ([`KeyDesign::section_centroid`]), and every reading it
 //! reaches names it (`docs/FOUNDATIONS.md` §2.3).
 //!
 //! # The key's local frame
 //!
-//! Origin at the **balance rail pin**, `x` positive towards the player, `y`
+//! Origin at the **balance rail pin**, `x` positive toward the player, `y`
 //! positive up. That is the datum the trade already uses — the Reyburn sheet
 //! measures from the balance hole. Every longitudinal dimension in
 //! [`KeyDesign`] is therefore signed: positive in front of the balance pin,
@@ -69,7 +69,7 @@ fn count(outline: &[Seg]) -> u16 {
 /// The area of the closed polygon through `vertices`, in order, and its
 /// first moments about the two axes, `∫ x dA` and `∫ y dA`: the shoelace
 /// sums, normalized so that the area is positive whichever way the polygon
-/// winds, a draughtsman's habit and not a modelling choice. Zero for a
+/// winds, a draftsman's habit and not a modeling choice. Zero for a
 /// polygon that encloses nothing.
 pub fn area_and_moments(vertices: &[Point]) -> (f64, Point) {
     let (mut twice, mut along, mut across) = (0.0, 0.0, 0.0);
@@ -104,32 +104,32 @@ pub fn area_centroid(vertices: &[Point]) -> Option<Point> {
 ///
 /// Part of the key, not of the action above it: it is screwed into the
 /// keystick and it moves with the key, its mass in the key's weighing.
-/// Modelling it as an anchor point leaves it out of the silhouette and out of
+/// Modeling it as an anchor point leaves it out of the silhouette and out of
 /// the drawing, and a technician looking at the section notices immediately.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Capstan {
-    /// How far the **top of the head** stands above the keystick, metres.
+    /// How far the **top of the head** stands above the keystick, meters.
     /// This is what screwing it up and down changes, and it is the dimension
     /// a technician sets.
     pub height: f64,
-    /// Threaded shaft diameter, metres.
+    /// Threaded shaft diameter, meters.
     pub diameter: f64,
-    /// Head diameter, metres. Wider than the shaft: it is the head's flat top
+    /// Head diameter, meters. Wider than the shaft: it is the head's flat top
     /// that bears on the wippen heel.
     pub head_diameter: f64,
-    /// Height of the cylindrical part of the head, metres: up to its flat
+    /// Height of the cylindrical part of the head, meters: up to its flat
     /// top, or to where its dome begins.
     pub head_height: f64,
-    /// Height of the cove that flares the shaft out into the head, metres.
+    /// Height of the cove that flares the shaft out into the head, meters.
     pub cove_height: f64,
-    /// Length of the threaded shaft below the cove, metres, part of it
+    /// Length of the threaded shaft below the cove, meters, part of it
     /// buried in the key.
     pub shaft_length: f64,
-    /// Length of the conical tip at the bottom of the shaft, metres.
+    /// Length of the conical tip at the bottom of the shaft, meters.
     pub tip_height: f64,
-    /// The radius of the dome its head is turned to, metres, where its top
+    /// The radius of the dome its head is turned to, meters, where its top
     /// is one: the head's top is then a spherical cap of this radius, its
-    /// centre on the axis this far below the top, which bears on the wippen's
+    /// center on the axis this far below the top, which bears on the wippen's
     /// heel as a circle does; none where the top is flat. No smaller than
     /// the head's radius, or the dome would not cap the head
     /// ([`crate::validate`]).
@@ -150,7 +150,7 @@ impl Capstan {
     }
 
     /// The half-profile to turn, as `(radius, height above the keystick)`
-    /// points running from the bottom of the shaft to the centre of the flat
+    /// points running from the bottom of the shaft to the center of the flat
     /// top.
     ///
     /// Shaped from a photograph of a real capstan: a pointed, threaded shaft;
@@ -199,11 +199,11 @@ impl Capstan {
 /// head, and leaves wood under it ([`crate::validate`]).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TopClearance {
-    /// Its back end, metres from the balance pin (negative behind it).
+    /// Its back end, meters from the balance pin (negative behind it).
     pub back: f64,
-    /// Its front end, metres from the balance pin (negative behind it).
+    /// Its front end, meters from the balance pin (negative behind it).
     pub front: f64,
-    /// How deep it is cut below the keystick's full top, metres.
+    /// How deep it is cut below the keystick's full top, meters.
     pub depth: f64,
 }
 
@@ -215,16 +215,16 @@ pub struct TopClearance {
 /// [`crate::validate`]).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GluedBlock {
-    /// Its back end, metres from the balance pin (negative behind it).
+    /// Its back end, meters from the balance pin (negative behind it).
     pub back: f64,
-    /// Its length along the key, metres, forward from its back end.
+    /// Its length along the key, meters, forward from its back end.
     pub length: f64,
-    /// Its height above the wood it stands on, metres.
+    /// Its height above the wood it stands on, meters.
     pub height: f64,
 }
 
 impl GluedBlock {
-    /// Its front end, metres from the balance pin.
+    /// Its front end, meters from the balance pin.
     pub fn front(&self) -> f64 {
         self.back + self.length
     }
@@ -233,28 +233,28 @@ impl GluedBlock {
 /// Everything about one key that the choice of parts fixes.
 ///
 /// Longitudinal dimensions are signed distances from the balance pin, positive
-/// towards the player. The ones that carry the trade's own meaning are named
+/// toward the player. The ones that carry the trade's own meaning are named
 /// after where a technician measures: the front edge, where key height and dip
 /// are read; the covering's lip ([`Self::lip`]), which the touchweight
 /// measuring point is taken back from; and the capstan.
 ///
-/// The measuring point itself is **not** here. Where a weight is centred is a
+/// The measuring point itself is **not** here. Where a weight is centered is a
 /// convention of the protocol, not a dimension of the wood, so it is set on
 /// [`crate::measure::TouchweightProtocol`] and read through
 /// [`crate::measure::TouchweightProtocol::measuring_point`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeyDesign {
-    /// The key front, metres in front of the balance pin: the outer face of
+    /// The key front, meters in front of the balance pin: the outer face of
     /// the plate glued over the end grain ([`Self::front_board`]).
     ///
     /// Key height and key dip are read here. The covering's lip stands
     /// [`Self::keytop_overhang`] proud of it.
     pub front_edge: f64,
-    /// Rear end of the keystick, metres (negative: behind the balance pin).
+    /// Rear end of the keystick, meters (negative: behind the balance pin).
     pub tail_end: f64,
-    /// Capstan axis, metres (negative).
+    /// Capstan axis, meters (negative).
     pub capstan: f64,
-    /// Front mortise, metres back from the key's **front edge**.
+    /// Front mortise, meters back from the key's **front edge**.
     ///
     /// Back from the front edge and not forward from the balance pin, because
     /// that is the dimension a key carries: the slot is cut near the front end
@@ -267,7 +267,7 @@ pub struct KeyDesign {
     /// so when they do not; what places the rail by default is
     /// [`Self::front_mortise_x`]. [E]
     pub front_mortise_from_front_edge: f64,
-    /// Length of the front mortise along the key, metres.
+    /// Length of the front mortise along the key, meters.
     ///
     /// The slot is longer along the key than the pin standing in it. It has to
     /// be: the key swings about the balance pin, so the mortise travels through
@@ -279,7 +279,7 @@ pub struct KeyDesign {
     /// bushed and close on the pin's wide faces — that is what holds the key
     /// straight — and that dimension is not in the sagittal plane. [E]
     pub front_mortise_length: f64,
-    /// Depth of the front mortise above the key's underside, metres.
+    /// Depth of the front mortise above the key's underside, meters.
     ///
     /// The slot the front rail pin stands in, measured from the underside, so
     /// it already includes the recess the slot begins after: 3 mm of notch and
@@ -289,7 +289,7 @@ pub struct KeyDesign {
     /// where the pin's tip reaches the top of the slot, whatever the punchings
     /// underneath would otherwise allow.
     pub front_mortise_depth: f64,
-    /// Thickness of the keystick's own wood, metres.
+    /// Thickness of the keystick's own wood, meters.
     ///
     /// **One piece, one thickness.** Everything else on the key is either glued
     /// to this — the covering, the capsule, the block that carries the back
@@ -297,16 +297,16 @@ pub struct KeyDesign {
     /// mass about right and the reasons entirely wrong, and the reasons are
     /// what say where a step may be moved and where it may not.
     pub stick_height: f64,
-    /// Height of the **capsule** above the keystick, metres.
+    /// Height of the **capsule** above the keystick, meters.
     ///
     /// The block glued on top that the balance mortise is cut through — more
     /// wood where the pin passes, which is the whole reason it is there.
     pub capsule_height: f64,
-    /// Length of the capsule along the key, metres.
+    /// Length of the capsule along the key, meters.
     pub capsule_length: f64,
-    /// Where the capsule's middle stands along the key, metres from the
-    /// balance pin; none where it stands centred on the pin.
-    pub capsule_centre: Option<f64>,
+    /// Where the capsule's middle stands along the key, meters from the
+    /// balance pin; none where it stands centered on the pin.
+    pub capsule_center: Option<f64>,
     /// Height of the block that carries the **back check**, above the wood
     /// it stands on: the keystick's full height, or the thinned tail where
     /// the tail runs on under it ([`Self::wood_under`]).
@@ -315,7 +315,7 @@ pub struct KeyDesign {
     /// into — which is why it sits where the hammer's tail arrives and nowhere
     /// else.
     pub back_check_block_height: f64,
-    /// Back end of that block, metres from the balance pin (negative: behind
+    /// Back end of that block, meters from the balance pin (negative: behind
     /// it).
     ///
     /// From the balance pin, and not from the key's end, because the
@@ -331,20 +331,20 @@ pub struct KeyDesign {
     /// thinned tail, and the capstan stands in front of it
     /// ([`crate::validate`]).
     pub back_check_block_back: f64,
-    /// Length of that block along the key, metres, forward from its back end
+    /// Length of that block along the key, meters, forward from its back end
     /// ([`Self::back_check_block_back`]).
     pub back_check_block_length: f64,
     /// The clearance cut in the keystick's top for the wippen rail, between
     /// the capstan and the back check block, where the key has one; none
     /// where its top runs on at its full height.
     pub top_clearance: Option<TopClearance>,
-    /// Thickness of the key's thinned tail, metres, above the underside.
+    /// Thickness of the key's thinned tail, meters, above the underside.
     ///
     /// The last stretch of the key is cut down so that the **damper** system
     /// can bear on it: the felt on top of it is the contact, and the wood is
     /// taken away to put that contact at the height the damper lever wants.
     pub tail_height: f64,
-    /// Length of that thinned tail along the key, metres, forward from the
+    /// Length of that thinned tail along the key, meters, forward from the
     /// key's end ([`Self::tail_end`]).
     ///
     /// Where it carries a felt, it ends at or behind the back check block's
@@ -353,12 +353,12 @@ pub struct KeyDesign {
     /// block, which stands wholly on it or wholly in front of it. The capstan
     /// and a clearance in the top stand in front of it, on the full height.
     pub tail_length: f64,
-    /// Thickness of the felt on the tail, metres, hard felt and not punching
+    /// Thickness of the felt on the tail, meters, hard felt and not punching
     /// felt; none where the tail is bare.
     pub damper_felt: Option<f64>,
-    /// How far the underside rises towards the very end of the key, metres.
+    /// How far the underside rises toward the very end of the key, meters.
     pub tail_rise: f64,
-    /// The length that rise is spread over, metres.
+    /// The length that rise is spread over, meters.
     ///
     /// Long and shallow: 2.5 mm over 77 mm, which is 1.86°. **That is the
     /// angle the key is meant to stand at when released**, and the reason the
@@ -371,28 +371,28 @@ pub struct KeyDesign {
     /// key bears on the edge of its cloth by 0.4°. Both numbers were given as
     /// approximate; the bench reports the miss rather than arbitrating.
     pub tail_rise_run: f64,
-    /// Thickness of the keytop covering, metres.
+    /// Thickness of the keytop covering, meters.
     ///
     /// It sits **on** the wood rather than in a rebate, so the front of the
     /// key is the full stick plus this, and the step a reader sees partway
     /// along the key is the covering ending — not the wood thinning.
     pub keytop_thickness: f64,
-    /// Length of the keytop covering along the key, metres.
+    /// Length of the keytop covering along the key, meters.
     pub keytop_length: f64,
-    /// Thickness of the **key front** glued to the wood's front face, metres.
+    /// Thickness of the **key front** glued to the wood's front face, meters.
     ///
     /// The small plate — the *fronton* — that closes the end grain. Its outer
     /// face is what [`KeyDesign::front_edge`] names, where key height and dip
     /// are read. Touchweights are referred to the covering's lip instead,
     /// [`Self::keytop_overhang`] further forward.
     pub front_board: f64,
-    /// How far the covering's lip overhangs that face, metres.
+    /// How far the covering's lip overhangs that face, meters.
     ///
     /// The lip is the "front lip of the key" every touchweight's measuring
     /// point is taken back from ([`Self::lip`]), so this is the distance
     /// between the touchweight datum and the key height and dip datum.
     pub keytop_overhang: f64,
-    /// Width of the keystick across the sagittal plane, metres: what the
+    /// Width of the keystick across the sagittal plane, meters: what the
     /// solid view extrudes the key by. Nothing weighs it: a key's mass is
     /// weighed or published ([`KeyMass`]).
     pub width: f64,
@@ -455,7 +455,7 @@ impl KeyDesign {
         },
     ];
 
-    /// The covering's lip, metres in front of the balance pin: the front edge
+    /// The covering's lip, meters in front of the balance pin: the front edge
     /// of the keytop, standing [`Self::keytop_overhang`] proud of the key
     /// front.
     ///
@@ -468,14 +468,14 @@ impl KeyDesign {
         self.front_edge + self.keytop_overhang
     }
 
-    /// The front of the thinned tail, metres from the balance pin: where the
+    /// The front of the thinned tail, meters from the balance pin: where the
     /// keystick steps down to it.
     pub fn tail_front(&self) -> f64 {
         self.tail_end + self.tail_length
     }
 
     /// The height of the wood a block glued from `back` to `front` stands
-    /// on, metres above the underside: the thinned tail's top where the
+    /// on, meters above the underside: the thinned tail's top where the
     /// block stands wholly on the tail, the keystick's top otherwise.
     pub fn wood_under(&self, back: f64, front: f64) -> f64 {
         debug_assert!(back <= front);
@@ -486,10 +486,10 @@ impl KeyDesign {
         }
     }
 
-    /// The key button, as the two x it runs between, metres: centred on the
-    /// balance pin, or on [`Self::capsule_centre`].
+    /// The key button, as the two x it runs between, meters: centered on the
+    /// balance pin, or on [`Self::capsule_center`].
     pub fn key_button_span(&self) -> (f64, f64) {
-        match self.capsule_centre {
+        match self.capsule_center {
             None => (-self.capsule_length * 0.5, self.capsule_length * 0.5),
             Some(c) => (c - self.capsule_length * 0.5, c + self.capsule_length * 0.5),
         }
@@ -504,7 +504,7 @@ impl KeyDesign {
         }
     }
 
-    /// Middle of the front mortise, metres in front of the balance pin.
+    /// Middle of the front mortise, meters in front of the balance pin.
     ///
     /// **Where the front rail pin belongs**, and therefore where the frame
     /// places it. The key states its mortise as a setback from its own front
@@ -514,14 +514,14 @@ impl KeyDesign {
         self.front_edge - self.front_mortise_from_front_edge
     }
 
-    /// The front mortise, as the two x it runs between, metres.
+    /// The front mortise, as the two x it runs between, meters.
     pub fn front_mortise_span(&self) -> (f64, f64) {
         let half = 0.5 * self.front_mortise_length;
         let x = self.front_mortise_x();
         (x - half, x + half)
     }
 
-    /// The flat of the underside, as the two x it runs between, metres.
+    /// The flat of the underside, as the two x it runs between, meters.
     ///
     /// **This is the bearing surface**, and it is not the whole key: the tail is
     /// chamfered over its last stretch, behind everything that touches. The
@@ -633,7 +633,7 @@ impl KeyDesign {
         outline
     }
 
-    /// Height of the wood the capstan is screwed into, metres: the
+    /// Height of the wood the capstan is screwed into, meters: the
     /// keystick's full height, the capstan driven into a hole bored straight
     /// through it. Nothing is glued under it, and the validation layer
     /// refuses it on the thinned tail or across the step down to it, and a
@@ -646,7 +646,7 @@ impl KeyDesign {
     /// on its axis.
     ///
     /// Where the wippen's heel bears, and where the key weight ratio's 10 g is
-    /// centred on the jig, *"on a vertical axis which passes through the
+    /// centered on the jig, *"on a vertical axis which passes through the
     /// capstan/heel contact point"* [V, Stanwood 2000, p. 22].
     pub fn capstan_contact(&self) -> Point {
         Point::new(
@@ -677,8 +677,8 @@ impl KeyDesign {
     /// tail's felt, the front mortise's void taken out, the turned capstan
     /// left out; `None` for a section that encloses nothing.
     ///
-    /// **What stands in for the height of a weighed key's centre of mass**,
-    /// which no scale gives (`docs/FOUNDATIONS.md` §2.3): where the centre of
+    /// **What stands in for the height of a weighed key's center of mass**,
+    /// which no scale gives (`docs/FOUNDATIONS.md` §2.3): where the center of
     /// mass of a key of one material and one width across the keyboard
     /// would stand. A real key is narrower behind its head, its covering and
     /// its leads denser than its wood, so the height is an estimate, and
@@ -743,7 +743,7 @@ mod tests {
         assert!((c.y - h / 2.0).abs() <= bound * h, "{c:?}");
     }
 
-    /// Consistency: **winding is a draughtsman's habit, not a modelling
+    /// Consistency: **winding is a draftsman's habit, not a modeling
     /// choice**: the key's section read clockwise has the same area and
     /// centroid, to the rounding of its sums.
     #[test]
@@ -867,7 +867,7 @@ mod capstan_tests {
     ///
     /// Keeping it out of the polygon is what lets the screw be *drawn* as a
     /// turned part rather than a slab, and keeps steel out of the section
-    /// whose centroid estimates the height of the key's centre of mass.
+    /// whose centroid estimates the height of the key's center of mass.
     #[test]
     fn the_capstan_is_its_own_turned_body_and_not_part_of_the_keystick() {
         let d = crate::test_fixture::key();

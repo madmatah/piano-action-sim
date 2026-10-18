@@ -17,6 +17,6 @@ poses: Array<Pose>,
  */
 measuring_point: Marker, 
 /**
- * The contacts within a millimetre of closing, where the key is drawn.
+ * The contacts within a millimeter of closing, where the key is drawn.
  */
 contacts: Array<MarkedContact>, };

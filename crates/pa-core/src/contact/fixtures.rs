@@ -207,13 +207,13 @@ pub fn pairs(p: &Parts) -> Vec<ContactPair> {
             Surface::one(range(p.strip, 2..5)),
             PairGeometry::Features,
         ),
-        // The washer's centre under the block's chamfer and bottom, a chain
+        // The washer's center under the block's chamfer and bottom, a chain
         // round the end of the block's outline.
         pair(
             ContactCode::FrontRailPunching,
             Surface::of(&[range(p.block, 5..6), range(p.block, 0..1)]),
             Surface::one(range(p.washer, profile - 2..profile)),
-            PairGeometry::CentreBearing,
+            PairGeometry::CenterBearing,
         ),
         // The post on the block: two branches.
         pair(

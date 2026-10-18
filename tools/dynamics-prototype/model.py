@@ -25,14 +25,14 @@ Coordinates, Hirschkorn's (Eq. 2.1, Figure 2.3) and script 10's, in this order:
 ground pins Pg1, Pg2, Pg3. θj, θr: jack and repetition lever, counter-clockwise
 from the wippen about their pins Pw2, Pw3 (relative coordinates, FOUNDATIONS
 §3.6). Every coordinate is a joint angle, so the joint speeds are exactly q̇.
-SI throughout: metres, radians, kilograms, newtons, seconds.
+SI throughout: meters, radians, kilograms, newtons, seconds.
 
 Equations of motion:  M(q) q̈ + h(q, q̇) = Q(q, q̇, t) + (axis friction)
 
 ASSUMPTIONS, each also stated where it is used:
   A1  Gravity 9.81 m/s² along -y of the ground frame. The record gives no g
       (not_given) and its ground frame has y upwards (Figure A.1).
-  A2  Table A.1's moment of inertia is about the centre of mass (the record's
+  A2  Table A.1's moment of inertia is about the center of mass (the record's
       reading, ambiguities). Inertia is an internal parameter: Table A.1 here,
       nothing measured.
   A3  Normal law, Eqs. 2.4-2.5 with the clamp:
@@ -44,7 +44,7 @@ ASSUMPTIONS, each also stated where it is used:
       two bodies' material points at the contact point. v_t is not given: 1e-5
       m/s is ASSUMED, the value Hirschkorn's Figure 2.7 draws.
   A5  Contact point: midway between the two surfaces on the common normal,
-      through the circle's centre. Any point on that normal gives the same
+      through the circle's center. Any point on that normal gives the same
       lever arms; the tangential slip speed, used by friction only, depends on
       it through the relative rotation times the half-penetration.
   A6  Axis friction, Table A.9's A at each of the five joints, SET-VALUED:
@@ -69,12 +69,12 @@ ASSUMPTIONS, each also stated where it is used:
       force perpendicular to the key instead would act on Pk2's x in the key's
       own frame, an arm 0.4 % longer at rest.
   A9  The hybrid surface (contacts 7 and 10) is the boundary of the region
-      W ⊕ disc(R): W the wedge with its apex at the arc's centre bounded by the
+      W ⊕ disc(R): W the wedge with its apex at the arc's center bounded by the
       two tangent lines' directions, R the arc's radius. The gap is the exact
-      signed distance from the circle's centre to that region, minus the
+      signed distance from the circle's center to that region, minus the
       circle's radius: continuous everywhere and negative at every depth. Its
       normal is continuous across both ends of the arc and everywhere the
-      circle's centre is outside W, that is at every penetration below R + r
+      circle's center is outside W, that is at every penetration below R + r
       (5.4 mm at contact 7, 59.6 mm at contact 10). Deeper, inside W, the
       normal switches between the two lines on W's bisector: some switch is
       unavoidable, since a unit normal field turning once around a convex body
@@ -82,9 +82,9 @@ ASSUMPTIONS, each also stated where it is used:
   A10 Tables A.2-A.7 print their unit vectors to three decimals, and four are
       not of unit length: Pk5 0.99984, Pk6 0.99977, Pw4 0.99998, Pr5 0.99960.
       The gaps use them as printed, as script 10 does, so that the two agree
-      on the closure and on every gap script 10 prints: normalised, they would
+      on the closure and on every gap script 10 prints: normalized, they would
       move the hammer by 38 µrad at the closure and contacts 4, 11, 12 and 13
-      across a printed hundredth of a millimetre. Those four lines' gaps are
+      across a printed hundredth of a millimeter. Those four lines' gaps are
       then the signed distance times that norm (0.04 % at most), and so are
       their gradients. Every contact reports a unit normal, and slip is
       measured along a unit tangent.
@@ -153,7 +153,7 @@ JACK_SPRING_TORQUE_NM = JACK_SPRING_SIGN * _value(RECORD["springs"]["jack"]["tor
 REPETITION_SPRING_COEFF_NM_PER_RAD = _value(RECORD["springs"]["repetition_lever"]["coefficient"])
 REPETITION_SPRING_OFFSET_RAD = _value(RECORD["springs"]["repetition_lever"]["angle_offset"])
 
-# body -> (mass kg, inertia about the centre of mass kg·m², centre of mass in its frame, m)
+# body -> (mass kg, inertia about the center of mass kg·m², center of mass in its frame, m)
 MASS = S10.MASS
 O_K, O_W, O_H = S10.O_K, S10.O_W, S10.O_H  # ground pins of key, wippen, hammer
 P_J, P_R = S10.P_J, S10.P_R  # the jack's and the lever's pins, in the wippen's frame
@@ -173,7 +173,7 @@ if FRICTION_LAW and tuple(sorted(FRICTION_LAW)) != (1, 4, 7, 10):
 def hybrid_signed_distance(dx, dy, radius, a0, a1):
     """Signed distance from a point to Hirschkorn's hybrid surface (A9).
 
-    (dx, dy) is the point relative to the arc's centre, in the hybrid body's own
+    (dx, dy) is the point relative to the arc's center, in the hybrid body's own
     frame. The arc runs counter-clockwise from a0 to a1; the tangent lines leave
     its ends, line 0 at a0 and line 1 at a1. Returns (distance, nx, ny, branch),
     (nx, ny) the outward unit normal in the body's frame, branch one of "arc",
@@ -230,7 +230,7 @@ class ContactSpec:
             self.line_point, self.line_normal = shape_b
         elif kinds == ("hybrid", "circle"):
             self.kind = "hc"
-            self.arc_centre, self.arc_radius, (self.arc_start, self.arc_end) = shape_a
+            self.arc_center, self.arc_radius, (self.arc_start, self.arc_end) = shape_a
             self.circle, self.radius = shape_b
         else:
             raise ValueError(f"contact {number}: no primitive for a {kind_a} against a {kind_b}")
@@ -246,7 +246,7 @@ class Pose:
 
     frame[b] = (ox, oy, cos φ, sin φ): origin and absolute angle φ of body b's frame.
     moves[b] = ((i, ox, oy), ...): each coordinate i that turns body b, with the
-    centre it turns it about. The jack is turned by θw about Pg2 and by θj about
+    center it turns it about. The jack is turned by θw about Pg2 and by θj about
     its own pin, which the wippen carries; likewise the lever.
     """
 
@@ -292,7 +292,7 @@ def contact_geometry(spec, pose):
     P, and the hybrid's branch (None for the other primitives).
 
     Every gap is a signed distance: a line against a circle is the projection on
-    the line's normal, a circle against a circle the distance between centres,
+    the line's normal, a circle against a circle the distance between centers,
     the hybrid the exact signed distance to its region (A9). None takes an
     absolute value, so each keeps its sign through any penetration, deeper than
     the circle's radius included. A line's gap is projected on its printed
@@ -306,7 +306,7 @@ def contact_geometry(spec, pose):
         (lx, ly), (lnx, lny) = spec.line_point, spec.line_normal
         cx, cy = spec.circle
         px, py = oxa + ca * lx - sa * ly, oya + sa * lx + ca * ly
-        wnx, wny = ca * lnx - sa * lny, sa * lnx + ca * lny  # the line's normal: A towards B
+        wnx, wny = ca * lnx - sa * lny, sa * lnx + ca * lny  # the line's normal: A toward B
         qx, qy = oxb + cb * cx - sb * cy, oyb + sb * cx + cb * cy
         gap = (qx - px) * wnx + (qy - py) * wny - spec.radius
         ux, uy = wnx / spec.gap_scale, wny / spec.gap_scale
@@ -316,7 +316,7 @@ def contact_geometry(spec, pose):
         (lx, ly), (lnx, lny) = spec.line_point, spec.line_normal
         cx, cy = spec.circle
         px, py = oxb + cb * lx - sb * ly, oyb + sb * lx + cb * ly
-        wnx, wny = cb * lnx - sb * lny, sb * lnx + cb * lny  # the line's normal: B towards A
+        wnx, wny = cb * lnx - sb * lny, sb * lnx + cb * lny  # the line's normal: B toward A
         qx, qy = oxa + ca * cx - sa * cy, oya + sa * cx + ca * cy
         gap = (qx - px) * wnx + (qy - py) * wny - spec.radius
         ux, uy = wnx / spec.gap_scale, wny / spec.gap_scale
@@ -328,14 +328,14 @@ def contact_geometry(spec, pose):
         bx, by = oxb + cb * cxb - sb * cyb, oyb + sb * cxb + cb * cyb
         dx, dy = ax - bx, ay - by
         dist = math.hypot(dx, dy)
-        # Coincident centres need a penetration of r_a + r_b (35 mm at the
+        # Coincident centers need a penetration of r_a + r_b (35 mm at the
         # capstan): unreachable; the normal is then arbitrary.
         nx, ny = (dx / dist, dy / dist) if dist > 0.0 else (0.0, 1.0)
         gap = dist - spec.radius_a - spec.radius_b
         d = spec.radius_b + 0.5 * gap
         return gap, nx, ny, bx + nx * d, by + ny * d, None
     # "hc": hybrid on A, circle on B
-    hx, hy = spec.arc_centre
+    hx, hy = spec.arc_center
     cx, cy = spec.circle
     ax, ay = oxa + ca * hx - sa * hy, oya + sa * hx + ca * hy
     qx, qy = oxb + cb * cx - sb * cy, oyb + sb * cx + cb * cy
@@ -343,7 +343,7 @@ def contact_geometry(spec, pose):
     dist, lnx, lny, branch = hybrid_signed_distance(
         ca * wx + sa * wy, -sa * wx + ca * wy, spec.arc_radius, spec.arc_start, spec.arc_end
     )
-    wnx, wny = ca * lnx - sa * lny, sa * lnx + ca * lny  # the hybrid's outward normal: A towards B
+    wnx, wny = ca * lnx - sa * lny, sa * lnx + ca * lny  # the hybrid's outward normal: A toward B
     gap = dist - spec.radius
     d = spec.radius + 0.5 * gap
     return gap, -wnx, -wny, qx - wnx * d, qy - wny * d, branch
@@ -452,7 +452,7 @@ class Model:
         return Pose(q)
 
     @staticmethod
-    def centre_of_mass(body, pose):
+    def center_of_mass(body, pose):
         cx, cy = MASS[body][2]
         return pose.to_world(body, cx, cy)
 
@@ -467,9 +467,9 @@ class Model:
 
     @staticmethod
     def mass_matrix(pose):
-        """M = Σ m Jvᵀ Jv + I Jωᵀ Jω, Jv the Jacobian of the centre of mass's
+        """M = Σ m Jvᵀ Jv + I Jωᵀ Jω, Jv the Jacobian of the center of mass's
         velocity, Jω that of the angular velocity (1 for each coordinate turning
-        the body), I about the centre of mass (A2)."""
+        the body), I about the center of mass (A2)."""
         m_mat = [[0.0] * N_Q for _ in range(N_Q)]
         for body in MOVING_BODIES:
             m, inertia, (cx, cy) = MASS[body]
@@ -484,7 +484,7 @@ class Model:
     @staticmethod
     def velocity_terms(pose, v):
         """h(q, q̇), analytically: h = Σ m Jvᵀ γ with γ = J̇v q̇ the convective
-        acceleration of each centre of mass. A body on a ground pin O turning at
+        acceleration of each center of mass. A body on a ground pin O turning at
         ω: γ = -ω² (x - O). The jack (the lever likewise), turned by θw about Pg2
         and by θj about its pin o_J, both moving: with a = x - Pg2, b = x - o_J,
             γ = -θ̇w² a - (2 θ̇w θ̇j + θ̇j²) b.
@@ -645,7 +645,7 @@ class Model:
         e = 0.0
         if self.gravity:
             for body in MOVING_BODIES:
-                _xx, xy = self.centre_of_mass(body, pose)
+                _xx, xy = self.center_of_mass(body, pose)
                 e += MASS[body][0] * GRAVITY_M_S2 * xy
         if self.springs:
             e -= 0.5 * REPETITION_SPRING_COEFF_NM_PER_RAD * (q[R] - REPETITION_SPRING_OFFSET_RAD) ** 2

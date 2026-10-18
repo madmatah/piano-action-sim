@@ -45,10 +45,10 @@ Ij, cdj = 1.787e-6, 3.97e-4
 print(f"  jack: I_pivot = {Ij:.3e} kg m^2, c_d = {cdj} N m -> explicit integration would need"
       f" dt < {2 * Ij * 1e-6 / cdj * 1e9:.1f} ns at w_t = 1e-6 rad/s")
 tau = Ik * 1e-6 / cd
-print("  implicit (backward Euler) on the linearised law: amplification 1/(1 + dt/tau) < 1 for every dt;")
+print("  implicit (backward Euler) on the linearized law: amplification 1/(1 + dt/tau) < 1 for every dt;")
 for dt in (1e-5, 1e-4, 1e-3):
     print(f"   key, w_t = 1e-6 rad/s, dt = {dt * 1e6:6.0f} us: amplification {1 / (1 + dt / tau):.2e}, stable")
-print("  => the threshold survives regularization to within micrometres; the cost of the")
+print("  => the threshold survives regularization to within micrometers; the cost of the")
 print("     law is the parameter w_t, which enters every sensitivity. The step limit holds")
 print("     only for explicit integration: treated implicitly, a velocity-only law sets none.")
 

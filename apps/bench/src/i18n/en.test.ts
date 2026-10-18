@@ -1,11 +1,11 @@
 /**
- * The English catalogue words the engine's codes as the bench says them:
+ * The English catalog words the engine's codes as the bench says them:
  * each code's parameters in the sentence, in the trade's units, and every
  * code of a family worded apart.
  */
 import type { Limit, Target } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
-import { unitBeside, word } from './catalogue'
+import { unitBeside, word } from './catalog'
 import { en as t } from './en'
 
 /** Every limit, by a record the type-check holds complete. */
@@ -83,9 +83,9 @@ describe('a refused weighing', () => {
         { code: 'roller_off_the_covering', from_lip_mm: 200, covering_mm: 155 },
         '200.0 mm from the lip is off it',
       ],
-      [{ code: 'centre_of_mass_off_the_key', at_mm: 1020 }, "past its covering's lip"],
+      [{ code: 'center_of_mass_off_the_key', at_mm: 1020 }, "past its covering's lip"],
       [
-        { code: 'centre_of_mass_off_the_key', at_mm: -1020 },
+        { code: 'center_of_mass_off_the_key', at_mm: -1020 },
         'behind the balance pin, past its tail',
       ],
       [{ code: 'not_finite', param: 'key.weighing.mass_g' }, 'not a number'],
@@ -341,10 +341,10 @@ describe('a problem', () => {
 describe('a form', () => {
   it('says which fields hold no number, each as its form names it', () => {
     expect(t.needsNumber.regulate?.(['key_height'])).toBe(
-      'key height needs a number, in millimetres: nothing is regulated until it has one.',
+      'key height needs a number, in millimeters: nothing is regulated until it has one.',
     )
     expect(t.needsNumber.regulate?.(['key_height', 'key_dip'])).toBe(
-      'key height and key dip need a number, in millimetres: nothing is regulated until they have one.',
+      'key height and key dip need a number, in millimeters: nothing is regulated until they have one.',
     )
     expect(t.needsNumber.weigh_key?.(['key_mass', 'read_at'])).toBe(
       'the key mass and the distance from the lip need a number: the key is weighed when all three have one.',
@@ -379,7 +379,7 @@ describe('a form', () => {
       `“${t.panel.weighing}”`,
     )
     expect(t.weighing.published(120.08)).toBe(
-      'As published: 120.08 g, and its centre of mass, its height included, as its source gives them.',
+      'As published: 120.08 g, and its center of mass, its height included, as its source gives them.',
     )
   })
 
@@ -396,7 +396,7 @@ describe('a form', () => {
 })
 
 describe('a fault', () => {
-  it('says the part, what it is past and by how much, in millimetres', () => {
+  it('says the part, what it is past and by how much, in millimeters', () => {
     expect(word(t.fault, 'pin_outside_mortise', { code: 'pin_outside_mortise', by_mm: 16.5 })).toBe(
       "the front rail pin stands 16.5 mm outside the key's mortise",
     )

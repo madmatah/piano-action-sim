@@ -5,14 +5,14 @@
  */
 export type FrontRailSettings = { 
 /**
- * The bare rail's height above the keybed, millimetres.
+ * The bare rail's height above the keybed, millimeters.
  */
 height_mm: number, 
 /**
- * Where it stands, millimetres in front of the balance pin.
+ * Where it stands, millimeters in front of the balance pin.
  */
 at_mm: number, 
 /**
- * How far its pin stands above the bare rail, millimetres.
+ * How far its pin stands above the bare rail, millimeters.
  */
 pin_height_mm: number, };

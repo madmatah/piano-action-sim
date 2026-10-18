@@ -1,4 +1,4 @@
-//! Loads: gravity at every body's centre of mass, and forces at material
+//! Loads: gravity at every body's center of mass, and forces at material
 //! points, with their potential and their generalized forces.
 
 use super::{BodyId, MaterialPoint, Mechanism, Pose};
@@ -35,7 +35,7 @@ impl Mechanism {
     /// The potential energy of gravity and of `loads` at `pose`, joules, from
     /// the world's origin.
     ///
-    /// Gravity's is `m·G·y` of every centre of mass; a force fixed in the
+    /// Gravity's is `m·G·y` of every center of mass; a force fixed in the
     /// world has `−F·P` of its point. Only its differences mean anything: it
     /// is what the generalized forces are minus the gradient of.
     ///
@@ -84,7 +84,7 @@ impl Mechanism {
     }
 
     /// The generalized forces of gravity and of `loads` at `pose`, written
-    /// into `out`, one per coordinate: newton-metres on an angle, newtons on
+    /// into `out`, one per coordinate: newton-meters on an angle, newtons on
     /// a length.
     ///
     /// Each force contributes its Jacobian column dotted with it, which on a

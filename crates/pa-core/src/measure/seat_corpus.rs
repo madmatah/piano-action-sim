@@ -12,7 +12,7 @@
 //! classes:
 //!
 //! - **near**: the regulated bench, every rail, felt, cloth, pin and
-//!   mortise moved within a few millimetres, the chamfer from none to
+//!   mortise moved within a few millimeters, the chamfer from none to
 //!   3.5 mm;
 //! - **wide**: the bench's controls anywhere in their ranges, most of which
 //!   no keyboard could be built from (the audit's BWA-12);
@@ -47,13 +47,13 @@ use crate::parts::frame::KeyKind;
 use crate::solve::statics::{tests::assert_virtual_work, GAP_TOLERANCE, ITERATION_CAP};
 use crate::solve::{Friction, Statics};
 
-/// What the oracle reads of a key on its frame at one pose, metres.
+/// What the oracle reads of a key on its frame at one pose, meters.
 #[derive(Debug, Clone, Copy, Default)]
 struct Clearance {
     /// The deepest any point of a contact's surfaces stands in the other
-    /// side's material, a centre bearing's face aside.
+    /// side's material, a center bearing's face aside.
     overlap: f64,
-    /// How far a centre bearing's drawn face stands into the key past what
+    /// How far a center bearing's drawn face stands into the key past what
     /// the key's tilt declares: half the face's width times the tilt's sine.
     undeclared: f64,
     /// The deepest any point of the front rail pin's outline stands in the
@@ -67,9 +67,9 @@ struct Clearance {
 }
 
 /// How far a surface sampled on an arc may read inside a region it only
-/// touches, and how far apart two touching surfaces may read, metres: the
+/// touches, and how far apart two touching surfaces may read, meters: the
 /// sagitta of a chord of one spacing on the smallest radius drawn, the
-/// cloth's half-millimetre edges, and the gap a static solve converges to.
+/// cloth's half-millimeter edges, and the gap a static solve converges to.
 fn resolution() -> f64 {
     SPACING * SPACING / (8.0 * 0.0005) + 2.0 * GAP_TOLERANCE
 }
@@ -99,12 +99,12 @@ fn clearance(k: &OnFrame, q: &[f64]) -> Clearance {
                 beside,
             )
         };
-        let centre = pair.geometry == PairGeometry::CentreBearing;
-        let (in_a, in_b) = (region(&pair.a, centre), region(&pair.b, centre));
+        let center = pair.geometry == PairGeometry::CenterBearing;
+        let (in_a, in_b) = (region(&pair.a, center), region(&pair.b, center));
         let a = oracle::surface(parts, &pair.a, &pose.placement(body(&pair.a)));
         let b = oracle::surface(parts, &pair.b, &pose.placement(body(&pair.b)));
-        if centre {
-            // The face's centre, which bears, and its edges, which a tilted
+        if center {
+            // The face's center, which bears, and its edges, which a tilted
             // key overlaps by what a felt would compress.
             let (first, last) = (b[0], b[b.len() - 1]);
             let half = 0.5 * ((last.x - first.x).abs());
@@ -157,7 +157,7 @@ fn clearance(k: &OnFrame, q: &[f64]) -> Clearance {
 }
 
 /// How far apart the oracle reads the surfaces of the pair `code` at `q`;
-/// for a centre bearing, the face's centre from the key.
+/// for a center bearing, the face's center from the key.
 fn apart(k: &OnFrame, q: &[f64], code: ContactCode) -> f64 {
     let m = &k.mounted.mechanism;
     let pose = m.pose(q);
@@ -166,7 +166,7 @@ fn apart(k: &OnFrame, q: &[f64], code: ContactCode) -> f64 {
     let body = |s: &Surface| parts[s.ranges[0].part.index()].body;
     let a = polyline::surface(parts, &pair.a, &pose.placement(body(&pair.a)));
     let b = polyline::surface(parts, &pair.b, &pose.placement(body(&pair.b)));
-    if pair.geometry == PairGeometry::CentreBearing {
+    if pair.geometry == PairGeometry::CenterBearing {
         let samples = oracle::surface(parts, &pair.b, &pose.placement(body(&pair.b)));
         let (first, last) = (samples[0], samples[samples.len() - 1]);
         let middle = Point::new(0.5 * (first.x + last.x), 0.5 * (first.y + last.y));
@@ -255,7 +255,7 @@ fn corpus() -> Vec<(Class, Setup)> {
         out.push((Class::Wide, a));
     }
     for k in 0..16 {
-        // The punching's centre just past the key's front edge, its pin
+        // The punching's center just past the key's front edge, its pin
         // pulled so that only the punching stands under the front.
         let mut a = regulated();
         a.frame.front_rail = a.key.front_edge + mm(0.1 + 0.3 * f64::from(k) / 15.0);
@@ -388,16 +388,16 @@ fn the_seats_stand_where_the_oracle_confirms_them() {
 /// above the up weight by at least twice the friction read through the
 /// longest arm the measuring point has at either seat:
 /// `D − U = b (1/a_top + 1/a_bottom) / g`, plus what the key's own balance
-/// moves between the seats, which on these keys, whose centre of mass stands
+/// moves between the seats, which on these keys, whose center of mass stands
 /// above the pin, only adds to it.
 ///
 /// Every increment stays within half the static solve's cap, not the
 /// quarter a seat keeps to, and the bound is derived. A trial the halvings
 /// put a hair past the threshold starts the key with a step of its excess
 /// force over the metric, as short as the residual's tolerance lets the
-/// excess be, about 3e-13 N·m, a femtometre at the key's front; each step
+/// excess be, about 3e-13 N·m, a femtometer at the key's front; each step
 /// accepted is three times the last, so reaching the row margin's
-/// millimetre takes about 26 steps; the stroke, 10 mm at the key front at
+/// millimeter takes about 26 steps; the stroke, 10 mm at the key front at
 /// most a margin a step, about ten more. The corpus reaches 35.
 #[test]
 fn every_walk_reaches_the_other_seat_and_reads_d_above_u() {

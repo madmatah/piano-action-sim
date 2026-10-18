@@ -13,12 +13,12 @@
 //!
 //! Each piece is its own part with its own material, so the keytop and the key
 //! front can be drawn white and the glued blocks in their own wood: what a
-//! part is made of is the model's, the colour the view's. Each stretch of each
+//! part is made of is the model's, the color the view's. Each stretch of each
 //! outline names the number of the key that places it ([`PlacedBy`]), so an
 //! application can say how that number is known. The key's mass is not
 //! integrated over these outlines; it is weighed or published. Their area
 //! centroid, the front mortise and the clearance taken out, stands in for
-//! the height of a weighed key's centre of mass, which no scale gives
+//! the height of a weighed key's center of mass, which no scale gives
 //! ([`KeyDesign::section_centroid`]).
 //!
 //! # The underside, and the mortise in it
@@ -93,7 +93,7 @@ pub struct KeyRanges {
 
 impl KeyDesign {
     /// Builds every part of the key onto `out`, carried by `body`, in the
-    /// key's frame: origin at the balance pin on the underside, `x` towards
+    /// key's frame: origin at the balance pin on the underside, `x` toward
     /// the player. Returns what they declare.
     ///
     /// Built from the same fields as the key's section as one polygon, with
@@ -333,10 +333,10 @@ impl KeyDesign {
         if let Some(r) = self.capstan_screw.dome_radius {
             let n = capstan_outline.len();
             let shoulder = profile[n - 2];
-            let centre = Point::new(0.0, profile[n - 1].y - r);
-            if let Some(from) = Dir::new(shoulder.x, shoulder.y - centre.y) {
+            let center = Point::new(0.0, profile[n - 1].y - r);
+            if let Some(from) = Dir::new(shoulder.x, shoulder.y - center.y) {
                 let dome = Seg::Arc {
-                    c: centre,
+                    c: center,
                     r,
                     from,
                     to: Dir::Y,
@@ -684,7 +684,7 @@ mod tests {
         key
     }
 
-    /// The test key with its tail end taken `by` metres further back, its
+    /// The test key with its tail end taken `by` meters further back, its
     /// back check block left where the action puts it.
     fn lengthened_at_the_back(by: f64) -> KeyDesign {
         let mut key = crate::test_fixture::key();
@@ -764,12 +764,12 @@ mod tests {
         );
         let top = key.stick_height;
         let felt = key.tail_height + key.damper_felt.expect("the test key's tail is felted");
-        let micrometre = 1e-6;
+        let micrometer = 1e-6;
         for (x, height) in [
-            (back - micrometre, top),
+            (back - micrometer, top),
             (0.5 * (back + tail_front), top),
-            (tail_front + micrometre, top),
-            (tail_front - micrometre, felt),
+            (tail_front + micrometer, top),
+            (tail_front - micrometer, felt),
         ] {
             let at = r.top_at(&parts, x).expect("the key stands there");
             assert_eq!(at.y.to_bits(), height.to_bits(), "at {x} m");
@@ -924,7 +924,7 @@ mod tests {
 
     /// The named points stand where the protocols read them, to the bit: the
     /// lip every touchweight is taken back from, the key front's top where key
-    /// height and dip are read, the capstan's top where the jig centres 10 g.
+    /// height and dip are read, the capstan's top where the jig centers 10 g.
     #[test]
     fn the_named_points_are_where_the_protocols_read() {
         let key = crate::test_fixture::key();
@@ -1039,7 +1039,7 @@ mod tests {
     /// button, behind the balance pin, on the keystick's; the capstan is
     /// seated on the keystick's full height, and its drawn top, the dome's
     /// apex on its axis, is the capstan's contact point within an ulp of the
-    /// height it is screwed to, the dome an arc of its radius about a centre
+    /// height it is screwed to, the dome an arc of its radius about a center
     /// that far below. No felt is drawn on the bare tail.
     #[test]
     fn a_block_stands_on_the_wood_under_it_and_the_capstan_on_the_full_height() {
@@ -1092,12 +1092,12 @@ mod tests {
     /// top again and on to the step down to the tail, each corner where the
     /// clearance's numbers put it, to the bit, and each stretch placed by
     /// its own number; a weight laid on the key stands on the full top a
-    /// micrometre in front of the clearance and behind it, and on its floor
+    /// micrometer in front of the clearance and behind it, and on its floor
     /// within it. Run back to the tail's front, the floor runs straight onto
     /// the step, the back wall and the full top behind it gone.
     #[test]
     fn the_clearance_lowers_the_top_between_its_ends() {
-        let micrometre = 1e-6;
+        let micrometer = 1e-6;
         let key = crate::test_fixture::key_with_every_feature();
         let c = key.top_clearance.expect("a clearance");
         let (top, floor) = (key.stick_height, key.stick_height - c.depth);
@@ -1147,12 +1147,12 @@ mod tests {
         }
         assert_eq!(placed(at - 1), "stick_height", "the full top in front");
         for (x, height) in [
-            (c.front + micrometre, top),
-            (c.front - micrometre, floor),
+            (c.front + micrometer, top),
+            (c.front - micrometer, floor),
             (0.5 * (c.back + c.front), floor),
-            (c.back + micrometre, floor),
-            (c.back - micrometre, top),
-            (tail_front + micrometre, top),
+            (c.back + micrometer, floor),
+            (c.back - micrometer, top),
+            (tail_front + micrometer, top),
         ] {
             let on = r.top_at(&parts, x).expect("the key stands there");
             assert_eq!(on.y.to_bits(), height.to_bits(), "at {x} m");
@@ -1173,7 +1173,7 @@ mod tests {
             assert!(same(*got, want), "{got:?} is not {want:?}");
         }
         let on = r
-            .top_at(&parts, tail_front + micrometre)
+            .top_at(&parts, tail_front + micrometer)
             .expect("the key stands there");
         assert_eq!(on.y.to_bits(), floor.to_bits());
     }
@@ -1231,7 +1231,7 @@ mod tests {
         assert!(placed.back_rail + half < chamfer.end().x);
         assert!(
             chamfer.start().y > chamfer.end().y,
-            "the chamfer rises towards the tail"
+            "the chamfer rises toward the tail"
         );
     }
 }

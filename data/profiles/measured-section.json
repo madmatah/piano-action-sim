@@ -11,7 +11,7 @@
   },
   "key_mass": {
     "is": "unweighed",
-    "why": "Nobody has weighed one of these keys. An outline draws a key and never weighs it, and another key's mass on these arms would describe no key, so the key has no mass until it is weighed whole on the bench, as a key that arrives leaded is weighed: its mass on a scale, and its front weight on Stanwood's jig with how far back from the covering's lip the weight was centred. What would replace this: one of these keys weighed so, the three numbers typed in the bench's weighing; the height of its centre of mass, which no scale gives, is then estimated from the drawn section's area centroid."
+    "why": "Nobody has weighed one of these keys. An outline draws a key and never weighs it, and another key's mass on these arms would describe no key, so the key has no mass until it is weighed whole on the bench, as a key that arrives leaded is weighed: its mass on a scale, and its front weight on Stanwood's jig with how far back from the covering's lip the weight was centered. What would replace this: one of these keys weighed so, the three numbers typed in the bench's weighing; the height of its center of mass, which no scale gives, is then estimated from the drawn section's area centroid."
   },
   "arrival": {
     "is": "regulated",
@@ -23,7 +23,7 @@
       "value": 258.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not measured: where the key front stands in front of the balance pin, which the owner's measurement of the distance from the centre of the balance hole to the key front, or to the covering's lip, would replace. Assumed 13 mm ahead of Thorin's 245 mm key arm (Thorin 2013, Table 2.1). Key height and dip are read here, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, at 247 mm: with the capstan measured 122 mm behind the pin, a key weight ratio of 0.494, a hundredth under the 0.50 to 0.60 published for a natural."
+      "why": "Not measured: where the key front stands in front of the balance pin, which the owner's measurement of the distance from the center of the balance hole to the key front, or to the covering's lip, would replace. Assumed 13 mm ahead of Thorin's 245 mm key arm (Thorin 2013, Table 2.1). Key height and dip are read here, and every touchweight through the measuring point, 13 mm behind the covering's lip 2 mm further forward, at 247 mm: with the capstan measured 122 mm behind the pin, a key weight ratio of 0.494, a hundredth under the 0.50 to 0.60 published for a natural."
     },
     {
       "param": "tail_end",
@@ -70,9 +70,9 @@
       "pointer": "/records/capsule_length"
     },
     {
-      "param": "capsule_centre",
+      "param": "capsule_center",
       "none": true,
-      "why": "Drawn centred on the balance pin: where the key button sits along the key is not measured (key-section.json, still_to_measure). Drawn and read by nothing else."
+      "why": "Drawn centered on the balance pin: where the key button sits along the key is not measured (key-section.json, still_to_measure). Drawn and read by nothing else."
     },
     {
       "param": "back_check_block_height",
@@ -95,7 +95,7 @@
     {
       "param": "top_clearance",
       "none": true,
-      "why": "The owner's keys have a clearance cut in their top between the capstan and the back check block, so that the wippen rail cannot rub them, the key coming back to its full height behind it. Its two ends and its depth are not measured (key-section.json, still_to_measure): until they are, the top is drawn at its full height, and the drawn section, whose centroid estimates the height of a weighed key's centre of mass, keeps the wood the clearance takes out. Nothing touches the top there."
+      "why": "The owner's keys have a clearance cut in their top between the capstan and the back check block, so that the wippen rail cannot rub them, the key coming back to its full height behind it. Its two ends and its depth are not measured (key-section.json, still_to_measure): until they are, the top is drawn at its full height, and the drawn section, whose centroid estimates the height of a weighed key's center of mass, keeps the wood the clearance takes out. Nothing touches the top there."
     },
     {
       "param": "tail_height",
@@ -168,7 +168,7 @@
       "value": 5.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "The head, small against the shaft, with a cross hole for the regulating tool, scaled from the owner's photograph. Its flat top is what bears on the wippen's heel, and where the key weight ratio's load is centred."
+      "why": "The head, small against the shaft, with a cross hole for the regulating tool, scaled from the owner's photograph. Its flat top is what bears on the wippen's heel, and where the key weight ratio's load is centered."
     },
     {
       "param": "capstan.head_height",
@@ -201,7 +201,7 @@
     {
       "param": "capstan.dome_radius",
       "none": true,
-      "why": "The head's top is flat, as the owner's photograph shows it: it bears on the wippen's heel with its flat, and the key weight ratio's load is centred on it."
+      "why": "The head's top is flat, as the owner's photograph shows it: it bears on the wippen's heel with its flat, and the key weight ratio's load is centered on it."
     },
     {
       "param": "balance_rail.height",
@@ -433,7 +433,7 @@
       "value": 6.0,
       "unit": "g",
       "reliability": "S",
-      "why": "Of the order of the key friction weight the trade measures on a well-centred key, a starting value to be replaced by a measurement, and the one value the non-confusion tests scale. Set as the torque 6 g overcome at the measuring point with the key level, an assumption and not a reading: Stanwood's protocol, run on the key resting nose-up, reads these bushings a few tenths of a gram heavier."
+      "why": "Of the order of the key friction weight the trade measures on a well-centered key, a starting value to be replaced by a measurement, and the one value the non-confusion tests scale. Set as the torque 6 g overcome at the measuring point with the key level, an assumption and not a reading: Stanwood's protocol, run on the key resting nose-up, reads these bushings a few tenths of a gram heavier."
     },
     {
       "param": "key_height",

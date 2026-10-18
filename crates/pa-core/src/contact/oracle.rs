@@ -10,7 +10,7 @@
 //! it lies in one of the side's drawn sections and in none of its body's
 //! cuts, by the parity of a ray's crossings of the sampled outlines: a side's
 //! material is the parts its ranges belong to, or, for a side that is a
-//! cut's range, every part of its body; for a centre bearing the cuts are not
+//! cut's range, every part of its body; for a center bearing the cuts are not
 //! taken out, since the key bears on the punching beside its slot, out of the
 //! plane. Only the pair's own parts count, because pins stand through a key
 //! in its mortises by design.
@@ -19,8 +19,8 @@ use super::{ContactPair, PairGeometry, Part, Role, Surface};
 use crate::geometry::{Point, Seg};
 use crate::mechanism::{Mechanism, Placement, Pose};
 
-/// How far apart the samples are along an outline, at most, metres: five
-/// hundredths of a millimetre.
+/// How far apart the samples are along an outline, at most, meters: five
+/// hundredths of a millimeter.
 pub const SPACING: f64 = 5e-5;
 
 /// Samples along a segment, at most [`SPACING`] apart, its start included and
@@ -173,7 +173,7 @@ impl Material {
         self.solids.iter().any(|s| s.holds(p)) && !self.cuts.iter().any(|c| c.holds(p))
     }
 
-    /// How deep `p` stands inside the material, metres: its distance to the
+    /// How deep `p` stands inside the material, meters: its distance to the
     /// nearest sample of the material's boundary, its parts' outlines and its
     /// cuts'; zero outside. A point on the boundary, touching, stands within
     /// half a spacing of a sample, whichever side the crossing count puts it.
@@ -212,9 +212,9 @@ pub struct Pair {
     pub in_a: Material,
     /// Side B's material.
     pub in_b: Material,
-    /// For a centre bearing, side B's face read at its centre, the middle of
+    /// For a center bearing, side B's face read at its center, the middle of
     /// its two ends.
-    pub centre: Option<Point>,
+    pub center: Option<Point>,
 }
 
 impl Pair {
@@ -224,24 +224,24 @@ impl Pair {
         let place = |s: &Surface| pose.placement(parts[s.ranges[0].part.index()].body);
         let a = surface(parts, &pair.a, &place(&pair.a));
         let b = surface(parts, &pair.b, &place(&pair.b));
-        let centre_bearing = pair.geometry == PairGeometry::CentreBearing;
-        let centre = centre_bearing.then(|| {
+        let center_bearing = pair.geometry == PairGeometry::CenterBearing;
+        let center = center_bearing.then(|| {
             let (first, last) = (b[0], b[b.len() - 1]);
             Point::new(0.5 * (first.x + last.x), 0.5 * (first.y + last.y))
         });
         Self {
-            in_a: Material::of(mechanism, pose, &pair.a, centre_bearing),
-            in_b: Material::of(mechanism, pose, &pair.b, centre_bearing),
+            in_a: Material::of(mechanism, pose, &pair.a, center_bearing),
+            in_b: Material::of(mechanism, pose, &pair.b, center_bearing),
             a,
             b,
-            centre,
+            center,
         }
     }
 
-    /// How far apart the two surfaces stand, metres: the closest two
-    /// samples; for a centre bearing, the centre from side A's surface.
+    /// How far apart the two surfaces stand, meters: the closest two
+    /// samples; for a center bearing, the center from side A's surface.
     pub fn apart(&self) -> f64 {
-        match self.centre {
+        match self.center {
             Some(c) => nearest(c, &self.a),
             None => self
                 .a
@@ -251,12 +251,12 @@ impl Pair {
         }
     }
 
-    /// How deep any sample of either surface, or the centre, stands inside
-    /// the other side's material, metres: zero where none does. A surface
+    /// How deep any sample of either surface, or the center, stands inside
+    /// the other side's material, meters: zero where none does. A surface
     /// touching the material, through this pair or another, reads within
     /// half a spacing.
     pub fn overlap(&self) -> f64 {
-        match self.centre {
+        match self.center {
             Some(c) => self.in_a.depth(c),
             None => self
                 .a
@@ -455,7 +455,7 @@ pub mod polyline {
             Self { solids, cuts }
         }
 
-        /// How deep `p` stands inside the material, metres: its distance to
+        /// How deep `p` stands inside the material, meters: its distance to
         /// the nearest boundary of a part or a cut, zero outside.
         pub fn depth(&self, p: Point) -> f64 {
             let held =

@@ -6,27 +6,27 @@ import type { EditRefusal } from "./EditRefusal";
  */
 export type Acted = { "outcome": "done" } | { "outcome": "laid", 
 /**
- * The paper laid under the balance punching, millimetres.
+ * The paper laid under the balance punching, millimeters.
  */
 balance_mm: number, 
 /**
- * The paper laid on the front punching, millimetres.
+ * The paper laid on the front punching, millimeters.
  */
 front_mm: number, 
 /**
- * The key height the papers give, millimetres.
+ * The key height the papers give, millimeters.
  */
 key_height_mm: number, 
 /**
- * The key dip the papers give, millimetres.
+ * The key dip the papers give, millimeters.
  */
 key_dip_mm: number, 
 /**
- * The key height asked for, millimetres, as it was asked.
+ * The key height asked for, millimeters, as it was asked.
  */
 asked_key_height_mm: number, 
 /**
- * The key dip asked for, millimetres, as it was asked.
+ * The key dip asked for, millimeters, as it was asked.
  */
 asked_key_dip_mm: number, } | { "outcome": "refused", 
 /**

@@ -21,7 +21,7 @@
 //! the same margin over those and the load at the capstan together. Both are
 //! taken with the key level:
 //! over its stroke, gravity's generalized force on a key changes by its
-//! weight times the height of its centre of mass times the angle, a fraction
+//! weight times the height of its center of mass times the angle, a fraction
 //! of the margin. With rigid stops the pose depends on neither magnitude,
 //! only on which stops the loads put the key on
 //! (`doubling_the_preparation_loads_changes_no_seat`).
@@ -62,20 +62,20 @@ use crate::parts::verdicts::TOUCHING;
 use crate::solve::{Friction, Holder, Refusal, SolveReport, Statics};
 use crate::G;
 
-/// The torque, newton-metres, by which each preparation load seats the key
+/// The torque, newton-meters, by which each preparation load seats the key
 /// past what holds it the other way.
 ///
-/// A margin, not a magnitude anything reads: a hundredth of a newton-metre
+/// A margin, not a magnitude anything reads: a hundredth of a newton-meter
 /// is the weight of about 4 g at the measuring point, enough that the seat
 /// the loads choose does not hang on rounding, and with rigid stops the pose
 /// does not depend on it.
 pub const SEAT_MARGIN: f64 = 0.01;
 
 /// How deep a seat's drawn parts may stand in one another, read off their
-/// outlines, metres: a micron, a hundredth of the thinnest paper. A seat the
+/// outlines, meters: a micron, a hundredth of the thinnest paper. A seat the
 /// static solve converges on has every contact it reads closed to a
-/// picometre; drawn parts deeper in one another than this are sunk where no
-/// contact reads them, past an edge's centre or across a corner's sector
+/// picometer; drawn parts deeper in one another than this are sunk where no
+/// contact reads them, past an edge's center or across a corner's sector
 /// (`docs/FOUNDATIONS.md` §6.6), and the seat is not one.
 pub const SEAT_OVERLAP: f64 = 1e-6;
 
@@ -90,7 +90,7 @@ pub struct Seating<'a> {
     pub capstan: Point,
     /// The measuring point, in the key's frame: where the press acts.
     pub measuring_point: Point,
-    /// The margin each load seats the key by, newton-metres:
+    /// The margin each load seats the key by, newton-meters:
     /// [`SEAT_MARGIN`].
     pub margin: f64,
     /// Loads that stay on the key through the whole procedure, besides its
@@ -115,7 +115,7 @@ pub struct Seat {
     /// The vertical load the key's bearing carries there, newtons, positive
     /// pushing the key up: the balance punching stays loaded while it is.
     pub bearing_load: f64,
-    /// How far above its balance punching the key stands, metres: zero on
+    /// How far above its balance punching the key stands, meters: zero on
     /// it, and on a pivot; the lift of a key riding on its stops.
     pub lift: f64,
     /// How the solve went.
@@ -162,15 +162,15 @@ pub enum SeatRefusal {
     /// load takes it there, or its punching stands above the pin's top.
     LiftsOffItsFrame {
         /// How far above its balance punching the key leaves its pin,
-        /// metres: negative where the punching stands above the pin's top.
+        /// meters: negative where the punching stands above the pin's top.
         leaves_its_pin: f64,
     },
     /// Nothing holds the back of the key at the top: it turns to the edge of
-    /// the modelled world.
+    /// the modeled world.
     NoStopUnderTheTail,
     /// Nothing stops the front of the key at the bottom truthfully: a front
-    /// punching whose centre stands past the key's underside bears on
-    /// nothing, and the key turns to the edge of the modelled world, or comes
+    /// punching whose center stands past the key's underside bears on
+    /// nothing, and the key turns to the edge of the modeled world, or comes
     /// down through the part of the punching drawn under it.
     NoStopBelowTheFront,
     /// The static solve reached its cap first.
@@ -190,7 +190,7 @@ impl Seat {
     }
 
     /// The height above the keybed of `point`, a point of the key in its
-    /// frame, in this seat, metres.
+    /// frame, in this seat, meters.
     pub fn height(&self, mounted: &Mounted, point: Point) -> f64 {
         mounted
             .mechanism
@@ -205,7 +205,7 @@ impl Seat {
 
 impl Seats {
     /// The height above the keybed of `point`, a point of the key in its
-    /// frame, at each seat, metres: at the top and at the bottom.
+    /// frame, at each seat, meters: at the top and at the bottom.
     pub fn heights(&self, mounted: &Mounted, point: Point) -> (f64, f64) {
         (
             self.top.height(mounted, point),
@@ -235,7 +235,7 @@ impl Seating<'_> {
         let prepared = self.preparation()?;
         let top = self.top_seat(statics, &prepared.top)?;
         let bottom = self.seat(statics, &top.q, &prepared.bottom, false)?;
-        // A punching read at its centre bears on nothing once that centre
+        // A punching read at its center bears on nothing once that center
         // stands past the key's underside; if its drawn face stands under the
         // key all the same, the key has come down through it as drawn.
         let pose = m.pose(&bottom.q);
@@ -243,7 +243,7 @@ impl Seating<'_> {
         m.rows(&pose, f64::INFINITY, &mut rows);
         for (p, pair) in m.pairs().iter().enumerate() {
             let p = u16::try_from(p).expect("fewer than 65 536 pairs");
-            if pair.geometry == crate::contact::PairGeometry::CentreBearing
+            if pair.geometry == crate::contact::PairGeometry::CenterBearing
                 && rows.gap(p).is_none()
                 && m.face_overlap(&pose, p) > crate::parts::verdicts::TOUCHING
             {
@@ -467,7 +467,7 @@ mod tests {
     use crate::parts::frame::KeyKind;
     use crate::solve::statics::{tests::assert_virtual_work, GAP_TOLERANCE};
 
-    /// The key front's height at each seat, metres.
+    /// The key front's height at each seat, meters.
     fn heights(a: &Setup) -> (Seats, f64, f64) {
         let k = on_frame(a, KeyKind::Natural, 0.0, true);
         let seats = k
@@ -677,9 +677,9 @@ mod tests {
     }
 
     /// The front pin bottoming in its mortise stops the key before its
-    /// punching: one pin a millimetre prouder, and it is the pin that holds
+    /// punching: one pin a millimeter prouder, and it is the pin that holds
     /// the bottom seat, on one of its corners, the dip shorter by the
-    /// millimetre seen through the lever.
+    /// millimeter seen through the lever.
     #[test]
     fn a_pin_too_proud_holds_the_bottom_seat() {
         let base = regulated();
@@ -747,10 +747,10 @@ mod tests {
     ///
     /// Read off the drawn outlines by the brute-force oracle, sharing no code
     /// with the rows: the drawn underside, chamfer included, stands on the
-    /// drawn cloth and on the front punching's drawn centre, within the
+    /// drawn cloth and on the front punching's drawn center, within the
     /// oracle's resolution, the sagitta of one spacing on the cloth's edge,
     /// where a straight underside laid on the two stops would stand 0.81 mm
-    /// clear of the cloth, under the chamfer. Its balance punching's drawn centre
+    /// clear of the cloth, under the chamfer. Its balance punching's drawn center
     /// stands below the drawn underside by the lift, the slide's height off
     /// it, within the same. On a pivot the key has no seat on this frame,
     /// the stops named.
@@ -808,8 +808,8 @@ mod tests {
     }
 
     /// How far apart the brute-force oracle reads the two sides of `pair`
-    /// at `pose`, metres: the closest two points of their drawn polylines;
-    /// for a centre bearing, the middle of side B's drawn face from side A.
+    /// at `pose`, meters: the closest two points of their drawn polylines;
+    /// for a center bearing, the middle of side B's drawn face from side A.
     fn drawn_apart(
         m: &crate::mechanism::Mechanism,
         pose: &crate::mechanism::Pose,
@@ -819,7 +819,7 @@ mod tests {
         let body = |s: &Surface| parts[s.ranges[0].part.index()].body;
         let a = polyline::surface(parts, &pair.a, &pose.placement(body(&pair.a)));
         let b = polyline::surface(parts, &pair.b, &pose.placement(body(&pair.b)));
-        if pair.geometry == PairGeometry::CentreBearing {
+        if pair.geometry == PairGeometry::CenterBearing {
             let first = b[0][0];
             let last = *b[b.len() - 1].last().unwrap();
             let middle = Point::new(0.5 * (first.x + last.x), 0.5 * (first.y + last.y));
@@ -837,8 +837,8 @@ mod tests {
         best
     }
 
-    /// What the oracle's polylines can tell apart, metres: the sagitta of a
-    /// chord of one spacing on the cloth's half-millimetre edges, and the gap
+    /// What the oracle's polylines can tell apart, meters: the sagitta of a
+    /// chord of one spacing on the cloth's half-millimeter edges, and the gap
     /// a static solve converges to.
     fn polyline_resolution() -> f64 {
         let spacing = crate::contact::oracle::SPACING;
@@ -851,7 +851,7 @@ mod tests {
     /// hole, at the key frame's origin on the pin's axis, clears the pin's
     /// drawn top: on the regulated bench 9 mm above its punching, the pin's
     /// height above its rail less the punching stack, as the frame's fields
-    /// give it, and a millimetre more pin is a millimetre more. The balance
+    /// give it, and a millimeter more pin is a millimeter more. The balance
     /// rail lowered takes its pin and its punching down together, and the
     /// key, held on its front punching and its cloth, rides higher above
     /// them the further the rail goes: lowered 10 mm it rides within its
@@ -862,7 +862,7 @@ mod tests {
     /// pin's top: a key on it is off its pin wherever it stands, refused
     /// with the 0.3 mm.
     ///
-    /// The bounds are derived: heights of a few centimetres, rounded at their
+    /// The bounds are derived: heights of a few centimeters, rounded at their
     /// last bits; a riding seat's two contacts each closed within
     /// [`GAP_TOLERANCE`], which the arms of the front stop and the cloth, in
     /// a ratio under two, carry to the slide.
@@ -1078,7 +1078,7 @@ mod tests {
         }
     }
 
-    /// Consistency: **a pin a few tenths of a millimetre into the wood
+    /// Consistency: **a pin a few tenths of a millimeter into the wood
     /// beside its slot, its top well up in the slot, has the key lowered
     /// onto it from above.** Its front end 0.3 mm into the wood in front of
     /// the slot, the key level on its punching overlaps the pin by less than
@@ -1143,7 +1143,7 @@ mod tests {
     /// A key on the sharp row stands on the sharp row's punchings and pins,
     /// where its frame draws them: it turns about its own balance pin, the
     /// balance row's offset behind the natural's, and its bottom seat's
-    /// contact is at the drawn front punching's centre, the front row's
+    /// contact is at the drawn front punching's center, the front row's
     /// offset behind the natural's. The sharp's mortise is cut over its row's
     /// front pin: the difference of the two offsets further back along the
     /// key.
@@ -1171,8 +1171,8 @@ mod tests {
                 .iter()
                 .position(|p| p.code == ContactCode::FrontRailPunching)
                 .unwrap();
-            let centre = m.parts()[k.frame.front_rail_punching.index()].sweep;
-            let crate::contact::Sweep::Revolved { axis_x } = centre else {
+            let center = m.parts()[k.frame.front_rail_punching.index()].sweep;
+            let crate::contact::Sweep::Revolved { axis_x } = center else {
                 panic!("a punching is turned")
             };
             let expected = a.frame.sections.front.pin_x(a.frame.front_rail, kind);

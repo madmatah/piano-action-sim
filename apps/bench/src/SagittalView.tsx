@@ -1,7 +1,7 @@
 /**
  * The bench's 3-D view.
  *
- * Built in millimetres: `x` towards the player, `y` up, `z` across the
+ * Built in millimeters: `x` toward the player, `y` up, `z` across the
  * keyboard. Every part arrives in its own body's frame, the frame and its
  * rails on the ground, the key's pieces on the key, and every body arrives
  * with its pose. This component applies the poses it is given, one transform
@@ -12,7 +12,7 @@
  *
  * There is **one** definition of each part: the outline the engine builds,
  * which the faults read and the contacts are held to. This view extrudes it,
- * or lathes it when the part is turned. A separately modelled mesh would be a
+ * or lathes it when the part is turned. A separately modeled mesh would be a
  * second geometry, and the moment it disagreed with the first the displayed
  * dimensions would stop describing what is measured. So the section is not a
  * reduced view of the solid: the solid *is* the section, swept.
@@ -29,22 +29,22 @@
  * part across the keyboard, and leaves the cuts out: a mortise is inside the
  * key.
  *
- * Over both views, the contacts the engine's rows find within a millimetre
+ * Over both views, the contacts the engine's rows find within a millimeter
  * of closing are marked where the rows put them, in the keybed's frame: a
  * dot where the key bears, a line across a gap still open, and another where
  * drawn parts overlap.
  *
- * Marked by provenance, every line is drawn in the colour of how the number
+ * Marked by provenance, every line is drawn in the color of how the number
  * that places it is known, measured, published, traced from a figure,
  * derived by a rule, borrowed from another instrument, assumed, or set on
  * the bench since the instrument was built: the engine sends, with each
  * stretch of an outline, the number that places it and how its profile knows
- * it, and the view only paints it, in colours chosen apart from every fill
+ * it, and the view only paints it, in colors chosen apart from every fill
  * they are drawn over (`palette.ts`).
  *
- * Colours come from what a part is made of, never from what it is: the
+ * Colors come from what a part is made of, never from what it is: the
  * keytop and the key front are white, the key button and the back check block
- * one wood and the keystick another, a paper the colour its thickness is sold
+ * one wood and the keystick another, a paper the color its thickness is sold
  * in. The section paints them as they are, with no tone mapping, so white is
  * white there; the solid is lit, and tone-mapped so the light does not burn
  * its faces out.
@@ -77,9 +77,9 @@ import {
   toShape,
 } from './outline'
 import {
-  CONTACT_COLOUR,
+  CONTACT_COLOR,
   EDGE,
-  HOW_COLOUR,
+  HOW_COLOR,
   KEYBED,
   LIGHTS,
   MATERIAL_FILL,
@@ -109,10 +109,10 @@ function piecesByHow(o: Outline, skip: ReadonlySet<number>): Array<{ how: How; p
   })
 }
 
-/** The colour a part is drawn in: a paper's as it is supplied, anything
+/** The color a part is drawn in: a paper's as it is supplied, anything
  * else's from its material. */
-function colourOf(o: Outline): string {
-  if (o.material === 'paper') return o.paper_colour ? PAPER_FILL[o.paper_colour] : UNGRADED_FILL
+function colorOf(o: Outline): string {
+  if (o.material === 'paper') return o.paper_color ? PAPER_FILL[o.paper_color] : UNGRADED_FILL
   return MATERIAL_FILL[o.material] ?? '#9b9b9b'
 }
 
@@ -158,10 +158,10 @@ function useDisposal(geometry: THREE.BufferGeometry) {
 
 // ---- the solid ------------------------------------------------------------
 
-function Extruded({ points, width, colour }: { points: number[]; width: number; colour: string }) {
+function Extruded({ points, width, color }: { points: number[]; width: number; color: string }) {
   const geometry = useMemo(() => {
     const g = new THREE.ExtrudeGeometry(toShape(points), { depth: width, bevelEnabled: false })
-    // Extrusion runs along +z from the outline's plane; centre it so the
+    // Extrusion runs along +z from the outline's plane; center it so the
     // sagittal plane really is the middle of the part.
     g.translate(0, 0, -width / 2)
     g.computeVertexNormals()
@@ -173,7 +173,7 @@ function Extruded({ points, width, colour }: { points: number[]; width: number; 
   return (
     <group>
       <mesh geometry={geometry}>
-        <meshLambertMaterial color={colour} />
+        <meshLambertMaterial color={color} />
       </mesh>
       <lineSegments geometry={edges}>
         <lineBasicMaterial color="#3a342b" transparent opacity={0.4} />
@@ -191,7 +191,7 @@ function Extruded({ points, width, colour }: { points: number[]; width: number; 
  * profile whose first radius is not zero leaves the hole its pin passes
  * through, the feature that says the key is located and not merely resting.
  */
-function Lathed({ profile, axisX, colour }: { profile: number[]; axisX: number; colour: string }) {
+function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; color: string }) {
   const geometry = useMemo(() => {
     const points: THREE.Vector2[] = []
     for (let i = 0; i < profile.length; i += 2) {
@@ -206,7 +206,7 @@ function Lathed({ profile, axisX, colour }: { profile: number[]; axisX: number; 
   useDisposal(geometry)
   return (
     <mesh geometry={geometry} position={[axisX, 0, 0]}>
-      <meshLambertMaterial color={colour} side={THREE.DoubleSide} />
+      <meshLambertMaterial color={color} side={THREE.DoubleSide} />
     </mesh>
   )
 }
@@ -216,12 +216,12 @@ function Lathed({ profile, axisX, colour }: { profile: number[]; axisX: number; 
 /** A flat fill in the sagittal plane, painted in its layer. */
 function Fill({
   points,
-  colour,
+  color,
   layer,
   masked = false,
 }: {
   points: number[]
-  colour: string
+  color: string
   layer: number
   /** Whether a cut keeps it from being painted: the key's own parts are. */
   masked?: boolean
@@ -231,7 +231,7 @@ function Fill({
   return (
     <mesh geometry={geometry} renderOrder={layer}>
       <meshBasicMaterial
-        color={colour}
+        color={color}
         side={THREE.DoubleSide}
         depthTest={false}
         depthWrite={false}
@@ -271,13 +271,13 @@ function Void({ points }: { points: number[] }) {
 function Edges({
   pieces,
   layer,
-  colour = EDGE,
+  color = EDGE,
   z = 0,
   depthTest = false,
 }: {
   pieces: number[]
   layer: number
-  colour?: string
+  color?: string
   /** How far across the sagittal plane the edges stand: on a solid's face. */
   z?: number
   /** Whether the solids in front hide them, as on a solid's face. */
@@ -296,7 +296,7 @@ function Edges({
   return (
     <lineSegments geometry={geometry} renderOrder={layer}>
       <lineBasicMaterial
-        color={colour}
+        color={color}
         depthTest={depthTest}
         depthWrite={false}
         toneMapped={false}
@@ -305,8 +305,8 @@ function Edges({
   )
 }
 
-/** An outline's edges, the segments in `skip` left out: in the edge colour,
- * or, marked by provenance, each in the colour of how its number is known. */
+/** An outline's edges, the segments in `skip` left out: in the edge color,
+ * or, marked by provenance, each in the color of how its number is known. */
 function OutlineEdges({
   outline,
   skip,
@@ -325,16 +325,16 @@ function OutlineEdges({
   depthTest?: boolean
 }) {
   const sets = marked
-    ? piecesByHow(outline, skip).map(({ how, pieces }) => ({ colour: HOW_COLOUR[how], pieces }))
-    : [{ colour: EDGE, pieces: strokes(outline.points_mm, outline.segs, skip) }]
+    ? piecesByHow(outline, skip).map(({ how, pieces }) => ({ color: HOW_COLOR[how], pieces }))
+    : [{ color: EDGE, pieces: strokes(outline.points_mm, outline.segs, skip) }]
   return (
     <>
-      {sets.map(({ colour, pieces }) => (
+      {sets.map(({ color, pieces }) => (
         <Edges
-          key={colour}
+          key={color}
           pieces={mirror ? mirrored(pieces) : pieces}
           layer={layer}
-          colour={colour}
+          color={color}
           z={z}
           depthTest={depthTest}
         />
@@ -365,11 +365,11 @@ function SectionPart({
   /** Whether its lines are marked by provenance. */
   marked: boolean
 }) {
-  const colour = colourOf(outline)
+  const color = colorOf(outline)
   if (outline.sweep === 'extruded') {
     return (
       <>
-        <Fill points={outline.points_mm} colour={colour} layer={layer} masked={masked} />
+        <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
         <OutlineEdges outline={outline} skip={open} layer={edgeLayer} marked={marked} />
       </>
     )
@@ -377,8 +377,8 @@ function SectionPart({
   const onAxis = axisSegments(outline.points_mm, outline.segs)
   return (
     <group position={[outline.axis_x_mm, 0, 0]}>
-      <Fill points={outline.points_mm} colour={colour} layer={layer} masked={masked} />
-      <Fill points={mirrored(outline.points_mm)} colour={colour} layer={layer} masked={masked} />
+      <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
+      <Fill points={mirrored(outline.points_mm)} color={color} layer={layer} masked={masked} />
       <OutlineEdges outline={outline} skip={onAxis} layer={edgeLayer} marked={marked} />
       <OutlineEdges outline={outline} skip={onAxis} layer={edgeLayer} marked={marked} mirror />
     </group>
@@ -406,7 +406,7 @@ function MeasuringPoint({ at }: { at: [number, number] }) {
 }
 
 /**
- * The contacts within a millimetre of closing: a dot where the frame's
+ * The contacts within a millimeter of closing: a dot where the frame's
  * surface is, and across an open or overlapping contact a line to where the
  * key's is. Drawn in the keybed's frame, over everything, in both views: the
  * points are where the engine's contact rows put them.
@@ -419,7 +419,7 @@ function Contacts({ contacts }: { contacts: MarkedContact[] }) {
           key={state}
           pieces={contactStrokes(contacts, state)}
           layer={LAYER.contacts}
-          colour={CONTACT_COLOUR[state]}
+          color={CONTACT_COLOR[state]}
         />
       ))}
       {contacts.map((c, i) => (
@@ -430,7 +430,7 @@ function Contacts({ contacts }: { contacts: MarkedContact[] }) {
         >
           <sphereGeometry args={[0.9, 16, 12]} />
           <meshBasicMaterial
-            color={CONTACT_COLOUR[c.state]}
+            color={CONTACT_COLOR[c.state]}
             depthTest={false}
             depthWrite={false}
             toneMapped={false}
@@ -485,12 +485,12 @@ function Body({
               key={`${o.code}-${i}`}
               profile={o.points_mm}
               axisX={o.axis_x_mm}
-              colour={colourOf(o)}
+              color={colorOf(o)}
             />
           ) : (
             <group key={`${o.code}-${i}`}>
-              <Extruded points={o.points_mm} width={o.width_mm} colour={colourOf(o)} />
-              {/* Marked by provenance, on the face towards the camera. */}
+              <Extruded points={o.points_mm} width={o.width_mm} color={colorOf(o)} />
+              {/* Marked by provenance, on the face toward the camera. */}
               {marked && (
                 <OutlineEdges
                   outline={o}
@@ -599,7 +599,7 @@ export function SagittalView({
 
       {/* Mirrored in x so the player's end of the key is on the LEFT, which is
           how the trade's own sectional plates are drawn. A view convention and
-          nothing more: the engine's x still runs towards the player, and no
+          nothing more: the engine's x still runs toward the player, and no
           number changes. */}
       <group scale={[-1, 1, 1]}>
         <Keybed />

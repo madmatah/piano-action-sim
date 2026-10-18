@@ -137,7 +137,7 @@ pub enum WalkRefusal {
     /// The walk took its cap of steps and the key never reached the other
     /// seat.
     DoesNotReachTheEndOfItsStroke,
-    /// An increment had no equilibrium in the modelled world: these
+    /// An increment had no equilibrium in the modeled world: these
     /// contacts fight, or the key leans on the edge of its range.
     NoEquilibrium {
         /// The contacts that fight, in the mechanism's order; empty where the
@@ -147,7 +147,7 @@ pub enum WalkRefusal {
     /// A weight the walk put on the measuring point lifts the key off its
     /// frame: past where it leaves its balance pin
     /// ([`Mounted::leaves_its_pin`](crate::parts::mounts::Mounted::leaves_its_pin)),
-    /// with nothing modelled to stop it.
+    /// with nothing modeled to stop it.
     LiftsOffItsFrame,
     /// An increment reached the static solve's cap first.
     NotConverged {

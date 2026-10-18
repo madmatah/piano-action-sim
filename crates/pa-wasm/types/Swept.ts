@@ -5,8 +5,8 @@
  */
 export type Swept = { 
 /**
- * How far the measuring point travelled between two readings,
- * millimetres.
+ * How far the measuring point traveled between two readings,
+ * millimeters.
  */
 step_mm: number, 
 /**
@@ -15,11 +15,11 @@ step_mm: number,
 samples: number, 
 /**
  * How far the measuring point travels from the top seat to the bottom
- * one, millimetres.
+ * one, millimeters.
  */
 window_mm: number, 
 /**
  * Where on the stroke the reading fell: how far the measuring point
- * stood below the top seat, millimetres.
+ * stood below the top seat, millimeters.
  */
 at_mm: number, };

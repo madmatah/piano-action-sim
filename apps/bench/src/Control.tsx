@@ -6,13 +6,13 @@
  * controls in order, each control with its path or its action, the range it
  * offers and the code its label is worded by. One component draws any of
  * them, its value read from the settings at its path, its wording from the
- * catalogue by its label's code, its range, step and unit from the engine.
+ * catalog by its label's code, its range, step and unit from the engine.
  * The page holds no literal of its own for any of these: a control the
  * engine adds, moves or bounds otherwise is drawn as the engine says.
  *
  * Each control carries the engine's identifiers as attributes, `data-path`
  * for a setting, `data-action` for what runs an action, so that a test
- * drives it by what it is and not by its wording, which a catalogue in
+ * drives it by what it is and not by its wording, which a catalog in
  * another language changes.
  */
 import type {
@@ -61,7 +61,7 @@ export interface Answer {
   readonly acted: Acted
 }
 
-/** `x` to the decimals `resolution` is shown to, as the catalogue writes it. */
+/** `x` to the decimals `resolution` is shown to, as the catalog writes it. */
 export function shown(x: number, resolution: number): string {
   return t.number(x, decimals(resolution))
 }
@@ -345,7 +345,7 @@ function KeyFrictionWeight({
 
 /**
  * What is on the bench: one of the profiles the engine ships, by its name,
- * worded by the catalogue where it words it. Choosing another runs the
+ * worded by the catalog where it words it. Choosing another runs the
  * action that puts that profile's instrument on the bench, as it arrives.
  *
  * One button per profile, each name wrapping in full under the others: a

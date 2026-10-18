@@ -24,16 +24,16 @@ use crate::parts::frame::{Crown, Drawer, FrameSections, PinShape, PunchingStack,
 use crate::parts::{Capstan, FrameDesign, KeyDesign, KeyMass, TopClearance};
 use crate::regulation::Targets;
 
-/// The thicknesses the owner's drawer holds, metres, thinnest first: 0.08,
+/// The thicknesses the owner's drawer holds, meters, thinnest first: 0.08,
 /// 0.12, 0.20, 0.40, 0.50, 0.75, 1.00 and 1.25 mm.
 pub const PAPER_THICKNESSES: [f64; 8] = [
     0.00008, 0.00012, 0.0002, 0.0004, 0.0005, 0.00075, 0.001, 0.00125,
 ];
 
-/// Stanwood's measuring point, 13 mm back from the covering's lip, metres.
+/// Stanwood's measuring point, 13 mm back from the covering's lip, meters.
 pub const MEASURING_POINT_FROM_LIP: f64 = 0.013;
 
-/// The same glossary entry's imperial alternative, 1/2 inch, metres.
+/// The same glossary entry's imperial alternative, 1/2 inch, meters.
 pub const MEASURING_POINT_HALF_INCH: f64 = 0.0127;
 
 /// The load Stanwood's protocol reads the key weight ratio with, grams.
@@ -53,11 +53,11 @@ pub const KEY_FRICTION_WEIGHT_LEVEL_G: f64 = 6.0;
 /// The test weighing's mass on the scale, grams.
 pub const WEIGHED_MASS_G: f64 = 121.1;
 
-/// The test weighing's front weight, grams, read on the levelled jig
+/// The test weighing's front weight, grams, read on the leveled jig
 /// [`WEIGHED_FROM_LIP`] back from the covering's lip.
 pub const WEIGHED_FRONT_WEIGHT_G: f64 = 6.5;
 
-/// Where the test weighing's front weight was read, metres back from the
+/// Where the test weighing's front weight was read, meters back from the
 /// covering's lip: Stanwood's measuring point.
 pub const WEIGHED_FROM_LIP: f64 = MEASURING_POINT_FROM_LIP;
 
@@ -108,7 +108,7 @@ pub fn key() -> KeyDesign {
         stick_height: 0.0245,
         capsule_height: 0.0060,
         capsule_length: 0.062,
-        capsule_centre: None,
+        capsule_center: None,
         back_check_block_height: 0.0080,
         back_check_block_back: -0.220,
         back_check_block_length: 0.027,
@@ -145,7 +145,7 @@ pub fn key_with_every_feature() -> KeyDesign {
             front: -0.140,
             depth: 0.003,
         }),
-        capsule_centre: Some(-0.008),
+        capsule_center: Some(-0.008),
         capstan_screw: Capstan {
             dome_radius: Some(0.0097),
             ..capstan()
@@ -199,7 +199,7 @@ pub fn sections() -> FrameSections {
 }
 
 /// The measured section's frame, its rails placed under its key, half a
-/// millimetre of paper on each punching.
+/// millimeter of paper on each punching.
 pub fn frame() -> FrameDesign {
     FrameDesign {
         balance_rail_height: 0.0266,

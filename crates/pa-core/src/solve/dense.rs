@@ -8,7 +8,7 @@
 //! bedded flat on both edges of its cloth, a joint and a contact holding the
 //! same body) the system is singular and every split of the load between
 //! them balances it: rigid statics leave the split indeterminate. The engine
-//! takes the split of least utilisation, the solution of least norm in
+//! takes the split of least utilization, the solution of least norm in
 //! scaled multipliers, so that it is one definite answer that does not drift
 //! from one solve to the next, and reports it as one admissible split among
 //! many (`docs/FOUNDATIONS.md` §2.1).

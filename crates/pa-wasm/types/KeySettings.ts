@@ -10,7 +10,7 @@ import type { Weighed } from "./Weighed";
  */
 export type KeySettings = { 
 /**
- * Its front edge, millimetres in front of the balance pin.
+ * Its front edge, millimeters in front of the balance pin.
  */
 front_edge_mm: number, 
 /**

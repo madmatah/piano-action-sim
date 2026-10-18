@@ -23,7 +23,7 @@ margin_g: number, } | { "code": "rides_on_both_stops",
  */
 front: Contact, 
 /**
- * How far above its balance punching it stands, millimetres.
+ * How far above its balance punching it stands, millimeters.
  */
 lift_mm: number, } | { "code": "lifts_off_balance_punching", 
 /**
@@ -36,6 +36,6 @@ touching: Array<Contact>,
  */
 needs_friction: boolean, 
 /**
- * How far above its balance punching it stands, millimetres.
+ * How far above its balance punching it stands, millimeters.
  */
 lift_mm: number, } | { "code": "lifts_off_its_frame" };

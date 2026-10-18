@@ -82,21 +82,21 @@ use crate::parts::KeyDesign;
 use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 use crate::solve::{SolveReport, Statics};
 
-/// The most paper the search lays on one stack, metres: 20 mm.
+/// The most paper the search lays on one stack, meters: 20 mm.
 ///
-/// A punching stack is a felt and a millimetre or two of paper. A target
+/// A punching stack is a felt and a millimeter or two of paper. A target
 /// that asks for more than this is one the rail is too low for, and is
 /// refused as such ([`Limit::RailTooLow`]).
 pub const STACK_SEARCH: f64 = 0.020;
 
 /// How many times the search halves [`STACK_SEARCH`]: forty.
 ///
-/// It leaves 18 femtometres of paper, which moves a key height by less than
-/// a tenth of a picometre: far below anything read, and below the
-/// picometre the static solve closes a contact to.
+/// It leaves 18 femtometers of paper, which moves a key height by less than
+/// a tenth of a picometer: far below anything read, and below the
+/// picometer the static solve closes a contact to.
 pub const HALVINGS: u32 = 40;
 
-/// The trade's two targets for a key on its frame, metres.
+/// The trade's two targets for a key on its frame, meters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Targets {
     /// Key height: the top of the key at its front, above the keybed, with
@@ -161,7 +161,7 @@ pub enum Limit {
     /// The key's stops fight before the target is reached: the front
     /// punching meets the key at rest while its tail is down on its cloth.
     StopsFight,
-    /// Nothing stops the front of the key: the front punching's centre
+    /// Nothing stops the front of the key: the front punching's center
     /// stands off the key's underside, and no dip can be read at all.
     NoStopBelowTheFront,
     /// The rail stands too low under the key for the target: the target asks
@@ -176,7 +176,7 @@ pub enum Limit {
 /// One punching stack as the solve leaves it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Stack {
-    /// The paper the target asks for, laid on the stack's felt, metres: the
+    /// The paper the target asks for, laid on the stack's felt, meters: the
     /// continuous thickness the bisection finds, which no drawer holds.
     pub asked: f64,
     /// The papers laid from the drawer, thickest first: the closest total
@@ -193,7 +193,7 @@ pub struct Stacks {
     pub front: Stack,
 }
 
-/// What the papers laid give, read again by the seated pose, metres.
+/// What the papers laid give, read again by the seated pose, meters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Achieved {
     /// Key height.
@@ -222,7 +222,7 @@ pub enum TargetOutcome {
         target: Target,
         /// What keeps it out of reach.
         limited_by: Limit,
-        /// How far it lies out of reach, metres of its own reading: the
+        /// How far it lies out of reach, meters of its own reading: the
         /// target less the nearest key height or dip any stack gives, by
         /// magnitude; the whole target where no dip can be read at all.
         shortfall_m: f64,
@@ -280,7 +280,7 @@ enum Trial {
     /// Nothing stops the front of the key.
     NoStopBelowTheFront,
     /// The key stands off its balance pin at this stack, and off its frame:
-    /// how far above its punching it leaves its pin, metres, negative where
+    /// how far above its punching it leaves its pin, meters, negative where
     /// the punching stands above the pin's top.
     OffItsPin { leaves_its_pin: f64 },
 }
@@ -291,7 +291,7 @@ enum Searched {
     /// The balance stack, for key height, with no paper on the front.
     Balance,
     /// The front stack, for the dip, with this much paper under the balance
-    /// punching, metres.
+    /// punching, meters.
     Front { balance: f64 },
 }
 
@@ -385,7 +385,7 @@ impl Regulating<'_> {
         })
     }
 
-    /// The frame of a trial, `balance` and `front` metres of paper asked of
+    /// The frame of a trial, `balance` and `front` meters of paper asked of
     /// its punchings: no drawer holds a continuous thickness, so a trial
     /// lays no paper, and each felt stands on its bare rail up to the
     /// bearing height its stack gives, the felt as fitted and the paper
@@ -470,7 +470,7 @@ impl Regulating<'_> {
         }
     }
 
-    /// The dip with `balance` metres of paper under the balance punching and
+    /// The dip with `balance` meters of paper under the balance punching and
     /// `paper` on the front: both seats.
     fn dip_trial(
         &self,
@@ -644,7 +644,7 @@ impl Regulating<'_> {
             // Riding with the most paper the search lays, the key rides with
             // any less, at the height its stops set: a target under it is
             // kept out by the stops, one over it by the rail, which more
-            // paper than the search lays would lift the key off them towards.
+            // paper than the search lays would lift the key off them toward.
             Trial::Rides { held_by, reading } if rising => {
                 let by = past(reading);
                 let limit = if by < 0.0 {
@@ -807,22 +807,22 @@ mod tests {
         }
     }
 
-    /// The paper of a stack of papers, metres.
+    /// The paper of a stack of papers, meters.
     fn total(papers: &[f64]) -> f64 {
         papers.iter().sum()
     }
 
-    /// The thinnest paper in the drawer, metres.
+    /// The thinnest paper in the drawer, meters.
     const ONE_PAPER: f64 = PAPER_THICKNESSES[0];
 
     /// What a seat's convergence leaves in a reading of the key front's
-    /// height, metres: each contact closed to within [`GAP_TOLERANCE`], seen
+    /// height, meters: each contact closed to within [`GAP_TOLERANCE`], seen
     /// at the key front through the lever from the contact, at most the key
     /// front's 258 mm over the 200 mm of the nearest stop's arm; twice, for
     /// the two readings a bisection compares across its last bracket.
     const SEAT_NOISE: f64 = 2.0 * GAP_TOLERANCE * 0.258 / 0.200;
 
-    /// The paper the bisection resolves, metres: [`STACK_SEARCH`] halved
+    /// The paper the bisection resolves, meters: [`STACK_SEARCH`] halved
     /// [`HALVINGS`] times, each halving exact.
     fn resolution() -> f64 {
         (0..HALVINGS).fold(STACK_SEARCH, |width, _| 0.5 * width)
@@ -1045,7 +1045,7 @@ mod tests {
     /// [`GAP_TOLERANCE`], which reaches the key front through a lever under
     /// two; a height at the key front is a stack at the rail through a lever
     /// over one; and the closed form rounds its last bits on heights of a
-    /// tenth of a metre.
+    /// tenth of a meter.
     #[test]
     fn the_solve_agrees_with_an_exact_inverse_of_the_key_on_a_pivot() {
         let bound = 2.0 * SEAT_NOISE
@@ -1079,7 +1079,7 @@ mod tests {
                 "{name}: the oracle's key height {top} m, the seated pose's {seated} m"
             );
             let bottom = -libm::sin(seats.bottom.q[k.mounted.angle.0]);
-            // The front punching's centre, along the key from its own pin.
+            // The front punching's center, along the key from its own pin.
             let x = f.sections.front.pin_x(f.front_rail, bench.kind)
                 - f.sections.balance.pin_x(0.0, bench.kind);
             let punching = oracle::pivot_punching_for_dip(
@@ -1274,7 +1274,7 @@ mod tests {
     ///   the target, which only more paper would reach; on the bench's pin it
     ///   rides past its pin's top, off its frame, and has no seat at any
     ///   stack;
-    /// - a front punching whose centre stands past the key's front: no dip
+    /// - a front punching whose center stands past the key's front: no dip
     ///   at all, the whole target short.
     #[test]
     fn every_target_out_of_reach_names_what_keeps_it_out() {
@@ -1320,7 +1320,7 @@ mod tests {
             ..TARGETS
         };
         // The paper that brings the punching's top to the pin's: a
-        // nanometre less, and the key stands on its pin as high as any
+        // nanometer less, and the key stands on its pin as high as any
         // stack has it there.
         let f = &bench.frame;
         let to_the_top = f.sections.balance.pin_height - f.balance_punching.felt;
@@ -1330,7 +1330,7 @@ mod tests {
             (target, limit),
             (Target::KeyHeight, Limit::OffItsBalancePin)
         );
-        // Within the nanometre and the bisection's resolution through the
+        // Within the nanometer and the bisection's resolution through the
         // stack's lever on key height, under three, and the seats' noise.
         let bound = 3.0 * (1e-9 + resolution()) + SEAT_NOISE;
         assert!(

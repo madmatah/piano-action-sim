@@ -1,9 +1,9 @@
 import type { How } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
 import {
-  BAND_COLOUR,
+  BAND_COLOR,
   EDGE,
-  HOW_COLOUR,
+  HOW_COLOR,
   KEYBED,
   LIGHTS,
   MATERIAL_FILL,
@@ -12,10 +12,10 @@ import {
   UNGRADED_FILL,
 } from './palette'
 
-// ---- colour science ----------------------------------------------------------
+// ---- color science ----------------------------------------------------------
 //
 // Distances are Euclidean in OKLab, times 100, the scale on which 15 is the
-// floor two categories must clear for a reader of full colour vision and 6
+// floor two categories must clear for a reader of full color vision and 6
 // the floor for one blind to red or to green, simulated by Machado, Oliveira
 // and Fernandes (2009) at full severity.
 
@@ -79,7 +79,7 @@ const seen = (rgb: Rgb, vision: Vision): Rgb => {
   return clamped(times(MACHADO[vision], rgb))
 }
 
-/** How far apart two colours look, in OKLab times 100. */
+/** How far apart two colors look, in OKLab times 100. */
 const distance = (a: string, b: string, vision: Vision = 'normal') => {
   const [p, q] = [oklab(seen(linear(a), vision)), oklab(seen(linear(b), vision))]
   return 100 * Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])
@@ -110,7 +110,7 @@ const aces = (c: Rgb): Rgb => {
   return clamped(times(output, times(input, v).map(fit) as Rgb))
 }
 
-/** A material's colour on a face of the solid whose normal is `n`. */
+/** A material's color on a face of the solid whose normal is `n`. */
 const lit = (hex: string, n: Rgb) => {
   let irradiance = LIGHTS.ambient
   for (const { position, intensity } of LIGHTS.directional) {
@@ -121,7 +121,7 @@ const lit = (hex: string, n: Rgb) => {
   return hexOf(aces(linear(hex).map((c) => (c * irradiance) / Math.PI) as Rgb))
 }
 
-/** The faces of the solid a reader sees: towards the camera, on top, and
+/** The faces of the solid a reader sees: toward the camera, on top, and
  * either end. */
 const FACES = {
   front: [0, 0, 1],
@@ -139,7 +139,7 @@ const materials: Record<string, string> = {
   keybed: KEYBED,
 }
 
-/** Every colour a marked line can be drawn over: each material as the section
+/** Every color a marked line can be drawn over: each material as the section
  * paints it and on each face of the solid, and the page behind both. */
 const FILLS: Record<string, string> = {
   ...Object.fromEntries(Object.entries(materials).map(([k, v]) => [`${k} in the section`, v])),
@@ -151,7 +151,7 @@ const FILLS: Record<string, string> = {
   page: PAGE,
 }
 
-const hows = Object.keys(HOW_COLOUR) as How[]
+const hows = Object.keys(HOW_COLOR) as How[]
 
 describe('the provenance marks', () => {
   it('see the solid’s faces as a capture of it shows them', () => {
@@ -160,10 +160,10 @@ describe('the provenance marks', () => {
     expect(lit(MATERIAL_FILL.cloth ?? '', FACES.top)).toBe('#68a683')
   })
 
-  it('tell every way of knowing a number from every other, colour-blind too', () => {
+  it('tell every way of knowing a number from every other, color-blind too', () => {
     for (const [i, a] of hows.entries()) {
       for (const b of hows.slice(i + 1)) {
-        const [x, y] = [HOW_COLOUR[a], HOW_COLOUR[b]]
+        const [x, y] = [HOW_COLOR[a], HOW_COLOR[b]]
         expect(distance(x, y), `${a} and ${b}`).toBeGreaterThanOrEqual(15)
         for (const vision of ['protan', 'deutan'] as const) {
           expect(distance(x, y, vision), `${a} and ${b}, ${vision}`).toBeGreaterThanOrEqual(6)
@@ -174,17 +174,17 @@ describe('the provenance marks', () => {
 
   it('stand apart from an unmarked edge', () => {
     for (const how of hows) {
-      expect(distance(HOW_COLOUR[how], EDGE), how).toBeGreaterThanOrEqual(10)
+      expect(distance(HOW_COLOR[how], EDGE), how).toBeGreaterThanOrEqual(10)
     }
   })
 
   it('stand apart from every fill they are drawn over, in both views', () => {
     for (const how of hows) {
-      for (const [fill, colour] of Object.entries(FILLS)) {
-        expect(distance(HOW_COLOUR[how], colour), `${how} on ${fill}`).toBeGreaterThanOrEqual(10)
+      for (const [fill, color] of Object.entries(FILLS)) {
+        expect(distance(HOW_COLOR[how], color), `${how} on ${fill}`).toBeGreaterThanOrEqual(10)
         for (const vision of ['protan', 'deutan'] as const) {
           expect(
-            distance(HOW_COLOUR[how], colour, vision),
+            distance(HOW_COLOR[how], color, vision),
             `${how} on ${fill}, ${vision}`,
           ).toBeGreaterThanOrEqual(5)
         }
@@ -195,7 +195,7 @@ describe('the provenance marks', () => {
 
 // ---- the band ------------------------------------------------------------------
 
-/** WCAG's contrast ratio between two colours. */
+/** WCAG's contrast ratio between two colors. */
 const contrast = (a: string, b: string) => {
   const luminance = (hex: string) => dot([0.2126, 0.7152, 0.0722], linear(hex))
   const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p) as [number, number]
@@ -203,8 +203,8 @@ const contrast = (a: string, b: string) => {
 }
 
 describe('the band', () => {
-  it('tells its down curve from its up curve, colour-blind too', () => {
-    const { down, up } = BAND_COLOUR
+  it('tells its down curve from its up curve, color-blind too', () => {
+    const { down, up } = BAND_COLOR
     expect(distance(down, up)).toBeGreaterThanOrEqual(15)
     for (const vision of ['protan', 'deutan'] as const) {
       expect(distance(down, up, vision), vision).toBeGreaterThanOrEqual(8)
@@ -212,8 +212,8 @@ describe('the band', () => {
   })
 
   it('draws both curves and its ink three to one against its sheet', () => {
-    for (const colour of [BAND_COLOUR.down, BAND_COLOUR.up, BAND_COLOUR.ink, BAND_COLOUR.muted]) {
-      expect(contrast(colour, BAND_COLOUR.surface), colour).toBeGreaterThanOrEqual(3)
+    for (const color of [BAND_COLOR.down, BAND_COLOR.up, BAND_COLOR.ink, BAND_COLOR.muted]) {
+      expect(contrast(color, BAND_COLOR.surface), color).toBeGreaterThanOrEqual(3)
     }
   })
 })

@@ -2,7 +2,7 @@
 import type { Contact } from "./Contact";
 
 /**
- * A punching read at its centre whose drawn edge overlaps the key.
+ * A punching read at its center whose drawn edge overlaps the key.
  */
 export type EdgeOverlap = { 
 /**
@@ -10,7 +10,7 @@ export type EdgeOverlap = {
  */
 pair: Contact, 
 /**
- * How far its drawn edge stands into the key, millimetres: what its
+ * How far its drawn edge stands into the key, millimeters: what its
  * felt would compress under a key out of level on it.
  */
 overlap_mm: number, };

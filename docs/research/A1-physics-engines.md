@@ -22,7 +22,7 @@ marks a figure or an argument that is wrong and easy to derive again.
 
 **No general-purpose engine in the core; MuJoCo at most as an optional oracle;
 a dedicated planar solver.** FOUNDATIONS §3.9 states the grounds: per-contact
-nonlinear felt laws with memory; exact analytic lever arms at sub-millimetre
+nonlinear felt laws with memory; exact analytic lever arms at sub-millimeter
 scale, in double precision; and contact softness and margins that game engines
 make global and millimetric. The evidence, engine by engine:
 
@@ -56,7 +56,7 @@ make global and millimetric. The evidence, engine by engine:
    `normalized_prediction_distance = 0.02` are multiplied by `length_unit` [V,
    rapier 0.36.1, `src/dynamics/integration_parameters.rs`]: at metric scale,
    5 mm of tolerated penetration and contacts predicted 20 mm out, where let-off
-   is regulated to a millimetre or two and drop to a tenth. A `lengthUnit` of
+   is regulated to a millimeter or two and drop to a tenth. A `lengthUnit` of
    0.01 to 0.05, which the JS binding can set [V, `@dimforge/rapier3d@0.21.0`
    `.d.ts`], brings both down together; neither becomes a law per contact.
 4. **Single precision in the browser, and no analytic lever arms.** The JS glue
@@ -104,7 +104,7 @@ is the hypothesis of FOUNDATIONS §4.2, which the dynamics prototype settles.
 |---|---|---|---|
 | **Normal** (felt, cloth, leather) | felt compresses, with hysteresis and a memory of the loads it has seen (FOUNDATIONS §4.3) | **compliant**, a law per contact, treated implicitly | the compliance is the physics, not a regularization of a rigid contact; which law is FOUNDATIONS §4.3's hypothesis. Under the key front, Hirschkorn's loading curve reaches about 35 N at 0.86 mm [V, Hirschkorn 2004 §2.2.3, Figure 2.6, p. 22] |
 | **Tangential** (sliding contacts) | Coulomb friction | **set-valued** (cone or box) | sticking is a real state, not a limit. Thorin keeps it at three contacts: hammer and back check, jack and knuckle (his "roller"), jack and let-off button [V, Thorin 2017 §2.4, Eq. 7, Fig. 2]; Hirschkorn's law covers the capstan and heel, the back check, the jack and knuckle, the lever and knuckle (FOUNDATIONS §6.5) |
-| **Axes** (centre pins in their bushings) | dry and viscous friction | **set-valued**, \|λ\| ≤ c_d, plus a viscous term | the interval between down weight and up weight is this friction (FOUNDATIONS §3.5) |
+| **Axes** (center pins in their bushings) | dry and viscous friction | **set-valued**, \|λ\| ≤ c_d, plus a viscous term | the interval between down weight and up weight is this friction (FOUNDATIONS §3.5) |
 
 MuJoCo comes close to this decomposition, with every constraint soft, friction
 loss included (§4); Jolt's hinge friction and Box2D's bounded motor give the
@@ -169,7 +169,7 @@ grounds of FOUNDATIONS §3.9 do.
   be simulated with a regularized friction law" [V, Thorin 2017 §2.5]. Read
   exactly: a regularized law has zero friction at zero speed, so a static solve
   with it collapses D onto U; integrated dynamically with a threshold speed of
-  10⁻⁶ rad/s it keeps the threshold, creeping under a micrometre in ten seconds
+  10⁻⁶ rad/s it keeps the threshold, creeping under a micrometer in ten seconds
   under a gram of excess, but that speed has no physical meaning and enters
   every sensitivity (FOUNDATIONS §3.5) [E, 07].
 
@@ -205,7 +205,7 @@ the effective masses at rest run from 0.8 g (the jack in the lever's window) to
 113 g (the back check), 8.9 g at the jack and knuckle [E, 10]; the stiffnesses
 of his thirteen laws start between 2.4·10³ and 3.2·10⁴ N/m and rise with
 penetration, at some contacts after a dip of up to about a quarter [E, 05]; and
-the highest linearised mode at rest lies near 1.2 kHz with the capstan, the
+the highest linearized mode at rest lies near 1.2 kHz with the capstan, the
 front punching and the jack and knuckle loaded at assumed fortissimo forces,
 near 2.2 to 2.3 kHz with the lever and the drop screw loaded too [E, 10].
 Thorin's compliant model gives very similar results at 2 and 10 kHz and
@@ -224,15 +224,15 @@ and is unverified [?]: a haptic key driven in real time by a multibody model,
 its loop under 1 ms, under ROS, with a custom linear actuator; a grand action
 model in MATLAB/Simulink simulating 1 s in about 1.15 s, which the team calls
 still too slow, where a simpler Viennese action already runs in real time.
-Fisette's group also modelled a grand action with six degrees of freedom in
+Fisette's group also modeled a grand action with six degrees of freedom in
 Robotran, a generator of multibody equations in symbolic form (§7): Bokiau,
 Poncelet, Fisette and Docquier, 2012 [V, Thorin 2017, Table 2 and reference 4].
 
 ---
 
-## 3. A — "Game" engines: versions, licences, bindings (observed 11 October 2026)
+## 3. A — "Game" engines: versions, licenses, bindings (observed 11 October 2026)
 
-| npm package | Version | Date | Licence | `.wasm` raw / gzip | Verdict for this project |
+| npm package | Version | Date | License | `.wasm` raw / gzip | Verdict for this project |
 |---|---|---|---|---|---|
 | `@dimforge/rapier3d` | **0.21.0** | 2026-09-25 | Apache-2.0 | 3.08 MB / **1.17 MB** | Not for the core; not used (§9) |
 | `@dimforge/rapier2d` | **0.21.0** | 2026-09-25 | Apache-2.0 | 2.40 MB / **906 kB** | Same; 2D fits the sagittal plane |
@@ -245,12 +245,12 @@ Poncelet, Fisette and Docquier, 2012 [V, Thorin 2017, Table 2 and reference 4].
 | `cannon-es` | 0.20.0 | **2022-08-12** | MIT | — | **Abandoned**: no release in four years |
 | `box2d-wasm` (Birch-san) | 7.0.0 | **2021-11-28** | Zlib | — | **Obsolete** (Box2D v2.4.1) |
 | `box2d3-wasm` | **5.2.0** | 2026-02-16 | MIT | [?] not measured | Box2D v3 with SIMD and Web Workers; the closest general-purpose fit to a planar mechanism |
-| `planck` | **1.5.0** | 2026-04-07 | MIT | — (pure TS) | `planck-js` is **deprecated** in favour of `planck`; a TypeScript port of Box2D v2 |
+| `planck` | **1.5.0** | 2026-04-07 | MIT | — (pure TS) | `planck-js` is **deprecated** in favor of `planck`; a TypeScript port of Box2D v2 |
 | `ammojs-typed` | 1.1.0 | 2026-09-23 | MIT | — | Bullet 2.8x transpiled; legacy |
 
 ### Rapier
 
-**On the Rust side, Rapier 0.36.1 moves towards MuJoCo's feature set** [V,
+**On the Rust side, Rapier 0.36.1 moves toward MuJoCo's feature set** [V,
 Rapier CHANGELOG, 0.34.0 to 0.36.1]:
 - **0.34.0 (4 July 2026)**: passive per-DoF springs ("MuJoCo-style
   spring/damper"), `MultibodyDofCoupling` (a holonomic coupling of degrees of
@@ -325,7 +325,7 @@ contact law; its joint friction is not the obstacle.
 
 ### Havok (through Babylon.js): eliminated
 
-`@babylonjs/havok` 1.3.14, a 2.09 MB wasm, licence declared MIT on npm [V, npm
+`@babylonjs/havok` 1.3.14, a 2.09 MB wasm, license declared MIT on npm [V, npm
 registry]. No source is published with it; that the engine is a closed binary
 is confirmed only by a forum post [?]. An engine whose contact law can be
 neither modified nor audited does not serve a project whose point is to control
@@ -399,7 +399,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
 **What MuJoCo offers** (FOUNDATIONS §3.9):
 
 1. **Friction loss, a box constraint solved softly.** Dry friction at a joint
-   or a tendon is modelled "as a constraint, namely an upper limit on the
+   or a tendon is modeled "as a constraint, namely an upper limit on the
    absolute value of the force that friction can generate", its admissible set
    "the box constraint |λ_F| ≤ η" [V, MuJoCo documentation, Computation,
    constraint model]. That is the set of Thorin's `c_d·sign(θ̇)`, solved inside
@@ -418,7 +418,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
      quadratic term")
 
    The spring has the form of Hirschkorn's `f_fit(x) = a·x³ + b·x² + c·x`:
-   modelling each felt Thorin's way, a small auxiliary body on a prismatic joint
+   modeling each felt Thorin's way, a small auxiliary body on a prismatic joint
    with that spring, gives Hirschkorn's elastic term natively; not his damping
    (limit 4 below), nor the memory of past loads that FOUNDATIONS §4.3 targets.
 3. **Reduced coordinates**, per-DoF `armature`, `springref`, tendons (for the
@@ -458,7 +458,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
    the stiffest zero-restitution row instead of clamping `timeconst` [V, MuJoCo
    changelog, 3.13.0, Engine, item 4]. As an order of magnitude [S],
    `k_eff ≈ m_eff/τ²`: for 10 g and τ = 2·10⁻⁴ s, twice an assumed step of
-   10⁻⁴ s, k_eff ≈ 2.5·10⁵ N/m, 40 µm of compression under 10 N. Sub-millimetre
+   10⁻⁴ s, k_eff ≈ 2.5·10⁵ N/m, 40 µm of compression under 10 N. Sub-millimeter
    is reachable, through a numerical parameter, not through the felt's physics.
    Thorin's remedy carries over: the compliance goes into the felt body's
    prismatic joint, a polynomial spring, and the contacts only enforce
@@ -484,7 +484,7 @@ The fact to retain: DeepMind publishes official WebAssembly bindings on npm.
 |---|---|---|---|
 | **Siconos** (non-smooth dynamics, Moreau–Jean) | tag **`2026.rc1`** (11 March 2026); documentation still at 4.5.0; FreeBSD port 4.5.0_4 maintained (18 July 2026) [V, Siconos GitHub tags; FreeBSD ports] | no WebAssembly build found [?] | The reference academic framework for this formulation, and the hardest to bring into a browser (BLAS/LAPACK, Boost, Python): a theoretical reference, or an oracle outside the browser |
 | **Project Chrono** | **10.0.0** (27 March 2026), BSD-3 [V, Chrono GitHub releases] | **yes**: an official "Build Chrono for WASM" tutorial, `emcmake ccmake -G Ninja`, Eigen ≥ 3.4.0, GLM optional for WebGL views [V, Chrono documentation] | An **NSC** solver (complementarity, Anitescu–Tasora) and an **SMC** one (penalty). Large, a C++ API with no JS binding: a candidate for an offline cross-check, not a web runtime |
-| **Pinocchio** | community WebAssembly ports: `Mostafasaad1/pinocchio-js` (release 1 March 2026: RNEA, forward kinematics, centre of mass, Jacobian) and the `ucalgary-shivers` fork (adds ABA and CRBA; Pinocchio v2 with Eigen 3.4; binary about 457 kB) [V, the two GitHub repositories] | unofficial | No unilateral contact: articulated-tree dynamics only. A building block (M, gradients, ABA) for a solver written around it, not an engine |
+| **Pinocchio** | community WebAssembly ports: `Mostafasaad1/pinocchio-js` (release 1 March 2026: RNEA, forward kinematics, center of mass, Jacobian) and the `ucalgary-shivers` fork (adds ABA and CRBA; Pinocchio v2 with Eigen 3.4; binary about 457 kB) [V, the two GitHub repositories] | unofficial | No unilateral contact: articulated-tree dynamics only. A building block (M, gradients, ABA) for a solver written around it, not an engine |
 | **Drake** | — | none found [?] | Out of the running in a browser; its `MultibodyPlant` with the SAP solver fits the formulation conceptually |
 | **Simbody / OpenSim** | — | none found [?]; LAPACK and BLAS dependencies | Out of the running |
 | **Robotran** (UCLouvain) | used for a six-degree-of-freedom grand action model [V, Thorin 2017, Table 2] | no | Not a runtime; the reference for **symbolic** generation of the equations (§7) |
@@ -689,4 +689,4 @@ curves and the trade's protocols validate (FOUNDATIONS §5.2).
 | Cross-platform determinism | not verified | yes (feature) | build flag | no | no | [?] | [?] | **under FOUNDATIONS §4.4's conditions** |
 | Model editing from JS | partial | — | partial | partial | partial | partial | **yes (`MjSpec` + `mj_compile`)** | **yes** |
 | Binary size (gzip) | 1.17 MB | the user's | 742 kB | 658 kB | 1.61 MB | [?] | 2.54 MB | 50–200 kB [S] |
-| Licence | Apache-2.0 | Apache-2.0 | MIT | MIT (no published source) | MIT | MIT | **Apache-2.0** | **MIT** |
+| License | Apache-2.0 | Apache-2.0 | MIT | MIT (no published source) | MIT | MIT | **Apache-2.0** | **MIT** |

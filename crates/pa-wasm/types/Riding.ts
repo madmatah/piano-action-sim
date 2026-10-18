@@ -11,6 +11,6 @@ export type Riding = {
  */
 front: Contact, 
 /**
- * How far above its balance punching it stands, millimetres.
+ * How far above its balance punching it stands, millimeters.
  */
 lift_mm: number, };

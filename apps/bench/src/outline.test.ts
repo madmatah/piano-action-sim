@@ -12,7 +12,7 @@ import {
 } from './outline'
 
 describe('toShape', () => {
-  // An L-shaped outline as the engine sends it: flat x, y pairs, millimetres.
+  // An L-shaped outline as the engine sends it: flat x, y pairs, millimeters.
   // Not symmetric, so a swapped pair or a wrong stride changes the answer.
   const flat = [0, 0, 30, 0, 30, 4, 10, 4, 10, 12, 0, 12]
 

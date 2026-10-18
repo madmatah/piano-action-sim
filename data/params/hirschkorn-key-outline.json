@@ -16,10 +16,10 @@
   "dpi": 600,
   "image": "5100 by 6600 pixels: the whole page, US letter.",
   "pixels": "x to the right and y down from the page's top-left corner, in pixels of that rendering, continuous: the top-left pixel spans (0, 0) to (1, 1).",
-  "method": "The figure is line art drawn as vector paths. Each position is a vertex of those paths, or the centre of a marker's ellipse (the mean of its four quadrant points), read with pdftocairo -svg -f 77 -l 77 hirschkorn_thesis.pdf a1.svg in points of the page and multiplied by 600/72 into the rendering's pixels, to 0.01 pixel. Each lies on its drawn stroke in the rendering, within a pixel. A stroke is about 0.46 point wide, half a millimetre of key; a position is its stroke's centre line.",
+  "method": "The figure is line art drawn as vector paths. Each position is a vertex of those paths, or the center of a marker's ellipse (the mean of its four quadrant points), read with pdftocairo -svg -f 77 -l 77 hirschkorn_thesis.pdf a1.svg in points of the page and multiplied by 600/72 into the rendering's pixels, to 0.01 pixel. Each lies on its drawn stroke in the rendering, within a pixel. A stroke is about 0.46 point wide, half a millimeter of key; a position is its stroke's center line.",
   "scale": "One pixel is about 0.138 mm of key: the figure draws the key at about 1:3.25."
  },
- "fitted_on": "Pg1, Pk2 and Pk5, the three markers whose printed coordinates are points of the key: a similarity (turn, scale and shift, the page's y running down) by least squares. Pk4 and Pk6 are points of printed lines, compared across the line; Pk3's marker sits on the dome its printed point is the centre of.",
+ "fitted_on": "Pg1, Pk2 and Pk5, the three markers whose printed coordinates are points of the key: a similarity (turn, scale and shift, the page's y running down) by least squares. Pk4 and Pk6 are points of printed lines, compared across the line; Pk3's marker sits on the dome its printed point is the center of.",
  "residuals_mm": {
   "Pg1": 0.27,
   "Pk2": 0.13,
@@ -27,7 +27,7 @@
   "Pk4": 0.29,
   "Pk6": 1.62,
   "Pk3": 1.05,
-  "what": "The trace's uncertainty, as tools/derivations/11 prints it: at the three fitted markers, the distance between where the fit puts each and its printed point; at Pk4 and Pk6, points of printed lines, the distance across the line; at Pk3, the distance from the marker drawn on the capstan's dome to the dome's top, Pk3's centre raised by its radius."
+  "what": "The trace's uncertainty, as tools/derivations/11 prints it: at the three fitted markers, the distance between where the fit puts each and its printed point; at Pk4 and Pk6, points of printed lines, the distance across the line; at Pk3, the distance from the marker drawn on the capstan's dome to the dome's top, Pk3's center raised by its radius."
  },
  "markers": {
   "Pg1": {
@@ -35,7 +35,7 @@
     2569.95,
     4600.29
    ],
-   "what": "The centre of the small circle at the key's axes, on its underside at the balance point: the origin of the key's frame, Table A.2's Pg1, (0, 0)."
+   "what": "The center of the small circle at the key's axes, on its underside at the balance point: the origin of the key's frame, Table A.2's Pg1, (0, 0)."
   },
   "Pk2": {
    "px": [
@@ -49,35 +49,35 @@
     968.88,
     4639.18
    ],
-   "what": "The centre of the ellipse drawn on the chamfer under the tail: a point of Table A.3's Pk5 line."
+   "what": "The center of the ellipse drawn on the chamfer under the tail: a point of Table A.3's Pk5 line."
   },
   "Pk4": {
    "px": [
     4204.12,
     4553.34
    ],
-   "what": "The centre of the ellipse drawn on the underside under the key front: a point of Table A.3's Pk4 line, not its printed point."
+   "what": "The center of the ellipse drawn on the underside under the key front: a point of Table A.3's Pk4 line, not its printed point."
   },
   "Pk3": {
    "px": [
     1717.6,
     4369.14
    ],
-   "what": "The centre of the ellipse drawn on the capstan's head, at the top of its dome: Table A.3's Pk3 is that dome's centre, its radius below."
+   "what": "The center of the ellipse drawn on the capstan's head, at the top of its dome: Table A.3's Pk3 is that dome's center, its radius below."
   },
   "Pk6": {
    "px": [
     971.08,
     4041.76
    ],
-   "what": "The centre of the ellipse drawn on the back check's face: a point of Table A.3's Pk6 line."
+   "what": "The center of the ellipse drawn on the back check's face: a point of Table A.3's Pk6 line."
   },
   "CMk": {
    "px": [
     2843.32,
     4506.6
    ],
-   "what": "The centre of the key's centre-of-mass symbol."
+   "what": "The center of the key's center-of-mass symbol."
   }
  },
  "features": {
@@ -317,7 +317,7 @@
    "unit": "mm",
    "reliability": "E",
    "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
-   "what": "The covering's length, from its lip back to where its bevelled end meets the keystick: drawn square there."
+   "what": "The covering's length, from its lip back to where its beveled end meets the keystick: drawn square there."
   },
   {
    "name": "stick_height",
@@ -336,7 +336,7 @@
    "what": "The key button over the balance point, foot to foot: drawn square-ended, its ends drawn rounded."
   },
   {
-   "name": "capsule_centre",
+   "name": "capsule_center",
    "value": -8.55,
    "unit": "mm",
    "reliability": "E",
@@ -428,6 +428,6 @@
   "chamfer": "Not traced: it is Table A.3's Pk5 line, printed. It meets the underside's flat, Pk4's line, at -196.43 mm; the figure draws the kink at -195.57 mm.",
   "capstan_dome": "Not traced: Table A.3's Pk3, a circle of 9.7 mm about (-117.6, 25.9) mm. The figure draws its top 1.0 mm from where Pk3 puts it.",
   "back_check": "Its wire and head, on the key behind the back check block, are drawn and not traced: they are the action's, part of the key's published mass, and the key on its frame touches nothing with them.",
-  "mass": "Table A.1 gives the key's mass and centre of mass. The figure's CMk marker stands 13.7 mm behind Table A.1's centre and 3.8 mm lower; the record never takes the marker for the mass."
+  "mass": "Table A.1 gives the key's mass and center of mass. The figure's CMk marker stands 13.7 mm behind Table A.1's center and 3.8 mm lower; the record never takes the marker for the mass."
  }
 }

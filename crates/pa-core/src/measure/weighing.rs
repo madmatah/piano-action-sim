@@ -4,14 +4,14 @@
 //!
 //! | Reading | Procedure | Read as |
 //! |---|---|---|
-//! | front weight | the key levelled on Stanwood's jig ([`super::jig`]) | to the nearest 0.1 g |
+//! | front weight | the key leveled on Stanwood's jig ([`super::jig`]) | to the nearest 0.1 g |
 //! | key weight ratio | the tared jig, 10 g on the capstan's contact point | to the nearest 0.01 |
 //! | key height, key dip | the seated pose ([`super::seat`]) | as found, a paper the resolution |
 //! | down weight D | the breakaway walk from the top seat ([`super::walk`]) | up to the gram |
 //! | up weight U | the breakaway walk from the bottom seat | down to the gram |
 //! | balance weight, friction weight | `(D + U) / 2`, `(D − U) / 2`, of the two as read | from those, to the half gram |
-//! | key friction weight, zeroed on the jig | Stanwood's: the front weight zeroed on the levelled jig by a temporary weight, the key back on its frame, D | up to the gram |
-//! | key friction weight, zeroed on the frame | the temporary weight cancelling the key's balance where it rests on its frame, D | up to the gram |
+//! | key friction weight, zeroed on the jig | Stanwood's: the front weight zeroed on the leveled jig by a temporary weight, the key back on its frame, D | up to the gram |
+//! | key friction weight, zeroed on the frame | the temporary weight canceling the key's balance where it rests on its frame, D | up to the gram |
 //!
 //! The band is read apart from the sheet, when it is shown
 //! ([`Weighing::band`]): the driven sweep from the top seat to the bottom
@@ -22,13 +22,13 @@
 //!
 //! # The two key friction weights
 //!
-//! Stanwood zeroes the front weight on the levelled jig, with temporary
+//! Stanwood zeroes the front weight on the leveled jig, with temporary
 //! weights slid along the key, then puts the key back on its frame and reads
 //! the least weight that makes it fall [V, Stanwood 2000, p. 22]. On its
 //! frame the key rests nose-up, and what the temporary weight left of its
 //! moment level is not what it leaves of it tilted: each mass's arm changes
 //! by its height above the pin times the tilt. So the bench reads it both
-//! ways, labelled: Stanwood's, and the temporary weight chosen instead to
+//! ways, labeled: Stanwood's, and the temporary weight chosen instead to
 //! cancel the key's balance where it rests, which reads the bushings alone.
 //! The two differ by those tilt terms, a few tenths of a gram on either shipped
 //! key, under the gram the protocol reads to.
@@ -68,7 +68,7 @@ use crate::parts::mounts::OnItsFrame;
 use crate::solve::{SolveReport, Statics, SOLVER_FINGERPRINT};
 use crate::G;
 
-/// Where the temporary weight stands on a key heavy in front, metres along
+/// Where the temporary weight stands on a key heavy in front, meters along
 /// it: 100 mm behind the balance pin.
 pub const STATION_BEHIND: f64 = -0.100;
 
@@ -91,7 +91,7 @@ pub const FRICTION_SEARCH_G: f64 = 100.0;
 /// It leaves 100 g over 2³², about 2·10⁻⁸ g at the measuring point, under a
 /// six-hundredth of the bracket the walk reads a threshold to
 /// ([`ROUNDING_TOLERANCE_G`]). So the two bushings it ends between read on
-/// neighbouring brackets of the walk, either side of the weight typed, and
+/// neighboring brackets of the walk, either side of the weight typed, and
 /// the one nearer it reads within half a bracket of it, the walk's own
 /// resolution: far below the gram the trade reads to.
 pub const FRICTION_HALVINGS: u32 = 32;
@@ -113,7 +113,7 @@ pub enum Refused {
     Walk(WalkRefusal),
     /// The sweep cannot be taken through the key's stroke.
     Sweep(SweepRefusal),
-    /// No top of the key stands where the temporary weight goes, metres
+    /// No top of the key stands where the temporary weight goes, meters
     /// along the key.
     NoKeyTopAtTheStation {
         /// Where it goes.
@@ -181,7 +181,7 @@ pub struct Banded {
 /// The bushings a key friction weight reads on ([`Weighing::bushings_reading`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bushings {
-    /// Their friction's bound, newton-metres.
+    /// Their friction's bound, newton-meters.
     pub bound_n_m: f64,
     /// What Stanwood's key friction weight reads on them, grams, in full:
     /// within half a bracket of the walk, its resolution, of the weight they
@@ -222,9 +222,9 @@ pub struct Weighing<'a> {
     pub jig: &'a KeyJig,
     /// The measuring point, in the key's frame.
     pub measuring_point: Point,
-    /// How far back from the covering's lip it stands, metres.
+    /// How far back from the covering's lip it stands, meters.
     pub measuring_point_from_lip_m: f64,
-    /// The thinnest paper the frame's drawer holds, metres: what key height
+    /// The thinnest paper the frame's drawer holds, meters: what key height
     /// and dip are adjusted by, and read to.
     pub thinnest_paper_m: f64,
     /// What the bench's inputs rest on.
@@ -361,7 +361,7 @@ impl Weighing<'_> {
         ))
     }
 
-    /// **Key height** and **key dip**, metres: the key front's top at the
+    /// **Key height** and **key dip**, meters: the key front's top at the
     /// top seat, and how far it falls to the bottom seat, whichever stop
     /// binds first. Read as found; the thinnest paper is the resolution,
     /// what the trade's adjustment can tell apart.
@@ -378,7 +378,7 @@ impl Weighing<'_> {
         let height = self.measured(
             ProcedureId::KeyHeight,
             top,
-            Unit::Metre,
+            Unit::Meter,
             paper,
             1.0,
             Rounding::None,
@@ -396,7 +396,7 @@ impl Weighing<'_> {
         let dip = self.measured(
             ProcedureId::KeyDip,
             top - bottom,
-            Unit::Metre,
+            Unit::Meter,
             paper,
             1.0,
             Rounding::None,
@@ -615,7 +615,7 @@ impl Weighing<'_> {
     }
 
     /// **Key friction weight, zeroed on the jig**: Stanwood's protocol. The
-    /// front weight is zeroed on the levelled jig by a temporary weight on
+    /// front weight is zeroed on the leveled jig by a temporary weight on
     /// the key's top, behind the pin on a key heavy in front and in front of
     /// it on one heavy behind; the key goes back on its frame with the weight
     /// on it, its back pushed down onto its cloth; the least weight on the
@@ -856,10 +856,10 @@ mod tests {
     use crate::test_fixture::MEASURING_POINT_HALF_INCH;
 
     /// The test bench's inputs: its mass weighed by hand, the height of its
-    /// centre of mass estimated, its friction and its dimensions assumed.
+    /// center of mass estimated, its friction and its dimensions assumed.
     const TEST: Bases = Bases {
         key_mass: Basis::SetByHand,
-        centre_of_mass_height: Basis::Estimated,
+        center_of_mass_height: Basis::Estimated,
         key_friction: Basis::Assumed,
         geometry: Basis::Assumed,
     };
@@ -905,7 +905,7 @@ mod tests {
     }
 
     /// `a`'s key weighed whole, back-heavy: 151.1 g, and a front weight of
-    /// −8.1 g read 13 mm back from its lip; the height of its centre of mass
+    /// −8.1 g read 13 mm back from its lip; the height of its center of mass
     /// its drawn section's centroid.
     fn back_heavy(a: &Setup) -> Option<MassProps> {
         let height = a
@@ -1028,7 +1028,7 @@ mod tests {
     /// `theta` can stand from its value with the key level, grams. Derived:
     /// `D(θ) − D(0) = [(b − M₀)(a₀ − a) + (M₀ − M) a₀] / (g a₀ a)`, with
     /// `|a₀ − a| ≤ x_m (1 − cos θ) + |y_m sin θ|` for the measuring point and
-    /// `|M₀ − M| ≤ m g (|x_c| (1 − cos θ) + |y_c sin θ|)` for the centre of
+    /// `|M₀ − M| ≤ m g (|x_c| (1 − cos θ) + |y_c sin θ|)` for the center of
     /// mass.
     fn tilt(b: &Bench, bound_n_m: f64, theta: f64) -> f64 {
         let mass = b.mass.expect("a weighed key");
@@ -1129,7 +1129,7 @@ mod tests {
         }
     }
 
-    /// What `grams` at `at` on the key adds to the band's centre at attitude
+    /// What `grams` at `at` on the key adds to the band's center at attitude
     /// `theta`, grams at the measuring point: its moment's arm over the
     /// measuring point's.
     fn reflected(b: &Bench, at: Point, grams: f64, theta: f64) -> f64 {
@@ -1139,7 +1139,7 @@ mod tests {
     }
 
     /// The test weight of the first non-confusion test: `grams` set on the
-    /// key's top `x` metres in front of its balance pin, riding on the key
+    /// key's top `x` meters in front of its balance pin, riding on the key
     /// and pulling straight down. Built here and nowhere else: outside the
     /// tests no mass is set on a key but the weights its protocols use, a
     /// key's leads being in its weighing.
@@ -1284,7 +1284,7 @@ mod tests {
 
     /// C7, consistency: **Stanwood's key friction weight is the bushings'
     /// friction and what the tilt leaves of the key's balance.** The
-    /// temporary weight zeroes the levelled key's front weight on the jig,
+    /// temporary weight zeroes the leveled key's front weight on the jig,
     /// exactly: the jig reads nothing with it on. On the frame, nose-up, the
     /// key and the weight lean by their heights times the tilt, and the walk
     /// reads the band's down edge at the top seat's attitude with both on,
@@ -1396,7 +1396,7 @@ mod tests {
         for p in [ProcedureId::KeyHeight, ProcedureId::KeyDip] {
             let m = read(&sheet, p);
             assert_eq!(m.shown.to_bits(), m.value.to_bits(), "{p:?}");
-            assert_eq!(m.unit, Unit::Metre);
+            assert_eq!(m.unit, Unit::Meter);
         }
     }
 
@@ -1457,10 +1457,10 @@ mod tests {
         assert_eq!(d.conditions.held_by, cloth);
         let walked = d.conditions.walk.expect("a walk");
         let (top, bottom) = b.seats();
-        let centre = b.band(top, &[]);
+        let center = b.band(top, &[]);
         assert!(
-            (walked.from_g - centre.balance_weight_g()).abs()
-                <= 64.0 * f64::EPSILON * centre.down_g.abs().max(centre.up_g.abs()),
+            (walked.from_g - center.balance_weight_g()).abs()
+                <= 64.0 * f64::EPSILON * center.down_g.abs().max(center.up_g.abs()),
             "the walk starts from the frictionless balance at the top seat"
         );
         assert!(walked.steps >= 1 && walked.stalls == 0);
@@ -1564,7 +1564,7 @@ mod tests {
     /// with the default: the jig's front weight is the key's moment over the
     /// arm to the covering's lip less half an inch, the ratio the capstan's
     /// arm over the same; D is the band's edge at the top seat with the
-    /// weight centred there, by hand, the point worked from the key's own
+    /// weight centered there, by hand, the point worked from the key's own
     /// fields; and the band's sweep reads its first step off the top seat
     /// there too, by hand at the attitude it holds, to rounding: a few
     /// products of the key's weight and arms under 0.3 m, over an arm of at

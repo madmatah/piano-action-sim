@@ -6,7 +6,7 @@
 export type BandPoint = { 
 /**
  * How far the measuring point stands below where it stands at the top
- * seat, millimetres.
+ * seat, millimeters.
  */
 travel_mm: number, 
 /**

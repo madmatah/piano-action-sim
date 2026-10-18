@@ -20,7 +20,7 @@
 //! # Two protocols, one reading
 //!
 //! Front weight is the reading with nothing on the key. The key weight ratio
-//! is read tared: the scale zeroed with the key on it, 10 g centred on the
+//! is read tared: the scale zeroed with the key on it, 10 g centered on the
 //! capstan's contact point, and the reading over the load with its sign
 //! turned, so that a scale reading −5.5 gives 0.55. Both are
 //! [`scale_reading_g`], so the lever they share is taken once.
@@ -128,7 +128,7 @@ impl KeyJig {
 
     /// `key` on the jig, read at `protocol`'s measuring point.
     ///
-    /// `mass` is the key's mass and centre of mass in its frame, or `None`
+    /// `mass` is the key's mass and center of mass in its frame, or `None`
     /// for a key nobody has weighed: its front weight is then refused, and
     /// its key weight ratio, from which the tare takes the key's own weight,
     /// is still read.
@@ -145,7 +145,7 @@ impl KeyJig {
         })
     }
 
-    /// A weight of `mass_g` grams centred on `at`, a point of the key in its
+    /// A weight of `mass_g` grams centered on `at`, a point of the key in its
     /// frame.
     pub fn weight_on_the_key(&self, at: Point, mass_g: f64) -> PointLoad {
         let at = MaterialPoint {
@@ -155,7 +155,7 @@ impl KeyJig {
         PointLoad::weight(at, mass_g / 1000.0)
     }
 
-    /// A weight of `mass_g` grams centred on the capstan's contact point.
+    /// A weight of `mass_g` grams centered on the capstan's contact point.
     pub fn weight_on_the_capstan(&self, mass_g: f64) -> PointLoad {
         self.weight_on_the_key(self.capstan, mass_g)
     }
@@ -219,7 +219,7 @@ mod tests {
     use crate::parts::KeyMass;
     use crate::test_fixture::{KEY_RATIO_LOAD_G, MEASURING_POINT_HALF_INCH};
 
-    /// The key's mass as the fixture weighs it, the height of its centre of
+    /// The key's mass as the fixture weighs it, the height of its center of
     /// mass its drawn section's centroid.
     fn mass_of(key: &KeyDesign) -> MassProps {
         crate::parts::fixtures::mass_of(key).expect("a key that is not degenerate")

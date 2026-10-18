@@ -4,18 +4,18 @@
 //! An outline is a closed chain of [`Seg`]s, lines and arcs. The parts built
 //! from outlines, and the ranges into them that a contact may read, are in
 //! [`crate::contact`]. The three signed primitives every contact row is made
-//! of, disc on face, disc on disc and centre on face, are in [`signed`].
+//! of, disc on face, disc on disc and center on face, are in [`signed`].
 
 pub mod signed;
 
-pub use signed::{centre_on_face, disc_on_disc, disc_on_face, Disc, Face, Proximity};
+pub use signed::{center_on_face, disc_on_disc, disc_on_face, Disc, Face, Proximity};
 
-/// A point in a part's local frame, in metres.
+/// A point in a part's local frame, in meters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
-    /// Horizontal coordinate, metres. Positive towards the player.
+    /// Horizontal coordinate, meters. Positive toward the player.
     pub x: f64,
-    /// Vertical coordinate, metres. Positive upwards.
+    /// Vertical coordinate, meters. Positive upwards.
     pub y: f64,
 }
 
@@ -37,7 +37,7 @@ pub struct Dir {
 }
 
 impl Dir {
-    /// Towards the player.
+    /// Toward the player.
     pub const X: Self = Self { x: 1.0, y: 0.0 };
     /// Upwards.
     pub const Y: Self = Self { x: 0.0, y: 1.0 };
@@ -118,13 +118,13 @@ pub enum Seg {
     /// the way round it ([`crate::contact::Anchor::point`]) takes the sweep's
     /// angle back.
     Arc {
-        /// Centre, local frame.
+        /// Center, local frame.
         c: Point,
-        /// Radius, metres.
+        /// Radius, meters.
         r: f64,
-        /// Where the arc starts, seen from its centre.
+        /// Where the arc starts, seen from its center.
         from: Dir,
-        /// Where the arc ends, seen from its centre.
+        /// Where the arc ends, seen from its center.
         to: Dir,
     },
 }

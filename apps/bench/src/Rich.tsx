@@ -1,7 +1,7 @@
 /**
  * Wording with its emphasis: `**bold**` and `*italic*` marked in a
- * catalogue's sentence, and nothing else. The marks travel with the words, so
- * a translation emphasises what its own sentence stresses.
+ * catalog's sentence, and nothing else. The marks travel with the words, so
+ * a translation emphasizes what its own sentence stresses.
  */
 import type { ReactNode } from 'react'
 

@@ -77,9 +77,9 @@ use super::seat::{Seating, Seats};
 use super::walk::Stroke;
 
 /// How far the measuring point travels between two readings of the sweep,
-/// metres: 0.05 mm.
+/// meters: 0.05 mm.
 ///
-/// A key's dip at its measuring point is about ten millimetres, two hundred
+/// A key's dip at its measuring point is about ten millimeters, two hundred
 /// steps each way, and the curves change by a few thousandths of a gram over
 /// one step on the shipped keys: the extremes the sweep reads one step off a
 /// seat stand that far from the walk's in full, far under the gram the walk
@@ -90,7 +90,7 @@ pub const STEP: f64 = 0.000_05;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sample {
     /// How far the measuring point stands below where it stands at the top
-    /// seat, metres, read off the pose the solve left.
+    /// seat, meters, read off the pose the solve left.
     pub travel: f64,
     /// The key's angle the step held, radians, nose-up.
     pub angle: f64,
@@ -117,9 +117,9 @@ pub struct Band {
     /// The least force on the up curve: the up weight, read on the band.
     pub up_weight: Sample,
     /// The window: how far the measuring point travels from the top seat to
-    /// the bottom one, metres.
+    /// the bottom one, meters.
     pub window: f64,
-    /// The step between two readings, metres.
+    /// The step between two readings, meters.
     pub step: f64,
     /// Every step's static solve, added up.
     pub report: SolveReport,
@@ -141,7 +141,7 @@ pub enum SweepRefusal {
     LiftsOffItsPunching {
         /// On the way down or up.
         stroke: Stroke,
-        /// How far the measuring point stood below the top seat, metres.
+        /// How far the measuring point stood below the top seat, meters.
         travel: f64,
         /// The force the finger would need there, grams.
         grams: f64,
@@ -149,7 +149,7 @@ pub enum SweepRefusal {
     /// A step's solve leaned on the top of the slide's range: the key left
     /// its balance pin, and its frame.
     LiftsOffItsFrame,
-    /// A step found no equilibrium in the modelled world: these contacts
+    /// A step found no equilibrium in the modeled world: these contacts
     /// fight at the angle it held.
     NoEquilibrium {
         /// The contacts that fight, in the mechanism's order; empty where the
@@ -172,12 +172,12 @@ pub enum SweepRefusal {
 struct Circle {
     /// The key's angle at the top seat, radians.
     top: f64,
-    /// The measuring point's distance from the bearing, metres.
+    /// The measuring point's distance from the bearing, meters.
     radius: f64,
-    /// How high it stands above the bearing at the top seat, metres.
+    /// How high it stands above the bearing at the top seat, meters.
     above: f64,
     /// Its direction from the bearing at the top seat, radians from the
-    /// horizontal, towards the player.
+    /// horizontal, toward the player.
     bearing: f64,
 }
 
@@ -197,7 +197,7 @@ impl Seating<'_> {
         self.sweep_by(statics, seats, STEP)
     }
 
-    /// The sweep in steps of `step` metres instead of [`STEP`]: for the test
+    /// The sweep in steps of `step` meters instead of [`STEP`]: for the test
     /// that a step half as long reads the same extremes, within the curves'
     /// change over a step, on every instrument a profile builds.
     ///
@@ -433,7 +433,7 @@ mod tests {
     struct Key {
         a: Setup,
         on_frame: OnItsFrame,
-        /// The bushings' bound, newton-metres.
+        /// The bushings' bound, newton-meters.
         bound: f64,
         mass: MassProps,
     }
@@ -496,7 +496,7 @@ mod tests {
             (d, u)
         }
 
-        /// The measuring point's height in `seat`, metres.
+        /// The measuring point's height in `seat`, meters.
         fn height(&self, seat: &crate::measure::seat::Seat) -> f64 {
             seat.height(
                 &self.on_frame.mounted,
@@ -505,7 +505,7 @@ mod tests {
         }
 
         /// The measuring point's arm about the pin at attitude `theta`,
-        /// metres.
+        /// meters.
         fn arm(&self, theta: f64) -> f64 {
             let p = self.a.protocol.measuring_point_on_key(&self.a.key);
             p.x * libm::cos(theta) - p.y * libm::sin(theta)
@@ -640,7 +640,7 @@ mod tests {
     /// the walk's resolution and the curve's change over the step the sweep
     /// reads its extreme from ([`within_a_step`]), with rounding: D a step
     /// below the walk's, read a step off the top seat, on a key whose
-    /// balance grows towards the bottom of its stroke.
+    /// balance grows toward the bottom of its stroke.
     #[test]
     fn the_bands_extremes_are_the_walks_down_and_up_weights() {
         for (name, key) in keys() {
@@ -913,7 +913,7 @@ mod tests {
     /// Consistency: **the key's lift is free at every step, and stays on the
     /// punching.** The full problem, the slide left free and the punching a
     /// contact like any other, solved at a step's angle from the key lifted
-    /// a tenth of a millimetre off its punching, puts it back down on it to
+    /// a tenth of a millimeter off its punching, puts it back down on it to
     /// the static solve's gap tolerance, and reads the angle's reaction the
     /// sweep read there: the punching, under the key's axis, turns it by
     /// nothing. The bound is derived: the slide stands within the gap
@@ -995,7 +995,7 @@ mod tests {
     /// two read the same travels at the same angles, to the bit, the whole
     /// sweep and one in half steps alike. Each travel, read off the pose the
     /// solve left, is its whole number of steps to rounding: heights under a
-    /// third of a metre, 64 units in their last place.
+    /// third of a meter, 64 units in their last place.
     #[test]
     fn the_sweep_reads_every_whole_step_strictly_inside_its_window() {
         for (name, key) in keys() {

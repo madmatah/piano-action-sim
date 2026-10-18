@@ -35,7 +35,7 @@ use crate::instrument::{ActionCode, Stack};
 
 /// Every path, by name.
 pub mod path {
-    /// How far back from the covering's lip every weight is centred.
+    /// How far back from the covering's lip every weight is centered.
     pub const MEASURING_POINT: &str = "protocol.measuring_point_from_lip_mm";
     /// The weight on the measuring point, negative pulling up.
     pub const WEIGHT: &str = "experiment.weight_g";
@@ -86,13 +86,13 @@ pub mod path {
 /// The trade unit a path's value is in, as its name says.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Unit {
-    /// Millimetres, for every length.
-    Millimetre,
+    /// Millimeters, for every length.
+    Millimeter,
     /// Grams, for a weight or a mass.
     Gram,
-    /// Gram-force millimetres, for a torque: the grams it holds a
-    /// millimetre from its axis.
-    GramMillimetre,
+    /// Gram-force millimeters, for a torque: the grams it holds a
+    /// millimeter from its axis.
+    GramMillimeter,
 }
 
 /// One of a key's weighing's three readings.
@@ -150,20 +150,20 @@ impl Entry {
     pub fn to_si(&self, value: f64) -> f64 {
         let signed = if self.behind { -value } else { value };
         match self.unit {
-            Unit::Millimetre => signed / 1000.0,
+            Unit::Millimeter => signed / 1000.0,
             Unit::Gram => signed,
-            // Gram-force millimetres to newton-metres: a thousand twice to
-            // kilogram-force metres, then standard gravity.
-            Unit::GramMillimetre => signed / 1.0e6 * G,
+            // Gram-force millimeters to newton-meters: a thousand twice to
+            // kilogram-force meters, then standard gravity.
+            Unit::GramMillimeter => signed / 1.0e6 * G,
         }
     }
 
     /// `si`, as the domain holds it, in this path's unit.
     pub fn from_si(&self, si: f64) -> f64 {
         let value = match self.unit {
-            Unit::Millimetre => si * 1000.0,
+            Unit::Millimeter => si * 1000.0,
             Unit::Gram => si,
-            Unit::GramMillimetre => si / G * 1.0e6,
+            Unit::GramMillimeter => si / G * 1.0e6,
         };
         if self.behind {
             -value
@@ -211,7 +211,7 @@ pub const KEY_FRICTION_WEIGHT: &str = "key_friction_weight_g";
 const fn key(path: &'static str, spec: ParamSpec<KeyDesign>, behind: bool) -> Entry {
     Entry {
         path,
-        unit: Unit::Millimetre,
+        unit: Unit::Millimeter,
         behind,
         field: Field::Key(spec),
     }
@@ -220,16 +220,16 @@ const fn key(path: &'static str, spec: ParamSpec<KeyDesign>, behind: bool) -> En
 const fn frame(path: &'static str, spec: ParamSpec<FrameDesign>, behind: bool) -> Entry {
     Entry {
         path,
-        unit: Unit::Millimetre,
+        unit: Unit::Millimeter,
         behind,
         field: Field::Frame(spec),
     }
 }
 
-const fn millimetres(path: &'static str, field: Field) -> Entry {
+const fn millimeters(path: &'static str, field: Field) -> Entry {
     Entry {
         path,
-        unit: Unit::Millimetre,
+        unit: Unit::Millimeter,
         behind: false,
         field,
     }
@@ -238,7 +238,7 @@ const fn millimetres(path: &'static str, field: Field) -> Entry {
 /// Every path of the instrument, in a fixed order: the protocol, the
 /// experiment, the regulation's targets, the key, the frame.
 pub const ENTRIES: [Entry; 23] = [
-    millimetres(
+    millimeters(
         path::MEASURING_POINT,
         Field::Protocol(TouchweightProtocol::PARAMS[0]),
     ),
@@ -248,15 +248,15 @@ pub const ENTRIES: [Entry; 23] = [
         behind: false,
         field: Field::Weight(WEIGHT_ON_THE_MEASURING_POINT),
     },
-    millimetres(path::KEY_HEIGHT, Field::Target(Targets::PARAMS[0])),
-    millimetres(path::KEY_DIP, Field::Target(Targets::PARAMS[1])),
+    millimeters(path::KEY_HEIGHT, Field::Target(Targets::PARAMS[0])),
+    millimeters(path::KEY_DIP, Field::Target(Targets::PARAMS[1])),
     key(path::FRONT_EDGE, KeyDesign::PARAMS[0], false),
     key(path::CAPSTAN_BEHIND, KeyDesign::PARAMS[1], true),
     key(path::CAPSTAN_HEIGHT, KeyDesign::PARAMS[2], false),
     key(path::FRONT_MORTISE_DEPTH, KeyDesign::PARAMS[3], false),
     Entry {
         path: path::FRICTION_TORQUE,
-        unit: Unit::GramMillimetre,
+        unit: Unit::GramMillimeter,
         behind: false,
         field: Field::Friction(AxisFriction::PARAMS[0]),
     },
@@ -272,7 +272,7 @@ pub const ENTRIES: [Entry; 23] = [
         behind: false,
         field: Field::Weighing(Weighing::FrontWeight),
     },
-    millimetres(path::WEIGHED_FROM_LIP, Field::Weighing(Weighing::FromLip)),
+    millimeters(path::WEIGHED_FROM_LIP, Field::Weighing(Weighing::FromLip)),
     frame(path::BALANCE_RAIL_HEIGHT, FrameDesign::PARAMS[0], false),
     frame(path::FRONT_RAIL_HEIGHT, FrameDesign::PARAMS[1], false),
     frame(path::FRONT_RAIL_AT, FrameDesign::PARAMS[3], false),
@@ -281,9 +281,9 @@ pub const ENTRIES: [Entry; 23] = [
     frame(path::BACK_RAIL_BEHIND, FrameDesign::PARAMS[4], true),
     frame(path::BACK_RAIL_CLOTH, FrameDesign::PARAMS[6], false),
     frame(path::BALANCE_FELT, FrameDesign::PARAMS[7], false),
-    millimetres(path::BALANCE_PAPERS, Field::Papers(Stack::Balance)),
+    millimeters(path::BALANCE_PAPERS, Field::Papers(Stack::Balance)),
     frame(path::FRONT_FELT, FrameDesign::PARAMS[8], false),
-    millimetres(path::FRONT_PAPERS, Field::Papers(Stack::Front)),
+    millimeters(path::FRONT_PAPERS, Field::Papers(Stack::Front)),
 ];
 
 /// The entry of `path`, if the instrument has one.
@@ -321,7 +321,7 @@ pub enum Panel {
     Touch,
 }
 
-/// What a control is worded by: a code the page's catalogue words.
+/// What a control is worded by: a code the page's catalog words.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
@@ -377,7 +377,7 @@ const fn soft(min: f64, max: f64, step: f64) -> Soft {
     }
 }
 
-/// A field of a form: an argument of its action, labelled, the path it
+/// A field of a form: an argument of its action, labeled, the path it
 /// stands for, and where its first value is read.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FormField {
@@ -555,7 +555,7 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
         &[Control::Slider {
             path: path::MEASURING_POINT,
             label: Label::MeasuringPoint,
-            // A tenth of a millimetre, so the glossary's 1/2 inch, 12.7 mm,
+            // A tenth of a millimeter, so the glossary's 1/2 inch, 12.7 mm,
             // can be set as well as its 13 mm.
             soft: soft(5.0, 30.0, 0.1),
         }],
@@ -711,9 +711,9 @@ mod tests {
                 e.param()
             );
             let suffix = match e.unit {
-                Unit::Millimetre => "_mm",
+                Unit::Millimeter => "_mm",
                 Unit::Gram => "_g",
-                Unit::GramMillimetre => "_gmm",
+                Unit::GramMillimeter => "_gmm",
             };
             assert!(e.path.ends_with(suffix), "{} is not in {suffix}", e.path);
         }
@@ -794,8 +794,8 @@ mod tests {
             }
             let (_, rest) = e.path.split_once('.').expect(e.path);
             let name = match e.unit {
-                Unit::Millimetre => rest.strip_suffix("_mm"),
-                Unit::GramMillimetre => rest.strip_suffix("_gmm"),
+                Unit::Millimeter => rest.strip_suffix("_mm"),
+                Unit::GramMillimeter => rest.strip_suffix("_gmm"),
                 Unit::Gram => Some(rest),
             }
             .expect(e.path);

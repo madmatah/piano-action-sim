@@ -21,7 +21,7 @@ Prints:
   2. the residuals: at those three, and at the other markers, which are the
      trace's uncertainty: Pk4 and Pk6 across and along their printed lines,
      Pk3's marker, drawn on the capstan's dome, against the dome's top;
-  3. every feature of the key's outline in millimetres in his key frame, and
+  3. every feature of the key's outline in millimeters in his key frame, and
      the numbers his profile binds from them, each beside the value the
      outline record gives; exit status 1 where the two differ at the 0.01 mm
      the record is written to, where the residuals differ from the ones it
@@ -34,7 +34,7 @@ Prints:
      friction weight the bushings hold with the key level;
   6. his printed frame between its two stops, on his rounds of 5 mm and on
      the flat felts his profile draws with their tops where the rounds' tops
-     stand, the washer read at its centre over Pg4 and the cloth lying wholly
+     stand, the washer read at its center over Pg4 and the cloth lying wholly
      under the chamfer, its rounded front edge over Pg5: the attitudes, the
      dip at Pk2 and at the key front, where the key bears at the back on
      each, and what the real felts change, and why;
@@ -71,13 +71,13 @@ G = 9.80665  # standard gravity, m/s^2
 
 
 def mm(record):
-    """A printed record's value in millimetres."""
+    """A printed record's value in millimeters."""
     scale = {"m": 1000.0, "mm": 1.0}[record["unit"]]
     return record["value"] * scale
 
 
 def point(body, name):
-    """A printed point (x, y) in millimetres, in its body's frame."""
+    """A printed point (x, y) in millimeters, in its body's frame."""
     p = HK["geometry"][body]["points"][name]
     return (mm(p["x"]), mm(p["y"]))
 
@@ -134,7 +134,7 @@ A, B, C, D = fit()
 
 
 def key(p):
-    """A pixel position in his key frame, millimetres."""
+    """A pixel position in his key frame, millimeters."""
     x, y = p
     return (A * x + B * y + C, B * x - A * y + D)
 
@@ -161,7 +161,7 @@ UP = (-ALONG[1], ALONG[0])
 
 
 def height(p):
-    """Height above the drawn underside, millimetres."""
+    """Height above the drawn underside, millimeters."""
     return dot(sub(p, KINK), UP)
 
 
@@ -176,7 +176,7 @@ def line_height(p, q, x):
 
 
 def derived():
-    """The numbers his profile binds from the trace, millimetres, by name."""
+    """The numbers his profile binds from the trace, millimeters, by name."""
     f = FEATURE
     pk2 = point("key", "Pk2")
     pk3, dome = point("key", "Pk3"), radius("key", "Pk3")
@@ -199,9 +199,9 @@ def derived():
     tail_height = (height(tail_top) + height(cove_foot)) / 2
     button = f["key_button"]
     button_back, button_front = button[0][0], button[3][0]
-    button_centre = (button_back + button_front) / 2
+    button_center = (button_back + button_front) / 2
     button_height = (height(button[1]) + height(button[2])) / 2 - line_height(
-        wood_top, line_top, button_centre
+        wood_top, line_top, button_center
     )
     check = f["back_check_block"]
     check_back, check_front = check[0][0], check[3][0]
@@ -227,7 +227,7 @@ def derived():
         # The covering's top passes through Pk2, a printed point on it.
         "stick_height": stick_height,
         "capsule_length": button_front - button_back,
-        "capsule_centre": button_centre,
+        "capsule_center": button_center,
         "capsule_height": button_height,
         "full_height_back": full_height_back,
         "back_check_block_back": check_back,
@@ -274,13 +274,13 @@ def bisect(f, lo, hi):
     return 0.5 * (lo + hi)
 
 
-def line_to_round(t, through, n, centre, r):
+def line_to_round(t, through, n, center, r):
     """The gap between the key's line (through a point, outward normal n,
     both in the key frame, the key turned by t about its pivot) and a round,
     the normal taken as printed, as script 10 and the dynamics prototype
     take it: Pk5's is 0.99984 long, which moves the rest by 4 microradians."""
     p, m = rot(t, through), rot(t, n)
-    return dot(sub(centre, p), m) - r
+    return dot(sub(center, p), m) - r
 
 
 def stops(edge_radius):
@@ -288,10 +288,10 @@ def stops(edge_radius):
     real felts, with where the key bears at the back at rest on each.
 
     The felts have their tops at the rounds' tops. The front punching is read
-    at its centre, over Pg4, where the bench reads every punching. The cloth
+    at its center, over Pg4, where the bench reads every punching. The cloth
     lies wholly under the chamfer, behind Pg5's x, its front edge rounded to
-    edge_radius about a centre over Pg5's x: the chamfer, which at rest rises
-    towards the tail, bears on that edge, as a line on a round of
+    edge_radius about a center over Pg5's x: the chamfer, which at rest rises
+    toward the tail, bears on that edge, as a line on a round of
     edge_radius. The chamfer is the line the bench draws, through the kink
     with Pk5's normal made unit; his rounds keep the normal as printed, as
     script 10 and the prototype take it."""
@@ -313,10 +313,10 @@ def stops(edge_radius):
     rest = bisect(lambda t: line_to_round(t, (kink, 0.0), chamfer, edge, edge_radius), 0.0, 0.1)
     # Where each bears: on the round's or the edge's circle, against the
     # chamfer's normal turned to the attitude. On the edge, between its
-    # front and its top: the chamfer rises towards the tail at rest.
-    def bearing(t, centre, r):
+    # front and its top: the chamfer rises toward the tail at rest.
+    def bearing(t, center, r):
         m = rot(t, chamfer)
-        return (centre[0] - r * m[0], centre[1] - r * m[1])
+        return (center[0] - r * m[0], center[1] - r * m[1])
     at_edge = bearing(rest, edge, edge_radius)
     if not (edge[0] <= at_edge[0] <= edge[0] + edge_radius and at_edge[1] >= edge[1]):
         raise SystemExit("the chamfer does not bear on the cloth's front edge")
@@ -325,7 +325,7 @@ def stops(edge_radius):
 
 
 def pg_top(name):
-    """The top of a printed round of the ground's, millimetres from the
+    """The top of a printed round of the ground's, millimeters from the
     balance bearing, Pg1."""
     return point("ground", name)[1] + radius("ground", name)
 
@@ -357,7 +357,7 @@ def main():
     top = (pk3[0], pk3[1] + dome)
     r = sub(t, top)
     residuals["Pk3"] = math.hypot(*r)
-    print(f"  Pk3  traced ({t[0]:8.2f}, {t[1]:6.2f})  the dome's top, Pk3's centre raised by its"
+    print(f"  Pk3  traced ({t[0]:8.2f}, {t[1]:6.2f})  the dome's top, Pk3's center raised by its"
           f" {dome:.1f} mm radius, ({top[0]:8.2f}, {top[1]:6.2f})  residual ({r[0]:+.2f}, {r[1]:+.2f}), {residuals['Pk3']:.2f} mm")
     print("  as the outline record keeps them, mm:")
     for name, x in residuals.items():
@@ -384,7 +384,7 @@ def main():
     print("\n=== 4. Flags ===")
     mass = HK["mass_properties"]["bodies"]["key"]
     m_g = mass["mass"]["value"] * 1000.0
-    cm = (mm(mass["centre_of_mass"]["x"]), mm(mass["centre_of_mass"]["y"]))
+    cm = (mm(mass["center_of_mass"]["x"]), mm(mass["center_of_mass"]["y"]))
     cmk = key(MARKER["CMk"])
     # From here on, the numbers the bench is built from: the record's, to its
     # 0.01 mm.
@@ -392,7 +392,7 @@ def main():
     lip = rec["front_edge"] + rec["keytop_overhang"]
     from_lip = mm(named(PROTOCOL["records"], "measuring_point_from_lip"))
     arm = lip - from_lip
-    print(f"  the figure's CMk marker stands at ({cmk[0]:.1f}, {cmk[1]:.1f}) mm, Table A.1's centre of mass at"
+    print(f"  the figure's CMk marker stands at ({cmk[0]:.1f}, {cmk[1]:.1f}) mm, Table A.1's center of mass at"
           f" ({cm[0]:.1f}, {cm[1]:.1f}) mm: {m_g * (cm[0] - cmk[0]) / arm:.1f} g of front weight apart at the"
           f" measuring point. Table A.1 governs the mass; the trace never corrects it.")
     pk4 = point("key", "Pk4")
@@ -428,14 +428,14 @@ def main():
     print(f"  the cloth strip, {2 * half:.1f} mm long, its face from {edge[0] - 2 * half:.2f} to {edge[0]:.2f} mm and"
           f" its edges rounded to {edge_radius:.1f} mm, lies wholly under the chamfer, its front"
           f" {kink - edge[0] - edge_radius:.2f} mm behind the chamfer's kink at {kink:.3f} mm;"
-          f" the front punching is read at its centre, over Pg4")
+          f" the front punching is read at its center, over Pg4")
     print(f"  at rest the key bears on his round at ({on_round[0]:.4f}, {on_round[1]:.4f}) mm and on the cloth's"
           f" rounded front edge at ({on_edge[0]:.4f}, {on_edge[1]:.4f}) mm,"
           f" {on_round[0] - on_edge[0]:.4f} mm further back along the chamfer")
     print(f"  the real felts change the rest by {math.degrees(rest_f - rest_r):+.9f} deg, the bottom by"
           f" {math.degrees(bottom_f - bottom_r):+.9f} deg, and the dip at Pk2 by"
           f" {dip(rest_f, bottom_f, pk2) - dip(rest_r, bottom_r, pk2):+.6f} mm")
-    # Why: a line resting on a round passes over the round's centre above its
+    # Why: a line resting on a round passes over the round's center above its
     # top by r (1/cos a - 1), a its slope from level; and script 10 closes
     # the chamfer on its round with Pk5's normal as printed, not unit.
     n5, r5, r4 = normal("key", "Pk5"), radius("ground", "Pg5"), radius("ground", "Pg4")
@@ -444,11 +444,11 @@ def main():
     def above(r, a):
         return r * (1.0 / math.cos(a) - 1.0) * 1000.0
 
-    print(f"  why, um over each support's centre: his back round {above(r5, chamfer - rest_r):.3f}"
+    print(f"  why, um over each support's center: his back round {above(r5, chamfer - rest_r):.3f}"
           f" (the chamfer {math.degrees(chamfer - rest_r):.3f} deg from level),"
           f" the cloth's edge {above(edge_radius, chamfer - rest_f):.3f};"
           f" his front round {above(r4, -bottom_r):.3f} (the flat {math.degrees(-bottom_r):.3f} deg),"
-          f" the washer read at its centre 0; Pk5's normal as printed, {math.hypot(*n5):.5f} long,"
+          f" the washer read at its center 0; Pk5's normal as printed, {math.hypot(*n5):.5f} long,"
           f" stands the chamfer {r5 * (1.0 / math.hypot(*n5) - 1.0) * 1000.0:.3f} further off his back round")
 
     print("\n=== 7. The numbers his profile derives from his frame by a rule, and states ===")

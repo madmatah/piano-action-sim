@@ -16,7 +16,7 @@
  * answering what was done or why not. They are codes and numbers, never
  * sentences, and their types are generated from the Rust ones
  * (`@pas/wasm/types`), which a test holds to them: the page words them from
- * its catalogue (`i18n/`).
+ * its catalog (`i18n/`).
  */
 import init, { Bench } from '@pas/wasm'
 import type {
@@ -76,7 +76,7 @@ export function start(apply?: (b: Bench) => void): Promise<Bench> {
   booting ??= (async () => {
     await init()
     const bench = new Bench()
-    // Any one-time setup belongs **inside** the memoised promise, not in the
+    // Any one-time setup belongs **inside** the memoized promise, not in the
     // caller's effect. React's StrictMode runs an effect body twice, so a
     // `start().then(b => applyUrlState(b))` applies it twice: harmless for a
     // weight that is set, wrong for anything that adds, a paper laid twice

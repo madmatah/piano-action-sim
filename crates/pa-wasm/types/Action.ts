@@ -12,7 +12,7 @@ export type Action = { "action": "add_paper",
  */
 stack: Stack, 
 /**
- * The paper's thickness, millimetres.
+ * The paper's thickness, millimeters.
  */
 thickness_mm: number, } | { "action": "remove_paper", 
 /**
@@ -24,11 +24,11 @@ stack: Stack,
  */
 index: number, } | { "action": "place_frame_under_key" } | { "action": "regulate", 
 /**
- * Key height, millimetres.
+ * Key height, millimeters.
  */
 key_height_mm: number, 
 /**
- * Key dip, millimetres.
+ * Key dip, millimeters.
  */
 key_dip_mm: number, } | { "action": "weigh_key", 
 /**
@@ -41,7 +41,7 @@ mass_g: number,
 front_weight_g: number, 
 /**
  * How far back from the covering's lip the roller stood,
- * millimetres.
+ * millimeters.
  */
 from_lip_mm: number, } | { "action": "set_friction_from_key_friction_weight", 
 /**

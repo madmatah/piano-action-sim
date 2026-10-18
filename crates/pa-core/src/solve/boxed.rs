@@ -24,9 +24,9 @@
 //! the warm start. After sweeps 1, 2, 4, … 128 an exact pass starts from the
 //! active set the multipliers show (each row inside its box, or on one of its
 //! bounds) and finishes the problem as a primal active-set method: the rows
-//! inside are solved exactly for the split of least utilisation,
+//! inside are solved exactly for the split of least utilization,
 //! `Σ (ν_i / s_i)²`, by a complete orthogonal decomposition
-//! ([`super::dense`]); the pass moves towards that target as far as the
+//! ([`super::dense`]); the pass moves toward that target as far as the
 //! boxes let it, holding the first row that reaches a bound; at the target
 //! it frees the held row of largest natural residual,
 //! `|ν_i − clamp(ν_i − u_i / w_ii)| / s_i`, the first of equals; when every
@@ -355,7 +355,7 @@ impl BoxSolver {
     ///
     /// The rows `guess` shows on a bound are held there, the rest are free.
     /// On the free rows, the multipliers that make their `u` zero, of least
-    /// utilisation, are the target: the pass moves towards it as far as the
+    /// utilization, are the target: the pass moves toward it as far as the
     /// boxes let it, and holds the first row that reaches its bound (the
     /// first of equals). Where no multipliers make the free rows' `u` zero,
     /// their least-squares residual is a direction of zero curvature along

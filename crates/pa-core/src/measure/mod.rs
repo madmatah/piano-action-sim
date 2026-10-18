@@ -55,7 +55,7 @@ use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 /// * **Geometric convention**: the ratio of lever arms, front over capstan,
 ///   *"nominally 2:1 for modern pianos"*. That is the reciprocal of the first.
 ///
-/// All weights are measured with the touch weights centred on the **measuring
+/// All weights are measured with the touch weights centered on the **measuring
 /// point**, a set distance back from the front lip of the key
 /// ([`TouchweightProtocol`]).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -66,10 +66,10 @@ pub struct Touchweight {
     /// Up weight: the most weight the key can lift from the depressed
     /// position, grams.
     pub up_weight_g: f64,
-    /// Front weight: the key alone, levelled and pivoted on its balance pin,
+    /// Front weight: the key alone, leveled and pivoted on its balance pin,
     /// read at the measuring point, grams.
     pub front_weight_g: f64,
-    /// Wippen weight: the wippen pivoted on its centre, read at the
+    /// Wippen weight: the wippen pivoted on its center, read at the
     /// capstan/heel contact point, grams.
     pub wippen_weight_g: f64,
     /// Strike weight: hammer plus the radius weight of the shank, pivoted at
@@ -146,7 +146,7 @@ impl Touchweight {
 ///
 /// # Why this is not a dimension of the key
 ///
-/// Where a weight is centred is a convention of the **measurement**, not a
+/// Where a weight is centered is a convention of the **measurement**, not a
 /// property of the wood: the same key read 13 mm or 1/2 inch back from its lip
 /// is the same key, and every touchweight read on it changes by the lever. So
 /// it stays out of [`KeyDesign`], which the outline and the mass are built
@@ -179,15 +179,15 @@ impl Touchweight {
 /// that [V, Stanwood 2000, glossary, p. 23, and p. 22].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TouchweightProtocol {
-    /// How far back from the covering's lip every weight is centred, metres.
+    /// How far back from the covering's lip every weight is centered, meters.
     pub measuring_point_from_lip: f64,
-    /// The weight the key weight ratio is read with, centred on the
+    /// The weight the key weight ratio is read with, centered on the
     /// capstan's contact with the heel, grams.
     pub key_ratio_load_g: f64,
 }
 
 impl TouchweightProtocol {
-    /// The protocol's setting: where every weight is centred. Any number is
+    /// The protocol's setting: where every weight is centered. Any number is
     /// a distance back from the lip; whether it stands on the covering is
     /// [`crate::validate`]'s to say, since the covering is the key's. The key
     /// weight ratio's load is the protocol's own, bound by the instrument's
@@ -203,7 +203,7 @@ impl TouchweightProtocol {
         set: |p, v| p.measuring_point_from_lip = v,
     }];
 
-    /// The measuring point on `key`, metres in front of the balance pin.
+    /// The measuring point on `key`, meters in front of the balance pin.
     ///
     /// The one place the datum and the distance meet. It takes the key and not
     /// a coordinate on purpose: handed a bare number, a caller could pass the
@@ -216,7 +216,7 @@ impl TouchweightProtocol {
     /// The measuring point as a point of the key, in the key's frame: on the
     /// covering's top, [`Self::measuring_point`] in front of the balance pin.
     ///
-    /// Where the weights are centred; on the jig the roller under the key
+    /// Where the weights are centered; on the jig the roller under the key
     /// bears directly below it.
     pub fn measuring_point_on_key(&self, key: &KeyDesign) -> Point {
         Point::new(

@@ -26,7 +26,7 @@ print(f"  full dip {dip} mm * ratio -> {hammer:.1f} mm (annex A2: 57.6)  implied
 blow,letoff,at=46.0,1.5,1.2
 print(f"  useful-travel ratio (blow-letoff)/(dip-aftertouch) = ({blow}-{letoff})/({dip}-{at}) = {(blow-letoff)/(dip-at):.2f}")
 driven=(dip-at)/1000/L*a31*rs*1000
-print(f"  constant ratio over the DRIVEN stroke ({dip-at} mm) -> {driven:.1f} mm against {blow-letoff:.1f} mm travelled to let-off")
+print(f"  constant ratio over the DRIVEN stroke ({dip-at} mm) -> {driven:.1f} mm against {blow-letoff:.1f} mm traveled to let-off")
 print(f"     => error = {(driven/(blow-letoff)-1)*100:.1f} %   (the full-dip comparison makes it about 25 %)")
 
 print()

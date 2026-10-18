@@ -10,7 +10,7 @@
 //! settings, the weighing sheet, the diagnostics, where each body stands and
 //! what is drawn ([`pa_app::boundary`]); and the band, asked for only when it
 //! is shown. Each is in codes and numbers, never
-//! sentences: the page words them from its catalogue, in the reader's
+//! sentences: the page words them from its catalog, in the reader's
 //! language. The page changes the bench by two generic calls, `set` a path
 //! to a value and `act` an action, so a second application reuses this
 //! adapter unchanged. Their TypeScript types are generated from the Rust

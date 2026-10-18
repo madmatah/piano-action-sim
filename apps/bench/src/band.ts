@@ -20,7 +20,7 @@ export type Read = Extract<Reading, { outcome: 'read' }>
 
 /** The decimals a force on the band is shown to: the hundredth of a gram. */
 export const FORCE_DECIMALS = 2
-/** The decimals a travel is shown to: the hundredth of a millimetre. */
+/** The decimals a travel is shown to: the hundredth of a millimeter. */
 export const TRAVEL_DECIMALS = 2
 
 /**

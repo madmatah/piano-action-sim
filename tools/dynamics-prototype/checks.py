@@ -72,7 +72,7 @@ def random_poses(rng, n, spread=(0.05, 0.1, 0.4, 0.4, 0.4)):
 
 def kinetic_energy_from_points(q, v, h=1e-6):
     """T from the bodies' motion, independently of model.mass_matrix: each
-    centre of mass's velocity by a central difference of its position along
+    center of mass's velocity by a central difference of its position along
     q̇, each body's angular velocity from its absolute angle (linear in q)."""
     q = np.asarray(q, dtype=float)
     v = np.asarray(v, dtype=float)
@@ -80,8 +80,8 @@ def kinetic_energy_from_points(q, v, h=1e-6):
     energy = 0.0
     for body in mdl.MOVING_BODIES:
         m, inertia, _cm = mdl.MASS[body]
-        xp = np.array(mdl.Model.centre_of_mass(body, plus))
-        xm = np.array(mdl.Model.centre_of_mass(body, minus))
+        xp = np.array(mdl.Model.center_of_mass(body, plus))
+        xm = np.array(mdl.Model.center_of_mass(body, minus))
         vel = (xp - xm) / (2.0 * h)
         omega = (mdl.Model.body_angle(body, q + h * v) - mdl.Model.body_angle(body, q - h * v)) / (2 * h)
         energy += 0.5 * m * float(vel @ vel) + 0.5 * inertia * omega * omega
@@ -119,7 +119,7 @@ def mass_matrix_against_kinetic_energy():
     m_mat = np.array(mdl.Model.mass_matrix(mdl.Pose(q10)))
     rel10 = float(np.max(np.abs(m_mat - m10)) / np.max(np.abs(m10)))
     assert rel10 < 1e-6, f"script 10's mass matrix differs by {rel10:.2e}"
-    # FOUNDATIONS §3.6: a child pinned at r on the wippen, centre of mass at u
+    # FOUNDATIONS §3.6: a child pinned at r on the wippen, center of mass at u
     # from its pin: coupling I_cm + m(|u|² + r·u), share of the wippen's
     # diagonal I_cm + m|r + u|². Key and hammer are decoupled, jack and lever
     # siblings uncoupled, exactly.
@@ -234,11 +234,11 @@ def slip_and_normal_speeds_against_material_points():
 @check
 def hybrid_normal_continuous_at_arc_ends():
     """Contacts 7 (jack) and 10 (lever).
-    (a) The primitive: the circle's centre just either side of each arc end, at
+    (a) The primitive: the circle's center just either side of each arc end, at
     radii from inside the arc's circle to well outside it: gap and normal differ
     by O(ε) across the end.
     (b) The assembled contact (contact_geometry and the lever arms, frames
-    included): the knuckle's frame placed so that its centre sits 0.5 mm into
+    included): the knuckle's frame placed so that its center sits 0.5 mm into
     the surface just either side of each end of each arc, ε = 1e-9 rad: world
     normal and gradient equal on both sides to 1e-8. Then along real motions:
     turning θj from script 10's closure until the knuckle leaves the jack's arc,
@@ -247,7 +247,7 @@ def hybrid_normal_continuous_at_arc_ends():
     a1 end, which both directions cross); each crossing found by bisection to
     1e-13 rad, normal and gradient equal on both sides to 1e-8.
     (c) A scan of 20,001 angles of θj and of θr, ±0.4 rad about the closure,
-    wherever the knuckle's centre is outside the wedge W (penetration below
+    wherever the knuckle's center is outside the wedge W (penetration below
     R + r): no step in the normal larger than 50 × the step in angle."""
     worst_prim = 0.0
     for c in (7, 10):
@@ -277,8 +277,8 @@ def hybrid_normal_continuous_at_arc_ends():
             sides = []
             for a in (end - 1e-9, end + 1e-9):
                 pose = mdl.Pose(q0)
-                cx, cy = pose.to_world(spec.a, spec.arc_centre[0] + rho * math.cos(a),
-                                       spec.arc_centre[1] + rho * math.sin(a))
+                cx, cy = pose.to_world(spec.a, spec.arc_center[0] + rho * math.cos(a),
+                                       spec.arc_center[1] + rho * math.sin(a))
                 kx, ky = pose.to_world(spec.b, *spec.circle)
                 ox, oy, cs, sn = pose.frame[spec.b]
                 pose.frame[spec.b] = (ox + cx - kx, oy + cy - ky, cs, sn)
@@ -744,9 +744,9 @@ class RecordKinematics:
     """The record read afresh and the action assembled with complex numbers,
     sharing no code with model.py or script 10: the frames from the record's
     own list of pivots; every gap from the two points Table A.8 joins and their
-    shapes; the hybrid's signed distance by projecting the knuckle's centre on
+    shapes; the hybrid's signed distance by projecting the knuckle's center on
     the wedge W (model.py A9) instead of choosing a branch; the kinetic energy
-    from the motion of each centre of mass; gravity's potential from its
+    from the motion of each center of mass; gravity's potential from its
     height. A line's gap is projected on its printed normal, as script 10 and
     model.py do (model.py A10)."""
 
@@ -774,7 +774,7 @@ class RecordKinematics:
         for body, code in self.BODIES.items():
             if code != "g":
                 b = rec["mass_properties"]["bodies"][body]
-                cm = b["centre_of_mass"]
+                cm = b["center_of_mass"]
                 self.mass[code] = (v(b["mass"]), v(b["moment_of_inertia"]),
                                    complex(v(cm["x"]), v(cm["y"])))
         self.pins = {self.BODIES[p["body"]]: self.points[p["turns_on"]]["c"]
@@ -802,7 +802,7 @@ class RecordKinematics:
 
     @classmethod
     def hybrid_signed_distance(cls, x, radius, a0, a1):
-        """Signed distance from x (relative to the arc's centre, hybrid frame)
+        """Signed distance from x (relative to the arc's center, hybrid frame)
         to W ⊕ disc(radius), W = {y: y·n0 <= 0, y·n1 <= 0}. Outside W: the
         distance to the nearest point of W, among the apex and the feet of x
         on W's two edge rays. Inside: minus the distance to W's boundary,
@@ -825,8 +825,8 @@ class RecordKinematics:
         pa, pb = (self.points[name] for name in self.rows[c])
         kinds = (pa["kind"], pb["kind"])
         if kinds == ("Circle Contact", "Circle Contact"):
-            centres = self.world(f, pa["body"], pa["c"]) - self.world(f, pb["body"], pb["c"])
-            return abs(centres) - pa["r"] - pb["r"]
+            centers = self.world(f, pa["body"], pa["c"]) - self.world(f, pb["body"], pb["c"])
+            return abs(centers) - pa["r"] - pb["r"]
         if kinds == ("Hybrid Contact", "Circle Contact"):
             x = self.world(f, pb["body"], pb["c"]) - self.world(f, pa["body"], pa["c"])
             x *= cmath.exp(-1j * f[pa["body"]][1])
@@ -887,7 +887,7 @@ def stroke_states():
 def independent_derivation_from_the_record():
     """The model against RecordKinematics (no code shared with model.py or
     script 10): every gap at script 10's closure, at 300 poses around it and
-    at the 46 states of a key stroke; the mass matrix at 40 poses, polarised
+    at the 46 states of a key stroke; the mass matrix at 40 poses, polarized
     from the independent kinetic energy; the (wippen, jack, lever) block
     against its closed forms with the record's masses (FOUNDATIONS §3.6:
     coupling I_cm + m(|u|² + r·u), own diagonal I_cm + m|u|², share of the
@@ -913,7 +913,7 @@ def independent_derivation_from_the_record():
         diag_w = iw + mw * abs(cw) ** 2
         for child, idx in (("j", mdl.J), ("r", mdl.R)):
             m, inertia, cm = ind.mass[child]
-            u = cmath.exp(1j * q[idx]) * cm  # the child's centre of mass from its pin, wippen frame
+            u = cmath.exp(1j * q[idx]) * cm  # the child's center of mass from its pin, wippen frame
             r = ind.pins[child]  # the child's pin, wippen frame
             coupling = inertia + m * (abs(u) ** 2 + ind.dot(r, u))
             own = inertia + m * abs(u) ** 2
@@ -1054,8 +1054,8 @@ def gravity_points_down_in_the_record_frames():
     """The record's ground frame has y upwards (Figure A.1), so gravity is -y.
     Its generalized forces are -∇ of g Σ m y_cm computed by RecordKinematics,
     at 60 poses. At the frictionless equilibrium each body falls onto its own
-    support: the key, front-heavy (its centre of mass in front of the balance
-    pin), turns its front down towards the front-rail punching (#2); the
+    support: the key, front-heavy (its center of mass in front of the balance
+    pin), turns its front down toward the front-rail punching (#2); the
     wippen turns down onto the capstan (#1); the hammer turns its head away
     from the string (#12) and its shank down onto the jack (#7) and its rest
     rail (#13); and the string lies above the hammer head."""
@@ -1094,7 +1094,7 @@ def repetition_spring_lifts_the_lever():
     model's spring torque, and it is positive (counter-clockwise) at script
     10's closure and at the frictionless equilibrium. A positive θr closes the
     lever's gaps to the knuckle (#10) and to the drop screw (#11) and presses
-    its stop (#6): the spring lifts the lever's knuckle end towards the
+    its stop (#6): the spring lifts the lever's knuckle end toward the
     knuckle, and the stop limits it. At equilibrium, with #9, #10 and #11
     open, the stop carries the spring: f6 = (T + gravity on θr) / |∂g6/∂θr|."""
     rec = mdl.RECORD["springs"]["repetition_lever"]

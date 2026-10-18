@@ -5,6 +5,6 @@
  */
 export type MortiseSettings = { 
 /**
- * Its depth above the underside, millimetres.
+ * Its depth above the underside, millimeters.
  */
 depth_mm: number, };

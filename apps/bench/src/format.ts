@@ -13,9 +13,9 @@
  */
 import type { Quantity } from '@pas/wasm/types'
 
-/** A length, millimetres: the hundredth the drawer's papers are told apart by. */
+/** A length, millimeters: the hundredth the drawer's papers are told apart by. */
 export const LENGTH_MM = 0.01
-/** A gap between the key and a stop, millimetres: to the micron. */
+/** A gap between the key and a stop, millimeters: to the micron. */
 export const GAP_MM = 0.001
 /** An angle, degrees. */
 export const ANGLE_DEG = 0.01
@@ -23,9 +23,9 @@ export const ANGLE_DEG = 0.01
 export const MASS_G = 0.01
 /** A temporary weight's mass, grams. */
 export const TEMPORARY_WEIGHT_G = 0.1
-/** Where a temporary weight stands along the key, millimetres. */
+/** Where a temporary weight stands along the key, millimeters. */
 export const STATION_MM = 1
-/** Where a front weight was read from the lip, millimetres. */
+/** Where a front weight was read from the lip, millimeters. */
 export const FROM_LIP_MM = 0.1
 
 /**
@@ -46,8 +46,8 @@ export function decimals(resolution: number): number {
 
 /**
  * `x` to `digits` places, a number that rounds to nothing shown as 0, never
- * as -0: a key level to a few attometres at the bottom of its dip is level.
- * The decimal point is this function's; a catalogue for another language
+ * as -0: a key level to a few attometers at the bottom of its dip is level.
+ * The decimal point is this function's; a catalog for another language
  * writes its own.
  */
 export function fixed(x: number, digits: number): string {
@@ -64,13 +64,13 @@ export function typed(x: number, resolution: number): string {
   return String(Number(x.toFixed(decimals(resolution))))
 }
 
-/** A torque, gram-force millimetres. */
+/** A torque, gram-force millimeters. */
 export const TORQUE_GMM = 0.1
 
 /**
  * What a setting is shown to, by what it measures: a length to the hundredth
- * of a millimetre, a mass or a weight to the hundredth of a gram, a torque to
- * the tenth of a gram-millimetre.
+ * of a millimeter, a mass or a weight to the hundredth of a gram, a torque to
+ * the tenth of a gram-millimeter.
  */
 export const RESOLUTION: { readonly [Q in Quantity]: number } = {
   length: LENGTH_MM,

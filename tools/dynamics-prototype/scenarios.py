@@ -31,7 +31,7 @@ Observables, read off the trajectory (a first pass, not the trade's protocols):
 let-off as the hammer-to-string distance at the instant the jack/knuckle gap
 opens, after the jack's toe has met the button; the strike as the instant the
 hammer/string gap closes; both interpolated linearly within the step, with the
-hammer head's speed towards the string at that instant; and the
+hammer head's speed toward the string at that instant; and the
 hammer-to-string distance at the first step the back check catches the tail.
 Diagnostics: the friction solver's sweeps and residual, the contact-friction
 sign reversals that count chatter, the largest change of the finger force
@@ -221,7 +221,7 @@ class Recorder:
         g7b, _r7b = self.gap_and_rate(7, after.q, after.v)
         g12a, r12a = self.gap_and_rate(12, before.q, before.v)
         g12b, r12b = self.gap_and_rate(12, after.q, after.v)
-        head_speed = -r12a  # towards the string, m/s
+        head_speed = -r12a  # toward the string, m/s
         dt = after.t - before.t
         # events at the zero crossing of a gap, interpolated linearly in the step
         if self.button_met and self.let_off is None and g7a <= 0.0 < g7b:
@@ -328,7 +328,7 @@ def strike_on_forte(integrator, dt, implicit_friction_slope=False, t_end=0.104):
 def slope_study():
     """The comparison integrators.py cites for leaving the contact friction
     explicit in (B): the forte-like drive's let-off and strike at five steps, for
-    (A), for (B), and for (B) with Eq. 2.10's slope linearised into C."""
+    (A), for (B), and for (B) with Eq. 2.10's slope linearized into C."""
     print("integrator  friction slope  dt (us)  let-off (ms)  hammer-string (mm)"
           "  strike (ms)  head at strike (m/s)")
     for integrator, slope in (("A", False), ("B", False), ("B", True)):
@@ -375,7 +375,7 @@ def letoff_geometry():
 
 
 def pose_with_net_torques(model, target, q0):
-    """A pose near q0 where the modelled forces at rest, Q(q, 0), equal
+    """A pose near q0 where the modeled forces at rest, Q(q, 0), equal
     `target` (N·m per coordinate), by Newton with a central-difference
     Jacobian: there the axis friction must supply exactly -target."""
     q = np.array(q0, dtype=float)

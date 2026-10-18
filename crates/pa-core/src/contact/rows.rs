@@ -4,7 +4,7 @@
 //! # A row
 //!
 //! One pair of features of one pair of surfaces ([`Feature`]): the signed gap
-//! between them, the normal from side B towards side A, and the point midway
+//! between them, the normal from side B toward side A, and the point midway
 //! between the two surfaces on that normal, all in the world. With it, one
 //! entry per coordinate of the mechanism:
 //!
@@ -26,8 +26,8 @@
 //! through the far side. A row deeper than the row margin is kept only where
 //! its point stands inside the face's side's drawn material, and, of a
 //! corner's rows that deep against several faces, only the shallowest: the
-//! nearest face is the one it comes out through. A face's centre, which a
-//! centre bearing reads, gives a row deeper than the margin only where no
+//! nearest face is the one it comes out through. A face's center, which a
+//! center bearing reads, gives a row deeper than the margin only where no
 //! other side of the material stands nearer it by more than the margin: the
 //! face is then the way it came in.
 //!
@@ -43,19 +43,19 @@
 use super::features::{Feature, PairFeatures, Piece};
 use super::{PairGeometry, PartId};
 use crate::geometry::{
-    centre_on_face, disc_on_disc, disc_on_face, Dir, Disc, Face, Point, Proximity, Seg,
+    center_on_face, disc_on_disc, disc_on_face, Dir, Disc, Face, Point, Proximity, Seg,
 };
 use crate::mechanism::{BodyId, Mechanism, Placement, Pose};
 
 /// How close two declared surfaces must come for the static solve to read a
-/// row between them, metres: a millimetre.
+/// row between them, meters: a millimeter.
 ///
 /// A margin and not a contact tolerance: a row within it is read with its
 /// real gap, open or closed, so the solve sees a stop before it reaches it.
 /// The static solve bounds every step so that no declared pair's surfaces
 /// approach by more than the margin, which is what keeps it from stepping
 /// over a feature; the margin's size trades the rows it reads against the
-/// steps it may take, and a millimetre is about twelve of the thinnest
+/// steps it may take, and a millimeter is about twelve of the thinnest
 /// papers.
 pub const ROW_MARGIN: f64 = 1e-3;
 
@@ -66,9 +66,9 @@ pub struct Row {
     pub pair: u16,
     /// Which pieces of the two sides meet.
     pub feature: Feature,
-    /// Signed gap, metres: positive apart, negative overlapping.
+    /// Signed gap, meters: positive apart, negative overlapping.
     pub gap: f64,
-    /// Unit normal, from side B towards side A, in the world.
+    /// Unit normal, from side B toward side A, in the world.
     pub normal: Dir,
     /// The point midway between the two surfaces on the normal, in the
     /// world.
@@ -137,8 +137,8 @@ impl Rows {
         self.rows.is_empty()
     }
 
-    /// Row `i`'s gradient, one entry per coordinate: metres per radian on an
-    /// angle, metres per metre on a length.
+    /// Row `i`'s gradient, one entry per coordinate: meters per radian on an
+    /// angle, meters per meter on a length.
     ///
     /// # Panics
     ///
@@ -177,7 +177,7 @@ impl Rows {
         best.map(|(i, _)| i)
     }
 
-    /// The least gap of one pair, metres, or `None` when it has no row.
+    /// The least gap of one pair, meters, or `None` when it has no row.
     pub fn gap(&self, pair: u16) -> Option<f64> {
         self.governing(pair).map(|i| self.rows[i].gap)
     }
@@ -209,7 +209,7 @@ fn world_face(placement: &Placement, f: &Face) -> Face {
 
 fn world_disc(placement: &Placement, d: &Disc) -> Disc {
     Disc {
-        centre: placement.world(d.centre),
+        center: placement.world(d.center),
         radius: d.radius,
         from: turned(placement, d.from),
         to: turned(placement, d.to),
@@ -282,7 +282,7 @@ fn inside(polygon: &[Point], p: Point) -> bool {
 }
 
 /// What one row is being built from: its pair, its feature, the two bodies
-/// its sides are carried by, and the corner, edge or centre whose overlaps
+/// its sides are carried by, and the corner, edge or center whose overlaps
 /// compete, where the other piece is a face.
 #[derive(Debug, Clone, Copy)]
 struct Candidate {
@@ -295,14 +295,14 @@ struct Candidate {
 
 impl Mechanism {
     /// Reads every declared pair at `pose` into `out`: one row for each pair
-    /// of features that meet with a gap of at most `margin`, metres, in the
+    /// of features that meet with a gap of at most `margin`, meters, in the
     /// pairs' order and in a fixed order within each, with its gradient and
     /// slip gradient over every coordinate.
     ///
     /// A pair of [`PairGeometry::Features`] gives the rows of side A's discs
     /// against side B's faces, then of B's discs against A's faces, then of
-    /// A's discs against B's discs; one of [`PairGeometry::CentreBearing`]
-    /// gives the rows of B's centre against A's faces. A pair whose features
+    /// A's discs against B's discs; one of [`PairGeometry::CenterBearing`]
+    /// gives the rows of B's center against A's faces. A pair whose features
     /// meet nowhere within their spans and sectors gives none.
     ///
     /// # Panics
@@ -345,20 +345,20 @@ impl Mechanism {
         };
         out.pending.clear();
         match geometry {
-            PairGeometry::CentreBearing => {
-                let (piece, centre) = b.centre;
-                let centre = place_b.world(centre);
-                // A centre deeper than the margin behind the face's line is
+            PairGeometry::CenterBearing => {
+                let (piece, center) = b.center;
+                let center = place_b.world(center);
+                // A center deeper than the margin behind the face's line is
                 // read only where the face is the way it came in: where no
                 // other side of the material stands nearer it by more than
-                // the margin. A punching's centre a hair past the key's front
+                // the margin. A punching's center a hair past the key's front
                 // edge comes in through the key front once the key turns,
                 // and the line of the underside is then the long way out.
                 for k in 0..out.faces_a.len() {
                     let (a_piece, face) = out.faces_a[k];
-                    if let Some(x) = centre_on_face(centre, &face) {
+                    if let Some(x) = center_on_face(center, &face) {
                         if x.gap >= -ROW_MARGIN
-                            || self.material(pose, pair, Side::A).depth(centre)
+                            || self.material(pose, pair, Side::A).depth(center)
                                 >= -x.gap - ROW_MARGIN
                         {
                             out.pending
@@ -449,7 +449,7 @@ impl Mechanism {
     /// row margin, whose point `p` on the other side must then stand inside
     /// `side`'s material, the parts its ranges belong to, or every part of
     /// its body for a side that is a cut's range, less the body's cuts but
-    /// for a pair read at its centre.
+    /// for a pair read at its center.
     ///
     /// A face's row reads the distance to the face's line, which is the
     /// depth of an overlap only near the face: a point deeper than the margin
@@ -463,12 +463,12 @@ impl Mechanism {
     }
 
     /// How deep the drawn parts of the declared pairs stand in one another at
-    /// `pose`, metres: the deepest that a point of the parts one side's
+    /// `pose`, meters: the deepest that a point of the parts one side's
     /// ranges belong to, sampled along their outlines, stands inside the
     /// other side's drawn material; zero where nothing overlaps.
     ///
     /// Read off the outlines, not the rows: a part sunk far into another,
-    /// past an edge's centre or across a corner's sector, may read no row at
+    /// past an edge's center or across a corner's sector, may read no row at
     /// all (`docs/FOUNDATIONS.md` §6.6), and this is what a solve that must
     /// start somewhere uses to start where nothing is sunk.
     pub fn overlap(&self, pose: &Pose) -> f64 {
@@ -478,17 +478,17 @@ impl Mechanism {
     }
 
     /// How deep the two sides of pair `pair` stand in one another at `pose`,
-    /// metres, as [`Self::overlap`] reads it. A pair read at its centre
-    /// counts its centre and nothing else of its face: the face's edges
+    /// meters, as [`Self::overlap`] reads it. A pair read at its center
+    /// counts its center and nothing else of its face: the face's edges
     /// overlapping a tilted key is the idealization it declares.
     pub fn pair_overlap(&self, pose: &Pose, pair: u16) -> f64 {
         let parts = self.parts();
         let declared = &self.pairs()[usize::from(pair)];
         let mut deepest = 0.0_f64;
-        if declared.geometry == PairGeometry::CentreBearing {
+        if declared.geometry == PairGeometry::CenterBearing {
             let sides = &self.features[usize::from(pair)];
-            let centre = pose.placement(sides.b.body).world(sides.b.centre.1);
-            return self.material(pose, pair, Side::A).depth(centre);
+            let center = pose.placement(sides.b.body).world(sides.b.center.1);
+            return self.material(pose, pair, Side::A).depth(center);
         }
         for (from, into) in [(Side::A, Side::B), (Side::B, Side::A)] {
             let surface = match from {
@@ -510,7 +510,7 @@ impl Mechanism {
     }
 
     /// How deep the parts `a` and the parts `b` stand in one another at
-    /// `pose`, metres: what [`Self::pair_overlap`] reads of a pair's sides,
+    /// `pose`, meters: what [`Self::pair_overlap`] reads of a pair's sides,
     /// read of parts no pair declares, each set's material its parts less
     /// the cuts of the bodies that carry them.
     pub fn parts_overlap(&self, pose: &Pose, a: &[PartId], b: &[PartId]) -> f64 {
@@ -527,7 +527,7 @@ impl Mechanism {
     }
 
     /// The deepest that a point sampled along the outline of one of the
-    /// parts `owners` stands inside `material` at `pose`, metres: seventeen
+    /// parts `owners` stands inside `material` at `pose`, meters: seventeen
     /// points along each line, an arc as it is drawn, and none along a
     /// segment that is a cut's mouth, the underside running on straight
     /// across a mortise, which bounds no material.
@@ -596,7 +596,7 @@ impl Mechanism {
 
     /// The drawn material of side `side` of pair `pair` at `pose`: the parts
     /// its ranges belong to, or every part of its body for a side that is a
-    /// cut's range, less the body's cuts but for a pair read at its centre.
+    /// cut's range, less the body's cuts but for a pair read at its center.
     fn material(&self, pose: &Pose, pair: u16, side: Side) -> Material {
         let declared = &self.pairs()[usize::from(pair)];
         let surface = match side {
@@ -620,7 +620,7 @@ impl Mechanism {
                 .map(|q| placement.world(q))
                 .collect()
         };
-        let centred = declared.geometry == PairGeometry::CentreBearing;
+        let centered = declared.geometry == PairGeometry::CenterBearing;
         let mut material = Material {
             solids: Vec::new(),
             cuts: Vec::new(),
@@ -631,7 +631,7 @@ impl Mechanism {
             }
             match part.role {
                 super::Role::Cut => {
-                    if !centred {
+                    if !centered {
                         material.cuts.push(polygon(i));
                     }
                 }
@@ -695,7 +695,7 @@ mod tests {
             Piece::Segment { part, .. }
             | Piece::Arc { part, .. }
             | Piece::Vertex { part, .. }
-            | Piece::Centre { part } => part,
+            | Piece::Center { part } => part,
         }
     }
 
@@ -714,7 +714,7 @@ mod tests {
     }
 
     /// A piece as drawn, in the world, written again here from the part's
-    /// silhouette: the segment, or the disc's centre, radius and the
+    /// silhouette: the segment, or the disc's center, radius and the
     /// directions its sweep runs between.
     enum Drawn {
         Line {
@@ -728,7 +728,7 @@ mod tests {
             from: Point,
             to: Point,
         },
-        Centre(Point),
+        Center(Point),
     }
 
     fn drawn(
@@ -797,11 +797,11 @@ mod tests {
                     to: turn(normal_out(next, false)),
                 }
             }
-            Piece::Centre { .. } => {
+            Piece::Center { .. } => {
                 let range = &pair.b.ranges[0];
                 let first = sil[usize::from(range.segs.start)].start();
                 let last = sil[usize::from(range.segs.end) - 1].end();
-                Drawn::Centre(pl.world(Point::new(
+                Drawn::Center(pl.world(Point::new(
                     0.5 * (first.x + last.x),
                     0.5 * (first.y + last.y),
                 )))
@@ -822,9 +822,9 @@ mod tests {
     }
 
     /// How far `p` stands from the drawn piece: from the segment, the circle,
-    /// the vertex or the centre. Within its span or sweep it is the distance
-    /// to the line or the circle; a vertex and a centre are points. A vertex
-    /// read with a neighbour from another range is drawn here with its own
+    /// the vertex or the center. Within its span or sweep it is the distance
+    /// to the line or the circle; a vertex and a center are points. A vertex
+    /// read with a neighbor from another range is drawn here with its own
     /// outline's, which a chain joined straight never reads.
     fn off(p: Point, piece: &Drawn) -> f64 {
         match *piece {
@@ -857,7 +857,7 @@ mod tests {
                 }
                 (norm(u) - r).abs()
             }
-            Drawn::Centre(c) => norm(sub(p, c)),
+            Drawn::Center(c) => norm(sub(p, c)),
         }
     }
 
@@ -870,16 +870,16 @@ mod tests {
     /// any radius. With it, at every row: the normal unit; the contact point
     /// midway, each surface's point on its drawn piece; the gap signed at
     /// every depth, by an independent side test against the drawn piece; and
-    /// a coordinate that moves both bodies cancelled exactly.
+    /// a coordinate that moves both bodies canceled exactly.
     ///
     /// The bounds are derived. A coordinate that moves one side turns its
     /// points rigidly about a pivot within the reach `L` (the two contact
     /// points' chains, the gap and the largest radius added), and a gap
     /// against a line is then a sinusoid in the angle of amplitude at most
     /// `L`: a central difference over `±h` is off by at most `h²L/6`. Between
-    /// two discs the gap is the distance between their centres less the
+    /// two discs the gap is the distance between their centers less the
     /// radii, whose third derivative is at most `6ρ³/f² + 6ρ²/f + ρ`, `f` the
-    /// least distance between the centres over the step and `ρ ≤ L`. On a
+    /// least distance between the centers over the step and `ρ ≤ L`. On a
     /// slide everything moves linearly and the difference is exact. Each gap
     /// is within `256 ε L` of its exact value, positions carrying the `64 ε L`
     /// of the chain's placements (C1), so the difference adds `256 ε L / h`,
@@ -892,7 +892,7 @@ mod tests {
         let mut rng = XorShift::new(0x00c2_c2c2);
         let h = 1e-5;
         let eps = f64::EPSILON;
-        let (mut checked, mut deep, mut cancelled) = (0usize, 0usize, 0usize);
+        let (mut checked, mut deep, mut canceled) = (0usize, 0usize, 0usize);
         let mut pairs_seen = vec![false; m.pairs().len()];
         let coords = m.coords().len();
         let mut rows = Rows::new();
@@ -968,7 +968,7 @@ mod tests {
                     }
                     (_, Drawn::Line { a, normal, .. }) => dot(sub(row.on_a(), *a), *normal),
                     (Drawn::Line { a, normal, .. }, _) => dot(sub(row.on_b(), *a), *normal),
-                    _ => panic!("no row pairs two centres"),
+                    _ => panic!("no row pairs two centers"),
                 };
                 if row.gap.abs() > tol {
                     assert_eq!(
@@ -990,7 +990,7 @@ mod tests {
                             (0, 0),
                             "{row:?}: coordinate {c} moves both sides and did not cancel"
                         );
-                        cancelled += 1;
+                        canceled += 1;
                     }
                     let (step, pose_up, pose_down) = &shifted[c];
                     let step = *step;
@@ -1064,12 +1064,12 @@ mod tests {
         );
         assert!(checked > 10_000, "only {checked} entries were checked");
         assert!(deep > 1_000, "only {deep} rows were deeper than any radius");
-        assert!(cancelled > 2_000, "only {cancelled} entries cancelled");
+        assert!(canceled > 2_000, "only {canceled} entries canceled");
     }
 
     /// Rows are generated within the margin and no further: the rows within
-    /// a millimetre are exactly the rows of every margin whose gap is at
-    /// most a millimetre, in the same order, with the same gradients.
+    /// a millimeter are exactly the rows of every margin whose gap is at
+    /// most a millimeter, in the same order, with the same gradients.
     #[test]
     fn a_row_is_generated_within_the_margin_and_no_further() {
         let m = fixtures::mechanism();
@@ -1127,7 +1127,7 @@ impl Bounds {
 
 impl Mechanism {
     /// A lower bound on how far apart the two sides of pair `pair` stand at
-    /// `pose`, metres: the least distance between a box round a piece of one
+    /// `pose`, meters: the least distance between a box round a piece of one
     /// side and a box round a piece of the other, each box holding its
     /// segment, or its arc's whole circle. Zero where two boxes overlap.
     ///
@@ -1145,7 +1145,7 @@ impl Mechanism {
             out.extend(
                 side.discs
                     .iter()
-                    .map(|(_, d)| Bounds::of(&[placement.world(d.centre)], d.radius)),
+                    .map(|(_, d)| Bounds::of(&[placement.world(d.center)], d.radius)),
             );
             out
         };
