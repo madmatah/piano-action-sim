@@ -191,16 +191,17 @@ mod tests {
         );
     }
 
-    /// Lengthening a key leaves the front rail where it was bolted, and the
+    /// Shortening a key leaves the front rail where it was bolted, and the
     /// bench says by how much.
     ///
-    /// **This is the behavior, not a defect.** Rails are screwed to a keybed;
-    /// nothing about cutting a longer key moves them. A model that quietly
-    /// slid the rail along would draw a keyboard that cannot exist and call it
-    /// correct — and it would hide the one thing a keyboard designer is here
-    /// to find out, which is what else has to change when a key's length does.
+    /// **This is the behavior, not a defect.** Rails are part of the key
+    /// frame; nothing about cutting a key to another length moves them. A
+    /// model that quietly slid the rail along would draw a keyboard that
+    /// cannot exist and call it correct — and it would hide the one thing a
+    /// keyboard designer is here to find out, which is what else has to change
+    /// when a key's length does.
     #[test]
-    fn lengthening_a_key_leaves_the_front_rail_behind_and_names_the_miss() {
+    fn shortening_a_key_leaves_the_front_rail_behind_and_names_the_miss() {
         let frame = crate::test_fixture::frame();
         let short = KeyDesign {
             front_edge: 0.158,

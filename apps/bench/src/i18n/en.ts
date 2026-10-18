@@ -447,7 +447,7 @@ export const en: Catalog = {
   faults: {
     heading: 'This frame does not fit this key.',
     placement:
-      'The rails are placed under the key when the frame is built, and then they stay bolted where they are. Change the key afterwards and they do not follow — a real keybed does not either. *Place the frame under the key*, under The frame, unbolts them and stands them where this key needs them.',
+      'The rails are placed under the key when the frame is built, and then they stay bolted where they are. Change the key afterwards and they do not follow — a real key frame does not either. *Place the frame under the key*, under The frame, unbolts them and stands them where this key needs them.',
   },
   fault: {
     pin_outside_mortise: ({ by_mm }) =>
@@ -609,7 +609,7 @@ export const en: Catalog = {
 
   frame: {
     railsNote:
-      "And where the two outer rails **stand** along the key. These are the frame's own numbers, not the key's: a rail is screwed to the keybed, so lengthening a key moves its mortise and its chamfer and leaves the rails behind. That is a design worth seeing go wrong, which is why nothing here corrects itself — the sheet names the miss instead.",
+      "And where the two outer rails **stand** along the key. These are the frame's own numbers, not the key's: a rail is part of the key frame, so lengthening a key moves its mortise and its chamfer and leaves the rails behind. That is a design worth seeing go wrong, which is why nothing here corrects itself — the sheet names the miss instead.",
     placeNote:
       'Moves the rails and **nothing else**. The key bears on the cloth at a new arm afterwards, so the key height and the dip will have drifted off their targets and the sheet will show it — shimming is a separate operation on a real bench too.',
   },
