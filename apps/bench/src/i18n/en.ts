@@ -30,19 +30,26 @@ import {
   GAP_MM,
   LENGTH_MM,
   MASS_G,
+  OUT_OF_RANGE,
+  PART_MM,
+  SEARCH_MM,
   STATION_MM,
   TEMPORARY_WEIGHT_G,
+  WEIGHT_G,
 } from '../format'
-import { type Catalog, type Labeled, type Named, type Worded, word } from './catalog'
+import { type Catalog, type Labeled, type Named, unitIn, type Worded, word } from './catalog'
 
 /** `x` to the decimals `resolution` is shown to. */
-const to = (x: number, resolution: number): string => fixed(x, decimals(resolution))
+const to = (quantity: number, resolution: number): string => fixed(quantity, decimals(resolution))
+
+/** Reasons as a note or a tooltip lists them, each a clause of its own. */
+const reasons = (clauses: readonly string[]): string => clauses.join('; ')
 
 /** Items as a sentence lists them: "a", "a and b", "a, b and c". */
-function list(items: readonly string[]): string {
-  return items.length < 2
-    ? (items[0] ?? '')
-    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+function list(terms: readonly string[]): string {
+  return terms.length < 2
+    ? (terms[0] ?? '')
+    : `${terms.slice(0, -1).join(', ')} and ${terms[terms.length - 1]}`
 }
 
 /** What a stop is called in a sentence that may list several: no comma
@@ -58,7 +65,7 @@ const STOP: Named<Contact> = {
 /** The stops, as a sentence lists them: "its front punching and its back
  * rail cloth"; "its stops" where there are none. */
 function stopsNamed(codes: readonly Contact[]): string {
-  return codes.length === 0 ? 'its stops' : list(codes.map((c) => `its ${STOP[c]}`))
+  return codes.length === 0 ? 'its stops' : list(codes.map((code) => `its ${STOP[code]}`))
 }
 
 /** Where a stop is, as the touch panel says the key stands on it. */
@@ -102,14 +109,14 @@ const PART: Named<Part> = {
 }
 
 /** How the key rides on its stops, naming them and the lift. */
-function riding(r: Riding): string {
-  return `the key rides on ${stopsNamed([r.front, 'back_rail_cloth'])}, ${fixed(r.lift_mm, 2)} mm above its balance punching: its stops hold it higher than its punching does, so it has no stroke, and no weight takes it from one seat to the other.`
+function riding(how: Riding): string {
+  return `the key rides on ${stopsNamed([how.front, 'back_rail_cloth'])}, ${to(how.lift_mm, LENGTH_MM)} mm above its balance punching: its stops hold it higher than its punching does, so it has no stroke, and no weight takes it from one seat to the other.`
 }
 
 /** How far past a target, in millimeters: to the hundredth, a shortfall
  * under that said as under a hundredth. */
 function hundredths(mm: number): string {
-  return mm < 0.005 ? 'under 0.01 mm' : `${fixed(mm, 2)} mm`
+  return mm < LENGTH_MM / 2 ? `under ${to(LENGTH_MM, LENGTH_MM)} mm` : `${to(mm, LENGTH_MM)} mm`
 }
 
 /** A regulation target, as a sentence names it. */
@@ -152,10 +159,10 @@ const refusal: Catalog['refusal'] = {
     "the measuring point stands at or behind the balance pin, where the jig's scale cannot hold the key level.",
   cannot_seat: ({ fighting }) =>
     `the key has no seat on this frame: ${stopsNamed(fighting)} ${fighting.length === 1 ? 'stands' : 'stand'} in its drawn parts, and the model finds no pose of the key on its frame clear of ${fighting.length === 1 ? 'it' : 'them'}.`,
-  lifts_off_its_frame: ({ leaves_its_pin_mm: at }) =>
-    at < 0
-      ? `the balance punching stands ${fixed(-at, 2)} mm above the top of the balance pin: a key on it is off its pin and off its frame.`
-      : `its stops would hold the key more than ${fixed(at, 2)} mm above its balance punching, where it leaves its balance pin: off its pin and off its frame.`,
+  lifts_off_its_frame: ({ leaves_its_pin_mm }) =>
+    leaves_its_pin_mm < 0
+      ? `the balance punching stands ${to(-leaves_its_pin_mm, LENGTH_MM)} mm above the top of the balance pin: a key on it is off its pin and off its frame.`
+      : `its stops would hold the key more than ${to(leaves_its_pin_mm, LENGTH_MM)} mm above its balance punching, where it leaves its balance pin: off its pin and off its frame.`,
   no_stop_below_the_front: () =>
     "nothing stops the front of the key: the front punching's center stands off the key's underside, so the key bears on nothing at the bottom of its dip.",
   no_stop_under_the_tail: () =>
@@ -165,29 +172,30 @@ const refusal: Catalog['refusal'] = {
   measuring_point_not_in_front: () =>
     'the measuring point stands at or behind the balance bearing, where a weight cannot take the key down.',
   not_converged: ({ solve }) => NOT_CONVERGED[solve],
-  no_travel: ({ riding: r }) =>
-    r === null ? 'the key has no stroke: it stands at the bottom of its dip at rest.' : riding(r),
+  no_travel: ({ riding: ridingOn }) =>
+    ridingOn === null
+      ? 'the key has no stroke: it stands at the bottom of its dip at rest.'
+      : riding(ridingOn),
   no_lever: () => 'a weight on the measuring point does not turn the key.',
   does_not_reach_the_end_of_its_stroke: ({ cap_g }) =>
-    `${fixed(cap_g, 0)} g on the measuring point did not take the key to the end of its stroke.`,
+    `${to(cap_g, WEIGHT_G)} g on the measuring point did not take the key to the end of its stroke.`,
   no_equilibrium: () => 'the key found no equilibrium on its way down or up: its stops fight.',
   walk_lifts_off_its_frame: () =>
     'a weight the walk put on the measuring point lifts the key off its frame.',
   sweep_lifts_off_its_punching: ({ stroke, travel_mm, force_g }) =>
-    `${fixed(travel_mm, 2)} mm into the stroke ${STROKE[stroke]}, a finger would have to ${force_g < 0 ? 'pull' : 'press'} ${fixed(Math.abs(force_g), 0)} g at the measuring point, and the balance punching would carry nothing under it: the key would lift off its punching instead of turning, so the force would not be the one read.`,
+    `${to(travel_mm, LENGTH_MM)} mm into the stroke ${STROKE[stroke]}, a finger would have to ${force_g < 0 ? 'pull' : 'press'} ${to(Math.abs(force_g), WEIGHT_G)} g at the measuring point, and the balance punching would carry nothing under it: the key would lift off its punching instead of turning, so the force would not be the one read.`,
   sweep_lifts_off_its_frame: () =>
     "a step of the band's sweep took the key off its balance pin, and off its frame.",
-  no_key_top_at_the_station: ({ station_mm: at }) =>
-    `no top of the key stands ${fixed(Math.abs(at), 0)} mm ${at < 0 ? 'behind' : 'in front of'} the balance pin, where the temporary weight goes.`,
+  no_key_top_at_the_station: ({ station_mm }) =>
+    `no top of the key stands ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'behind' : 'in front of'} the balance pin, where the temporary weight goes.`,
   from_a_refused_reading: ({ reading }) =>
     `the ${reading === 'down_weight' ? 'down weight' : reading === 'up_weight' ? 'up weight' : 'reading'} it is computed from is refused.`,
 }
 
 /** The temporary weight a key friction weight stood on the key. */
-function temporary(w: TemporaryWeight | null): string {
-  if (w === null) return ''
-  const at = w.at_mm
-  return ` (${to(w.mass_g, TEMPORARY_WEIGHT_G)} g, ${to(Math.abs(at), STATION_MM)} mm ${at < 0 ? 'behind' : 'in front of'} the balance pin)`
+function temporary(weight: TemporaryWeight | null): string {
+  if (weight === null) return ''
+  return ` (${to(weight.mass_g, TEMPORARY_WEIGHT_G)} g, ${to(Math.abs(weight.at_mm), STATION_MM)} mm ${weight.at_mm < 0 ? 'behind' : 'in front of'} the balance pin)`
 }
 
 /** Nothing under the front of the key, which keeps either target out of
@@ -206,9 +214,9 @@ const LIMIT_WHY: {
 } = {
   rail_too_low: {
     key_height: (searchMm) =>
-      `it would take more than ${fixed(searchMm, 0)} mm of paper under the balance punching, the balance rail standing too low`,
+      `it would take more than ${to(searchMm, SEARCH_MM)} mm of paper under the balance punching, the balance rail standing too low`,
     key_dip: (searchMm) =>
-      `it would take more than ${fixed(searchMm, 0)} mm of paper on the front punching, the front rail standing too low`,
+      `it would take more than ${to(searchMm, SEARCH_MM)} mm of paper on the front punching, the front rail standing too low`,
   },
   front_pin_in_mortise: {
     key_height: () =>
@@ -244,7 +252,7 @@ const LIMIT_WHY: {
 
 const regulationWhy: Catalog['regulation']['why'] = {
   regulation_infeasible: ({ target, wanted_mm, limited_by, shortfall_mm, search_mm }) =>
-    `${fixed(wanted_mm, 2)} mm of ${TARGET[target]} is out of reach, by ${hundredths(shortfall_mm)}: ${LIMIT_WHY[limited_by][target](search_mm)}.`,
+    `${to(wanted_mm, LENGTH_MM)} mm of ${TARGET[target]} is out of reach, by ${hundredths(shortfall_mm)}: ${LIMIT_WHY[limited_by][target](search_mm)}.`,
   no_seat: ({ why }) =>
     `the key could not be seated while the papers were being tried: ${word(refusal, why.code, why)}`,
 }
@@ -254,9 +262,9 @@ const frictionWhy: Worded<FrictionRefusal> = {
   protocol_refused: ({ why }) =>
     `Stanwood's protocol cannot read a key friction weight on this key: ${word(refusal, why.code, why)}`,
   under_no_friction: ({ typed_g, least_g }) =>
-    `${fixed(typed_g, 2)} g is less than Stanwood's protocol reads on this key with no friction at all, ${fixed(least_g, 2)} g: what the key's tilt at rest leaves of its own balance and of the temporary weight's.`,
+    `${to(typed_g, MASS_G)} g is less than Stanwood's protocol reads on this key with no friction at all, ${to(least_g, MASS_G)} g: what the key's tilt at rest leaves of its own balance and of the temporary weight's.`,
   beyond_the_search: ({ typed_g, most_g, holds_g }) =>
-    `${fixed(typed_g, 2)} g is more than the tightest bushings the bench tries read, ${fixed(most_g, 2)} g: they hold ${fixed(holds_g, 0)} g at the measuring point with the key level, and would hold the key wherever it was put.`,
+    `${to(typed_g, MASS_G)} g is more than the tightest bushings the bench tries read, ${to(most_g, MASS_G)} g: they hold ${to(holds_g, WEIGHT_G)} g at the measuring point with the key level, and would hold the key wherever it was put.`,
 }
 
 /** Why a weighing of the key was refused. */
@@ -264,7 +272,7 @@ const weighingWhy: Worded<WeighingRefusal> = {
   roller_off_the_covering: ({ from_lip_mm, covering_mm }) =>
     `a front weight is read on the covering, in front of the balance pin, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
   center_of_mass_off_the_key: ({ at_mm }) =>
-    `that front weight on that mass stands the key's center of mass ${fixed(Math.abs(at_mm), 0)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
+    `that front weight on that mass stands the key's center of mass ${to(Math.abs(at_mm), STATION_MM)} mm ${at_mm < 0 ? 'behind' : 'in front of'} the balance pin, past its ${at_mm < 0 ? 'tail' : "covering's lip"}: off the key.`,
 }
 
 /** Two parts that would overlap along the key, as a problem names them. A
@@ -288,46 +296,36 @@ const OVERLAP = (back: Part, front: Part, by: string): string =>
 /** A setting's unit, as a value in it is written. */
 const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
 
-/** The units a path's name may end in, the longest first. */
-const SUFFIXES: readonly SettingUnit[] = ['gmm', 'mm', 'g']
-
-/** The unit a path's name ends in, as a value in it is written after it,
- * space included: every path carries its unit in its name. */
-function unitIn(path: string): string {
-  const unit = SUFFIXES.find((u) => path.endsWith(`_${u}`))
-  return unit === undefined ? '' : ` ${UNIT[unit]}`
-}
-
 /** What no part could be built as, or what the bench has not. */
 const problem: Worded<Problem> = {
   not_finite: () => 'a value that is not a number.',
   out_of_range: ({ param, value, min, max }) => {
-    const u = unitIn(param)
-    return `${fixed(value, 2)}${u} is not a value this part can have${min === null ? '' : `, no less than ${fixed(min, 2)}${u}`}${max === null ? '' : `${min === null ? ',' : ' and'} no more than ${fixed(max, 2)}${u}`}.`
+    const unit = unitIn(param, UNIT)
+    return `${to(value, OUT_OF_RANGE)}${unit} is not a value this part can have${min === null ? '' : `, no less than ${to(min, OUT_OF_RANGE)}${unit}`}${max === null ? '' : `${min === null ? ',' : ' and'} no more than ${to(max, OUT_OF_RANGE)}${unit}`}.`
   },
   not_in_the_drawer: ({ thickness_mm, drawer_mm }) =>
-    `no drawer holds a ${fixed(thickness_mm, 2)} mm paper: it holds ${list(drawer_mm.map((mm) => fixed(mm, 2)))} mm.`,
+    `no drawer holds a ${to(thickness_mm, LENGTH_MM)} mm paper: it holds ${list(drawer_mm.map((mm) => to(mm, LENGTH_MM)))} mm.`,
   mass_not_positive: () => 'a key weighs more than nothing.',
   outline_crosses_itself: ({ back, front, by_mm }) =>
-    `${OVERLAP(back, front, fixed(by_mm, 1))}: no key is cut like that.`,
+    `${OVERLAP(back, front, to(by_mm, PART_MM))}: no key is cut like that.`,
   feature_outside_keystick: ({ part, by_mm }) =>
     part === 'top_clearance'
-      ? `the ${PART[part]} would run ${fixed(by_mm, 1)} mm back over the key's thinned tail: it is cut in the keystick's full height.`
-      : `the ${PART[part]} would stand off the flat of the key's underside, by ${fixed(by_mm, 1)} mm.`,
+      ? `the ${PART[part]} would run ${to(by_mm, PART_MM)} mm back over the key's thinned tail: it is cut in the keystick's full height.`
+      : `the ${PART[part]} would stand off the flat of the key's underside, by ${to(by_mm, PART_MM)} mm.`,
   capstan_behind_back_check_block: ({ by_mm }) =>
-    `the capstan would stand behind the back check block: its place is between the block and the key button, and it clears the block ${fixed(by_mm, 1)} mm further forward.`,
+    `the capstan would stand behind the back check block: its place is between the block and the key button, and it clears the block ${to(by_mm, PART_MM)} mm further forward.`,
   capstan_in_block: ({ block, by_mm }) =>
-    `the capstan would stand ${fixed(by_mm, 1)} mm into the ${PART[block]}.`,
+    `the capstan would stand ${to(by_mm, PART_MM)} mm into the ${PART[block]}.`,
   capstan_off_the_full_height: ({ by_mm }) =>
-    `the capstan would stand over the key's thinned tail, and it screws into the keystick's full height: its head stands wholly over it ${fixed(by_mm, 1)} mm further forward.`,
+    `the capstan would stand over the key's thinned tail, and it screws into the keystick's full height: its head stands wholly over it ${to(by_mm, PART_MM)} mm further forward.`,
   capstan_dome_narrower_than_its_head: ({ dome_mm, head_mm }) =>
-    `a dome of ${fixed(dome_mm, 2)} mm cannot cap a capstan head of ${fixed(head_mm, 2)} mm radius.`,
+    `a dome of ${to(dome_mm, LENGTH_MM)} mm cannot cap a capstan head of ${to(head_mm, LENGTH_MM)} mm radius.`,
   clearance_not_a_cut: ({ length_mm, depth_mm }) =>
-    `a ${PART.top_clearance} ${fixed(length_mm, 1)} mm long and ${fixed(depth_mm, 1)} mm deep cuts nothing: it is cut below the keystick's full top, its front end in front of its back end.`,
+    `a ${PART.top_clearance} ${to(length_mm, PART_MM)} mm long and ${to(depth_mm, PART_MM)} mm deep cuts nothing: it is cut below the keystick's full top, its front end in front of its back end.`,
   clearance_through_keystick: ({ depth_mm, wood_mm }) =>
-    `a ${PART.top_clearance} ${fixed(depth_mm, 1)} mm deep goes through the keystick, which has ${fixed(wood_mm, 1)} mm of wood under it.`,
+    `a ${PART.top_clearance} ${to(depth_mm, PART_MM)} mm deep goes through the keystick, which has ${to(wood_mm, PART_MM)} mm of wood under it.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
-    `a front mortise ${fixed(depth_mm, 1)} mm deep goes through the ${fixed(wood_mm, 1)} mm of the keystick.`,
+    `a front mortise ${to(depth_mm, PART_MM)} mm deep goes through the ${to(wood_mm, PART_MM)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
     `the measuring point stands on the covering, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
   unknown_path: ({ path }) => `the bench has no setting ${path}.`,
@@ -397,13 +395,13 @@ const verdict: Worded<Verdict> = {
   held_by_friction: ({ touching }) =>
     touching === null ? 'held by friction alone' : `${ON_THE[touching]}, held by friction`,
   rides_on_both_stops: ({ front, lift_mm }) =>
-    `riding ${ON_THE[front]} and on the back rail cloth, ${fixed(lift_mm, 2)} mm above its balance punching`,
+    `riding ${ON_THE[front]} and on the back rail cloth, ${to(lift_mm, LENGTH_MM)} mm above its balance punching`,
   lifts_off_balance_punching: ({ touching, needs_friction, lift_mm }) =>
     touching.length === 0
-      ? `lifted ${fixed(lift_mm, 2)} mm off its balance punching, touching nothing`
+      ? `lifted ${to(lift_mm, LENGTH_MM)} mm off its balance punching, touching nothing`
       : needs_friction
-        ? `lifted ${fixed(lift_mm, 2)} mm off its balance punching, on ${stopsNamed(touching)}, held there by its friction`
-        : `lifted ${fixed(lift_mm, 2)} mm off its balance punching, held there by ${stopsNamed(touching)}`,
+        ? `lifted ${to(lift_mm, LENGTH_MM)} mm off its balance punching, on ${stopsNamed(touching)}, held there by its friction`
+        : `lifted ${to(lift_mm, LENGTH_MM)} mm off its balance punching, held there by ${stopsNamed(touching)}`,
   lifts_off_its_frame: () =>
     'lifted off its frame, off its balance pin: no equilibrium in the model holds it there',
 }
@@ -411,9 +409,12 @@ const verdict: Worded<Verdict> = {
 export const en: Catalog = {
   number: fixed,
   list,
+  reasons,
 
   booting: 'starting the engine…',
   title: 'Single-key bench',
+  tabTitle: 'Piano action bench — single key',
+  languageSelector: 'Language',
   protocol:
     'Weighed by Stanwood’s *Standard Protocols of the New Touchweight Metrology*, February 2000. Every weight is centered on the measuring point, marked on the section, a set distance back from the front lip of the key.',
 
@@ -450,18 +451,18 @@ export const en: Catalog = {
   },
   fault: {
     pin_outside_mortise: ({ by_mm }) =>
-      `the front rail pin stands ${fixed(by_mm, 1)} mm outside the key's mortise`,
+      `the front rail pin stands ${to(by_mm, PART_MM)} mm outside the key's mortise`,
     cloth_in_front_of_chamfer: ({ by_mm }) =>
-      `the back rail cloth reaches ${fixed(by_mm, 1)} mm in front of the tail's chamfer, so the key can only meet it on a corner`,
+      `the back rail cloth reaches ${to(by_mm, PART_MM)} mm in front of the tail's chamfer, so the key can only meet it on a corner`,
     cloth_behind_key: ({ by_mm }) =>
-      `the back rail cloth reaches ${fixed(by_mm, 1)} mm past the end of the key`,
+      `the back rail cloth reaches ${to(by_mm, PART_MM)} mm past the end of the key`,
     punching_off_underside: ({ rail, by_mm }) =>
-      `the ${PART[rail]} stands ${fixed(by_mm, 1)} mm off the flat of the key's underside`,
+      `the ${PART[rail]} stands ${to(by_mm, PART_MM)} mm off the flat of the key's underside`,
   },
   noWeighing: (why) =>
     `No weighing is possible: ${why} The readings below that need the key seated on its frame are refused, each with why.`,
-  stopsFight: (r) =>
-    `The stops fight: ${r} The key is drawn riding on them; what needs no stroke is read below, and the weights that need one are refused.`,
+  stopsFight: (riding) =>
+    `The stops fight: ${riding} The key is drawn riding on them; what needs no stroke is read below, and the weights that need one are refused.`,
   riding,
   problem,
   editRefusal,
@@ -507,7 +508,7 @@ export const en: Catalog = {
     keyFrictionTwice: (jig, frame) =>
       `The key friction weight is read twice. Stanwood’s protocol zeroes the front weight on the leveled jig with a temporary weight${temporary(jig)}, then puts the key back on its frame and finds the least weight that makes it fall. The other cancels the key’s balance where it rests on its frame${temporary(frame)}, which reads the bushings alone. They differ by what the key’s tilt at rest does to the weights’ arms.`,
     indicative: (because) =>
-      `These readings are indicative, not measurements: ${because.join('; ')}.`,
+      `These readings are indicative, not measurements: ${reasons(because)}.`,
     refused: 'refused',
     isRefused: (label, why) => `${label} is refused: ${why}`,
     target: (value) => `target ${value}`,
@@ -553,8 +554,8 @@ export const en: Catalog = {
   refusal,
 
   regulation: {
-    laid: (r) =>
-      `Laid ${fixed(r.balance_mm, 2)} mm of paper under the balance punching and ${fixed(r.front_mm, 2)} mm on the front punching: ${fixed(r.key_height_mm, 2)} mm of key height and ${fixed(r.key_dip_mm, 2)} mm of dip, as near ${fixed(r.asked_key_height_mm, 2)} and ${fixed(r.asked_key_dip_mm, 2)} mm as the drawer's papers come from below.`,
+    laid: (papers) =>
+      `Laid ${to(papers.balance_mm, LENGTH_MM)} mm of paper under the balance punching and ${to(papers.front_mm, LENGTH_MM)} mm on the front punching: ${to(papers.key_height_mm, LENGTH_MM)} mm of key height and ${to(papers.key_dip_mm, LENGTH_MM)} mm of dip, as near ${to(papers.asked_key_height_mm, LENGTH_MM)} and ${to(papers.asked_key_dip_mm, LENGTH_MM)} mm as the drawer's papers come from below.`,
     why: regulationWhy,
     layingNote:
       'The bench lays the papers as a technician does: the key height first, on the balance punching, then the dip on the front punching with the key as it then stands, each the closest stack the drawer makes from below. So it lands within one paper of each target, not on it, and the sheet shows both. A target no stack reaches is refused, with what keeps it out and by how many millimeters, and nothing is changed.',
@@ -646,10 +647,11 @@ export const en: Catalog = {
       'Put a weight on the measuring point. Three things can happen, not two: above the down weight the key descends, below the up weight it rises, and **between them it does nothing at all**. That gap is the friction.',
     verdict,
     theKeyIs: (verdict) => `the key is ${verdict}`,
-    margin: (g) => `the weight lies between U and D, ${to(g, MASS_G)} g from moving the key`,
-    gaps: (front, back) => {
+    margin: (marginG) =>
+      `the weight lies between U and D, ${to(marginG, MASS_G)} g from moving the key`,
+    gaps: (frontMm, backMm) => {
       const gap = (mm: number | null) => (mm === null ? 'none' : `${to(mm, GAP_MM)} mm`)
-      return `gap at the front punching ${gap(front)} · at the back rail cloth ${gap(back)}`
+      return `gap at the front punching ${gap(frontMm)} · at the back rail cloth ${gap(backMm)}`
     },
     bushings: (kf) =>
       kf === null
@@ -659,7 +661,7 @@ export const en: Catalog = {
       `The punchings are read at their center: a felt washer under a key carries the load over its whole face, and the bench takes it at the middle, under the balance pin for the balance punching. A key standing out of level on one overlaps the drawn felt's edge by what the felt would compress${
         overlaps.length === 0
           ? ''
-          : `, here ${overlaps.map((o) => `${to(o.overlap_mm, LENGTH_MM)} mm at the ${CONTACT[o.pair]}`).join(' and ')}`
+          : `, here ${overlaps.map((overlap) => `${to(overlap.overlap_mm, LENGTH_MM)} mm at the ${CONTACT[overlap.pair]}`).join(' and ')}`
       }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. The contacts marked on the view are where the key bears, and what stands within a millimeter of it.`,
     notWeighed:
       'This key is not weighed: what a weight on it does depends on the key’s own balance, which only a weighing gives, so the key is drawn where its back rests on its cloth, as key height is read, whatever weight is typed. Weigh it to try the weights.',

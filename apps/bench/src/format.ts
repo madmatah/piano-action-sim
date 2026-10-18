@@ -23,10 +23,22 @@ export const ANGLE_DEG = 0.01
 export const MASS_G = 0.01
 /** A temporary weight's mass, grams. */
 export const TEMPORARY_WEIGHT_G = 0.1
-/** Where a temporary weight stands along the key, millimeters. */
+/** Where a weight, or the key's center of mass, stands along the key,
+ * millimeters. */
 export const STATION_MM = 1
 /** Where a front weight was read from the lip, millimeters. */
 export const FROM_LIP_MM = 0.1
+/** How far a part stands out of place, or a dimension of a cut, as a fault
+ * or a refusal names it, millimeters: to the tenth. */
+export const PART_MM = 0.1
+/** A weight or a force a refusal names, grams: to the nearest whole gram. */
+export const WEIGHT_G = 1
+/** How much paper a regulation's search lays on a stack before it gives up,
+ * millimeters. */
+export const SEARCH_MM = 1
+/** A value refused as out of its setting's range, in the unit its path
+ * names: to the hundredth. */
+export const OUT_OF_RANGE = 0.01
 
 /**
  * The decimals a resolution is shown to: none for the gram, one for a tenth

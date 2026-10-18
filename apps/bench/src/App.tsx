@@ -18,7 +18,9 @@
  * reading the sheet's, and nothing here keeps a copy of either to drift from
  * them; the typed fields hold only what is typed until it is sent. Every
  * sentence is the catalog's (`i18n/`), composed from the codes and numbers
- * the engine sends.
+ * the engine sends, in the language the page opened in, the reader's
+ * browser's where the bench speaks it, or the one chosen since: choosing
+ * another rewords the page and asks the engine nothing.
  */
 
 import type { Bench } from '@pas/wasm'
@@ -49,7 +51,16 @@ import {
 } from './bench'
 import { type Answer, type Around, type Edits, Panel, type Read, Refused, shown } from './Control'
 import { ANGLE_DEG, decimals, LENGTH_MM, MASS_G } from './format'
-import { type Reported, t, word } from './i18n'
+import {
+  CATALOG,
+  CatalogContext,
+  type Language,
+  pickLanguage,
+  type Reported,
+  useCatalog,
+  word,
+} from './i18n'
+import { LanguageChoice } from './LanguageChoice'
 import { madeBy } from './layout'
 import { CONTACT_COLOR, HOW_COLOR } from './palette'
 import { Rich } from './Rich'
@@ -110,6 +121,7 @@ function Row({
   /** Why it cannot be read. */
   why: string | null
 }) {
+  const t = useCatalog()
   if (value === null) {
     return (
       <div className="row refused" data-quantity={quantity} title={why ?? ''}>
@@ -123,10 +135,10 @@ function Row({
   return (
     <div className="row" data-quantity={quantity} data-value={value}>
       <span className="label">{control.label}</span>
-      <span className="value">{shown(value, resolution)}</span>
+      <span className="value">{shown(t, value, resolution)}</span>
       <span className="unit">{control.unit}</span>
       <span className="target">
-        {target === undefined ? '' : t.sheet.target(shown(target, resolution))}
+        {target === undefined ? '' : t.sheet.target(shown(t, target, resolution))}
       </span>
     </div>
   )
@@ -147,6 +159,7 @@ function Measured({
   procedure: Procedure
   target?: number | undefined
 }) {
+  const t = useCatalog()
   const m = reading(s, procedure)
   const label = t.procedure[procedure]
   if (m === undefined || m.outcome === 'refused') {
@@ -168,7 +181,7 @@ function Measured({
   }
   const to = decimals(m.resolution)
   const beside =
-    target === undefined ? t.number(m.value, to + 2) : t.sheet.target(shown(target, LENGTH_MM))
+    target === undefined ? t.number(m.value, to + 2) : t.sheet.target(shown(t, target, LENGTH_MM))
   return (
     <div
       className={`row ${m.trust.code}`}
@@ -176,7 +189,7 @@ function Measured({
       data-shown={m.shown}
       data-exact={m.value}
       title={
-        m.trust.code === 'indicative' ? m.trust.because.map((b) => t.because[b]).join('; ') : ''
+        m.trust.code === 'indicative' ? t.reasons(m.trust.because.map((b) => t.because[b])) : ''
       }
     >
       <span className="label">{label}</span>
@@ -192,6 +205,7 @@ function Measured({
  * refused: one note each, under the weights.
  */
 function SheetNotes({ s }: { s: Sheet }) {
+  const t = useCatalog()
   const because = [
     ...new Set(
       s.readings.flatMap((m) =>
@@ -248,6 +262,12 @@ export function App() {
   // done: the papers a regulation laid, which the engine keeps nowhere else.
   // An edit refused it keeps itself, in its diagnostics.
   const [answer, setAnswer] = useState<Answer | null>(null)
+  const [language, setLanguage] = useState<Language>(() => pickLanguage(navigator.languages))
+  const t = CATALOG[language]
+  useEffect(() => {
+    document.documentElement.lang = language
+    document.title = t.tabTitle
+  }, [language, t])
 
   // Every mutation goes through the engine and the whole page is re-read
   // from it. No value on this page is computed in TypeScript, and none is
@@ -536,133 +556,137 @@ export function App() {
   }
 
   return (
-    <div className="bench">
-      <div
-        className="view"
-        data-touching={touching.join(' ')}
-        data-marked={marked ? 'provenance' : undefined}
-      >
-        <SagittalView scene={engine.scene} state={engine.state} mode={view} marked={marked} />
-        {shownBand && drawnBand && (
-          <BandView
-            band={drawnBand.band}
-            stale={drawnBand.stale}
-            weightG={s.experiment.weight_g}
-            travelMm={d.touch?.travel_mm ?? null}
-          />
-        )}
-        <div className="viewtabs">
-          <button
-            type="button"
-            className={!shownBand && view === 'section' ? 'on' : ''}
-            data-view="section"
-            onClick={() => {
-              setView('section')
-              setShownBand(false)
-            }}
-          >
-            {t.view.section}
-          </button>
-          <button
-            type="button"
-            className={!shownBand && view === 'solid' ? 'on' : ''}
-            data-view="solid"
-            onClick={() => {
-              setView('solid')
-              setShownBand(false)
-            }}
-          >
-            {t.view.solid}
-          </button>
-          <button
-            type="button"
-            className={shownBand ? 'on' : ''}
-            data-view="band"
-            onClick={showTheBand}
-          >
-            {t.view.band}
-          </button>
-          {!shownBand && (
-            <>
-              <button
-                type="button"
-                className={marked ? 'on' : ''}
-                data-mark="provenance"
-                aria-pressed={marked}
-                onClick={() => setMarked(!marked)}
-              >
-                {t.view.provenance}
-              </button>
-              <span className="hint">{t.view.hint}</span>
-              <span className="legend">
-                <i style={{ background: CONTACT_COLOR.closed }} /> {t.view.bears}
-                <i style={{ background: CONTACT_COLOR.open }} /> {t.view.open}
-                <i style={{ background: CONTACT_COLOR.overlapping }} /> {t.view.overlapping}
-              </span>
-            </>
+    <CatalogContext.Provider value={t}>
+      <div className="bench">
+        <div
+          className="view"
+          data-touching={touching.join(' ')}
+          data-marked={marked ? 'provenance' : undefined}
+        >
+          <SagittalView scene={engine.scene} state={engine.state} mode={view} marked={marked} />
+          {shownBand && drawnBand && (
+            <BandView
+              band={drawnBand.band}
+              stale={drawnBand.stale}
+              weightG={s.experiment.weight_g}
+              travelMm={d.touch?.travel_mm ?? null}
+            />
+          )}
+          <div className="viewtabs">
+            <button
+              type="button"
+              className={!shownBand && view === 'section' ? 'on' : ''}
+              data-view="section"
+              onClick={() => {
+                setView('section')
+                setShownBand(false)
+              }}
+            >
+              {t.view.section}
+            </button>
+            <button
+              type="button"
+              className={!shownBand && view === 'solid' ? 'on' : ''}
+              data-view="solid"
+              onClick={() => {
+                setView('solid')
+                setShownBand(false)
+              }}
+            >
+              {t.view.solid}
+            </button>
+            <button
+              type="button"
+              className={shownBand ? 'on' : ''}
+              data-view="band"
+              onClick={showTheBand}
+            >
+              {t.view.band}
+            </button>
+            {!shownBand && (
+              <>
+                <button
+                  type="button"
+                  className={marked ? 'on' : ''}
+                  data-mark="provenance"
+                  aria-pressed={marked}
+                  onClick={() => setMarked(!marked)}
+                >
+                  {t.view.provenance}
+                </button>
+                <span className="hint">{t.view.hint}</span>
+                <span className="legend">
+                  <i style={{ background: CONTACT_COLOR.closed }} /> {t.view.bears}
+                  <i style={{ background: CONTACT_COLOR.open }} /> {t.view.open}
+                  <i style={{ background: CONTACT_COLOR.overlapping }} /> {t.view.overlapping}
+                </span>
+              </>
+            )}
+          </div>
+          {marked && !shownBand && (
+            <div className="provenance-legend">
+              {(Object.keys(HOW_COLOR) as Array<keyof typeof HOW_COLOR>).map((how) => (
+                <span key={how} data-how={how}>
+                  <span className="swatch" style={{ background: HOW_COLOR[how] }} />{' '}
+                  {t.view.how[how]}
+                </span>
+              ))}
+            </div>
           )}
         </div>
-        {marked && !shownBand && (
-          <div className="provenance-legend">
-            {(Object.keys(HOW_COLOR) as Array<keyof typeof HOW_COLOR>).map((how) => (
-              <span key={how} data-how={how}>
-                <span className="swatch" style={{ background: HOW_COLOR[how] }} /> {t.view.how[how]}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
 
-      <aside className="panel">
-        <h1>{t.title}</h1>
-        <p className="protocol">
-          <Rich text={t.protocol} />
-        </p>
+        <aside className="panel">
+          <LanguageChoice language={language} choose={setLanguage} />
+          <h1>{t.title}</h1>
+          <p className="protocol">
+            <Rich text={t.protocol} />
+          </p>
 
-        {d.faults.length > 0 && (
-          <div className="faults">
-            <b>{t.faults.heading}</b>
-            <ul>
-              {d.faults.map((f, i) => (
-                <li key={i} data-code={f.code}>
-                  {word(t.fault, f.code, f)}
-                </li>
-              ))}
-            </ul>
-            <p>
-              <Rich text={t.faults.placement} />
+          {d.faults.length > 0 && (
+            <div className="faults">
+              <b>{t.faults.heading}</b>
+              <ul>
+                {d.faults.map((f, i) => (
+                  <li key={i} data-code={f.code}>
+                    {word(t.fault, f.code, f)}
+                  </li>
+                ))}
+              </ul>
+              <p>
+                <Rich text={t.faults.placement} />
+              </p>
+            </div>
+          )}
+          {unplaced && <Refused refused={refused} />}
+          {seatWhy !== null && (
+            <p className="degenerate no-weighing" data-code={d.seat_refused?.code}>
+              {t.noWeighing(seatWhy)}
             </p>
-          </div>
-        )}
-        {unplaced && <Refused refused={refused} />}
-        {seatWhy !== null && (
-          <p className="degenerate no-weighing" data-code={d.seat_refused?.code}>
-            {t.noWeighing(seatWhy)}
-          </p>
-        )}
-        {d.riding && (
-          <p
-            className="riding degenerate"
-            data-front={d.riding.front}
-            data-lift-mm={d.riding.lift_mm}
-          >
-            {t.stopsFight(t.riding(d.riding))}
-          </p>
-        )}
+          )}
+          {d.riding && (
+            <p
+              className="riding degenerate"
+              data-front={d.riding.front}
+              data-lift-mm={d.riding.lift_mm}
+            >
+              {t.stopsFight(t.riding(d.riding))}
+            </p>
+          )}
 
-        {engine.registry.page.map((p) => (
-          <Panel
-            // Another instrument on the bench opens its forms on its own
-            // numbers.
-            key={`${s.profile}-${p.panel}`}
-            layout={p}
-            around={around[p.panel]}
-            read={engine}
-            edits={edits}
-            answer={answer}
-          />
-        ))}
-      </aside>
-    </div>
+          {engine.registry.page.map((p) => (
+            <Panel
+              // Another instrument on the bench opens its forms on its own
+              // numbers.
+              key={`${s.profile}-${p.panel}`}
+              layout={p}
+              around={around[p.panel]}
+              read={engine}
+              edits={edits}
+              answer={answer}
+            />
+          ))}
+        </aside>
+      </div>
+    </CatalogContext.Provider>
   )
 }

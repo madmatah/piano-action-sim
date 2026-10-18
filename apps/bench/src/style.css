@@ -170,8 +170,15 @@ button:hover {
   top: 0.6rem;
   left: 0.6rem;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
+  max-width: calc(100% - 1.2rem);
+}
+/* A tab's name stays on one line: where a language names the tabs longer
+   than the view is wide, the tabs wrap instead. */
+.viewtabs button {
+  white-space: nowrap;
 }
 .viewtabs button.on {
   background: var(--ink);
@@ -424,4 +431,17 @@ button.action {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.languages {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
+}
+.languages button.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
 }

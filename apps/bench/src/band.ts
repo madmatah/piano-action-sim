@@ -13,7 +13,7 @@
  * labels its extremes in full and never by the gram.
  */
 import type { Reading } from '@pas/wasm/types'
-import { t } from './i18n'
+import type { Catalog } from './i18n'
 
 /** A reading read, as the band carries it. */
 export type Read = Extract<Reading, { outcome: 'read' }>
@@ -24,10 +24,11 @@ export const FORCE_DECIMALS = 2
 export const TRAVEL_DECIMALS = 2
 
 /**
- * The label of a curve's extreme, marked where it falls: its force in full,
- * to the hundredth of a gram, and never the gram a protocol reads.
+ * The label of a curve's extreme, marked where it falls, as `t` words it: its
+ * force in full, to the hundredth of a gram, and never the gram a protocol
+ * reads.
  */
-export function extremeLabel(m: Read): string {
+export function extremeLabel(t: Catalog, m: Read): string {
   const grams = t.number(m.value, FORCE_DECIMALS)
   return m.procedure === 'down_weight_on_the_band'
     ? t.band.downMarker(grams)
@@ -35,7 +36,7 @@ export function extremeLabel(m: Read): string {
 }
 
 /** The same, with where it falls, for a reader without the chart. */
-export function extremeAt(m: Read): string {
+export function extremeAt(t: Catalog, m: Read): string {
   const atMm = m.conditions.sweep?.at_mm ?? 0
-  return t.band.extremeAt(extremeLabel(m), t.number(atMm, TRAVEL_DECIMALS))
+  return t.band.extremeAt(extremeLabel(t, m), t.number(atMm, TRAVEL_DECIMALS))
 }
