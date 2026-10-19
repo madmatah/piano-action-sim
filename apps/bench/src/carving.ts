@@ -7,22 +7,24 @@
  * carves it out of the parts it runs through, by not painting them inside
  * it, and draws its walls from inside. Every cut the engine sends with a
  * width is a rectangle in the section, so the box its outline bounds, swept
- * across that width, is the cut itself; a bored hole, the balance hole, is
- * the cylinder that box holds, about the box's vertical middle. A cut with
- * no width, the front mortise, whose width the model does not know, is not
- * carved, and neither is one whose outline is no rectangle, which a box
- * would misdraw.
+ * across that width, holds the cut: a side hole fills it, and a milled cut,
+ * a mortise or the balance hole, has its two ends rounded to its cutter's
+ * radius, half the box's width across the keyboard, a hole as long as its
+ * cutter is wide being round. A cut with no width is not carved, and
+ * neither is one whose outline is no rectangle, which a box would misdraw.
  */
 
 import type { Outline } from '@pas/wasm/types'
+import * as THREE from 'three'
 import { type Box, measureBounds, pairUp } from './bounds'
 
 /** A cut as the solid carves it: the box it stands in, in a body's frame,
- * and whether it is round, the cylinder that box holds about its vertical
- * middle, the hole's axis, as wide across the keyboard as along the key. */
+ * and whether its ends are rounded, milled by a cutter as wide as the box
+ * across the keyboard, moved along the key: the box less its four corners,
+ * each beyond a quarter circle of the cutter's radius. */
 export type Hollow = {
   readonly box: Box
-  readonly isRound: boolean
+  readonly hasRoundEnds: boolean
 }
 
 /** The walls of one cut: the cut, its hollow, the parts of the body it runs
@@ -43,8 +45,9 @@ export type Carving = {
 
 /** How many cuts a part is carved by, or a cut's walls open into, at most:
  * the key button is carved by the balance mortise and the two side holes,
- * which the slot's walls open into with the balance hole, and one more
- * would still be carved. */
+ * which the slot's walls open into with the balance hole, and the keystick
+ * by the balance mortise, its hole and the front mortise; one more would
+ * still be carved. */
 export const MAX_CUTS = 4
 
 /** How far past a cut's faces a face lying on them goes with it,
@@ -94,7 +97,7 @@ export function overlaps(first: Box, second: Box): boolean {
 
 /**
  * Plans what the solid carves among one body's `outlines`. Each cut that is
- * a rectangle in the section, extruded with a width or bored, carves the
+ * a rectangle in the section, extruded or milled with a width, carves the
  * body's solid parts its box shares a volume with, never a lining, which
  * stands in the void; its walls are drawn in those parts, and open into the
  * other cuts its box meets.
@@ -104,10 +107,14 @@ export function planCarving(outlines: readonly Outline[]): Carving {
     .filter(
       (outline) =>
         outline.role === 'cut' &&
-        ((outline.sweep === 'extruded' && outline.width_mm > 0) || outline.sweep === 'bored') &&
+        (outline.sweep === 'extruded' || outline.sweep === 'milled') &&
+        outline.width_mm > 0 &&
         isRectangle(outline),
     )
-    .map((cut) => ({ cut, hollow: { box: measureBounds(cut), isRound: cut.sweep === 'bored' } }))
+    .map((cut) => ({
+      cut,
+      hollow: { box: measureBounds(cut), hasRoundEnds: cut.sweep === 'milled' },
+    }))
   const solids = outlines.filter(
     (outline) => outline.role === 'solid' && outline.sweep === 'extruded',
   )
@@ -131,7 +138,7 @@ export function planCarving(outlines: readonly Outline[]): Carving {
 /**
  * Patches a three.js shader's source to leave unpainted what stands inside
  * any of the cuts its `cutMin` and `cutMax` uniforms hold, `cutCount` of
- * them, each the cylinder its box holds where `cutIsRound` says so, and
+ * them, each its ends rounded where `cutHasRoundEnds` says so, and
  * what stands outside the box `keepMin` and `keepMax` hold, or on one of its
  * faces, where a cut's walls open through the part's outline, as the hole's
  * through the underside and the side holes' through the key button's sides:
@@ -159,10 +166,15 @@ export function patchShader(
 varying vec3 vCarve;
 uniform vec3 cutMin[MAX_CUTS];
 uniform vec3 cutMax[MAX_CUTS];
-uniform bool cutIsRound[MAX_CUTS];
+uniform bool cutHasRoundEnds[MAX_CUTS];
 uniform int cutCount;
 uniform vec3 keepMin;
-uniform vec3 keepMax;`,
+uniform vec3 keepMax;
+float measureBeyondTheCutter(vec3 position, vec3 low, vec3 high) {
+	float radius = 0.5 * (high.z - low.z);
+	vec2 axis = vec2(clamp(position.x, low.x + radius, high.x - radius), 0.5 * (low.z + high.z));
+	return distance(position.xz, axis) - radius;
+}`,
       )
       .replace(
         '#include <clipping_planes_fragment>',
@@ -174,14 +186,44 @@ uniform vec3 keepMax;`,
 \t\tvec3 low = cutMin[cutIndex];
 \t\tvec3 high = cutMax[cutIndex];
 \t\tbool isInBox = all(greaterThan(vCarve, low - ${slack})) && all(lessThan(vCarve, high + ${slack}));
-\t\tif (isInBox && (!cutIsRound[cutIndex] || distance(vCarve.xz, 0.5 * (low.xz + high.xz)) < 0.5 * (high.x - low.x) + ${slack})) discard;
+\t\tif (isInBox && (!cutHasRoundEnds[cutIndex] || measureBeyondTheCutter(vCarve, low, high) < ${slack})) discard;
 \t}`,
       ),
   }
 }
 
+/**
+ * A milled cut's walls, to be drawn from inside: in plan, its box with its
+ * two ends rounded to the cutter's radius, half its width across the
+ * keyboard, swept up its height, `segments` faces round a whole circle.
+ */
+export function millWalls({ minMm, maxMm }: Box, segments: number): THREE.BufferGeometry {
+  const [backMm, bottomMm, trebleMm] = minMm
+  const [frontMm, topMm, bassMm] = maxMm
+  const radiusMm = (bassMm - trebleMm) / 2
+  const middleMm = (trebleMm + bassMm) / 2
+  const plan = new THREE.Shape()
+  plan.moveTo(backMm + radiusMm, trebleMm)
+  plan.lineTo(frontMm - radiusMm, trebleMm)
+  plan.absarc(frontMm - radiusMm, middleMm, radiusMm, -Math.PI / 2, Math.PI / 2, false)
+  plan.lineTo(backMm + radiusMm, bassMm)
+  plan.absarc(backMm + radiusMm, middleMm, radiusMm, Math.PI / 2, (3 * Math.PI) / 2, false)
+  const walls = new THREE.ExtrudeGeometry(plan, {
+    depth: topMm - bottomMm,
+    bevelEnabled: false,
+    // three draws an arc through twice as many points as it is given
+    // segments: a quarter of a circle's faces for each half circle.
+    curveSegments: segments / 4,
+  })
+  // The plan is drawn in x and z and swept along its own third axis: a
+  // quarter turn about x sweeps it down from the top.
+  walls.rotateX(Math.PI / 2)
+  walls.translate(0, topMm, 0)
+  return walls
+}
+
 /** The cuts a patched shader reads, padded to [`MAX_CUTS`]: their boxes as
- * flat triples, whether each is round, how many, and the box to keep
+ * flat triples, whether each has its ends rounded, how many, and the box to keep
  * within, every part kept where none is given. Refuses more cuts than the
  * shader holds, as a drawing that would paint wood over a void. */
 export function packCuts(
@@ -190,7 +232,7 @@ export function packCuts(
 ): {
   cutMin: Array<[number, number, number]>
   cutMax: Array<[number, number, number]>
-  cutIsRound: boolean[]
+  cutHasRoundEnds: boolean[]
   cutCount: number
   keepMin: [number, number, number]
   keepMax: [number, number, number]
@@ -208,7 +250,10 @@ export function packCuts(
   return {
     cutMin: padded('minMm'),
     cutMax: padded('maxMm'),
-    cutIsRound: Array.from({ length: MAX_CUTS }, (_, cutIndex) => cuts[cutIndex]?.isRound ?? false),
+    cutHasRoundEnds: Array.from(
+      { length: MAX_CUTS },
+      (_, cutIndex) => cuts[cutIndex]?.hasRoundEnds ?? false,
+    ),
     cutCount: cuts.length,
     keepMin: keep ? [...keep.minMm] : [-FAR_MM, -FAR_MM, -FAR_MM],
     keepMax: keep ? [...keep.maxMm] : [FAR_MM, FAR_MM, FAR_MM],

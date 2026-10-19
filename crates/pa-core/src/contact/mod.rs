@@ -227,8 +227,7 @@ pub enum Sweep {
     /// Swept sideways across the keyboard: keys, rails, the back rail cloth,
     /// an oblong pin. The outline is in its body's `x` and `y`.
     Extruded {
-        /// Extent across the keyboard, meters. Zero where the model knows
-        /// none: the front mortise's, which only the section draws.
+        /// Extent across the keyboard, meters.
         width: f64,
         /// Where its middle stands across the keyboard, meters from the
         /// sagittal plane, positive toward the bass, the player's left, so
@@ -245,15 +244,18 @@ pub enum Sweep {
         /// Where the axis stands, meters along the body's `x`.
         axis_x: f64,
     },
-    /// Bored round about a vertical axis: the balance hole. The outline is
-    /// the hole's **section** through the axis, in the body's `x` and `y`,
-    /// the same either side of it, and is its silhouette: where the hole
-    /// opens through the wood, its mouth is a segment of its own, which the
-    /// wood's outline shares, as a cut's mouth is ([`crate::parts::key`]).
-    Bored {
-        /// Where the axis stands, meters along the body's `x`: the middle of
-        /// the outline.
-        axis_x: f64,
+    /// Milled by a cutter turning about a vertical axis, moved along the
+    /// body's `x`: a mortise, or, the cutter not moved, the round balance
+    /// hole. The outline is the cut's **section** through its middle, in the
+    /// body's `x` and `y`, and is its silhouette: where the cut opens through
+    /// the wood, its mouth is a segment of its own, which the wood's outline
+    /// shares, as a cut's mouth is ([`crate::parts::key`]). Across the
+    /// keyboard it is as wide as the cutter, centered on the sagittal plane,
+    /// its two ends rounded to the cutter's radius.
+    Milled {
+        /// The cutter's diameter, meters: the cut's width across the
+        /// keyboard.
+        width: f64,
     },
 }
 
@@ -301,7 +303,7 @@ impl Sweep {
     pub fn is_in_the_section(&self) -> bool {
         match *self {
             Sweep::Extruded { width, across } => across == 0.0 || 2.0 * across.abs() < width,
-            Sweep::Revolved { .. } | Sweep::Bored { .. } => true,
+            Sweep::Revolved { .. } | Sweep::Milled { .. } => true,
         }
     }
 }
@@ -360,8 +362,8 @@ impl Part {
     /// The part as the sagittal plane sees it, in its body's frame: the only
     /// geometry a [`SurfaceRef`] or an [`Anchor`] reads.
     ///
-    /// A prism's is its outline, and so is a bored hole's, its section
-    /// through its axis. A turned part's is its profile and the
+    /// A prism's is its outline, and so is a milled cut's, its section
+    /// through its middle. A turned part's is its profile and the
     /// profile's mirror about the axis, **with its hole hidden**: the key bears
     /// on a washer's annulus on both sides of the plane, so a washer's top
     /// runs from `−r_out` to `+r_out` across the axis. Derived from the stored
@@ -375,7 +377,7 @@ impl Part {
     /// and `n − 1`.
     pub fn silhouette(&self) -> Vec<Seg> {
         let axis_x = match self.sweep {
-            Sweep::Extruded { .. } | Sweep::Bored { .. } => return self.outline.clone(),
+            Sweep::Extruded { .. } | Sweep::Milled { .. } => return self.outline.clone(),
             Sweep::Revolved { axis_x } => axis_x,
         };
         let n = self.outline.len();
@@ -507,7 +509,7 @@ mod tests {
 
     /// Consistency: **the sagittal plane cuts every part but one set beside
     /// it**: a part centered on it, one straddling it off center, a turned
-    /// one and a bored one are cut; a lining whose near face stands on it,
+    /// one and a milled one are cut; a lining whose near face stands on it,
     /// or past it on either side, is not.
     #[test]
     fn the_sagittal_plane_cuts_every_part_but_one_set_beside_it() {
@@ -516,7 +518,7 @@ mod tests {
         assert!(extruded(0.004, 0.0015).is_in_the_section());
         assert!(extruded(0.0, 0.0).is_in_the_section());
         assert!(Sweep::Revolved { axis_x: 0.225 }.is_in_the_section());
-        assert!(Sweep::Bored { axis_x: 0.0 }.is_in_the_section());
+        assert!(Sweep::Milled { width: 0.006 }.is_in_the_section());
         assert!(!extruded(0.0013, 0.00065).is_in_the_section());
         assert!(!extruded(0.0013, -0.00235).is_in_the_section());
         assert!(!extruded(0.0013, 0.00235).is_in_the_section());
@@ -583,13 +585,13 @@ mod tests {
         }
     }
 
-    /// Consistency: **a bored hole's silhouette is its section through its
-    /// axis**, as drawn: a hole 3.4 mm across and 2.5 mm deep about the
-    /// pin's axis keeps its mouth whole, the one segment from −1.7 to
-    /// +1.7 mm that the wood it opens through shares, where a turned part's
-    /// silhouette would split it at the axis.
+    /// Consistency: **a milled cut's silhouette is its section through its
+    /// middle**, as drawn: a hole 3.4 mm across and 2.5 mm deep, milled by a
+    /// cutter of its diameter not moved, keeps its mouth whole, the one
+    /// segment from −1.7 to +1.7 mm that the wood it opens through shares,
+    /// where a turned part's silhouette would split it at the axis.
     #[test]
-    fn a_bored_holes_silhouette_is_its_section() {
+    fn a_milled_cuts_silhouette_is_its_section() {
         let outline = lines(&[
             Point::new(-0.0017, 0.0),
             Point::new(0.0017, 0.0),
@@ -600,7 +602,7 @@ mod tests {
             body: BodyId(1),
             code: PartCode::BalanceHole,
             outline: outline.clone(),
-            sweep: Sweep::Bored { axis_x: 0.0 },
+            sweep: Sweep::Milled { width: 0.0034 },
             role: Role::Cut,
             material: Material::KeyWood,
             placed_by: vec![(0..4, "a test")],

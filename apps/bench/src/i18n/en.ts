@@ -332,6 +332,8 @@ const problem: Worded<Problem> = {
     `the key button's rounded ends would reach ${to(by_mm, PART_MM)} mm past each other along its top: they meet at most.`,
   does_not_fit: ({ part, within, by_mm }) =>
     `the ${PART[part]} would not fit in the ${PART[within]}, by ${to(by_mm, PART_MM)} mm.`,
+  bushing_without_wall: () =>
+    `the ${PART.balance_mortise}'s cutter does not travel along the key: the slot is round, with no straight wall to glue its bushing on.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `a front mortise ${to(depth_mm, PART_MM)} mm deep goes through the ${to(wood_mm, PART_MM)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>

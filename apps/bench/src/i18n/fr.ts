@@ -354,6 +354,8 @@ const problem: Worded<Problem> = {
     `les bouts arrondis de la capsule de touche empiéteraient de ${to(by_mm, PART_MM)} mm l’un sur l’autre sur son dessus : ils se rejoignent au plus.`,
   does_not_fit: ({ part, within, by_mm }) =>
     `${THE_PART[part]} ne tiendrait pas dans ${THE_PART[within]} : ${to(by_mm, PART_MM)} mm de trop.`,
+  bushing_without_wall: () =>
+    `la fraise de ${THE_PART.balance_mortise} n’a pas de course : la fente est ronde, sans paroi droite où coller sa garniture.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `une mortaise d’enfoncement de ${to(depth_mm, PART_MM)} mm de profondeur traverse les ${to(wood_mm, PART_MM)} mm du corps de la touche.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>

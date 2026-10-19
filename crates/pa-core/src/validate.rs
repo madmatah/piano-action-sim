@@ -161,6 +161,9 @@ pub enum Problem {
         /// By how much, meters.
         by: f64,
     },
+    /// The balance mortise's cutter does not travel along the key: the slot
+    /// is a round hole, with no straight wall for its bushing to be glued on.
+    BushingWithoutWall,
     /// The front mortise is cut through the top of the keystick.
     MortiseThroughKeyTop {
         /// Its depth above the underside, meters.
@@ -444,7 +447,8 @@ fn key_button(key: &KeyDesign) -> Result<(), Problem> {
 /// button's flat top, where it opens through it, and not into a rounded
 /// end; its cavity's floor no higher than the keystick's top and its width
 /// within the keystick's; its hole within the slot; its bushing's two
-/// thicknesses within the slot's width, the cloth no thicker than the side
+/// thicknesses within the slot's width, its cutter moved along the key, so
+/// that the slot has straight walls for its bushing, the cloth no thicker than the side
 /// holes it turns out through, and its depth within the key button's
 /// height; and the side holes within the key button's wall, their bottom
 /// no lower than the key button's and their top, where the cloth is glued,
@@ -489,6 +493,9 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
             PartCode::BalanceMortise,
             2.0 * mortise.bushing_thickness - mortise.cutter_diameter,
         );
+    }
+    if mortise.travel <= 0.0 {
+        return Err(Problem::BushingWithoutWall);
     }
     if mortise.side_hole_height < mortise.bushing_thickness {
         return does_not_fit(
@@ -1432,6 +1439,18 @@ mod tests {
                 other => panic!("{part:?} in {within:?}: {other:?}"),
             }
         }
+    }
+
+    /// Consistency: **a balance mortise whose cutter does not travel is
+    /// refused**, a round hole with no straight wall for its bushing, and
+    /// one whose cutter travels a micrometer is taken.
+    #[test]
+    fn a_balance_mortise_whose_cutter_does_not_travel_is_refused() {
+        let mut s = Standard::new();
+        s.key.balance_mortise.travel = 0.0;
+        assert_eq!(s.validate(), Err(Problem::BushingWithoutWall));
+        s.key.balance_mortise.travel = 1e-6;
+        assert_eq!(s.validate(), Ok(()));
     }
 
     /// Consistency: **a side hole flush with the key button's top is

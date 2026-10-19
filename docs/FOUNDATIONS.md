@@ -166,17 +166,27 @@ each by how far. Hirschkorn's key has all of them but the clearance ([Validation
 lead is modeled: a key's leads are in its weighing (below). Each piece is a part of its own, with its own material, on the key's
 body: the covering and the key front are of their own materials, the capsule and
 the back check block of one wood that is not the keystick's, and the front
-mortise is a cut, a void in the keystick open at its underside.
+mortise is a cut, a void in the keystick open at its underside, milled from
+below: a cutter turning about a vertical axis, moved along the key, so that
+the mortise is as wide across the keyboard as the cutter, as long along the
+key as the cutter's travel and diameter, its two ends rounded to the
+cutter's radius. Its cutter and travel are assumed [S,
+`data/params/key-section.json`]; its bushing, on the pin's sides beside the
+plane, is not drawn.
 
 **The balance mortise** is built as the owner describes it
 (`data/params/balance-mortise.json`, construction): an oblong slot through the key
-button along the key, open through the button's flat top, which it stays
-within; under it a cavity in the keystick as long and as wide as the slot,
-down to a thin floor; through that floor the round balance hole, fitted to the pin,
-which holds the key fore and aft; and on the slot's two long sides, in its
-upper part only, the bushing that guides the key across the keyboard, an L
-on each side: its cloth runs down the slot's wall, then turns into a side
-hole cut through the key button's wall along the whole slot, taller than the
+button along the key, milled as the front mortise is, by a cutter as wide as
+the slot, its two ends rounded and its long sides straight walls between
+them, open through the button's flat top, which it stays within; under it a
+cavity in the keystick as long and as wide as the slot, down to a thin
+floor; through that floor the round balance hole, milled by a cutter of its
+diameter that is not moved, fitted to the pin, which holds the key fore and
+aft; and on the
+slot's straight walls, in their upper part only, the rounded ends left bare,
+the bushing that guides the key across the keyboard, an L on each side: its
+cloth runs down the slot's wall, then turns into a side hole cut through the
+key button's wall along the straight wall, taller than the
 cloth so that the cloth passes through it easily, and runs out to the key
 button's side glued against the hole's top, the hole open under it. The
 slot, the cavity and the hole are cuts, taken out of the drawn section whose
@@ -809,15 +819,18 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   or its bushing, so the pin is drawn in its slot without guiding the key, and
   nothing reads how the balance hole and the bushing fit the pin: a tight or
   an eased mortise moves no reading, the bushings' friction being typed as a
-  key friction weight. The solid carves the balance mortise and the key
-  button's side holes from the key's wood, each a rectangle swept across its
-  width, and the round balance hole, a cylinder, by leaving the wood
-  unpainted inside each cut and drawing the cut's walls from inside rather
-  than by solid geometry operations, which would bring a library for a few
-  boxes and a cylinder. It leaves the front
-  mortise uncarved: its place, its cutter and its travel are assumed
-  [S, `data/params/key-section.json`], and its cutter's width across the
-  keyboard is not swept.
+  key friction weight. The solid carves the key button's side holes from the
+  key's wood, each a rectangle swept across its width, and the two mortises
+  and the balance hole, each milled with its ends rounded to its cutter's
+  radius, by leaving the wood unpainted inside each cut and drawing the
+  cut's walls from inside rather than by solid geometry operations, which
+  would bring a library for a few boxes with rounded ends. The front
+  mortise's bushing, on the pin's sides beside the plane, is not drawn, and
+  the front rail pin's oval head is drawn as a rectangle in plan: in the
+  mortise's rounded ends, its corners meet the wood about half a millimeter
+  sooner than the oval would, which no reading sees, the contacts reading
+  the sagittal plane, where the head and the mortise both run to their
+  ends.
 
 ### The bench
 
@@ -828,11 +841,13 @@ section is the sagittal plane itself: a washer shows the hole its pin stands in,
 the front pin stands in its mortise, a void open at the key's underside, and
 the balance pin in the balance hole and the cavity over it, the bushing on the
 slot's far side seen beyond the plane, behind the pin, the near one cut away
-with the near half of the key. The solid carves the balance mortise and its
-hole, and the key button's side holes, out of the key's wood and draws their
-walls, so the slot opens through the key button's top, the bushing on its two
-sides and the pin standing in it, and the bushing's cloth shows flush on the
-key button's sides, against the top of each side hole.
+with the near half of the key. The solid carves the two mortises and the
+balance hole, milled, their ends rounded, and the key button's side holes,
+out of the key's wood and draws their walls, so the slot opens through the
+key button's top, the bushing on its straight walls and the pin standing in
+it, the front mortise opens under the key around its pin, and the bushing's
+cloth shows flush on the key button's sides, against the top of each side
+hole.
 Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
 parts that overlap. A key no equilibrium places is drawn faded, a note on the
@@ -1807,9 +1822,9 @@ before.
 **One definition per part.** The key and its frame are built as parts: one
 closed outline of lines and arcs for each piece of material, on the body that
 carries it, several per body, a mortise a cut among them and a turned part read
-through its sagittal silhouette; a round hole, the balance hole, is bored about
-a vertical axis from its section through it, so that its mouth stays one
-segment, which the wood it opens through shares. Each part declares the ranges of its outline a
+through its sagittal silhouette; a milled cut, a mortise or the balance hole,
+is given by its section through its middle and its cutter's diameter, so that
+its mouth stays one segment, which the wood it opens through shares. Each part declares the ranges of its outline a
 contact may read and the named points on it, the lip and the key front's top
 among them. The bench draws them and the faults read them; whatever a stop
 rounds is drawn rounded, the back rail cloth's edges included. The contacts read
@@ -1958,7 +1973,8 @@ the underside, cut through the top of the keystick, or milled wider than it; a k
 rounded ends overlap; a part of the balance mortise that does not fit where it
 is cut, the slot past the key button's flat top or wider than the key, the
 cavity's floor above the keystick's top, the hole wider than the slot, the
-bushing's two thicknesses wider than the slot, the cloth thicker than the
+bushing's two thicknesses wider than the slot, the slot milled by a cutter
+not moved along the key, with no straight wall for the bushing, the cloth thicker than the
 side holes it turns out through are high, the bushing deeper than the key
 button is high, a side hole reaching below the key button, or the bushing
 less deep than it is thick, its side hole's top then past the key button's;

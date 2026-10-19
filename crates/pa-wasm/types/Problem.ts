@@ -127,7 +127,7 @@ within: Part,
 /**
  * By how much, millimeters.
  */
-by_mm: number, } | { "code": "mortise_through_key_top", 
+by_mm: number, } | { "code": "bushing_without_wall" } | { "code": "mortise_through_key_top", 
 /**
  * Its depth, millimeters.
  */

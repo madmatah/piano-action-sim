@@ -42,8 +42,8 @@ paper_color: PaperColor | null,
  */
 sweep: Sweep, 
 /**
- * Extrusion across the sagittal plane, millimeters; zero when turned
- * or bored.
+ * Extrusion across the sagittal plane, or a milled cut's cutter's
+ * diameter, millimeters; zero when turned.
  */
 width_mm: number, 
 /**
@@ -51,7 +51,7 @@ width_mm: number,
  * from the sagittal plane, positive toward the bass, the player's left:
  * zero but for the parts beside the plane, which the section does not
  * cut, the balance mortise's bushing and the key button's side holes;
- * zero when turned or bored.
+ * zero when turned or milled.
  */
 across_mm: number, 
 /**
@@ -60,14 +60,13 @@ across_mm: number,
  */
 is_in_the_section: boolean, 
 /**
- * Where a turned part's or a bored hole's axis stands along its body's
- * `x`, millimeters; zero when extruded.
+ * Where a turned part's axis stands along its body's `x`, millimeters;
+ * zero when extruded or milled.
  */
 axis_x_mm: number, 
 /**
  * Flat `[x0, y0, x1, y1, …]`, millimeters, in the body's frame; for a
- * turned part, its profile in radius and height; for a bored hole, its
- * section through its axis, in the body's frame.
+ * turned part, its profile in radius and height.
  */
 points_mm: Array<number>, 
 /**
