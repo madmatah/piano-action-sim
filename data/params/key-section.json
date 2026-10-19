@@ -148,7 +148,7 @@
       "unit": "mm",
       "reliability": "S",
       "what_for": "How far the cutter moves along the key between its two end positions as it mills the front mortise: the mortise is that much longer than the cutter is wide. Its length along the key, travel and diameter, is longer than the 5 mm pin standing in it, because the key swings about its balance pin and the mortise travels through a small arc past a pin that does not move; the clearance is also what lets a frame be a few tenths out of place without the key knowing, so it is the tolerance a frame design is judged against.",
-      "note": "Not measured. The slot is assumed 8 mm long, 3 mm of total slack on the 5 mm pin, less the 6 mm cutter. Across the keyboard the mortise is bushed and close on the pin's wide faces, which holds the key straight; that cloth is not drawn."
+      "note": "Not measured. The slot is assumed 8 mm long, 3 mm of total slack on the 5 mm pin, less the 6 mm cutter. Across the keyboard the mortise is bushed and close on the domed sides of the pin's oval head, which holds the key straight; that cloth is not drawn."
     },
     {
       "name": "front_mortise_depth",
