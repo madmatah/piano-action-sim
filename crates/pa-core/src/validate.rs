@@ -935,8 +935,9 @@ mod tests {
 
     /// Consistency: **a setting outside its range is refused however the
     /// design came to hold it**, a design loaded as well as an edit: a felt
-    /// thinner than nothing, a capstan screwed down past its range, the back
-    /// rail in front of the balance pin, bushings that push.
+    /// thinner than nothing, a capstan screwed down past its range, a key
+    /// button a meter and a half high, the back rail in front of the balance
+    /// pin, bushings that push.
     #[test]
     fn a_setting_outside_its_range_is_refused_on_load() {
         let refused = |s: &Standard, param: &str| {
@@ -955,6 +956,9 @@ mod tests {
         let mut s = Standard::new();
         s.key.capstan_screw.height = 0.031;
         refused(&s, "capstan.height");
+        let mut s = Standard::new();
+        s.key.capsule_height = 1.5;
+        refused(&s, "capsule_height");
         let mut s = Standard::new();
         s.friction.bound_n_m = -0.001;
         refused(&s, "friction.bound");

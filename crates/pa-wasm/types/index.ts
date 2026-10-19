@@ -5,6 +5,7 @@ export type { Action } from "./Action";
 export type { ActionCode } from "./ActionCode";
 export type { BackBearing } from "./BackBearing";
 export type { BackRailSettings } from "./BackRailSettings";
+export type { BalanceMortiseSettings } from "./BalanceMortiseSettings";
 export type { BalanceRailSettings } from "./BalanceRailSettings";
 export type { Band } from "./Band";
 export type { BandPoint } from "./BandPoint";

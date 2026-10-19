@@ -149,14 +149,15 @@ impl FrameDesign {
     /// The frame's settings: what an instrument may set on it, each with
     /// what it admits ([`ParamSpec`]).
     ///
-    /// Heights, thicknesses and the front pin's height are no less than
-    /// nothing; the front rail stands in front of the balance pin and the
+    /// Heights, thicknesses and the pins' heights are no less than
+    /// nothing, the balance pin under a meter, past which the key's slide
+    /// would run; the front rail stands in front of the balance pin and the
     /// back rail behind it. Anything else a frame can be, a rail placed for
     /// another key or one raised until the stops fight, is computed and
     /// reported, not refused: a frame drifts from its key, it does not
     /// cascade. The papers are not here: they are a list, laid and lifted a
     /// paper at a time ([`PAPER`]).
-    pub const PARAMS: [ParamSpec<Self>; 9] = [
+    pub const PARAMS: [ParamSpec<Self>; 10] = [
         frame_length(
             "balance_rail.height",
             |f| f.balance_rail_height,
@@ -197,6 +198,14 @@ impl FrameDesign {
             |f| f.front_punching.felt,
             |f, v| f.front_punching.felt = v,
         ),
+        ParamSpec {
+            hard: (0.0, 1.0),
+            ..frame_length(
+                "balance_rail.pin_height",
+                |f| f.sections.balance.pin_height,
+                |f, v| f.sections.balance.pin_height = v,
+            )
+        },
     ];
 
     /// Height of the key's underside at the balance pin, at rest, meters.
