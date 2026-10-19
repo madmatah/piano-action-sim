@@ -803,11 +803,14 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   or its bushing, so the pin is drawn in its slot without guiding the key, and
   nothing reads how the balance hole and the bushing fit the pin: a tight or
   an eased mortise moves no reading, the bushings' friction being typed as a
-  key friction weight. The
-  solid leaves every cut uncarved, the slot's mouth on the key button's top
-  included, which the section shows open. The front mortise's place and length
-  along the key are assumed [S, `data/params/key-section.json`], its width
-  across the keyboard not modeled.
+  key friction weight. The solid carves the balance mortise and its hole
+  from the key's wood, each a rectangle swept across its width, the round
+  hole carved square, by leaving the wood unpainted inside each cut's box
+  and drawing the cut's walls from inside rather than by solid geometry
+  operations, which would bring a library for two boxes. It leaves the front
+  mortise uncarved: its place and length along the key are assumed
+  [S, `data/params/key-section.json`], its width across the keyboard not
+  modeled.
 
 ### The bench
 
@@ -818,7 +821,9 @@ section is the sagittal plane itself: a washer shows the hole its pin stands in,
 the front pin stands in its mortise, a void open at the key's underside, and
 the balance pin in the balance hole and the cavity over it, the bushing on the
 slot's far side seen beyond the plane, behind the pin, the near one cut away
-with the near half of the key.
+with the near half of the key. The solid carves the balance mortise and its
+hole out of the key's wood and draws their walls, so the slot opens through the
+key button's top, the bushing on its two sides and the pin standing in it.
 Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
 parts that overlap. A key no equilibrium places is drawn faded, a note on the
@@ -1957,7 +1962,7 @@ another.
 Each drawn stretch of every part is sent with the number that places it and
 how its profile knows it, which the view marks when asked: every line of the
 section, and in the solid the outlines of the extruded parts, turned parts
-staying unmarked there; the profile on the
+and the walls of the carved cuts staying unmarked there; the profile on the
 bench is chosen among those shipped, by an action that puts it there as it
 arrives (built).
 
