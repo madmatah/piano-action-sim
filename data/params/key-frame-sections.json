@@ -44,21 +44,21 @@
       "value": 5.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "Exactly the front rail pin's long axis: the round hole touches the oblong pin at its two ends. The punching is pierced with a round die, so the hole is round even though the pin is not."
+      "note": "Exactly the front rail pin's long axis: the round hole touches the oval pin at its two ends. The punching is pierced with a round die, so the hole is round even though the pin is not."
     },
     {
       "name": "front_pin_length",
       "value": 5.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "Along the key. Only the head is oblong; the shank driven into the rail is turned round and is not drawn."
+      "note": "Along the key, the long axis of the head's oval. Only the head is oval; the shank driven into the rail is turned round and is not drawn."
     },
     {
       "name": "front_pin_thickness",
       "value": 3.4,
       "unit": "mm",
       "reliability": "V",
-      "note": "Across the keyboard — the flats bear on the bushing cloth of the key's front mortise."
+      "note": "Across the keyboard, the short axis of the head's oval: as the owner describes the head, an oval with its sides domed, no flat on them, which bear on the bushing cloth of the key's front mortise."
     },
     {
       "name": "front_row_offset",
@@ -104,7 +104,7 @@
       "value": 37.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "13 mm of round shank and a 24 mm oblong head standing proud of the rail. The pin as supplied is 39 mm with a 26 mm head; it is driven 2 mm past its shoulder so that its tip still clears the top of the mortise at the bottom of the key's travel."
+      "note": "13 mm of round shank and a 24 mm oval head standing proud of the rail. The pin as supplied is 39 mm with a 26 mm head; it is driven 2 mm past its shoulder so that its tip still clears the top of the mortise at the bottom of the key's travel."
     },
     {
       "name": "front_pin_shank_length",
@@ -118,7 +118,7 @@
       "value": 24.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "Oblong, and this is the pin's height above the rail's wood - RailSection::pin_height."
+      "note": "Oval, and this is the pin's height above the rail's wood - RailSection::pin_height."
     },
     {
       "name": "front_pin_head_length_as_supplied",
