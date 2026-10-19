@@ -1037,7 +1037,8 @@ impl FrameDesign {
         // The pins. They guide the key and carry no vertical load, which is
         // why the bearing is the punching and not the pin; they are drawn
         // because a reader checks that the key is on its pins. A round pin is
-        // turned, its height assumed; an oblong one extruded, measured.
+        // turned, its tip rounded, its height assumed; an oblong one
+        // extruded, measured.
         let balance_rail_pin = s.balance.pin.map(|pin| {
             let (bottom, top) = (
                 self.balance_rail_height,
@@ -1088,6 +1089,51 @@ impl FrameDesign {
     }
 }
 
+/// A round pin's profile, its tip rounded as the owner describes a balance
+/// pin's, to the pin's own radius, which the model assumes: from its axis at
+/// its foot out to its side, up
+/// its side to the tip, over the tip to the axis at its top, and down the
+/// axis. A pin no taller than its radius is all tip, a cap of that sphere.
+fn rounded_pin(radius: f64, bottom: f64, top: f64) -> Vec<Seg> {
+    let height = top - bottom;
+    let reach = super::end_reach(height, radius);
+    let drop = if radius > height {
+        radius - height
+    } else {
+        0.0
+    };
+    let foot = Point::new(0.0, bottom);
+    let Some(from) = Dir::new(reach, drop) else {
+        return washer(0.0, radius, bottom, top);
+    };
+    let tip = Seg::Arc {
+        c: Point::new(0.0, top - radius),
+        r: radius,
+        from,
+        to: Dir::Y,
+    };
+    let mut profile = Vec::with_capacity(4);
+    if radius < height {
+        let side = Point::new(radius, bottom);
+        profile.push(Seg::Line { a: foot, b: side });
+        profile.push(Seg::Line {
+            a: side,
+            b: tip.start(),
+        });
+    } else {
+        profile.push(Seg::Line {
+            a: foot,
+            b: tip.start(),
+        });
+    }
+    profile.push(tip);
+    profile.push(Seg::Line {
+        a: tip.end(),
+        b: foot,
+    });
+    profile
+}
+
 /// A pin, turned if it is round and extruded if it is flattened, pushed by
 /// `push`; with the range of its silhouette that is its top.
 fn pin_part(
@@ -1101,12 +1147,23 @@ fn pin_part(
 ) -> (PartId, core::ops::Range<u16>) {
     match pin {
         PinShape::Round { diameter } => {
-            let outline = washer(0.0, 0.5 * diameter, bottom, top);
+            let outline = rounded_pin(0.5 * diameter, bottom, top);
             let segments = super::count(&outline);
+            let placed_by = (0u16..)
+                .zip(&outline)
+                .map(|(index, seg)| {
+                    let name = match seg {
+                        Seg::Arc { .. } => n.pin_height,
+                        Seg::Line { a, b } if a.y.to_bits() == b.y.to_bits() => n.height,
+                        Seg::Line { .. } => n.pin_diameter,
+                    };
+                    (index..index + 1, name)
+                })
+                .collect();
             let id = push(Part {
                 body: BodyId::GROUND,
                 code,
-                placed_by: each(&[n.height, n.pin_diameter, n.pin_height, n.pin_diameter]),
+                placed_by,
                 outline,
                 sweep: Sweep::Revolved { axis_x: x },
                 role: Role::Solid,
@@ -1710,6 +1767,46 @@ mod part_tests {
                 "one rail; only the row of pins differs"
             );
         }
+    }
+
+    /// Consistency: **a round pin's tip is rounded to the pin's radius**, its
+    /// top at the pin's height: a pin of the measured section's 3.4 mm,
+    /// 11.2 mm tall, runs straight up its side to 1.7 mm under its top, then
+    /// over a half sphere of 1.7 mm. A pin a millimeter tall is all tip, a
+    /// cap of that sphere, whose foot reaches √(2 · 1.7 · 1 − 1²) = √2.4 mm
+    /// out from its axis.
+    #[test]
+    fn a_round_pin_is_drawn_with_its_tip_rounded_to_its_radius() {
+        let radius = 0.0017;
+        let (rail_height, pin_height) = (0.0266, 0.0112);
+        let (bottom, top) = (rail_height, rail_height + pin_height);
+        let profile = rounded_pin(radius, bottom, top);
+        let [Seg::Line { .. }, Seg::Line {
+            a: side,
+            b: shoulder,
+        }, Seg::Arc { c, r, .. }, Seg::Line { .. }] = profile[..]
+        else {
+            panic!("{profile:?}");
+        };
+        assert_eq!((side.x, r), (radius, radius));
+        assert_eq!(
+            c.x.to_bits(),
+            0.0_f64.to_bits(),
+            "the tip is centered on the axis"
+        );
+        // One rounding in the center's height, one in the shoulder's.
+        assert!((shoulder.y - (top - radius)).abs() <= 2.0 * f64::EPSILON * top);
+        assert!((profile[2].end().y - top).abs() <= 2.0 * f64::EPSILON * top);
+        let short = rounded_pin(radius, bottom, bottom + 0.001);
+        let [Seg::Line { b: foot, .. }, Seg::Arc { .. }, Seg::Line { .. }] = short[..] else {
+            panic!("{short:?}");
+        };
+        let expected = 0.001 * 2.4_f64.sqrt();
+        assert!(
+            (foot.x - expected).abs() <= 4.0 * f64::EPSILON * radius,
+            "{}",
+            foot.x
+        );
     }
 
     /// The balance pin is turned and the front rail pin is flattened.
