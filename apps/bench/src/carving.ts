@@ -7,9 +7,10 @@
  * carves it out of the parts it runs through, by not painting them inside
  * it, and draws its walls from inside. Every cut the engine sends with a
  * width is a rectangle in the section, so the box its outline bounds, swept
- * across that width, is the cut itself. A cut with no width, the front
- * mortise, whose width the model does not know, is not carved, and neither
- * is one whose outline is no rectangle, which a box would misdraw.
+ * across that width, is the cut itself; a bored hole, the balance hole, is
+ * carved as the box it stands in. A cut with no width, the front mortise,
+ * whose width the model does not know, is not carved, and neither is one
+ * whose outline is no rectangle, which a box would misdraw.
  */
 
 import type { Outline } from '@pas/wasm/types'
@@ -61,16 +62,26 @@ function pairUp(points: readonly number[]): Array<[number, number]> {
   return pairs
 }
 
-/** Bounds an extruded outline: the box around its points in the section,
- * across its width. */
+/** Bounds an extruded or a bored outline: the box around its points in the
+ * section, across its width, or, bored round, about the axis the engine
+ * sends, as far from it across the keyboard as along the key. */
 export function measureBounds(outline: Outline): Box {
   const points = pairUp(outline.points_mm)
   const xs = points.map(([x]) => x)
   const ys = points.map(([, y]) => y)
+  const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
+  if (outline.sweep === 'bored') {
+    const axis = outline.axis_x_mm
+    const radiusMm = Math.max(...xs.map((x) => Math.abs(x - axis)))
+    return {
+      minMm: [axis - radiusMm, minY, -radiusMm],
+      maxMm: [axis + radiusMm, maxY, radiusMm],
+    }
+  }
   const half = outline.width_mm / 2
   return {
-    minMm: [Math.min(...xs), Math.min(...ys), outline.across_mm - half],
-    maxMm: [Math.max(...xs), Math.max(...ys), outline.across_mm + half],
+    minMm: [Math.min(...xs), minY, outline.across_mm - half],
+    maxMm: [Math.max(...xs), maxY, outline.across_mm + half],
   }
 }
 
@@ -112,19 +123,18 @@ export function overlaps(first: Box, second: Box): boolean {
 }
 
 /**
- * Plans what the solid carves among one body's `outlines`. Each extruded cut
- * with a width, a rectangle in the section, carves the body's solid parts
- * its box shares a volume with, never a lining, which stands in the void;
- * its walls are drawn in those parts, and open into the other cuts its box
- * meets.
+ * Plans what the solid carves among one body's `outlines`. Each cut that is
+ * a rectangle in the section, extruded with a width or bored, carves the
+ * body's solid parts its box shares a volume with, never a lining, which
+ * stands in the void; its walls are drawn in those parts, and open into the
+ * other cuts its box meets.
  */
 export function planCarving(outlines: readonly Outline[]): Carving {
   const cuts = outlines
     .filter(
       (outline) =>
         outline.role === 'cut' &&
-        outline.sweep === 'extruded' &&
-        outline.width_mm > 0 &&
+        ((outline.sweep === 'extruded' && outline.width_mm > 0) || outline.sweep === 'bored') &&
         isRectangle(outline),
     )
     .map((cut) => ({ cut, box: measureBounds(cut) }))

@@ -1405,7 +1405,7 @@ mod part_tests {
 
     fn axis(part: &Part) -> f64 {
         match part.sweep {
-            Sweep::Revolved { axis_x } => axis_x,
+            Sweep::Revolved { axis_x } | Sweep::Bored { axis_x } => axis_x,
             Sweep::Extruded { .. } => {
                 let ((x0, x1), _) = extent(part);
                 0.5 * (x0 + x1)

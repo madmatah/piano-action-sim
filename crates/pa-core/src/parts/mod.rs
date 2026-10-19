@@ -883,7 +883,8 @@ impl KeyDesign {
         self.parts(crate::mechanism::BodyId(0), &mut parts);
         let (mut area, mut along, mut across) = (0.0, 0.0, 0.0);
         for part in parts.iter().filter(|p| {
-            matches!(p.sweep, crate::contact::Sweep::Extruded { .. }) && p.sweep.is_in_the_section()
+            !matches!(p.sweep, crate::contact::Sweep::Revolved { .. })
+                && p.sweep.is_in_the_section()
         }) {
             // An arc, the key button's rounded ends, is read through its
             // drawn chords, as the section draws it.
@@ -1017,7 +1018,7 @@ mod tests {
         parts
             .iter()
             .filter(|p| {
-                matches!(p.sweep, crate::contact::Sweep::Extruded { .. })
+                !matches!(p.sweep, crate::contact::Sweep::Revolved { .. })
                     && p.sweep.is_in_the_section()
             })
             .map(|p| {

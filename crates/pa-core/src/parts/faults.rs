@@ -98,7 +98,7 @@ pub fn faults(parts: &[Part], key: &KeyRanges, frame: &FrameRanges) -> Vec<Fault
     // Where the key's frame stands along the keybed: over its row's balance
     // pin, the axis its balance punching is turned about.
     let pin = match parts[frame.balance_rail_punching.index()].sweep {
-        Sweep::Revolved { axis_x } => axis_x,
+        Sweep::Revolved { axis_x } | Sweep::Bored { axis_x } => axis_x,
         Sweep::Extruded { .. } => 0.0,
     };
     let chamfer = key.underside[0].segs(parts)[0];

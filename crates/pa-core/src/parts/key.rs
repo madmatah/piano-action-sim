@@ -650,22 +650,27 @@ impl KeyDesign {
             polygon(&slot),
             mortise.width,
         );
-        let hole = cut(
-            PartCode::BalanceHole,
-            vec![
-                (0..1, "balance_mortise.hole_diameter"),
-                (1..2, "balance_mortise.hole_diameter"),
-                (2..3, "balance_mortise.floor"),
-                (3..4, "balance_mortise.hole_diameter"),
-            ],
-            polygon(&[
-                Point::new(hole_back, 0.0),
-                Point::new(hole_front, 0.0),
-                Point::new(hole_front, mortise.floor),
-                Point::new(hole_back, mortise.floor),
-            ]),
-            mortise.hole_diameter,
-        );
+        let hole = Part {
+            sweep: Sweep::Bored {
+                axis_x: 0.5 * (hole_back + hole_front),
+            },
+            ..cut(
+                PartCode::BalanceHole,
+                vec![
+                    (0..1, "balance_mortise.hole_diameter"),
+                    (1..2, "balance_mortise.hole_diameter"),
+                    (2..3, "balance_mortise.floor"),
+                    (3..4, "balance_mortise.hole_diameter"),
+                ],
+                polygon(&[
+                    Point::new(hole_back, 0.0),
+                    Point::new(hole_front, 0.0),
+                    Point::new(hole_front, mortise.floor),
+                    Point::new(hole_back, mortise.floor),
+                ]),
+                mortise.hole_diameter,
+            )
+        };
         let bushing_bottom = mouth_y - mortise.bushing_depth;
         let bushing_across = 0.5 * (mortise.width - mortise.bushing_thickness);
         let side = 0.5 * (self.width - mortise.width);
@@ -1245,6 +1250,26 @@ mod tests {
                 "down its depth"
             );
         }
+    }
+
+    /// Consistency: **the balance hole is bored round about the pin it is
+    /// fitted to**, at the key's origin: its outline is its section through
+    /// the pin's axis, 3.4 mm across on the test key, from −1.7 to +1.7 mm.
+    #[test]
+    fn the_balance_hole_is_bored_round_about_its_pin() {
+        let (parts, ranges) = built(&crate::test_fixture::key());
+        let hole = &parts[ranges.balance_hole.index()];
+        assert_eq!(hole.sweep, Sweep::Bored { axis_x: 0.0 });
+        let along: Vec<f64> = vertices(hole).iter().map(|corner| corner.x).collect();
+        let (back, front) = along
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(back, front), &x| {
+                (back.min(x), front.max(x))
+            });
+        assert_eq!(
+            (back.to_bits(), front.to_bits()),
+            ((-0.0017_f64).to_bits(), 0.0017_f64.to_bits())
+        );
     }
 
     /// Consistency: **the bushing turns out through the key button's side
