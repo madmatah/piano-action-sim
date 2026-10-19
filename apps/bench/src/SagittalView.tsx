@@ -35,7 +35,8 @@
  * and not its leg out through the side hole, inside the wall; the near ones,
  * cut away with the near half of the key, are not drawn. The **solid** sweeps every part across the
  * keyboard, each lining on its side of the slot, and carves each
- * rectangular cut that has a width out of the wood it runs through, leaving that wood unpainted
+ * rectangular cut that has a width, and the round balance hole, out of the
+ * wood it runs through, leaving that wood unpainted
  * inside it and drawing its walls from inside, in the color of the wood
  * they are cut in (`carving.ts`); the front mortise, whose width the model
  * does not know, stays inside the key.
@@ -81,6 +82,7 @@ import * as THREE from 'three'
 import {
   type Box,
   type Carving,
+  type Hollow,
   MAX_CUTS,
   measureBounds,
   packCuts,
@@ -200,7 +202,10 @@ function useDisposal(geometry: THREE.BufferGeometry) {
 // ---- the solid ------------------------------------------------------------
 
 /** No cut through a part. */
-const UNCARVED: readonly Box[] = []
+const UNCARVED: readonly Hollow[] = []
+
+/** How many faces a round part is drawn with around its axis. */
+const ROUND_SEGMENTS = 48
 
 /** A body with no part: nothing to draw, carve or cut. */
 const NO_BODY: BodyParts = {
@@ -219,11 +224,12 @@ const carvedProgram = () => 'carved'
  * ([`patchShader`]). The boxes are uniforms, written in place as they
  * change, so an edit of the key moves them without compiling anything.
  */
-function useCarvingShader(cuts: readonly Box[], keep: Box | null) {
+function useCarvingShader(cuts: readonly Hollow[], keep: Box | null) {
   const uniforms = useMemo(
     () => ({
       cutMin: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
       cutMax: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
+      cutIsRound: { value: Array.from({ length: MAX_CUTS }, () => 0) },
       cutCount: { value: 0 },
       keepMin: { value: new THREE.Vector3() },
       keepMax: { value: new THREE.Vector3() },
@@ -234,6 +240,7 @@ function useCarvingShader(cuts: readonly Box[], keep: Box | null) {
   for (let cutIndex = 0; cutIndex < MAX_CUTS; cutIndex += 1) {
     uniforms.cutMin.value[cutIndex]?.set(...(packed.cutMin[cutIndex] ?? [0, 0, 0]))
     uniforms.cutMax.value[cutIndex]?.set(...(packed.cutMax[cutIndex] ?? [0, 0, 0]))
+    uniforms.cutIsRound.value[cutIndex] = packed.cutIsRound[cutIndex] ? 1 : 0
   }
   uniforms.cutCount.value = packed.cutCount
   uniforms.keepMin.value.set(...packed.keepMin)
@@ -251,16 +258,43 @@ function useCarvingShader(cuts: readonly Box[], keep: Box | null) {
 
 /** An outline swept across the keyboard, its middle where the engine puts
  * it: the sagittal plane for all but the parts beside it. */
+function extrude(points: number[], width: number, across: number): THREE.BufferGeometry {
+  const extrusion = new THREE.ExtrudeGeometry(toShape(points), {
+    depth: width,
+    bevelEnabled: false,
+  })
+  extrusion.translate(0, 0, across - width / 2)
+  extrusion.computeVertexNormals()
+  return extrusion
+}
+
+/** [`extrude`], built again only when its outline, width or place across
+ * changes. */
 function useExtrusion(points: number[], width: number, across: number) {
+  const geometry = useMemo(() => extrude(points, width, across), [points, width, across])
+  useDisposal(geometry)
+  return geometry
+}
+
+/** The surface a cut's walls are drawn on: its outline swept across its
+ * width, or, round, the side of the cylinder its box holds about the axis
+ * the engine sends, open at both ends. */
+function useWallsSurface({ cut, hollow }: Walls) {
   const geometry = useMemo(() => {
-    const extrusion = new THREE.ExtrudeGeometry(toShape(points), {
-      depth: width,
-      bevelEnabled: false,
-    })
-    extrusion.translate(0, 0, across - width / 2)
-    extrusion.computeVertexNormals()
-    return extrusion
-  }, [points, width, across])
+    if (!hollow.isRound) return extrude(cut.points_mm, cut.width_mm, cut.across_mm)
+    const { minMm, maxMm } = hollow.box
+    const radiusMm = (maxMm[0] - minMm[0]) / 2
+    const bore = new THREE.CylinderGeometry(
+      radiusMm,
+      radiusMm,
+      maxMm[1] - minMm[1],
+      ROUND_SEGMENTS,
+      1,
+      true,
+    )
+    bore.translate(cut.axis_x_mm, (minMm[1] + maxMm[1]) / 2, 0)
+    return bore
+  }, [cut, hollow])
   useDisposal(geometry)
   return geometry
 }
@@ -286,7 +320,7 @@ function CarvedMaterial({
   side,
 }: {
   color: string
-  cuts: readonly Box[]
+  cuts: readonly Hollow[]
   keep: Box | null
   side: THREE.Side
 }) {
@@ -321,7 +355,7 @@ function Extruded({
   across: number
   color: string
   /** The cuts through it, which leave it unpainted inside them. */
-  cuts: readonly Box[]
+  cuts: readonly Hollow[]
 }) {
   const geometry = useExtrusion(points, width, across)
   return (
@@ -335,17 +369,15 @@ function Extruded({
 }
 
 /**
- * The walls of a cut through a body's wood, seen from inside it: its box
- * drawn from within, in each part it runs through, in that part's color and
- * only where it runs through that part, and open where it opens into
- * another cut, as the slot's floor into the balance hole; and its edges.
+ * The walls of a cut through a body's wood, seen from inside it: its box,
+ * or the round hole's cylinder, drawn from within, in each part it runs
+ * through, in that part's color and only where it runs through that part,
+ * and open where it opens into another cut, as the slot's floor into the
+ * balance hole; and its edges.
  */
 function CutWalls({ walls }: { walls: Walls }) {
-  const { cut, box, through, into } = walls
-  // A bored hole is carved as the box it stands in.
-  const [width, across] =
-    cut.sweep === 'bored' ? [box.maxMm[2] - box.minMm[2], 0] : [cut.width_mm, cut.across_mm]
-  const geometry = useExtrusion(cut.points_mm, width, across)
+  const { through, into } = walls
+  const geometry = useWallsSurface(walls)
   return (
     <group>
       {through.map((part, partIndex) => (
@@ -382,7 +414,7 @@ function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; c
     // rather than an open tube.
     const first = points[0]
     if (first) points.push(first.clone())
-    return new THREE.LatheGeometry(points, 48)
+    return new THREE.LatheGeometry(points, ROUND_SEGMENTS)
   }, [profile])
   const opacity = useContext(Opacity)
   useDisposal(geometry)
@@ -396,6 +428,53 @@ function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; c
       />
     </mesh>
   )
+}
+
+/**
+ * One part in the solid: an extruded part swept across the keyboard, carved
+ * by `cuts`, its lines marked by provenance on the face toward the camera
+ * where `marked`; a turned part lathed. A bored part is a hole, which the
+ * solid carves out of the wood and never draws.
+ */
+function SolidPart({
+  outline,
+  cuts,
+  marked,
+}: {
+  outline: Outline
+  cuts: readonly Hollow[]
+  marked: boolean
+}) {
+  switch (outline.sweep) {
+    case 'extruded':
+      return (
+        <group>
+          <Extruded
+            points={outline.points_mm}
+            width={outline.width_mm}
+            across={outline.across_mm}
+            color={colorOf(outline)}
+            cuts={cuts}
+          />
+          {marked && (
+            <OutlineEdges
+              outline={outline}
+              skip={new Set()}
+              layer={LAYER.marks}
+              marked
+              z={outline.across_mm + outline.width_mm / 2 + 0.05}
+              depthTest
+            />
+          )}
+        </group>
+      )
+    case 'revolved':
+      return (
+        <Lathed profile={outline.points_mm} axisX={outline.axis_x_mm} color={colorOf(outline)} />
+      )
+    case 'bored':
+      return null
+  }
 }
 
 // ---- the section ----------------------------------------------------------
@@ -575,42 +654,47 @@ function SectionPart({
   marked: boolean
 }) {
   const color = colorOf(outline)
-  if (outline.sweep === 'extruded') {
-    return (
-      <>
-        <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
-        <OutlineEdges
-          outline={outline}
-          skip={open}
-          layer={edgeLayer}
-          marked={marked}
-          masked={masked}
-        />
-      </>
-    )
+  switch (outline.sweep) {
+    // A bored part's outline is its section through its axis, as drawn.
+    case 'extruded':
+    case 'bored':
+      return (
+        <>
+          <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
+          <OutlineEdges
+            outline={outline}
+            skip={open}
+            layer={edgeLayer}
+            marked={marked}
+            masked={masked}
+          />
+        </>
+      )
+    case 'revolved': {
+      const onAxis = axisSegments(outline.points_mm, outline.segs)
+      return (
+        <group position={[outline.axis_x_mm, 0, 0]}>
+          <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
+          <Fill points={mirrored(outline.points_mm)} color={color} layer={layer} masked={masked} />
+          <OutlineEdges
+            outline={outline}
+            skip={onAxis}
+            layer={edgeLayer}
+            marked={marked}
+            masked={masked}
+          />
+          <OutlineEdges
+            outline={outline}
+            skip={onAxis}
+            layer={edgeLayer}
+            marked={marked}
+            masked={masked}
+            mirror
+          />
+        </group>
+      )
+    }
   }
-  const onAxis = axisSegments(outline.points_mm, outline.segs)
-  return (
-    <group position={[outline.axis_x_mm, 0, 0]}>
-      <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
-      <Fill points={mirrored(outline.points_mm)} color={color} layer={layer} masked={masked} />
-      <OutlineEdges
-        outline={outline}
-        skip={onAxis}
-        layer={edgeLayer}
-        marked={marked}
-        masked={masked}
-      />
-      <OutlineEdges
-        outline={outline}
-        skip={onAxis}
-        layer={edgeLayer}
-        marked={marked}
-        masked={masked}
-        mirror
-      />
-    </group>
-  )
 }
 
 // ---- both -----------------------------------------------------------------
@@ -727,37 +811,14 @@ function Body({
       <Opacity.Provider value={opacity}>
         {mode === 'solid' ? (
           <>
-            {parts.map((o, i) =>
-              o.sweep === 'revolved' ? (
-                <Lathed
-                  key={`${o.code}-${i}`}
-                  profile={o.points_mm}
-                  axisX={o.axis_x_mm}
-                  color={colorOf(o)}
-                />
-              ) : (
-                <group key={`${o.code}-${i}`}>
-                  <Extruded
-                    points={o.points_mm}
-                    width={o.width_mm}
-                    across={o.across_mm}
-                    color={colorOf(o)}
-                    cuts={carving.cutsThrough.get(o) ?? UNCARVED}
-                  />
-                  {/* Marked by provenance, on the face toward the camera. */}
-                  {marked && (
-                    <OutlineEdges
-                      outline={o}
-                      skip={new Set()}
-                      layer={LAYER.marks}
-                      marked
-                      z={o.across_mm + o.width_mm / 2 + 0.05}
-                      depthTest
-                    />
-                  )}
-                </group>
-              ),
-            )}
+            {parts.map((part, partIndex) => (
+              <SolidPart
+                key={`${part.code}-${partIndex}`}
+                outline={part}
+                cuts={carving.cutsThrough.get(part) ?? UNCARVED}
+                marked={marked}
+              />
+            ))}
             {carving.walls.map((walls, cutIndex) => (
               <CutWalls key={`${walls.cut.code}-${cutIndex}`} walls={walls} />
             ))}
