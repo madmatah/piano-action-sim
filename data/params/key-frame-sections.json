@@ -118,7 +118,7 @@
       "value": 24.0,
       "unit": "mm",
       "reliability": "V",
-      "note": "Oval, and this is the pin's height above the rail's wood - RailSection::pin_height."
+      "note": "Oval, and this is the pin's height above the rail's wood - RailSection::pin_height, to the top of its tip. The tip is rounded to a half sphere, as the owner describes it (2026-10-19); its radius, half front_pin_length, is assumed, the sphere squeezed across to the oval's front_pin_thickness."
     },
     {
       "name": "front_pin_head_length_as_supplied",
@@ -141,6 +141,7 @@
     "The three rails' real lengths along the key, which would replace the three E records above with measurements. The rule only gives the minimum that keeps a punching on the wood; a real rail is at least that and probably more.",
     "The balance crown's height above the shoulder, and the shape of its sides.",
     "How far the balance pin stands above its rail. It stands above the key button at rest, as the owner states (balance-mortise.json, construction); how far is not measured, and the profiles assume it.",
+    "The radius of the front rail pin's tip. It is a half sphere, as the owner describes it; the model assumes it half the pin's length along the key, squeezed across to the oval.",
     "The back rail's length along the key, and the thickness of its cloth.",
     "Where the front rail and the back rail actually stand along the key on a real frame. They are frame coordinates now, placed under a key by rule when a frame is built and kept as their own numbers afterwards - so a measured frame replaces them rather than deriving them, and that is the whole point of their being coordinates."
   ],
