@@ -384,6 +384,7 @@ const control: { readonly [K in Label]: Labeled } = {
   balance_hole: { label: 'balance hole diameter' },
   bushing_thickness: { label: 'balance mortise bushing thickness' },
   bushing_depth: { label: 'balance mortise bushing, down from the key button’s top' },
+  side_hole_height: { label: 'key button side hole height' },
   key_mass: { label: 'key mass' },
   front_weight: { label: 'front weight' },
   read_at: { label: 'read at', unit: (mm) => `${mm} from the lip` },

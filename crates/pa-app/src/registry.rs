@@ -69,6 +69,9 @@ pub mod path {
     pub const BUSHING_THICKNESS: &str = "key.balance_mortise.bushing_thickness_mm";
     /// How far down from the key button's top the bushing lines the slot.
     pub const BUSHING_DEPTH: &str = "key.balance_mortise.bushing_depth_mm";
+    /// The height of the key button's side holes the bushing turns out
+    /// through.
+    pub const SIDE_HOLE_HEIGHT: &str = "key.balance_mortise.side_hole_height_mm";
     /// The torque the bushings hold.
     pub const FRICTION_TORQUE: &str = "key.friction.torque_gmm";
     /// The key's mass as it was weighed.
@@ -257,7 +260,7 @@ const fn millimeters(path: &'static str, field: Field) -> Entry {
 
 /// Every path of the instrument, in a fixed order: the protocol, the
 /// experiment, the regulation's targets, the key, the frame.
-pub const ENTRIES: [Entry; 33] = [
+pub const ENTRIES: [Entry; 34] = [
     millimeters(
         path::MEASURING_POINT,
         Field::Protocol(TouchweightProtocol::PARAMS[0]),
@@ -283,6 +286,7 @@ pub const ENTRIES: [Entry; 33] = [
     key(path::BALANCE_HOLE_DIAMETER, KeyDesign::PARAMS[10], false),
     key(path::BUSHING_THICKNESS, KeyDesign::PARAMS[11], false),
     key(path::BUSHING_DEPTH, KeyDesign::PARAMS[12], false),
+    key(path::SIDE_HOLE_HEIGHT, KeyDesign::PARAMS[13], false),
     Entry {
         path: path::FRICTION_TORQUE,
         unit: Unit::GramMillimeter,
@@ -383,6 +387,7 @@ pub enum Label {
     BalanceHole,
     BushingThickness,
     BushingDepth,
+    SideHoleHeight,
     KeyMass,
     FrontWeight,
     ReadAt,
@@ -723,6 +728,11 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
                 path: path::BUSHING_DEPTH,
                 label: Label::BushingDepth,
                 soft: soft(0.0, 8.0, 0.05),
+            },
+            Control::Slider {
+                path: path::SIDE_HOLE_HEIGHT,
+                label: Label::SideHoleHeight,
+                soft: soft(0.0, 6.0, 0.05),
             },
         ],
     ),

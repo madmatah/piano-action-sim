@@ -612,7 +612,8 @@ pub struct MortiseSettings {
 }
 
 /// The balance mortise: the slot through the key button, its cavity in the
-/// keystick, its hole and its bushing.
+/// keystick, its hole, its bushing and the key button's side holes the
+/// bushing turns out through.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct BalanceMortiseSettings {
@@ -629,6 +630,8 @@ pub struct BalanceMortiseSettings {
     /// How far down from the key button's top the bushing lines the slot,
     /// millimeters.
     pub bushing_depth_mm: f64,
+    /// The height of the key button's side holes, millimeters.
+    pub side_hole_height_mm: f64,
 }
 
 /// The bushings.
@@ -765,6 +768,7 @@ impl Settings {
                     hole_diameter_mm: at(path::BALANCE_HOLE_DIAMETER),
                     bushing_thickness_mm: at(path::BUSHING_THICKNESS),
                     bushing_depth_mm: at(path::BUSHING_DEPTH),
+                    side_hole_height_mm: at(path::SIDE_HOLE_HEIGHT),
                 },
                 friction: FrictionSettings {
                     torque_gmm: at(path::FRICTION_TORQUE),
