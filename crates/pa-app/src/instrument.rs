@@ -4900,10 +4900,11 @@ mod edit_tests {
     /// mortise 30 mm deep is cut through the 24.5 mm of the keystick; a key
     /// button 20 mm long is shorter than its two ends of 12 mm reach on its
     /// 6 mm of height, 2·√108 mm, by 0.78 mm; a balance hole of 7 mm is a
-    /// millimeter wider than its 6 mm slot, and a bushing 7 mm deep a
+    /// millimeter wider than its 6 mm slot, a bushing 7 mm deep a
     /// millimeter deeper than the key button is high, where its side holes
-    /// are cut; a
-    /// measuring point 160 mm back from the lip is off a 155 mm covering; a
+    /// are cut, and a side hole 1 mm high 0.3 mm lower than the 1.3 mm cloth
+    /// turned out through it is thick; a measuring point 160 mm back from
+    /// the lip is off a 155 mm covering; a
     /// felt thinner than nothing is out of range; a key weighed at no mass,
     /// or less, is no key (the audit's BWA-3); a paper no drawer holds is no
     /// paper; a paper not on its stack cannot be lifted; a path the
@@ -4962,6 +4963,13 @@ mod edit_tests {
                 within: PartCode::KeyButton,
                 by,
             }) if (by - 0.001).abs() < 1e-12)
+        });
+        refuses(&mut b, set(path::SIDE_HOLE_HEIGHT, 1.0), &|w| {
+            matches!(w, EditRefusal::Problem(Problem::DoesNotFit {
+                part: PartCode::BalanceMortiseBushing,
+                within: PartCode::KeyButtonSideHole,
+                by,
+            }) if (by - 0.0003).abs() < 1e-12)
         });
         refuses(&mut b, set(path::MEASURING_POINT, 160.0), &|w| {
             *w == EditRefusal::Problem(Problem::MeasuringPointOffCovering {

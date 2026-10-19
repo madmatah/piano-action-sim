@@ -559,7 +559,7 @@ impl KeyDesign {
     /// balance mortise's dimensions are no less than nothing and under a
     /// meter; whether they fit each other and the keystick is
     /// [`crate::validate`]'s to say too.
-    pub const PARAMS: [ParamSpec<Self>; 13] = [
+    pub const PARAMS: [ParamSpec<Self>; 14] = [
         key_length("front_edge", |k| k.front_edge, |k, v| k.front_edge = v),
         ParamSpec {
             name: "capstan.x",
@@ -630,6 +630,11 @@ impl KeyDesign {
             "balance_mortise.bushing_depth",
             |k| k.balance_mortise.bushing_depth,
             |k, v| k.balance_mortise.bushing_depth = v,
+        ),
+        key_length(
+            "balance_mortise.side_hole_height",
+            |k| k.balance_mortise.side_hole_height,
+            |k, v| k.balance_mortise.side_hole_height = v,
         ),
     ];
 

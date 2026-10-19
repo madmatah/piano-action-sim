@@ -411,6 +411,7 @@ const control: { readonly [K in Label]: Labeled } = {
   bushing_depth: {
     label: 'garniture de la mortaise de balancier, depuis le haut de la capsule de touche',
   },
+  side_hole_height: { label: 'hauteur du trou latéral de la capsule de touche' },
   key_mass: { label: 'masse de la touche' },
   front_weight: { label: 'poids avant' },
   read_at: { label: 'lu à', unit: (mm) => `${mm} du bord` },

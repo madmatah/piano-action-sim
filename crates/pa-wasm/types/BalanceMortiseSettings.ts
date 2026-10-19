@@ -2,7 +2,8 @@
 
 /**
  * The balance mortise: the slot through the key button, its cavity in the
- * keystick, its hole and its bushing.
+ * keystick, its hole, its bushing and the key button's side holes the
+ * bushing turns out through.
  */
 export type BalanceMortiseSettings = { 
 /**
@@ -29,4 +30,8 @@ bushing_thickness_mm: number,
  * How far down from the key button's top the bushing lines the slot,
  * millimeters.
  */
-bushing_depth_mm: number, };
+bushing_depth_mm: number, 
+/**
+ * The height of the key button's side holes, millimeters.
+ */
+side_hole_height_mm: number, };

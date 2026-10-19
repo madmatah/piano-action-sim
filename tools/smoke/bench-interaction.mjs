@@ -1327,6 +1327,7 @@ const BALANCE_MORTISE_SLIDERS = [
   ['key.balance_mortise.hole_diameter_mm', 3.5],
   ['key.balance_mortise.bushing_thickness_mm', 1.2],
   ['key.balance_mortise.bushing_depth_mm', 2.5],
+  ['key.balance_mortise.side_hole_height_mm', 2.4],
 ]
 for (const [path, value] of BALANCE_MORTISE_SLIDERS) {
   if ((await moveSlider(path, value)) !== 'ok') fail(`no slider over ${path}`)
