@@ -852,7 +852,7 @@ mod tests {
             let mut b = Bench::standard();
             b.kind = KeyKind::Sharp;
             let rows = &b.frame.sections;
-            b.key.front_mortise_from_front_edge +=
+            b.key.front_mortise.from_front_edge +=
                 rows.front.sharp_row_offset - rows.balance.sharp_row_offset;
             b
         };

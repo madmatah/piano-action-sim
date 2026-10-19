@@ -252,6 +252,64 @@ impl BalanceMortise {
     }
 }
 
+/// The front mortise, as the owner describes it: milled up into the
+/// keystick from its underside by a cutter turning about a vertical axis and
+/// moved along the key, so that its two ends are half circles of the
+/// cutter's radius and its long sides straight walls between them; the front
+/// rail pin stands in it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FrontMortise {
+    /// Where it is cut, meters back from the key's **front edge**.
+    ///
+    /// Back from the front edge and not forward from the balance pin, because
+    /// that is the dimension a key carries: the slot is cut near the front end
+    /// of the keystick, and lengthening a key moves its front end and its
+    /// mortise together. Stated the other way round, a longer key would leave
+    /// its own mortise behind and the front rail pin would stand in fresh air.
+    ///
+    /// It is a **key** dimension and the front rail's position is a *frame*
+    /// one. They have to agree, and [`faults::faults`] is what says
+    /// so when they do not; what places the rail by default is
+    /// [`KeyDesign::front_mortise_x`]. [E]
+    pub from_front_edge: f64,
+    /// Diameter of the cutter it is milled with, meters: from below,
+    /// turning about a vertical axis and moved along the key, so that the
+    /// mortise is as wide across the keyboard as the cutter, its two ends
+    /// rounded to the cutter's radius ([`Self::length`]). [S]
+    pub cutter_diameter: f64,
+    /// How far that cutter moves along the key between its two end
+    /// positions, meters ([`Self::length`]). [S]
+    pub travel: f64,
+    /// Its depth above the key's underside, meters.
+    ///
+    /// The slot the front rail pin stands in, measured from the underside, so
+    /// it already includes the recess the slot begins after: 3 mm of notch and
+    /// 19 mm of mortise is 22 mm of room. [V]
+    ///
+    /// It is a **stop**, not decoration: the key cannot descend past the point
+    /// where the pin's tip reaches the top of the slot, whatever the punchings
+    /// underneath would otherwise allow.
+    pub depth: f64,
+}
+
+impl FrontMortise {
+    /// Its length along the key, meters: its cutter's travel and diameter.
+    ///
+    /// The slot is longer along the key than the pin standing in it. It has to
+    /// be: the key swings about the balance pin, so the mortise travels through
+    /// a small arc past a pin that does not move, and a slot cut to the pin's
+    /// own length would bind at the ends of the stroke. The clearance is also
+    /// what lets a frame be a few tenths out of place without the key knowing.
+    ///
+    /// What it is **not** is the lateral fit. Across the keyboard the mortise is
+    /// bushed and close on the domed sides of the pin's oval head — that is
+    /// what holds the key straight — and that dimension is not in the
+    /// sagittal plane.
+    pub fn length(&self) -> f64 {
+        self.travel + self.cutter_diameter
+    }
+}
+
 /// A glued block's front, top and back, counter-clockwise from the foot of
 /// its front to the foot of its back, its two top corners rounded to
 /// `radius`. A radius up to the block's height rounds each corner into the
@@ -380,37 +438,9 @@ pub struct KeyDesign {
     pub tail_end: f64,
     /// Capstan axis, meters (negative).
     pub capstan: f64,
-    /// Front mortise, meters back from the key's **front edge**.
-    ///
-    /// Back from the front edge and not forward from the balance pin, because
-    /// that is the dimension a key carries: the slot is cut near the front end
-    /// of the keystick, and lengthening a key moves its front end and its
-    /// mortise together. Stated the other way round, a longer key would leave
-    /// its own mortise behind and the front rail pin would stand in fresh air.
-    ///
-    /// It is a **key** dimension and the front rail's position is a *frame*
-    /// one. They have to agree, and [`faults::faults`] is what says
-    /// so when they do not; what places the rail by default is
-    /// [`Self::front_mortise_x`]. [E]
-    pub front_mortise_from_front_edge: f64,
-    /// Diameter of the cutter the front mortise is milled with, meters: from
-    /// below, turning about a vertical axis and moved along the key, so that
-    /// the mortise is as wide across the keyboard as the cutter, its two ends
-    /// rounded to the cutter's radius ([`Self::front_mortise_length`]). [S]
-    pub front_mortise_cutter_diameter: f64,
-    /// How far that cutter moves along the key between its two end
-    /// positions, meters ([`Self::front_mortise_length`]). [S]
-    pub front_mortise_travel: f64,
-    /// Depth of the front mortise above the key's underside, meters.
-    ///
-    /// The slot the front rail pin stands in, measured from the underside, so
-    /// it already includes the recess the slot begins after: 3 mm of notch and
-    /// 19 mm of mortise is 22 mm of room. [V]
-    ///
-    /// It is a **stop**, not decoration: the key cannot descend past the point
-    /// where the pin's tip reaches the top of the slot, whatever the punchings
-    /// underneath would otherwise allow.
-    pub front_mortise_depth: f64,
+    /// The front mortise, cut up into the keystick from its underside over
+    /// the front rail pin.
+    pub front_mortise: FrontMortise,
     /// Thickness of the keystick's own wood, meters.
     ///
     /// **One piece, one thickness.** Everything else on the key is either glued
@@ -588,8 +618,8 @@ impl KeyDesign {
         },
         key_length(
             "front_mortise.depth",
-            |k| k.front_mortise_depth,
-            |k, v| k.front_mortise_depth = v,
+            |k| k.front_mortise.depth,
+            |k, v| k.front_mortise.depth = v,
         ),
         key_length(
             "capsule_height",
@@ -643,13 +673,13 @@ impl KeyDesign {
         ),
         key_length(
             "front_mortise.cutter_diameter",
-            |k| k.front_mortise_cutter_diameter,
-            |k, v| k.front_mortise_cutter_diameter = v,
+            |k| k.front_mortise.cutter_diameter,
+            |k, v| k.front_mortise.cutter_diameter = v,
         ),
         key_length(
             "front_mortise.travel",
-            |k| k.front_mortise_travel,
-            |k, v| k.front_mortise_travel = v,
+            |k| k.front_mortise.travel,
+            |k, v| k.front_mortise.travel = v,
         ),
     ];
 
@@ -709,29 +739,12 @@ impl KeyDesign {
     /// edge; this is that setback resolved against the balance pin, which is
     /// the datum everything else on the frame is measured from.
     pub fn front_mortise_x(&self) -> f64 {
-        self.front_edge - self.front_mortise_from_front_edge
-    }
-
-    /// Length of the front mortise along the key, meters: its cutter's
-    /// travel and diameter.
-    ///
-    /// The slot is longer along the key than the pin standing in it. It has to
-    /// be: the key swings about the balance pin, so the mortise travels through
-    /// a small arc past a pin that does not move, and a slot cut to the pin's
-    /// own length would bind at the ends of the stroke. The clearance is also
-    /// what lets a frame be a few tenths out of place without the key knowing.
-    ///
-    /// What it is **not** is the lateral fit. Across the keyboard the mortise is
-    /// bushed and close on the domed sides of the pin's oval head — that is
-    /// what holds the key straight — and that dimension is not in the
-    /// sagittal plane.
-    pub fn front_mortise_length(&self) -> f64 {
-        self.front_mortise_travel + self.front_mortise_cutter_diameter
+        self.front_edge - self.front_mortise.from_front_edge
     }
 
     /// The front mortise, as the two x it runs between, meters.
     pub fn front_mortise_span(&self) -> (f64, f64) {
-        let half = 0.5 * self.front_mortise_length();
+        let half = 0.5 * self.front_mortise.length();
         let x = self.front_mortise_x();
         (x - half, x + half)
     }
@@ -1069,8 +1082,8 @@ mod tests {
         let button_top = key.wood_under(button_back, button_front) + key.capsule_height;
         [
             (
-                (front - back) * key.front_mortise_depth,
-                Point::new(0.5 * (back + front), 0.5 * key.front_mortise_depth),
+                (front - back) * key.front_mortise.depth,
+                Point::new(0.5 * (back + front), 0.5 * key.front_mortise.depth),
             ),
             (
                 mortise.length() * (button_top - mortise.floor),

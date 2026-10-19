@@ -550,17 +550,17 @@ fn mortise(key: &KeyDesign) -> Result<(), Problem> {
             by: chamfer_end - back,
         });
     }
-    if key.front_mortise_depth >= key.stick_height {
+    if key.front_mortise.depth >= key.stick_height {
         return Err(Problem::MortiseThroughKeyTop {
-            depth: key.front_mortise_depth,
+            depth: key.front_mortise.depth,
             wood: key.stick_height,
         });
     }
-    if key.front_mortise_cutter_diameter > key.width {
+    if key.front_mortise.cutter_diameter > key.width {
         return Err(Problem::DoesNotFit {
             part: PartCode::FrontMortise,
             within: PartCode::Keystick,
-            by: key.front_mortise_cutter_diameter - key.width,
+            by: key.front_mortise.cutter_diameter - key.width,
         });
     }
     Ok(())
@@ -580,10 +580,7 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         front_edge,
         tail_end,
         capstan,
-        front_mortise_from_front_edge,
-        front_mortise_cutter_diameter,
-        front_mortise_travel,
-        front_mortise_depth,
+        front_mortise,
         stick_height,
         capsule_height,
         capsule_length,
@@ -620,20 +617,22 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         ("front_edge", *front_edge),
         ("tail_end", *tail_end),
         ("capstan.x", *capstan),
-        (
-            "front_mortise.from_front_edge",
-            *front_mortise_from_front_edge,
-        ),
-        (
-            "front_mortise.cutter_diameter",
-            *front_mortise_cutter_diameter,
-        ),
-        ("front_mortise.travel", *front_mortise_travel),
-        ("front_mortise.depth", *front_mortise_depth),
+    ];
+    let crate::parts::FrontMortise {
+        from_front_edge,
+        cutter_diameter,
+        travel,
+        depth,
+    } = front_mortise;
+    out.extend([
+        ("front_mortise.from_front_edge", *from_front_edge),
+        ("front_mortise.cutter_diameter", *cutter_diameter),
+        ("front_mortise.travel", *travel),
+        ("front_mortise.depth", *depth),
         ("stick_height", *stick_height),
         ("capsule_height", *capsule_height),
         ("capsule_length", *capsule_length),
-    ];
+    ]);
     if let Some(c) = capsule_center {
         out.push(("capsule_center", *c));
     }
@@ -1258,7 +1257,7 @@ mod tests {
     #[test]
     fn a_mortise_through_the_key_top_or_off_the_underside_is_refused() {
         let mut s = Standard::new();
-        s.key.front_mortise_depth = s.key.stick_height;
+        s.key.front_mortise.depth = s.key.stick_height;
         assert_eq!(
             s.validate(),
             Err(Problem::MortiseThroughKeyTop {
@@ -1267,7 +1266,7 @@ mod tests {
             })
         );
         let mut s = Standard::new();
-        s.key.front_mortise_from_front_edge = 0.0;
+        s.key.front_mortise.from_front_edge = 0.0;
         assert!(matches!(
             s.validate(),
             Err(Problem::FeatureOutsideKeystick {
@@ -1284,9 +1283,9 @@ mod tests {
     fn a_front_mortise_milled_wider_than_the_keystick_is_refused() {
         const MICROMETER: f64 = 1e-6;
         let mut s = Standard::new();
-        s.key.front_mortise_cutter_diameter = s.key.width;
+        s.key.front_mortise.cutter_diameter = s.key.width;
         assert_eq!(s.validate(), Ok(()));
-        s.key.front_mortise_cutter_diameter = s.key.width + MICROMETER;
+        s.key.front_mortise.cutter_diameter = s.key.width + MICROMETER;
         match s.validate() {
             Err(Problem::DoesNotFit {
                 part: PartCode::FrontMortise,
