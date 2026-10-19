@@ -1155,20 +1155,23 @@ mod tests {
     /// forbids is refused, with its shortfall**, never laid as the nearest
     /// stack and shown as a miss.
     ///
-    /// On the bench, 12 mm of dip at 65 mm of key height is past where the
-    /// pin bottoms in its mortise: refused, naming the pin, short by the
-    /// target less the deepest dip the key has, which the seated pose reads
-    /// with no paper on the front punching, the pin holding the bottom; the
-    /// same bits, since it is the same reading. With thin felts, so that
+    /// On the bench, its front pin half a millimeter taller, so that its
+    /// rounded tip bottoms in the mortise before the front punching stops
+    /// the key, 12 mm of dip at 65 mm of key height is past where the pin
+    /// bottoms: refused, naming the pin, short by the target less the
+    /// deepest dip the key has, which the seated pose reads with no paper
+    /// on the front punching, the pin holding the bottom; the same bits,
+    /// since it is the same reading. With thin felts, so that
     /// 62.5 mm is a key height the balance stack reaches, every dip from 9.0
     /// to 10.5 mm is refused by the same pin, each short by its own target
     /// less one deepest dip. And a key cut to 230 mm on a frame placed under
     /// it, felts bare, refuses 8 mm at 60 mm, by the pin, short by 8 mm less
     /// the deepest dip the pin leaves it on the balance stack 60 mm lays,
-    /// about 2.16 mm.
+    /// about 2.14 mm.
     #[test]
     fn a_dip_the_front_pin_forbids_is_refused_with_its_shortfall() {
-        let bench = Bench::standard();
+        let mut bench = Bench::standard();
+        bench.frame.sections.front.pin_height += 0.0005;
         let laid = total(&met(bench.solve(TARGETS)).0.balance.papers);
         let (deep, held_by) = deepest(&bench, laid);
         assert_eq!(held_by, vec![ContactCode::FrontPinInTheMortise]);
@@ -1262,8 +1265,10 @@ mod tests {
     ///   lays under the balance punching;
     /// - the front rail raised 10 mm, its pin pulled: at 65 mm the front of
     ///   the key would rest on the front punching's felt with its tail on
-    ///   the cloth, the stops fighting; with the pin in place, the pin
-    ///   bottoming in its mortise is what fights;
+    ///   the cloth, the stops fighting; with the pin in place, half a
+    ///   millimeter taller so that its rounded tip meets the mortise's top
+    ///   before the felt meets the key, the pin bottoming in its mortise is
+    ///   what fights;
     /// - a key 18 mm shorter under its frame: the front pin stands under its
     ///   wood, and only a key raised clear of the pin has a seat;
     /// - a front pin 0.3 mm into the wood in front of its slot, its top well
@@ -1352,6 +1357,7 @@ mod tests {
 
         let mut raised = Bench::standard();
         raised.frame.front_rail_height += 0.010;
+        raised.frame.sections.front.pin_height += 0.0005;
         let (target, limit, _) = refused(&raised, TARGETS);
         assert_eq!(
             (target, limit),

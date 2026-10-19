@@ -259,12 +259,15 @@ pub enum Sweep {
     },
     /// Oval in plan, standing upright: the front rail pin's head. The
     /// outline is its section through its middle along the key, the oval's
-    /// long axis, in the body's `x` and `y`, and is its silhouette: the
-    /// rectangle the head fills, flat-topped, whose box holds the ellipse
-    /// the solid sweeps up its height. Across the keyboard it is centered on
-    /// the sagittal plane.
+    /// long axis, in the body's `x` and `y`, and is its silhouette: the same
+    /// either side of its middle, its tip rounded, so that the solid turns
+    /// its half about that middle and squeezes it across the keyboard to its
+    /// width at its foot. Across the keyboard it is centered on the sagittal
+    /// plane.
     Oval {
-        /// The oval's short axis, meters: its width across the keyboard.
+        /// Its width across the keyboard at its foot, meters: the oval's
+        /// short axis, or on a pin no taller than its tip's radius, all tip,
+        /// as much less as its foot is shorter along the key than the oval.
         width: f64,
     },
 }

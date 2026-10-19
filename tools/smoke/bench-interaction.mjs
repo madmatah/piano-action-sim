@@ -948,10 +948,10 @@ if (unleveled.key_height !== reweighed.key_height) {
 console.log(`  ok  lift it off: key height back to ${unleveled.key_height}`)
 
 // Regulation from targets reaches the engine, and so does its refusal. On this
-// frame the front rail pin bottoms in its mortise about 0.8 mm short of a
-// 12 mm dip: the bench must refuse it, say so in millimeters and name the pin,
-// and change nothing. A dip the pin allows is laid, and the sheet reads what
-// the papers give.
+// frame the front punching's felt, with no paper under it, stops the key about
+// 0.8 mm short of a 12 mm dip: the bench must refuse it, say so in millimeters
+// and name the felt, and change nothing. A dip the felt allows is laid, and the
+// sheet reads what the papers give.
 const regulation = () =>
   evaluate(`
     (() => {
@@ -978,7 +978,7 @@ if (
   refused.laid ||
   refused.outcome !== 'refused' ||
   refused.code !== 'regulation_infeasible' ||
-  refused.limitedBy !== 'front_pin_in_mortise' ||
+  refused.limitedBy !== 'felt_thicker_than_the_stack' ||
   !(refused.shortfallMm > 0.7 && refused.shortfallMm < 0.9) ||
   !refused.text
 ) {

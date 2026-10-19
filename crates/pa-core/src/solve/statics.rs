@@ -1787,22 +1787,21 @@ pub(crate) mod tests {
         );
     }
 
-    /// Consistency: **a load on a row standing open is no rest.** The key
-    /// front 2.3725 mm forward of where the bench builds it stands the front
-    /// rail pin 0.87 mm into the wood behind the key's front mortise, and the
-    /// key rides on the pin and its cloth, off its balance punching. Its top
-    /// seat starts level on its punching, the pin in its wood within the
-    /// row margin, and the stops fight there, so the key is solved free to
-    /// lift: some forty steps in, each accepted one softening the metric
-    /// threefold, the box problem reads the cloth's row and the pin's as
-    /// closed while they stand 2.2 and 0.18 µm open, each carrying most of a
-    /// newton, and the loads balance to the rounding. That is no
-    /// equilibrium: a contact pushes only where it touches. Converged, every
-    /// row that carries more than the residual's tolerance of the load
-    /// scale is closed to within [`GAP_TOLERANCE`], and the bottom seat,
-    /// solved from the top, is the same pose to the bit: the riding key's dip
-    /// is nothing, where the rows read closed while they stand open would
-    /// leave 23 nm between its two seats.
+    /// Consistency: **a load on a row standing open is no rest.** The front
+    /// rail raised 21.25 mm and the key front 0.675 mm back of where the
+    /// bench builds them, the key rides 13 mm above its balance punching, on
+    /// its front punching, its front pin's rounded tip against the front
+    /// wall of its slot. Its nominal pose lowers it onto its frame from
+    /// above, 4° nose-up, where the solve starts it free to lift: 33 steps
+    /// in, the box problem reads the punching's row and the pin's as closed
+    /// while they stand 2.2 and 0.12 µm open, carrying 0.96 and 12 N, and
+    /// the loads balance to the rounding. That is no equilibrium: a contact
+    /// pushes only where it touches. Converged, in 76 steps, three quarters
+    /// of a cap, every row that carries more than the residual's tolerance
+    /// of the load scale is closed to within [`GAP_TOLERANCE`], and the
+    /// bottom seat, solved from the top, is the same pose to the bit: the
+    /// riding key's dip is nothing, where the rows read closed while they
+    /// stand open would leave 2.1 µm between its two seats.
     #[test]
     fn a_load_on_a_row_standing_open_is_no_rest() {
         use crate::parts::fixtures::{on_frame, regulated};
@@ -1810,12 +1809,13 @@ pub(crate) mod tests {
         use crate::parts::mounts::nominal_pose;
 
         let mut a = regulated();
-        a.key.front_edge += 0.0023725;
+        a.frame.front_rail_height += 0.02125;
+        a.key.front_edge -= 0.000675;
         let k = on_frame(&a, KeyKind::Natural, 0.0, true);
         let seats = k
             .seating()
             .seats(&mut Statics::new())
-            .expect("the key rides on the pin and its cloth");
+            .expect("the key rides on its front punching and its pin");
         assert!(seats.top.rides(), "{:?}", seats.top);
         // The top seat's increment again, from where the seat starts it, to
         // read the rows that carry it.
@@ -1828,7 +1828,7 @@ pub(crate) mod tests {
             force: Point::new(0.0, -seats.capstan_load),
         };
         let start = nominal_pose(&k.mounted);
-        assert_eq!(k.mounted.lift_at(&start).to_bits(), 0.0_f64.to_bits());
+        assert!(k.mounted.lift_at(&start) > 0.0, "lowered from above");
         let eq = k
             .mounted
             .solve(&mut Statics::new(), &start, &[capstan], Friction::Off)
@@ -1878,9 +1878,9 @@ pub(crate) mod tests {
 
     /// Consistency, found by a seeded search over lifts: **a key already
     /// resting against the front wall of its slot, lifted again, comes to
-    /// rest there in one increment.** With the front rail 0.9 to 1.5 mm in
+    /// rest there in one increment.** With the front rail 0.95 to 1.5 mm in
     /// front of where the bench builds it, a lift raises the key until the
-    /// slot's front wall meets the pin's front top corner, on a row whose arm
+    /// slot's front wall meets the pin's rounded tip, on a row whose arm
     /// about the bearing is under two centimeters. The next lift starts on
     /// that wall, its gap closed to the rounding of positions a quarter of a
     /// meter out, some hundredths of a femtometer either way. Closing such a
@@ -1893,8 +1893,9 @@ pub(crate) mod tests {
     /// equilibrium all along, the wall and the friction holding the key, so
     /// every lift here must converge and pass the virtual-work inequality.
     /// Past 1.5 mm forward the pin stands across the slot's front edge, its
-    /// face beyond the wall, and the key has no rest on a pivot: the
-    /// initialization refuses, naming the pin's pair. On a pivot, the one
+    /// side beyond the wall, and the key has no rest on a pivot, its tip in
+    /// the wall above its front punching: the initialization refuses, naming
+    /// the two pairs. On a pivot, the one
     /// coordinate this solve is tested on here: a key free to lift rides on
     /// the pin and its cloth instead.
     #[test]
@@ -1909,17 +1910,20 @@ pub(crate) mod tests {
         let (mut lifts, mut on_the_wall, mut straddling) = (0, 0, 0);
         for case in 0..40 {
             let mut a = regulated();
-            let forward = 1e-3 * rng.uniform(0.9, 1.6);
+            let forward = 1e-3 * rng.uniform(0.95, 1.6);
             a.frame.front_rail += forward;
             let kf_g = rng.uniform(0.0, 15.0);
             let b = kf_g * 1e-3 * G * a.measuring_point();
             let k = on_pivot(&a, KeyKind::Natural, b, true);
             let m = &k.mounted.mechanism;
-            let wall = m
-                .pairs()
-                .iter()
-                .position(|p| p.code == ContactCode::FrontPinOnTheWood)
-                .expect("the pin has a pair on the wood");
+            let pair_of = |code: ContactCode| {
+                m.pairs()
+                    .iter()
+                    .position(|pair| pair.code == code)
+                    .expect("the frame declares the pair")
+            };
+            let wall = pair_of(ContactCode::FrontPinOnTheWood);
+            let punching = pair_of(ContactCode::FrontRailPunching);
             let at = MaterialPoint {
                 body: k.mounted.key,
                 at: k.measuring_point,
@@ -1929,9 +1933,20 @@ pub(crate) mod tests {
             let mut q = match statics.solve(m, &start, &lifted, &[], Friction::Off) {
                 Ok(eq) => eq.q,
                 Err(Refusal::NoEquilibrium { on }) if forward > 1.5e-3 => {
-                    assert!(
-                        on.iter().all(|h| matches!(h, Holder::Contact { pair, .. }
-                            if usize::from(*pair) == wall)),
+                    // A limit among the holders reads as no pair, and
+                    // fails the comparison.
+                    let mut pairs: Vec<Option<usize>> = on
+                        .iter()
+                        .map(|holder| match *holder {
+                            Holder::Contact { pair, .. } => Some(usize::from(pair)),
+                            Holder::Limit { .. } => None,
+                        })
+                        .collect();
+                    pairs.sort_unstable();
+                    pairs.dedup();
+                    assert_eq!(
+                        pairs,
+                        vec![Some(punching), Some(wall)],
                         "case {case}: {on:?}"
                     );
                     straddling += 1;

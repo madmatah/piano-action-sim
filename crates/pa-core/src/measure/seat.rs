@@ -31,10 +31,11 @@
 //! wherever its drawn parts overlap its frame there by no more than the row
 //! margin, or lowered onto its frame from above where no attitude on the
 //! punching clears its stops. Where it finds no seat from there, an overlap
-//! within the margin that no motion of the key resolves, it starts again
-//! from the key lowered onto its frame clear of everything
-//! ([`crate::parts::mounts::lowered_onto_its_frame`]). The bottom seat starts
-//! from the top seat.
+//! within the margin that no motion of the key resolves, or a solve that
+//! reaches its cap with a stop standing in the key at its start, it starts
+//! again from the key lowered onto its frame clear of everything
+//! ([`crate::parts::mounts::lowered_onto_its_frame`]), the stalled steps
+//! counted with its own. The bottom seat starts from the top seat.
 //!
 //! # On its punching, or riding
 //!
@@ -278,7 +279,11 @@ impl Seating<'_> {
     /// lowered onto its frame can stand at the top of the slide's range,
     /// within the row margin of clearing it, at a whole degree from the
     /// attitude the key rides at below it, and the solve from there lifts
-    /// the key off its pin before it turns it down onto its stops.
+    /// the key off its pin before it turns it down onto its stops. Or it is
+    /// a solve that reaches its cap of steps: a front pin a few tenths of a
+    /// millimeter into the wood in front of its slot stands its rounded tip
+    /// in the slot's front wall, which the key turning on its punching draws
+    /// back out only through the wall's short arm about the bearing.
     ///
     /// A key free to lift that clears its frame only off its balance pin is
     /// refused as lifting off its frame, its stops holding it past where it
@@ -294,18 +299,34 @@ impl Seating<'_> {
             }
         }
         // A punching standing above the pin's top has the key off its pin
-        // wherever it stands on it: nothing from above seats it.
+        // wherever it stands on it: nothing from above seats it. A solve
+        // that reached its cap is tried from above only where a stop stood in
+        // the key at its start.
         let from_above = |refusal: &SeatRefusal| match refusal {
             SeatRefusal::CannotSeat { .. } => true,
+            SeatRefusal::NotConverged { .. } => {
+                crate::parts::mounts::overlap_on_its_frame(self.mounted, &nominal) > 0.0
+            }
             SeatRefusal::LiftsOffItsFrame { leaves_its_pin } => *leaves_its_pin >= 0.0,
             _ => false,
         };
         match self.seat(statics, &nominal, loads, true) {
             Err(refusal) if from_above(&refusal) => {
+                let stalled = match refusal {
+                    SeatRefusal::NotConverged { iterations, .. } => iterations,
+                    _ => 0,
+                };
                 match crate::parts::mounts::lowered_onto_its_frame(self.mounted) {
-                    Some(start) if start != nominal => {
-                        self.seat(statics, &start, loads, true).map_err(|_| refusal)
-                    }
+                    Some(start) if start != nominal => self
+                        .seat(statics, &start, loads, true)
+                        .map(|mut seat| {
+                            // One increment, started again: the steps it
+                            // took before it stalled count with the seat's.
+                            seat.report.iterations += stalled;
+                            seat.report.most_iterations += stalled;
+                            seat
+                        })
+                        .map_err(|_| refusal),
                     _ => Err(refusal),
                 }
             }
@@ -686,7 +707,7 @@ mod tests {
 
     /// The front pin bottoming in its mortise stops the key before its
     /// punching: one pin a millimeter prouder, and it is the pin that holds
-    /// the bottom seat, on one of its corners, the dip shorter by the
+    /// the bottom seat, on its rounded tip, the dip shorter by the
     /// millimeter seen through the lever.
     #[test]
     fn a_pin_too_proud_holds_the_bottom_seat() {
@@ -1088,17 +1109,16 @@ mod tests {
     }
 
     /// Consistency: **a pin a few tenths of a millimeter into the wood
-    /// beside its slot, its top well up in the slot, has the key lowered
+    /// beside its slot, its tip well up in the slot, has the key lowered
     /// onto it from above.** Its front end 0.3 mm into the wood in front of
     /// the slot, the key level on its punching overlaps the pin by less than
-    /// the row margin, so that is where the nominal pose puts it, and no
-    /// motion of the key resolves the overlap: no turn moves the wood at the
-    /// slot's mouth along the key, and no lift short of the pin's top clears
-    /// it. Lowered onto its frame from above, as a technician puts it there,
-    /// the key lands on the pin's top and rides on it and its cloth, off its
-    /// balance punching, nothing sunk, the drawn wood on the drawn pin within
-    /// the oracle's resolution. On a pivot, which cannot lift, it has no
-    /// seat, the pin's pair named.
+    /// the row margin, so that is where the nominal pose puts it, the pin's
+    /// rounded tip standing in the slot's front wall, and from there the
+    /// stops leave the key no motion. Lowered onto its frame from above, as
+    /// a technician puts it there, the key lands on the pin's tip and rides
+    /// on it and its cloth, off its balance punching, nothing sunk, the
+    /// drawn wood on the drawn pin within the oracle's resolution. On a
+    /// pivot, which cannot lift, it has no seat, the pin's pair named.
     #[test]
     fn a_pin_a_few_tenths_into_the_wood_has_the_key_lowered_onto_it() {
         let mut a = regulated();
@@ -1147,6 +1167,57 @@ mod tests {
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    /// Consistency: **a seat whose solve stalls on a stop standing in the
+    /// key is started again from above, the stalled steps counted with its
+    /// own.** The pin 0.3 mm into the wood in front of its slot, as above,
+    /// and a millimeter more paper under the balance punching: the key level
+    /// on its punching stands the pin's rounded tip in the slot's front
+    /// wall, which the key turning on its punching draws back only through
+    /// the wall's short arm about the bearing, and the solve from there
+    /// reaches its cap. Lowered onto its frame from above, the key rides on
+    /// the pin and its cloth.
+    #[test]
+    fn a_seat_that_stalls_on_a_stop_in_the_key_is_started_again_from_above() {
+        let mut a = regulated();
+        let pin = a.frame.sections.front.pin.expect("a pin").length();
+        let (_, front_end) = a.key.front_mortise_span();
+        a.frame.front_rail = front_end - 0.5 * pin + 0.0003;
+        a.frame.balance_punching.papers.push(0.001);
+        let k = on_frame(&a, KeyKind::Natural, 0.0, true);
+        let seats = k
+            .seating()
+            .seats(&mut Statics::new())
+            .expect("lowered onto the pin, the key rides on it");
+        assert!(seats.top.rides(), "{:?}", seats.top);
+        assert_eq!(
+            seats.top.held_by,
+            vec![ContactCode::BackRailCloth, ContactCode::FrontPinOnTheWood]
+        );
+        let capstan = PointLoad {
+            at: MaterialPoint {
+                body: k.mounted.key,
+                at: k.capstan,
+            },
+            force: Point::new(0.0, -seats.capstan_load),
+        };
+        let nominal = crate::parts::mounts::nominal_pose(&k.mounted);
+        let from_nominal =
+            k.mounted
+                .solve(&mut Statics::new(), &nominal, &[capstan], Friction::Off);
+        let Err(Refusal::NotConverged {
+            iterations: stalled,
+            ..
+        }) = from_nominal
+        else {
+            panic!("{from_nominal:?}");
+        };
+        assert!(
+            seats.top.report.iterations > stalled,
+            "{stalled} steps stalled, the seat reports {:?}",
+            seats.top.report
+        );
     }
 
     /// A key on the sharp row stands on the sharp row's punchings and pins,

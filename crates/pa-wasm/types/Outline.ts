@@ -43,8 +43,8 @@ paper_color: PaperColor | null,
 sweep: Sweep, 
 /**
  * Extrusion across the sagittal plane, a milled cut's cutter's
- * diameter, or an oval part's short axis, millimeters; zero when
- * turned.
+ * diameter, or an oval part's width at its foot, its short axis but on
+ * a pin that is all tip, millimeters; zero when turned.
  */
 width_mm: number, 
 /**
