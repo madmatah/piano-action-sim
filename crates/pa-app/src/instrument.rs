@@ -23,8 +23,11 @@
 //! diagnostics keep the edit refused. Everything an assembled keyboard can be,
 //! however badly regulated, is taken, computed and reported: upstream
 //! settings drift, they do not cascade. After every edit taken the key is
-//! solved one increment from where it stood, so it is always drawn at an
-//! equilibrium.
+//! solved one increment from where it stood, so it is drawn at an
+//! equilibrium wherever one holds it; where none has held it since it was
+//! put on its frame, level on its balance punching, which places nothing;
+//! and where the weight on its measuring point lifts it off its frame, where
+//! its last equilibrium left it ([`Instrument::key_place`]).
 //!
 //! # Replayable
 //!
@@ -376,6 +379,19 @@ impl ShownContact {
             ContactState::Overlapping
         }
     }
+}
+
+/// Where the key stands on its frame, as the view draws it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyPlace {
+    /// An equilibrium places it where it is drawn.
+    Placed,
+    /// No equilibrium has held it since it was put on its frame: it is
+    /// drawn level on its balance punching, which places nothing.
+    Unplaced,
+    /// The weight on its measuring point lifts it off its frame: it is
+    /// drawn where its last equilibrium left it, which no longer holds it.
+    LiftedOff,
 }
 
 /// The key's body in the bench's scene: the ground, which carries the frame,
@@ -1716,6 +1732,23 @@ impl Instrument {
         }
     }
 
+    /// Where the key stands on its frame, as it is drawn
+    /// ([`Self::key_placement`]): placed by an equilibrium, or not and why
+    /// not.
+    pub fn key_place(&self) -> KeyPlace {
+        match (&self.state, self.lifts_off) {
+            (None, _) => KeyPlace::Unplaced,
+            (Some(_), true) => KeyPlace::LiftedOff,
+            (Some(_), false) => KeyPlace::Placed,
+        }
+    }
+
+    /// Whether an equilibrium places the key where it is drawn
+    /// ([`Self::key_place`]).
+    pub fn is_placed(&self) -> bool {
+        self.key_place() == KeyPlace::Placed
+    }
+
     /// Where the key's frame stands in the keybed's: its origin, at the
     /// balance pin on the underside, and its rotation, positive nose-up.
     ///
@@ -1811,6 +1844,9 @@ impl Instrument {
 
     /// The contacts the view marks: every row within the margin the static
     /// solve reads, where the key is drawn, its balance punching's included.
+    /// Where no equilibrium places the key ([`Self::is_placed`]), only the
+    /// rows where its drawn parts overlap the frame's: a gap read off a pose
+    /// no equilibrium holds says nothing of what bears.
     pub fn contacts(&self) -> Vec<ShownContact> {
         let Some(mounted) = self.key_on_frame() else {
             return Vec::new();
@@ -1829,6 +1865,7 @@ impl Instrument {
                 normal: r.normal.vector(),
                 force: carried.force(r.pair, r.feature),
             })
+            .filter(|contact| self.is_placed() || contact.state() == ContactState::Overlapping)
             .collect()
     }
 
@@ -1836,9 +1873,11 @@ impl Instrument {
     /// it where the key is drawn, meters: what its felt would compress under
     /// a key out of level on it, which the rigid reading at the center
     /// leaves aside ([`edge_overlaps`]). Under the key at rest on its
-    /// balance punching, nose-up by its dip, a quarter of a millimeter.
+    /// balance punching, nose-up by its dip, a quarter of a millimeter. None
+    /// where no equilibrium placed the key ([`Self::is_placed`]): it bears on
+    /// no punching there.
     pub fn edge_overlaps(&self) -> Vec<(ContactCode, f64)> {
-        let Some(mounted) = self.key_on_frame() else {
+        let Some(mounted) = self.key_on_frame().filter(|_| self.is_placed()) else {
             return Vec::new();
         };
         edge_overlaps(&mounted, &self.drawn(&mounted))
@@ -1972,8 +2011,13 @@ impl Instrument {
     /// The gaps at the front punching and at the back rail cloth where the
     /// key is drawn, millimeters, read off the contact rows at the attitude
     /// it stands in: `None` where no underside passes over the punching's
-    /// center, or where no feature of the cloth and the key can meet.
+    /// center, or where no feature of the cloth and the key can meet, and
+    /// where no equilibrium placed the key, whose drawn attitude is none of
+    /// its own ([`Self::is_placed`]).
     fn gaps_mm(&self, mounted: &Mounted) -> (Option<f64>, Option<f64>) {
+        if !self.is_placed() {
+            return (None, None);
+        }
         let rows = Self::rows_at(mounted, &self.drawn(mounted), f64::INFINITY);
         let gap_mm = |code| Some(rows.gap(pair_of(mounted, code)?)? * 1000.0);
         (
@@ -2003,8 +2047,12 @@ impl Instrument {
 
     /// How far the measuring point stands below where it stands with the
     /// key seated at the top of its stroke, where the key is drawn,
-    /// millimeters; `None` where the key cannot be seated at the top.
+    /// millimeters; `None` where the key cannot be seated at the top, or
+    /// where no equilibrium placed it ([`Self::is_placed`]).
     fn travel_mm(&self, k: &OnItsFrame) -> Option<f64> {
+        if !self.is_placed() {
+            return None;
+        }
         let point = self.protocol.measuring_point_on_key(&self.key);
         let top = Seating {
             mounted: &k.mounted,
@@ -3762,6 +3810,68 @@ mod contact_readout_tests {
                 assert!((c.on_frame.y - center.y).abs() < 1e-12);
             }
         }
+    }
+
+    /// Consistency: **a key no equilibrium places is marked bearing on
+    /// nothing.** With the front rail moved back to 80 mm in front of the
+    /// balance pin, its pin stands under the wood of Hirschkorn's key and
+    /// would lift it past the 9 mm where it leaves its balance pin: no
+    /// equilibrium places the key on this frame. It is drawn level on its
+    /// balance punching, which it touches there and does not bear on, so no
+    /// contact is marked closed, no punching is said to overlap its edge,
+    /// and no gap is read; only where its drawn parts overlap the frame's is
+    /// marked, the pin in the wood.
+    #[test]
+    fn a_key_no_equilibrium_places_is_marked_bearing_on_nothing() {
+        let front_rail_under_the_wood_mm = 80.0;
+        let mut b = Instrument::standard();
+        b.set(path::FRONT_RAIL_AT, front_rail_under_the_wood_mm)
+            .expect("a frame edit is taken");
+        assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
+        assert_eq!(b.key_place(), KeyPlace::Unplaced);
+        let marked = b.contacts();
+        assert!(
+            marked
+                .iter()
+                .all(|c| c.state() == ContactState::Overlapping),
+            "{marked:?}"
+        );
+        assert!(
+            marked
+                .iter()
+                .any(|c| c.code == ContactCode::FrontPinOnTheWood),
+            "{marked:?}"
+        );
+        assert_eq!(b.edge_overlaps(), Vec::new());
+        let touch = b.touch().expect("the bench says what holds the key");
+        assert_eq!(
+            (touch.gap_front_mm, touch.gap_back_mm, touch.travel_mm),
+            (None, None, None)
+        );
+    }
+
+    /// Consistency: **a key a pull lifts off its frame is marked bearing on
+    /// nothing.** Pulled 63 g at its measuring point, past what its balance
+    /// punching carries, the weighed section lifts off its frame: it is
+    /// drawn where its last equilibrium left it, which no longer holds it,
+    /// so no contact is marked closed there and no gap is read.
+    #[test]
+    fn a_key_a_pull_lifts_off_its_frame_is_marked_bearing_on_nothing() {
+        let pull_off_its_frame_g = -63.0;
+        let mut b = Instrument::weighed_section();
+        b.set(path::WEIGHT, pull_off_its_frame_g)
+            .expect("a weight is taken");
+        assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
+        assert_eq!(b.key_place(), KeyPlace::LiftedOff);
+        let marked = b.contacts();
+        assert!(
+            marked
+                .iter()
+                .all(|c| c.state() == ContactState::Overlapping),
+            "{marked:?}"
+        );
+        let touch = b.touch().expect("the bench says what holds the key");
+        assert_eq!((touch.gap_front_mm, touch.gap_back_mm), (None, None));
     }
 
     /// Consistency, and the owner's way of setting friction: **the key

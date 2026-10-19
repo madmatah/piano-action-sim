@@ -74,8 +74,8 @@ use pa_core::G;
 
 use crate::instrument::{
     Action, ActionCode, ContactState as CoreContactState, Edit as CoreEdit,
-    EditRefusal as CoreEditRefusal, Instrument, NotRegulated, Outcome, Riding as CoreRiding,
-    SeatReport, Stack, TouchVerdict, KEY,
+    EditRefusal as CoreEditRefusal, Instrument, KeyPlace as CoreKeyPlace, NotRegulated, Outcome,
+    Riding as CoreRiding, SeatReport, Stack, TouchVerdict, KEY,
 };
 use crate::profile::{Known, PaperColor, Profile};
 use crate::registry::{self, path, Control, Entry, Field, Label, Panel, Weighing as WeighingField};
@@ -1931,6 +1931,21 @@ pub enum ContactState {
     Overlapping,
 }
 
+/// Where the key stands on its frame, as the view draws it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum KeyPlace {
+    /// An equilibrium places it where it is drawn.
+    Placed,
+    /// No equilibrium has held it since it was put on its frame: it is
+    /// drawn level on its balance punching, which places nothing.
+    Unplaced,
+    /// The weight on its measuring point lifts it off its frame: it is
+    /// drawn where its last equilibrium left it, which no longer holds it.
+    LiftedOff,
+}
+
 /// A contact the view marks, in the keybed's frame: one active row, where
 /// the contact rows put its two points, not where a body's pose carries
 /// them, with its normal and what it carries.
@@ -1964,9 +1979,14 @@ pub struct State {
     /// One per body, in body order: the ground, the slide the key lifts off
     /// its balance punching on, the key.
     pub poses: Vec<Pose>,
+    /// Where the key stands on its frame, as it is drawn: placed by an
+    /// equilibrium, or not and why not.
+    pub place: KeyPlace,
     /// The measuring point, on the key: where the engine weighs.
     pub measuring_point: Marker,
-    /// The contacts within a millimeter of closing, where the key is drawn.
+    /// The contacts within a millimeter of closing, where the key is drawn;
+    /// where no equilibrium places it, only those where its drawn parts
+    /// overlap the frame's.
     pub contacts: Vec<MarkedContact>,
 }
 
@@ -1984,6 +2004,11 @@ impl State {
                     sin: p.sin as f32,
                 })
                 .collect(),
+            place: match instrument.key_place() {
+                CoreKeyPlace::Placed => KeyPlace::Placed,
+                CoreKeyPlace::Unplaced => KeyPlace::Unplaced,
+                CoreKeyPlace::LiftedOff => KeyPlace::LiftedOff,
+            },
             measuring_point: Marker {
                 body: body_index(KEY.0),
                 at_mm: [mm32(m.x), mm32(m.y)],

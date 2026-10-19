@@ -1794,8 +1794,11 @@ stands at its two seats, what holds it under the weight on its measuring
 point and the gaps there, how far the punchings' drawn edges overlap it, and
 the last edit refused since one was taken, with why. The **state**: one pose
 per body, an origin, a cosine and a sine, which the view applies and computes
-none of; the measuring point on the key; the contacts within a millimeter of
-closing, each its two surface points in the keybed's frame, its gap, whether
+none of; where the key stands on its frame, placed by an equilibrium, with
+none since it was put on it, or lifted off it by the weight on its measuring
+point; the measuring point on the key; the contacts within a millimeter of
+closing, or, where no equilibrium places the key, only those where its drawn
+parts overlap the frame's, each its two surface points in the keybed's frame, its gap, whether
 it is closed, open or overlapping, its row's normal, and the force the row
 carried in the last equilibrium, one admissible split of the loads where
 friction or redundant rows share them ([Parts and statics](#parts-and-statics)), never read as a verdict. The
@@ -1823,7 +1826,8 @@ placing the frame under the key, putting another shipped profile's instrument
 on the bench. Each answers that it was done, the papers a
 regulation laid and what they give, or why it was refused, by its code, the
 bench left as it was to the bit. After every edit taken the key is solved one
-increment from where it stood, so it is always drawn at an equilibrium. Every
+increment from where it stood, so it is drawn at an equilibrium wherever one
+has held it since it was put on its frame. Every
 edit taken is logged, and the log replayed on the bench it started from gives
 the same state, which `state_hash` names: FNV-1a over the bit patterns of
 every normative coordinate, of where the last equilibrium left the key and

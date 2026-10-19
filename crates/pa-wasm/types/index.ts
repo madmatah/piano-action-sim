@@ -27,6 +27,7 @@ export type { FrictionSettings } from "./FrictionSettings";
 export type { FrontRailSettings } from "./FrontRailSettings";
 export type { How } from "./How";
 export type { Input } from "./Input";
+export type { KeyPlace } from "./KeyPlace";
 export type { KeySettings } from "./KeySettings";
 export type { Kind } from "./Kind";
 export type { Label } from "./Label";
