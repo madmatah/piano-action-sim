@@ -40,4 +40,4 @@ Flag only a clear violation of a written rule, quoting the rule and the file tha
   Also look for commented-out code and banners, and for the task markers of `.claude/rules/repository.md` > What belongs in the repository.
 - **Rust** (`.claude/rules/conventions.md` > Rust) and **TypeScript** (`.claude/rules/conventions.md` > TypeScript): a clear violation of one of their rules, such as a default export, an `enum`, an `any`, or a number the page computes.
 - **Input from outside the program** (`.claude/rules/conventions.md` > Input from outside the program): outside input used unchecked, or outside text reaching `innerHTML`, an `href`, a `src` or a shell.
-- **Language** (`CLAUDE.md` > Language): American English, in identifiers, comments and the text the page shows; a British spelling outside a quotation is a finding.
+- **Language** (`CLAUDE.md` > Language): American English, in identifiers, comments and the text the page shows, outside the kinds of text that rule lets keep their own, the French interface catalog among them; a British spelling elsewhere is a finding.
