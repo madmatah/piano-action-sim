@@ -30,14 +30,14 @@ sheet.friction_weight refused From { reading: DownWeight }
 sheet.key_friction_weight_zeroed_on_the_jig refused Walk(NoTravel)
 sheet.key_friction_weight_zeroed_on_the_frame refused Walk(NoTravel)
 readout.key_mass_g 120.08000000000001 0x405e051eb851eb86
-readout.gap_front_mm -2.791820594150174e-15 0xbce9258000000000
-readout.gap_back_mm -1.3010426069826053e-15 0xbcd7700000000000
+readout.gap_front_mm -2.8324781756183803e-15 0xbce9834000000000
+readout.gap_back_mm 5.421010862427522e-15 0x3cf86a0000000000
 readout.key_friction_weight_g 5.497851245505889 0x4015fdccb786e1f5
 readout.key_height_target_mm 61.65915375694688 0x404ed45f267a8faa
 readout.key_dip_target_mm 10.0 0x4024000000000000
 readout.finger RidesOnBothStops FrontRailPunching
-readout.finger.lift_mm 1.119245293245294 0x3ff1e86dc0ab0c28
-readout.out_of_level_deg 1.007385298748938 0x3ff01e400c0990e9
+readout.finger.lift_mm 1.1192452932452974 0x3ff1e86dc0ab0c37
+readout.out_of_level_deg 1.0073852987489378 0x3ff01e400c0990e8
 readout.bedding_at_the_back.slope -0.05866738155239656 0xbfae09a6aa380ffb
 readout.bears_at_the_back_mm 203.6707166605371 0x4069757682c93c74
 readout.back_bearing StopEdge
@@ -53,7 +53,7 @@ papers.front 3
 papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
 papers.front.2 8e-5 0x3f14f8b588e368f1
-pose.sin_angle 0.017581284439600182 0x3f9200d406c24f85
+pose.sin_angle 0.017581284439600192 0x3f9200d406c24f88
 pose.measuring_point.x 0.22670389707021363 0x3fcd04a21fe56aab
 pose.measuring_point.y 0.05203691816310158 0x3faaa4953b63eaa9
 band refused Sweep(NoTravel)

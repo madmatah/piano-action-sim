@@ -854,6 +854,19 @@ impl Instrument {
         Self::of(Profile::weighed_section()).expect("the weighed section is regulable")
     }
 
+    /// This instrument on a balance pin a key can be taken off
+    /// ([`pa_core::test_fixture::SHORT_BALANCE_PIN`]), set as the page sets
+    /// it, for the tests of a key leaving its pin.
+    #[cfg(test)]
+    pub(crate) fn short_pinned(mut self) -> Self {
+        self.set(
+            registry::path::BALANCE_PIN_HEIGHT,
+            1000.0 * pa_core::test_fixture::SHORT_BALANCE_PIN,
+        )
+        .expect("a short balance pin");
+        self
+    }
+
     /// The profile this instrument was built from: where every number it
     /// started from comes from, and what [`Action::Reset`] returns it to.
     pub fn profile(&self) -> &'static Profile {
@@ -2923,7 +2936,7 @@ mod tests {
     /// Consistency: **a pull never draws the key above its balance pin.**
     /// The key leaves its pin where its balance hole, the key frame's origin
     /// on the pin's axis, clears the drawn pin's top, 9 mm above its
-    /// punching on the tests' bench. Pulled up at its measuring point past
+    /// punching on a short pin. Pulled up at its measuring point past
     /// what its punching carries, the key turns up on its cloth off its
     /// punching as far as its friction lets it: under a millimeter at
     /// 62.7 g, 8.5 mm at 62.85 g. A little more and it would turn up past
@@ -2936,7 +2949,7 @@ mod tests {
     /// it.
     #[test]
     fn a_pull_never_draws_the_key_above_its_balance_pin() {
-        let base = Instrument::weighed_section();
+        let base = Instrument::weighed_section().short_pinned();
         let pin_top = base
             .outlines()
             .iter()
@@ -3243,20 +3256,20 @@ mod contact_readout_tests {
     /// the cloth clear above it: no contact reads a rail, and only the key
     /// read against its rails is found sunk. The cloth then holds the tail
     /// so high that the key would ride 15 mm above its balance punching,
-    /// past the top of the bench's pin, 9 mm up: on that pin the key is off
-    /// its frame, and the bench says so. On a balance pin 20 mm taller, put
+    /// past the top of a short pin, 9 mm up: on that pin the key is off its
+    /// frame, and the bench says so. On a balance pin 20 mm taller, put
     /// back by the loading rule, the key is drawn on its front punching and
     /// its cloth, as high above its balance punching as its seats ride,
     /// never on its punching with the rail drawn through it.
     #[test]
     fn a_back_rail_raised_through_the_key_in_one_move_draws_it_riding() {
-        let mut b = Instrument::weighed_section();
+        let mut b = Instrument::weighed_section().short_pinned();
         b.set(path::BACK_RAIL_HEIGHT, 1000.0 * 0.055)
             .expect("a back rail");
         assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
         assert!(b.riding().is_none() && b.frame_fault().is_some());
 
-        let mut b = Instrument::weighed_section();
+        let mut b = Instrument::weighed_section().short_pinned();
         b.frame.sections.balance.pin_height += 0.020;
         b.relax();
         assert!(!b.reinitialized(), "a taller pin moves nothing");
@@ -3377,8 +3390,9 @@ mod contact_readout_tests {
     }
 
     /// Consistency: **a weight that lifts the key off its frame leaves it
-    /// drawn where it stood, whichever solve finds it lifting off.** On
-    /// bushings of 3 g, 62 g pulling at the measuring point of the key at
+    /// drawn where it stood, whichever solve finds it lifting off.** On a
+    /// short balance pin and bushings of 3 g, 62 g pulling at the measuring
+    /// point of the key at
     /// rest is past what its punching and its cloth hold: the increment from
     /// where the key stands stops at its cap before the key's slide meets
     /// the top of its range, and the initialization, from the key's nominal
@@ -3388,7 +3402,7 @@ mod contact_readout_tests {
     /// punching.
     #[test]
     fn a_pull_that_lifts_the_key_off_its_frame_leaves_it_where_it_stood() {
-        let mut b = Instrument::weighed_section();
+        let mut b = Instrument::weighed_section().short_pinned();
         b.act(Action::SetFrictionFromKeyFrictionWeight { kf_g: 3.0 })
             .expect("bushings read 3 g");
         let stood = b.key_placement();
@@ -3840,7 +3854,7 @@ mod contact_readout_tests {
     /// Consistency: **a key no equilibrium places is marked bearing on
     /// nothing.** With the front rail moved back to 80 mm in front of the
     /// balance pin, its pin stands under the wood of Hirschkorn's key and
-    /// would lift it past the 9 mm where it leaves its balance pin: no
+    /// would lift it past the 9 mm where it leaves a short balance pin: no
     /// equilibrium places the key on this frame. It is drawn level on its
     /// balance punching, which it touches there and does not bear on, so no
     /// contact is marked closed, no punching is said to overlap its edge,
@@ -3849,7 +3863,7 @@ mod contact_readout_tests {
     #[test]
     fn a_key_no_equilibrium_places_is_marked_bearing_on_nothing() {
         let front_rail_under_the_wood_mm = 80.0;
-        let mut b = Instrument::standard();
+        let mut b = Instrument::standard().short_pinned();
         b.set(path::FRONT_RAIL_AT, front_rail_under_the_wood_mm)
             .expect("a frame edit is taken");
         assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));
@@ -3877,13 +3891,14 @@ mod contact_readout_tests {
 
     /// Consistency: **a key a pull lifts off its frame is marked bearing on
     /// nothing.** Pulled 63 g at its measuring point, past what its balance
-    /// punching carries, the weighed section lifts off its frame: it is
+    /// punching carries, the weighed section on a short balance pin lifts
+    /// off its frame: it is
     /// drawn where its last equilibrium left it, which no longer holds it,
     /// so no contact is marked closed there and no gap is read.
     #[test]
     fn a_key_a_pull_lifts_off_its_frame_is_marked_bearing_on_nothing() {
         let pull_off_its_frame_g = -63.0;
-        let mut b = Instrument::weighed_section();
+        let mut b = Instrument::weighed_section().short_pinned();
         b.set(path::WEIGHT, pull_off_its_frame_g)
             .expect("a weight is taken");
         assert_eq!(b.finger_verdict(), Some(TouchVerdict::LiftsOffItsFrame));

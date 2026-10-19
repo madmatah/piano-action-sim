@@ -1255,10 +1255,11 @@ mod tests {
     ///   paper on it;
     /// - 10.2 mm of dip on a 3 mm front felt: the felt alone, no paper under
     ///   it, stops the key short;
-    /// - 120 mm of key height: past the highest the key stands on its
-    ///   balance pin, the paper raising its punching to the pin's top, short
-    ///   by what the seated pose reads there; on a pin 50 mm tall, more than
-    ///   the search lays under the balance punching;
+    /// - 120 mm of key height on a short balance pin, 9 mm above the
+    ///   regulated punching: past the highest the key stands on its pin, the
+    ///   paper raising its punching to the pin's top, short by what the
+    ///   seated pose reads there; on a pin 50 mm tall, more than the search
+    ///   lays under the balance punching;
     /// - the front rail raised 10 mm, its pin pulled: at 65 mm the front of
     ///   the key would rest on the front punching's felt with its tail on
     ///   the cloth, the stops fighting; with the pin in place, the pin
@@ -1271,9 +1272,9 @@ mod tests {
     /// - the back rail cloth holding the tail 40 mm above the balance
     ///   bearing, on a balance pin 50 mm tall: the key rides on its cloth and
     ///   its front pin with all the paper the search lays, its front below
-    ///   the target, which only more paper would reach; on the bench's pin it
-    ///   rides past its pin's top, off its frame, and has no seat at any
-    ///   stack;
+    ///   the target, which only more paper would reach; on a short pin, 9 mm
+    ///   above the punching, it rides past its pin's top, off its frame, and
+    ///   has no seat at any stack;
     /// - a front punching whose center stands past the key's front: no dip
     ///   at all, the whole target short.
     #[test]
@@ -1322,10 +1323,16 @@ mod tests {
         // The paper that brings the punching's top to the pin's: a
         // nanometer less, and the key stands on its pin as high as any
         // stack has it there.
-        let f = &bench.frame;
+        let mut short_pinned = Bench::standard();
+        short_pinned.frame.sections.balance.pin_height = crate::test_fixture::SHORT_BALANCE_PIN;
+        let f = &short_pinned.frame;
         let to_the_top = f.sections.balance.pin_height - f.balance_punching.felt;
-        let highest = reading(r.height_trial(&mut Statics::new(), &mut sink, to_the_top - 1e-9));
-        let (target, limit, short) = refused(&bench, tall);
+        let highest = reading(short_pinned.regulating().height_trial(
+            &mut Statics::new(),
+            &mut sink,
+            to_the_top - 1e-9,
+        ));
+        let (target, limit, short) = refused(&short_pinned, tall);
         assert_eq!(
             (target, limit),
             (Target::KeyHeight, Limit::OffItsBalancePin)
@@ -1380,6 +1387,7 @@ mod tests {
 
         let mut wedged = Bench::standard();
         let f = &mut wedged.frame;
+        f.sections.balance.pin_height = crate::test_fixture::SHORT_BALANCE_PIN;
         f.back_rail_height = f.balance_bearing_height() + 0.040 - f.back_rail_cloth;
         assert!(
             matches!(

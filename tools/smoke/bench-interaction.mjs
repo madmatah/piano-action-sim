@@ -1869,12 +1869,15 @@ if (
 }
 console.log(`  ok  the band drawn again once the key has its stroke back, ${plotted} px wide`)
 
-// A key no equilibrium places bears on nothing: with the front rail moved
-// back until its pin stands under the wood of the key, which it would lift
-// off its balance pin, the key has no place on its frame. The view says so
-// and marks no contact closed; with the rail put back, the key is placed
-// again and bears on its stops.
+// A key no equilibrium places bears on nothing: on a balance pin cut short,
+// 9 mm above its punching, with the front rail moved back until its pin
+// stands under the wood of the key, which it would lift off its balance pin,
+// the key has no place on its frame. The view says so and marks no contact
+// closed; with the rail and the pin put back, the key is placed again and
+// bears on its stops.
 const FRONT_RAIL_UNDER_THE_WOOD_MM = 80
+const BALANCE_PIN = 'frame.balance_rail.pin_height_mm'
+const SHORT_BALANCE_PIN_MM = 11.2
 const readPlacement = () =>
   evaluate(`
     (() => {
@@ -1888,6 +1891,9 @@ const readPlacement = () =>
   `)
 if ((await showView('solid')) !== 'ok') fail('no solid button')
 const railAtMm = (await slider(FRONT_RAIL_AT))?.holds
+const pinMm = (await slider(BALANCE_PIN))?.holds
+if ((await moveSlider(BALANCE_PIN, SHORT_BALANCE_PIN_MM)) !== 'ok')
+  fail('balance pin slider missing')
 if ((await moveSlider(FRONT_RAIL_AT, FRONT_RAIL_UNDER_THE_WOOD_MM)) !== 'ok') {
   fail('front rail slider missing')
 }
@@ -1897,6 +1903,7 @@ if (noPlace.place !== 'unplaced' || noPlace.touching !== '' || !noPlace.note) {
   fail(`a key no equilibrium places is drawn as if it bore: ${JSON.stringify(noPlace)}`)
 }
 if ((await moveSlider(FRONT_RAIL_AT, railAtMm)) !== 'ok') fail('front rail slider missing')
+if ((await moveSlider(BALANCE_PIN, pinMm)) !== 'ok') fail('balance pin slider missing')
 await settle()
 const placedAgain = await readPlacement()
 if (placedAgain.place !== 'placed' || placedAgain.touching === '' || placedAgain.note !== null) {

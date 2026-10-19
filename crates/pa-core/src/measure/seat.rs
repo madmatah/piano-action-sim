@@ -483,6 +483,14 @@ mod tests {
         seat.q[k.mounted.angle.0]
     }
 
+    /// The regulated bench on a balance pin a key can be taken off,
+    /// [`crate::test_fixture::SHORT_BALANCE_PIN`] tall.
+    fn short_pinned() -> Setup {
+        let mut a = regulated();
+        a.frame.sections.balance.pin_height = crate::test_fixture::SHORT_BALANCE_PIN;
+        a
+    }
+
     /// The regulated bench, its cloth holding the tail 5 mm above the
     /// balance bearing while the front punching stands level with it: a
     /// frame whose stops fight, as the golden sheet's fixture builds it.
@@ -849,8 +857,9 @@ mod tests {
     /// Consistency: **a key its stops would hold past its balance pin has no
     /// seat: it is off its frame.** The key leaves its pin where its balance
     /// hole, at the key frame's origin on the pin's axis, clears the pin's
-    /// drawn top: on the regulated bench 9 mm above its punching, the pin's
-    /// height above its rail less the punching stack, as the frame's fields
+    /// drawn top: on the regulated bench on a short pin 9 mm above its
+    /// punching, the pin's height above its rail less the punching stack, as
+    /// the frame's fields
     /// give it, and a millimeter more pin is a millimeter more. The balance
     /// rail lowered takes its pin and its punching down together, and the
     /// key, held on its front punching and its cloth, rides higher above
@@ -868,7 +877,7 @@ mod tests {
     /// a ratio under two, carry to the slide.
     #[test]
     fn a_key_its_stops_hold_past_its_pin_is_off_its_frame() {
-        let a = regulated();
+        let a = short_pinned();
         let room =
             |a: &Setup| a.frame.sections.balance.pin_height - a.frame.balance_punching.height();
         let leaves = |a: &Setup| {
@@ -950,8 +959,8 @@ mod tests {
     /// in its wood and its cloth, 4.28° nose-up; each with its balance pin cut
     /// to 0.3 mm above where the key rides on a pin 0.2 m taller. And the
     /// front punching's felt 25 mm thicker, the key riding 7.79 mm up on it
-    /// and its cloth, 4.37° nose-up, 1.2 mm under the top of the bench's own
-    /// pin. Each whole degree either side of where a key rides costs the
+    /// and its cloth, 4.37° nose-up, 1.2 mm under the top of a short pin
+    /// 9 mm above its punching. Each whole degree either side of where a key rides costs the
     /// angle between them times its stops' arms of lift, more than the pin
     /// leaves, so no attitude a whole degree apart clears the frame below the
     /// pin's top: the first key would be lowered nowhere, the second lowered
@@ -966,7 +975,7 @@ mod tests {
     /// a ratio under two, carry to the slide.
     #[test]
     fn a_key_riding_just_under_its_pins_top_is_seated_where_it_rides() {
-        let a = regulated();
+        let a = short_pinned();
         let room =
             |a: &Setup| a.frame.sections.balance.pin_height - a.frame.balance_punching.height();
         let mut wedged = a.clone();

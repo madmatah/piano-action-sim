@@ -350,10 +350,10 @@
     },
     {
       "param": "balance_rail.pin_height",
-      "value": 11.2,
+      "value": 35.2,
       "unit": "mm",
       "reliability": "S",
-      "why": "Assumed, waiting on the balance mortise: a pin's height and the depth of the slot it enters are one measurement. It is drawn, and it is where the key leaves its pin: 9 mm above the regulated punching, past which a pull or the key's stops take it off its frame, and the most paper the regulation lays under the balance punching."
+      "why": "Assumed: the regulated balance punching's 2.2 mm, its felt and the papers the regulation lays, the keystick's 24.5 mm, the key button's 6.0 mm, and 2.5 mm above it, 35.2 mm. The owner states that the pin stands above the key button at rest (balance-mortise.json, construction); how far is the proportion of his sketch, not measured. It is drawn, and it is where the key leaves its pin, past which a pull or the key's stops take it off its frame."
     },
     {
       "param": "balance_rail.punching_radius",

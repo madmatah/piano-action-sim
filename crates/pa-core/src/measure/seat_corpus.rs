@@ -27,9 +27,12 @@
 //!   8 mm above the balance bearing, the front punching's felt 11 to 16 mm
 //!   thicker, the balance rail lowered 8 to 12 mm, or the key shortened 17
 //!   to 24 mm under its frame so that its front pin stands under its wood.
-//!   The balance rail takes its pin down with it: lowered more than about
-//!   13 mm, the key would ride past where it leaves its pin, off its frame,
-//!   which `a_key_its_stops_hold_past_its_pin_is_off_its_frame` holds.
+//!   The balance rail takes its pin down with it: on a pin 9 mm above its
+//!   punching, lowered more than about 13 mm, the key would ride past where
+//!   it leaves its pin, off its frame, which
+//!   `a_key_its_stops_hold_past_its_pin_is_off_its_frame` holds; the
+//!   corpus's pin stands above its key button, 33 mm above its punching, and
+//!   the 8 to 12 mm the rail is lowered keep the key well on it.
 //!   The front punching is raised by its felt and not by its rail: the rails
 //!   carry no contact, and a key riding nose-up by 2.7° or more on a front
 //!   rail raised with its punching meets the rail's back edge, 62 mm behind

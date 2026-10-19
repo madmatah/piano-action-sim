@@ -386,10 +386,10 @@
     },
     {
       "param": "balance_rail.pin_height",
-      "value": 11.2,
+      "value": 35.2,
       "unit": "mm",
       "reliability": "S",
-      "why": "Not published. Borrowed from the frame of the owner's measured section: drawn, and where the key leaves its pin, 9 mm above the balance punching."
+      "why": "Not published. Borrowed from the frame of the owner's measured section, as the rest of his frame is: on his key, 24.02 mm high under a key button of 6.21 mm, on the same punching, it stands 2.77 mm above the key button, where the owner states a pin stands."
     },
     {
       "param": "balance_rail.punching_radius",

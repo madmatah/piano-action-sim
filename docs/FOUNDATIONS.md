@@ -230,7 +230,8 @@ it higher than its punching does rides on them, lifted off the punching, on the
 parts as drawn; a pull the punching cannot answer lifts the key off it. The
 slide's range ends where the key leaves its balance pin: where its balance
 hole, at the key frame's origin on the pin's axis, clears the pin's drawn top,
-read off the drawn pin, 9 mm above the punching on both shipped frames. A pull or
+read off the drawn pin, which stands above the key button, 33 mm above the
+punching on both shipped frames. A pull or
 stops that would take the key past it lift it off its pin and its frame, where
 the model has no equilibrium to give, and so does a punching stacked above the
 pin's top, which has the key off its pin wherever it stands on it. Everything
@@ -358,8 +359,9 @@ the key against every part of its frame, the punchings' felts and papers whole,
 since a key sunk right through a felt thicker than itself leaves the punching's
 center, which is all its pair reads, clear. A key turning on a closed stop moves
 its farthest point a row margin a step at most, and a key pulled off its
-punching turns up on its cloth until it leaves its balance pin, some 20 mm at
-its front on the measured section's frame; a key riding on a front pin standing in its
+punching turns up on its cloth until its friction holds it or it leaves its
+balance pin, 33 mm above the punching and some 70 mm at its front on the
+measured section's frame; a key riding on a front pin standing in its
 wood, solved from where it stands level on its punching, takes three quarters of
 a cap to come to rest with every row that carries it closed. So the key free to
 lift is solved in up to four pieces of the cap, each going on from where the
@@ -403,9 +405,9 @@ its pin and it is off its frame. Clear of everything, the felts whole, a key
 tilted on a punching clears the felt's drawn edge only half the washer's width
 times the tilt above where it rides on its center: a key riding that close under
 its pin's top that has no seat from its nominal pose finds none from above
-either, as on a front punching 27 mm thicker than the bench's, the key riding
-4.6° nose-up on it within 0.4 mm of the pin's top, refused with the punching
-standing in it. The bottom seat starts from the top. Key height is the height of
+either, as on a balance pin 9 mm above its punching under a front punching
+27 mm thicker than the bench's, the key riding 4.6° nose-up on it within 0.4 mm
+of the pin's top, refused with the punching standing in it. The bottom seat starts from the top. Key height is the height of
 the key front's top at the top seat, and the dip how far it falls
 to the bottom seat, so the dip ends on whichever stop binds first: the front
 punching, the pin bottoming in its mortise, or the pin meeting the wood round
@@ -757,8 +759,9 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   key leaves its balance punching, a state the bench reports and the sheet
   never weighs. The bushings' friction acts on the key's turning alone, as the
   key friction weight reads it. Where the key leaves its pin is read off the
-  drawn pin, whose height, 11.2 mm above its rail, is assumed until the balance
-  mortise is measured (`data/profiles/measured-section.json`).
+  drawn pin, whose height, 35.2 mm above its rail, 2.5 mm above the key
+  button as the owner's sketch draws it, is assumed until it is measured
+  (`data/profiles/measured-section.json`).
 - **A front pin's sides carry no contact.** The pin declares its top and the
   corners of its top, which are all a pin standing in its slot can meet. One
   a few tenths of a millimeter into the wood behind its slot meets the wood's
