@@ -2150,6 +2150,10 @@ pub enum Sweep {
     /// through its middle, swept across the keyboard to its width, the
     /// cutter's diameter, its two ends rounded to half of it.
     Milled,
+    /// Oval in plan, standing upright: the front rail pin's head. Its
+    /// outline is its section through its middle along the key, the long
+    /// axis; across the keyboard it is its width, the short axis.
+    Oval,
 }
 
 /// How the number that places a stretch of an outline is known.
@@ -2260,20 +2264,21 @@ pub struct Outline {
     pub paper_color: Option<PaperColor>,
     /// How the outline becomes a solid.
     pub sweep: Sweep,
-    /// Extrusion across the sagittal plane, or a milled cut's cutter's
-    /// diameter, millimeters; zero when turned.
+    /// Extrusion across the sagittal plane, a milled cut's cutter's
+    /// diameter, or an oval part's short axis, millimeters; zero when
+    /// turned.
     pub width_mm: f32,
     /// Where the extrusion's middle stands across the keyboard, millimeters
     /// from the sagittal plane, positive toward the bass, the player's left:
     /// zero but for the parts beside the plane, which the section does not
     /// cut, the balance mortise's bushing and the key button's side holes;
-    /// zero when turned or milled.
+    /// zero when turned, milled or oval.
     pub across_mm: f32,
     /// Whether the sagittal plane cuts it, so that the section draws it in
     /// its plane: every part but those beside it.
     pub is_in_the_section: bool,
     /// Where a turned part's axis stands along its body's `x`, millimeters;
-    /// zero when extruded or milled.
+    /// zero otherwise.
     pub axis_x_mm: f32,
     /// Flat `[x0, y0, x1, y1, …]`, millimeters, in the body's frame; for a
     /// turned part, its profile in radius and height.
@@ -2307,6 +2312,7 @@ impl Scene {
                         }
                         CoreSweep::Revolved { axis_x } => (Sweep::Revolved, 0.0, 0.0, mm32(axis_x)),
                         CoreSweep::Milled { width } => (Sweep::Milled, mm32(width), 0.0, 0.0),
+                        CoreSweep::Oval { width } => (Sweep::Oval, mm32(width), 0.0, 0.0),
                     };
                     Outline {
                         body: body_index(o.body.0),
@@ -3274,6 +3280,40 @@ mod tests {
                 outline.width_mm
             );
         }
+    }
+
+    /// Consistency: **the front rail pin crosses oval**, on the measured
+    /// section's frame: its outline its section along the key, 5 mm long,
+    /// its width across the keyboard the 3.4 mm of the oval's short axis.
+    #[test]
+    fn the_front_rail_pin_crosses_oval() {
+        let scene = Scene::of(&Instrument::weighed_section());
+        let pin = scene
+            .outlines
+            .iter()
+            .find(|outline| outline.code == Part::FrontRailPin)
+            .expect("a front rail pin");
+        assert_eq!(
+            (pin.sweep, pin.across_mm, pin.axis_x_mm),
+            (Sweep::Oval, 0.0, 0.0)
+        );
+        let along_mm: Vec<f32> = pin.points_mm.iter().step_by(2).copied().collect();
+        let (back_mm, front_mm) = along_mm
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(back_mm, front_mm), &x| {
+                (back_mm.min(x), front_mm.max(x))
+            });
+        // Millimeters in single precision, a few of its ulps at each: the
+        // head's two ends near 225 mm, its width a single rounding of 3.4 mm.
+        assert!(
+            (front_mm - back_mm - 5.0).abs() <= 4.0 * f32::EPSILON * 230.0,
+            "{back_mm} to {front_mm} mm"
+        );
+        assert!(
+            (pin.width_mm - 3.4).abs() <= 4.0 * f32::EPSILON * 3.4,
+            "{} mm",
+            pin.width_mm
+        );
     }
 
     /// Consistency: **the balance hole crosses as long along the key as its

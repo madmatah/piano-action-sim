@@ -722,8 +722,9 @@ impl KeyDesign {
     /// what lets a frame be a few tenths out of place without the key knowing.
     ///
     /// What it is **not** is the lateral fit. Across the keyboard the mortise is
-    /// bushed and close on the pin's wide faces — that is what holds the key
-    /// straight — and that dimension is not in the sagittal plane.
+    /// bushed and close on the domed sides of the pin's oval head — that is
+    /// what holds the key straight — and that dimension is not in the
+    /// sagittal plane.
     pub fn front_mortise_length(&self) -> f64 {
         self.front_mortise_travel + self.front_mortise_cutter_diameter
     }

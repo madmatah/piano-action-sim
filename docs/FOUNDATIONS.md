@@ -227,7 +227,7 @@ of mass included, and nothing of it is estimated; weighed again on the bench,
 it keeps that published height.
 
 **The frame**, `FrameDesign`, is three different rails: the balance rail with
-its crown and round pin, the front rail with its oblong pin, the back rail with
+its crown and round pin, the front rail with its oval pin, the back rail with
 its cloth. A punching is a felt washer plus papers from a drawer, the owner's
 of eight thicknesses, 0.08 to 1.25 mm, each known by its color [V,
 `data/params/key-frame-sections.json`, `punching-papers.json`]; the drawer is
@@ -825,12 +825,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   radius, by leaving the wood unpainted inside each cut and drawing the
   cut's walls from inside rather than by solid geometry operations, which
   would bring a library for a few boxes with rounded ends. The front
-  mortise's bushing, on the pin's sides beside the plane, is not drawn, and
-  the front rail pin's oval head is drawn as a rectangle in plan: in the
-  mortise's rounded ends, its corners meet the wood about half a millimeter
-  sooner than the oval would, which no reading sees, the contacts reading
-  the sagittal plane, where the head and the mortise both run to their
-  ends.
+  mortise's bushing, on the pin's sides beside the plane, is not drawn.
 
 ### The bench
 
@@ -1824,7 +1819,9 @@ closed outline of lines and arcs for each piece of material, on the body that
 carries it, several per body, a mortise a cut among them and a turned part read
 through its sagittal silhouette; a milled cut, a mortise or the balance hole,
 is given by its section through its middle and its cutter's diameter, so that
-its mouth stays one segment, which the wood it opens through shares. Each part declares the ranges of its outline a
+its mouth stays one segment, which the wood it opens through shares, and the
+front rail pin's oval head by its section along the key and its width
+across it. Each part declares the ranges of its outline a
 contact may read and the named points on it, the lip and the key front's top
 among them. The bench draws them and the faults read them; whatever a stop
 rounds is drawn rounded, the back rail cloth's edges included. The contacts read
@@ -1991,8 +1988,8 @@ another.
 
 Each drawn stretch of every part is sent with the number that places it and
 how its profile knows it, which the view marks when asked: every line of the
-section, and in the solid the outlines of the extruded parts, turned parts
-and the walls of the carved cuts staying unmarked there; the profile on the
+section, and in the solid the outlines of the extruded parts, turned and
+oval parts and the walls of the carved cuts staying unmarked there; the profile on the
 bench is chosen among those shipped, by an action that puts it there as it
 arrives (built).
 

@@ -82,7 +82,7 @@ validation layer gives it (`pa_core::validate::numbers`), in one of three ways:
   felt on the key's tail, a clearance in the key's top, a dome on the
   capstan's head; or for where the key button stands,
   centered on the pin where `capsule_center` is none. A rail's pin is round where
-  `<rail>.pin.diameter` is bound, oblong where `<rail>.pin.length` and
+  `<rail>.pin.diameter` is bound, oval where `<rail>.pin.length` and
   `<rail>.pin.thickness` are, and absent where `<rail>.pin` is bound to none;
   the clearance cut in the key's top for the wippen rail, between the
   capstan and the back check block, is `top_clearance.back` and

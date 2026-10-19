@@ -195,7 +195,7 @@ pub fn sections() -> FrameSections {
         front: RailSection {
             half_length: 0.0375,
             crown: None,
-            pin: Some(PinShape::Oblong {
+            pin: Some(PinShape::Oval {
                 length: 0.0050,
                 thickness: 0.0034,
             }),

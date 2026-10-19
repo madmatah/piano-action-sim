@@ -1117,7 +1117,7 @@ const FRONT_RAIL: RailNames = rail_names!("front_rail");
 const BACK_RAIL: RailNames = rail_names!("back_rail");
 
 /// One rail's section: its crown where its half-length is bound, its pin
-/// round where a diameter is, oblong where a length is, and either absent
+/// round where a diameter is, oval where a length is, and either absent
 /// where the profile says so.
 fn rail(b: &mut Bindings, n: &RailNames) -> Result<RailSection, LoadError> {
     let crown = if b.has(n.crown_half_length) {
@@ -1135,7 +1135,7 @@ fn rail(b: &mut Bindings, n: &RailNames) -> Result<RailSection, LoadError> {
             diameter: b.length(n.pin_diameter)?,
         })
     } else if b.has(n.pin_length) {
-        Some(PinShape::Oblong {
+        Some(PinShape::Oval {
             length: b.length(n.pin_length)?,
             thickness: b.length(n.pin_thickness)?,
         })

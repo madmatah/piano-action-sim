@@ -820,7 +820,7 @@ fn section_numbers(rail: Rail, s: &RailSection, out: &mut Vec<(&'static str, f64
     }
     match pin {
         Some(PinShape::Round { diameter }) => out.push((name(Section::PinDiameter), *diameter)),
-        Some(PinShape::Oblong { length, thickness }) => out.extend([
+        Some(PinShape::Oval { length, thickness }) => out.extend([
             (name(Section::PinLength), *length),
             (name(Section::PinThickness), *thickness),
         ]),

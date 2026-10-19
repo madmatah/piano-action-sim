@@ -99,7 +99,7 @@ pub fn faults(parts: &[Part], key: &KeyRanges, frame: &FrameRanges) -> Vec<Fault
     // pin, the axis its balance punching is turned about.
     let pin = match parts[frame.balance_rail_punching.index()].sweep {
         Sweep::Revolved { axis_x } => axis_x,
-        Sweep::Extruded { .. } | Sweep::Milled { .. } => 0.0,
+        Sweep::Extruded { .. } | Sweep::Milled { .. } | Sweep::Oval { .. } => 0.0,
     };
     let chamfer = key.underside[0].segs(parts)[0];
     let (tail_end, flat_from) = (chamfer.start().x + pin, chamfer.end().x + pin);

@@ -12,7 +12,8 @@
  *
  * There is **one** definition of each part: the outline the engine builds,
  * which the faults read and the contacts are held to. This view extrudes it,
- * or lathes it when the part is turned. A separately modeled mesh would be a
+ * lathes it when the part is turned, or sweeps its oval up its height for
+ * the front rail pin's head. A separately modeled mesh would be a
  * second geometry, and the moment it disagreed with the first the displayed
  * dimensions would stop describing what is measured. So the section is not a
  * reduced view of the solid: the solid *is* the section, swept.
@@ -34,8 +35,9 @@
  * bushing's leg down the slot's wall through the slot and behind the pin,
  * and not its leg out through the side hole, inside the wall; the near ones,
  * cut away with the near half of the key, are not drawn. The **solid**
- * sweeps every part across the keyboard, each lining on its side of the
- * slot, and carves each rectangular cut that has a width out of the wood it
+ * sweeps each extruded part across the keyboard, each lining on its side of
+ * the slot, lathes each turned part and stands the front rail pin's oval
+ * head up its height, and carves each rectangular cut that has a width out of the wood it
  * runs through, a milled one, the two mortises and the balance hole, with
  * its ends rounded to its cutter's radius: it leaves that wood unpainted
  * inside it and draws its walls from inside, in the color of the wood they
@@ -100,6 +102,7 @@ import {
   strokes,
   toShape,
 } from './outline'
+import { sweepOval } from './oval'
 import {
   CONTACT_COLOR,
   EDGE,
@@ -386,6 +389,22 @@ function CutWalls({ walls }: { walls: Walls }) {
   )
 }
 
+/** An oval part, the front rail pin's head: the ellipse its outline's box
+ * holds, swept up its height, and its edges. */
+function Oval({ outline }: { outline: Outline }) {
+  const geometry = useMemo(() => sweepOval(measureBounds(outline), ROUND_SEGMENTS), [outline])
+  const opacity = useContext(Opacity)
+  useDisposal(geometry)
+  return (
+    <group>
+      <mesh geometry={geometry}>
+        <meshLambertMaterial key={fadeKey(opacity)} color={colorOf(outline)} {...fadeTo(opacity)} />
+      </mesh>
+      <SolidEdges geometry={geometry} />
+    </group>
+  )
+}
+
 /**
  * A turned part: the profile lathed about its own vertical axis.
  *
@@ -424,8 +443,10 @@ function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; c
 /**
  * One part in the solid: an extruded part swept across the keyboard, carved
  * by `cuts`, its lines marked by provenance on the face toward the camera
- * where `marked`; a turned part lathed. A milled part is a cut, which the
- * solid carves out of the wood and never draws.
+ * where `marked`; an oval one swept up its height and a turned one lathed,
+ * which have no flat face for their marks, the section marking them. A
+ * milled part is a cut, which the solid carves out of the wood and never
+ * draws.
  */
 function SolidPart({
   outline,
@@ -459,6 +480,8 @@ function SolidPart({
           )}
         </group>
       )
+    case 'oval':
+      return <Oval outline={outline} />
     case 'revolved':
       return (
         <Lathed profile={outline.points_mm} axisX={outline.axis_x_mm} color={colorOf(outline)} />
@@ -646,9 +669,11 @@ function SectionPart({
 }) {
   const color = colorOf(outline)
   switch (outline.sweep) {
-    // A milled part's outline is its section through its middle, as drawn.
+    // A milled or an oval part's outline is its section through its
+    // middle, as drawn.
     case 'extruded':
     case 'milled':
+    case 'oval':
       return (
         <>
           <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
