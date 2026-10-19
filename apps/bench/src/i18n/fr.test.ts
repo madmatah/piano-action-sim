@@ -253,6 +253,12 @@ describe('a part named in a sentence', () => {
       `la garniture de la mortaise de balancier ne tiendrait pas dans la capsule de touche${NO_BREAK_SPACE}: 1,0 mm de trop.`,
     )
   })
+
+  it('says a balance mortise milled without travel has no wall for its bushing', () => {
+    expect(word(t.editRefusal, 'bushing_without_wall', { code: 'bushing_without_wall' })).toBe(
+      `la fraise de la mortaise de balancier n’a pas de course${NO_BREAK_SPACE}: la fente est ronde, sans paroi droite où coller sa garniture.`,
+    )
+  })
 })
 
 describe('a form', () => {

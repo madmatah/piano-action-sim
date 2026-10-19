@@ -315,6 +315,9 @@ describe('a problem', () => {
         by_mm: 1,
       }),
     ).toBe('the balance hole would not fit in the balance mortise, by 1.0 mm.')
+    expect(word(t.editRefusal, 'bushing_without_wall', { code: 'bushing_without_wall' })).toBe(
+      "the balance mortise's cutter does not travel along the key: the slot is round, with no straight wall to glue its bushing on.",
+    )
     expect(
       t.refused.set({
         code: 'outline_crosses_itself',

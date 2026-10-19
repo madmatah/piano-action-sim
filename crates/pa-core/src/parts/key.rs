@@ -11,11 +11,12 @@
 //! bare tail. Screwed into its full height: the capstan, a turned part, its
 //! head flat or domed. Cut out of it: the front mortise, and the balance
 //! mortise through the key button with its cavity and the balance hole under
-//! it, each drawn as the void it is; and beside the sagittal plane, which
-//! does not cut them, the key button's side holes, through its wall on each
-//! side of the slot. Set into the balance mortise's two long sides, also
-//! beside the plane, its bushing, an L on each side: down the slot's wall,
-//! then out through the side hole to the key button's side.
+//! it, each milled, its ends rounded to its cutter's radius, and drawn as the
+//! void it is; and beside the sagittal plane, which does not cut them, the
+//! key button's side holes, through its wall on each side of the slot. Set
+//! into the balance mortise's two straight walls, also beside the plane, its
+//! bushing, an L on each side: down the slot's wall, then out through the
+//! side hole to the key button's side.
 //!
 //! Each piece is its own part with its own material, so the keytop and the key
 //! front can be drawn white and the glued blocks in their own wood: what a
@@ -82,8 +83,8 @@ pub struct KeyRanges {
     /// The side hole through the key button's wall on each side of the
     /// slot, on its treble side and on its bass side.
     pub key_button_side_holes: [PartId; 2],
-    /// The bushing on each long side of the slot, each an L: its leg down
-    /// the slot's wall, on the treble side and on the bass side
+    /// The bushing on each straight wall of the slot, each an L: its leg
+    /// down the slot's wall, on the treble side and on the bass side
     /// ([`Sweep::Extruded`]'s `across`).
     pub balance_mortise_bushings_down_the_walls: [PartId; 2],
     /// The bushing's other leg, out through each side hole to the key
@@ -401,8 +402,6 @@ impl KeyDesign {
             material: Material::Steel,
         });
 
-        // The front mortise, cut up from the underside. Its cutter's width
-        // across the keyboard is not swept: only the section draws it.
         let mortise_outline = polygon(&[
             Point::new(mortise_back, 0.0),
             Point::new(mortise_front, 0.0),
@@ -419,9 +418,8 @@ impl KeyDesign {
                 (3..4, "front_mortise.from_front_edge"),
             ],
             outline: mortise_outline,
-            sweep: Sweep::Extruded {
-                width: 0.0,
-                across: 0.0,
+            sweep: Sweep::Milled {
+                width: self.front_mortise_cutter_diameter,
             },
             role: Role::Cut,
             material: Material::KeyWood,
@@ -607,9 +605,11 @@ impl KeyDesign {
     /// The balance mortise's parts, carried by `body`, the slot's top at
     /// `mouth_y`, the key button's. The slot's floor is split at the hole's
     /// edges, so that the hole's mouth is a segment of its own, which the
-    /// hole shares. At the foot of the bushing the cloth turns out through
-    /// the side hole to the key button's side, glued against the hole's
-    /// top, the hole open under it.
+    /// hole shares. The bushing and its side holes run along the slot's
+    /// straight walls, the cutter's travel, its rounded ends left bare. At
+    /// the foot of the bushing the cloth turns out through the side hole to
+    /// the key button's side, glued against the hole's top, the hole open
+    /// under it.
     fn balance_mortise_parts(&self, body: BodyId, mouth_y: f64) -> BalanceMortiseParts {
         let mortise = self.balance_mortise;
         let (slot_back, slot_front) = self.balance_slot_span();
@@ -631,7 +631,7 @@ impl KeyDesign {
             code,
             placed_by,
             outline,
-            sweep: Sweep::Extruded { width, across: 0.0 },
+            sweep: Sweep::Milled { width },
             role: Role::Cut,
             material: Material::KeyWood,
         };
@@ -649,38 +649,34 @@ impl KeyDesign {
             polygon(&slot),
             mortise.cutter_diameter,
         );
-        let hole = Part {
-            sweep: Sweep::Bored {
-                axis_x: 0.5 * (hole_back + hole_front),
-            },
-            ..cut(
-                PartCode::BalanceHole,
-                vec![
-                    (0..1, "balance_mortise.hole_diameter"),
-                    (1..2, "balance_mortise.hole_diameter"),
-                    (2..3, "balance_mortise.floor"),
-                    (3..4, "balance_mortise.hole_diameter"),
-                ],
-                polygon(&[
-                    Point::new(hole_back, 0.0),
-                    Point::new(hole_front, 0.0),
-                    Point::new(hole_front, mortise.floor),
-                    Point::new(hole_back, mortise.floor),
-                ]),
-                mortise.hole_diameter,
-            )
-        };
+        let hole = cut(
+            PartCode::BalanceHole,
+            vec![
+                (0..1, "balance_mortise.hole_diameter"),
+                (1..2, "balance_mortise.hole_diameter"),
+                (2..3, "balance_mortise.floor"),
+                (3..4, "balance_mortise.hole_diameter"),
+            ],
+            polygon(&[
+                Point::new(hole_back, 0.0),
+                Point::new(hole_front, 0.0),
+                Point::new(hole_front, mortise.floor),
+                Point::new(hole_back, mortise.floor),
+            ]),
+            mortise.hole_diameter,
+        );
         let bushing_bottom = mouth_y - mortise.bushing_depth;
         let bushing_across = 0.5 * (mortise.cutter_diameter - mortise.bushing_thickness);
         let side = 0.5 * (self.width - mortise.cutter_diameter);
         let side_across = 0.25 * (self.width + mortise.cutter_diameter);
         let side_hole_top = bushing_bottom + mortise.bushing_thickness;
-        let along_the_slot = |bottom: f64, top: f64, placed: [PlacedBy; 2]| {
+        let (wall_back, wall_front) = (-0.5 * mortise.travel, 0.5 * mortise.travel);
+        let along_the_walls = |bottom: f64, top: f64, placed: [PlacedBy; 2]| {
             let outline = polygon(&[
-                Point::new(slot_back, bottom),
-                Point::new(slot_front, bottom),
-                Point::new(slot_front, top),
-                Point::new(slot_back, top),
+                Point::new(wall_back, bottom),
+                Point::new(wall_front, bottom),
+                Point::new(wall_front, top),
+                Point::new(wall_back, top),
             ]);
             let placed_by: Placements = vec![
                 (0..1, placed[0]),
@@ -691,7 +687,7 @@ impl KeyDesign {
             (outline, placed_by)
         };
         let side_hole = |across: f64| {
-            let (outline, placed_by) = along_the_slot(
+            let (outline, placed_by) = along_the_walls(
                 side_hole_top - mortise.side_hole_height,
                 side_hole_top,
                 [
@@ -713,7 +709,7 @@ impl KeyDesign {
             }
         };
         let bushing = |top: f64, top_placed: PlacedBy, width: f64, across: f64| {
-            let (outline, placed_by) = along_the_slot(
+            let (outline, placed_by) = along_the_walls(
                 bushing_bottom,
                 top,
                 ["balance_mortise.bushing_depth", top_placed],
@@ -1251,14 +1247,55 @@ mod tests {
         }
     }
 
-    /// Consistency: **the balance hole is bored round about the pin it is
-    /// fitted to**, at the key's origin: its outline is its section through
-    /// the pin's axis, 3.4 mm across on the test key, from −1.7 to +1.7 mm.
+    /// Consistency: **the bushing runs along the slot's straight walls, its
+    /// rounded ends left bare**: on the test key, its 6 mm cutter moved
+    /// 4.2 mm along the key, the cloth down each wall runs from −2.1 to
+    /// +2.1 mm along it, inside the slot's 10.2 mm.
     #[test]
-    fn the_balance_hole_is_bored_round_about_its_pin() {
+    fn the_bushing_runs_along_the_slots_straight_walls() {
+        let (parts, ranges) = built(&crate::test_fixture::key());
+        // A halving of a few millimeters.
+        let near = |found: f64, expected: f64| (found - expected).abs() <= f64::EPSILON * 0.01;
+        for id in ranges.balance_mortise_bushings_down_the_walls {
+            let along: Vec<f64> = vertices(&parts[id.index()])
+                .iter()
+                .map(|corner| corner.x)
+                .collect();
+            let (back, front) = along
+                .iter()
+                .fold((f64::INFINITY, f64::NEG_INFINITY), |(back, front), &x| {
+                    (back.min(x), front.max(x))
+                });
+            assert!(
+                near(back, -0.0021) && near(front, 0.0021),
+                "{back} to {front} m"
+            );
+        }
+    }
+
+    /// Consistency: **the mortises and the balance hole are milled as wide
+    /// as their cutters**, on the test key: the balance mortise and the
+    /// front mortise by 6 mm cutters, and the balance hole by a 3.4 mm one.
+    #[test]
+    fn the_mortises_and_the_balance_hole_are_milled_as_wide_as_their_cutters() {
+        let (parts, ranges) = built(&crate::test_fixture::key());
+        for (id, cutter) in [
+            (ranges.balance_mortise, 0.006),
+            (ranges.front_mortise, 0.006),
+            (ranges.balance_hole, 0.0034),
+        ] {
+            assert_eq!(parts[id.index()].sweep, Sweep::Milled { width: cutter });
+        }
+    }
+
+    /// Consistency: **the balance hole is milled round about the pin it is
+    /// fitted to**, its cutter not moved, at the key's origin: on the test
+    /// key its outline, its section through the pin's axis, runs from −1.7
+    /// to +1.7 mm, as long as its 3.4 mm cutter is wide.
+    #[test]
+    fn the_balance_hole_is_milled_round_about_its_pin() {
         let (parts, ranges) = built(&crate::test_fixture::key());
         let hole = &parts[ranges.balance_hole.index()];
-        assert_eq!(hole.sweep, Sweep::Bored { axis_x: 0.0 });
         let along: Vec<f64> = vertices(hole).iter().map(|corner| corner.x).collect();
         let (back, front) = along
             .iter()
@@ -1274,11 +1311,12 @@ mod tests {
     /// Consistency: **the bushing turns out through the key button's side
     /// holes to its sides, glued against their top.** On the test key, each
     /// side hole runs from the slot's wall, 3 mm from the sagittal plane, to
-    /// the key button's side, 11 mm from it, along the slot's 10.2 mm, 2.6 mm
-    /// high, its top 1.3 mm of cloth above the foot of the bushing's 3 mm
-    /// depth: from 26.2 to 28.8 mm above the underside. The cloth's leg out
-    /// through it runs as far across and along, from 27.5 mm up to the
-    /// hole's top, on the treble side and on the bass side.
+    /// the key button's side, 11 mm from it, along the slot's straight wall,
+    /// the cutter's 4.2 mm of travel, 2.6 mm high, its top 1.3 mm of cloth
+    /// above the foot of the bushing's 3 mm depth: from 26.2 to 28.8 mm above
+    /// the underside. The cloth's leg out through it runs as far across and
+    /// along, from 27.5 mm up to the hole's top, on the treble side and on
+    /// the bass side.
     #[test]
     fn the_bushing_turns_out_through_the_key_buttons_side_holes_against_their_top() {
         let key = crate::test_fixture::key();
@@ -1314,7 +1352,7 @@ mod tests {
                 "{hole_across:?} m"
             );
             assert!(
-                near(hole_along.0, -0.0051) && near(hole_along.1, 0.0051),
+                near(hole_along.0, -0.0021) && near(hole_along.1, 0.0021),
                 "{hole_along:?} m"
             );
             assert!(

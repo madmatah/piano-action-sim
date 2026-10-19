@@ -1,22 +1,33 @@
 import type { Outline, Part } from '@pas/wasm/types'
-import { ShaderLib } from 'three'
+import { type Box3, ShaderLib } from 'three'
 import { describe, expect, it } from 'vitest'
 import type { Box } from './bounds'
-import { type Hollow, MAX_CUTS, overlaps, packCuts, patchShader, planCarving } from './carving'
+import {
+  type Hollow,
+  MAX_CUTS,
+  millWalls,
+  overlaps,
+  packCuts,
+  patchShader,
+  planCarving,
+} from './carving'
 
 // The measured section's key, millimeters (`data/profiles/measured-section.json`):
 // a keystick 24.5 mm high and 22 mm wide, a key button 62 mm long and 6 mm
-// high on it, its slot 10.2 mm long and 6 mm wide down to a 2.5 mm floor,
-// the 3.4 mm balance hole through it, and the bushing 1.3 mm thick, 3 mm
-// deep, set 2.35 mm either side of the sagittal plane; at its foot the
-// cloth turns out through a 2.6 mm side hole on each side, 7 mm from the
-// plane and 8 mm wide, from the slot's wall to the key button's side,
-// glued against the hole's top.
+// high on it, its slot milled 10.2 mm long by a 6 mm cutter moved 4.2 mm,
+// down to a 2.5 mm floor, the 3.4 mm balance hole milled through it, and
+// the bushing 1.3 mm thick, 3 mm deep, along the slot's straight walls, set
+// 2.35 mm either side of the sagittal plane; at its foot the cloth turns
+// out through a 2.6 mm side hole on each side, 7 mm from the plane and 8 mm
+// wide, from the slot's wall to the key button's side, glued against the
+// hole's top. The front mortise is milled 8 mm long by a 6 mm cutter, 22 mm
+// up from the underside, 221 to 229 mm in front of the balance pin.
 const STICK_TOP_MM = 24.5
 const KEY_WIDTH_MM = 22
 const BUTTON_TOP_MM = 30.5
 const SLOT_HALF_MM = 5.1
 const SLOT_WIDTH_MM = 6
+const WALL_HALF_MM = 2.1
 const FLOOR_MM = 2.5
 const HOLE_HALF_MM = 1.7
 const BUSHING_MM = 1.3
@@ -53,33 +64,36 @@ function buildOutline(
   }
 }
 
-const SLOT = buildOutline(
-  'balance_mortise',
-  'cut',
-  [
-    -SLOT_HALF_MM,
-    FLOOR_MM,
-    -HOLE_HALF_MM,
-    FLOOR_MM,
-    HOLE_HALF_MM,
-    FLOOR_MM,
-    SLOT_HALF_MM,
-    FLOOR_MM,
-    SLOT_HALF_MM,
-    BUTTON_TOP_MM,
-    -SLOT_HALF_MM,
-    BUTTON_TOP_MM,
-  ],
-  SLOT_WIDTH_MM,
-)
+const SLOT: Outline = {
+  ...buildOutline(
+    'balance_mortise',
+    'cut',
+    [
+      -SLOT_HALF_MM,
+      FLOOR_MM,
+      -HOLE_HALF_MM,
+      FLOOR_MM,
+      HOLE_HALF_MM,
+      FLOOR_MM,
+      SLOT_HALF_MM,
+      FLOOR_MM,
+      SLOT_HALF_MM,
+      BUTTON_TOP_MM,
+      -SLOT_HALF_MM,
+      BUTTON_TOP_MM,
+    ],
+    SLOT_WIDTH_MM,
+  ),
+  sweep: 'milled',
+}
 const HOLE: Outline = {
   ...buildOutline(
     'balance_hole',
     'cut',
     [-HOLE_HALF_MM, 0, HOLE_HALF_MM, 0, HOLE_HALF_MM, FLOOR_MM, -HOLE_HALF_MM, FLOOR_MM],
-    0,
+    2 * HOLE_HALF_MM,
   ),
-  sweep: 'bored',
+  sweep: 'milled',
 }
 const KEYSTICK = buildOutline(
   'keystick',
@@ -93,15 +107,19 @@ const KEY_BUTTON = buildOutline(
   [-31, STICK_TOP_MM, 31, STICK_TOP_MM, 31, BUTTON_TOP_MM, -31, BUTTON_TOP_MM],
   KEY_WIDTH_MM,
 )
-/** A rectangle along the whole slot, from `bottom` to `top`. */
-function alongTheSlot(bottom: number, top: number): number[] {
-  return [-SLOT_HALF_MM, bottom, SLOT_HALF_MM, bottom, SLOT_HALF_MM, top, -SLOT_HALF_MM, top]
+/** A rectangle along the slot's straight walls, from `bottom` to `top`. */
+function alongTheWalls(bottom: number, top: number): number[] {
+  return [-WALL_HALF_MM, bottom, WALL_HALF_MM, bottom, WALL_HALF_MM, top, -WALL_HALF_MM, top]
+}
+const FRONT_MORTISE: Outline = {
+  ...buildOutline('front_mortise', 'cut', [221, 0, 229, 0, 229, 22, 221, 22], SLOT_WIDTH_MM),
+  sweep: 'milled',
 }
 const DOWN_THE_WALLS = [-BUSHING_ACROSS_MM, BUSHING_ACROSS_MM].map((across) =>
   buildOutline(
     'balance_mortise_bushing',
     'lining',
-    alongTheSlot(BUSHING_FOOT_MM, BUTTON_TOP_MM),
+    alongTheWalls(BUSHING_FOOT_MM, BUTTON_TOP_MM),
     BUSHING_MM,
     across,
   ),
@@ -110,7 +128,7 @@ const SIDE_HOLES = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
   buildOutline(
     'key_button_side_hole',
     'cut',
-    alongTheSlot(SIDE_HOLE_FOOT_MM, SIDE_HOLE_TOP_MM),
+    alongTheWalls(SIDE_HOLE_FOOT_MM, SIDE_HOLE_TOP_MM),
     SIDE_WIDTH_MM,
     across,
   ),
@@ -119,7 +137,7 @@ const OUT_THROUGH_THE_SIDES = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
   buildOutline(
     'balance_mortise_bushing',
     'lining',
-    alongTheSlot(BUSHING_FOOT_MM, SIDE_HOLE_TOP_MM),
+    alongTheWalls(BUSHING_FOOT_MM, SIDE_HOLE_TOP_MM),
     SIDE_WIDTH_MM,
     across,
   ),
@@ -127,6 +145,7 @@ const OUT_THROUGH_THE_SIDES = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
 const KEY = [
   SLOT,
   HOLE,
+  FRONT_MORTISE,
   ...SIDE_HOLES,
   KEYSTICK,
   KEY_BUTTON,
@@ -142,26 +161,38 @@ const HOLE_BOX: Box = {
   minMm: [-HOLE_HALF_MM, 0, -HOLE_HALF_MM],
   maxMm: [HOLE_HALF_MM, FLOOR_MM, HOLE_HALF_MM],
 }
+const FRONT_MORTISE_BOX: Box = {
+  minMm: [221, 0, -SLOT_WIDTH_MM / 2],
+  maxMm: [229, 22, SLOT_WIDTH_MM / 2],
+}
 const SIDE_HOLE_BOXES: Box[] = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) => ({
-  minMm: [-SLOT_HALF_MM, SIDE_HOLE_FOOT_MM, across - SIDE_WIDTH_MM / 2],
-  maxMm: [SLOT_HALF_MM, SIDE_HOLE_TOP_MM, across + SIDE_WIDTH_MM / 2],
+  minMm: [-WALL_HALF_MM, SIDE_HOLE_FOOT_MM, across - SIDE_WIDTH_MM / 2],
+  maxMm: [WALL_HALF_MM, SIDE_HOLE_TOP_MM, across + SIDE_WIDTH_MM / 2],
 }))
-const SLOT_HOLLOW: Hollow = { box: SLOT_BOX, isRound: false }
-const HOLE_HOLLOW: Hollow = { box: HOLE_BOX, isRound: true }
-const SIDE_HOLE_HOLLOWS: Hollow[] = SIDE_HOLE_BOXES.map((box) => ({ box, isRound: false }))
+const SLOT_HOLLOW: Hollow = { box: SLOT_BOX, hasRoundEnds: true }
+const HOLE_HOLLOW: Hollow = { box: HOLE_BOX, hasRoundEnds: true }
+const FRONT_MORTISE_HOLLOW: Hollow = { box: FRONT_MORTISE_BOX, hasRoundEnds: true }
+const SIDE_HOLE_HOLLOWS: Hollow[] = SIDE_HOLE_BOXES.map((box) => ({ box, hasRoundEnds: false }))
 
 describe('the carving of the solid', () => {
-  it('carves a cut with a width as the box its outline bounds, across that width', () => {
+  it('carves an extruded cut with a width as the box its outline bounds, across that width', () => {
+    const sideHoles = planCarving(SIDE_HOLES).walls.map((walls) => walls.hollow)
+    expect(sideHoles).toEqual(SIDE_HOLE_HOLLOWS)
+  })
+
+  it('carves a milled mortise in the box its outline bounds across its cutter, its ends rounded', () => {
     expect(planCarving([SLOT]).walls.map((walls) => walls.hollow)).toEqual([SLOT_HOLLOW])
   })
 
-  it('carves a bored hole round, in the box it stands in, as far across the keyboard as along the key', () => {
+  it('carves a milled hole as long as its cutter is wide, its rounded ends making it round', () => {
     expect(planCarving([HOLE]).walls.map((walls) => walls.hollow)).toEqual([HOLE_HOLLOW])
   })
 
-  it('carves only an extruded cut that has a width', () => {
-    const frontMortise = buildOutline('front_mortise', 'cut', [221, 0, 229, 0, 229, 22, 221, 22], 0)
-    expect(planCarving([frontMortise, KEYSTICK]).walls).toEqual([])
+  it('carves only a cut that has a width, extruded or milled', () => {
+    const noWidth = { ...FRONT_MORTISE, width_mm: 0 }
+    for (const sweep of ['extruded', 'milled'] as const) {
+      expect(planCarving([{ ...noWidth, sweep }, KEYSTICK]).walls).toEqual([])
+    }
   })
 
   it('leaves uncarved a cut whose outline is no rectangle, which its box would misdraw', () => {
@@ -173,9 +204,9 @@ describe('the carving of the solid', () => {
     }
   })
 
-  it('carves the keystick by the slot and the balance hole, and never the bushing standing in the slot', () => {
+  it('carves the keystick by the slot, the balance hole and the front mortise, and never the bushing standing in the slot', () => {
     const { cutsThrough } = planCarving(KEY)
-    expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_HOLLOW, HOLE_HOLLOW])
+    expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_HOLLOW, HOLE_HOLLOW, FRONT_MORTISE_HOLLOW])
     for (const leg of DOWN_THE_WALLS) expect(cutsThrough.has(leg)).toBe(false)
   })
 
@@ -209,13 +240,34 @@ describe('the carving of the solid', () => {
       buildOutline(
         'key_button_side_hole',
         'cut',
-        alongTheSlot(SIDE_HOLE_FOOT_MM, SIDE_HOLE_TOP_MM),
+        alongTheWalls(SIDE_HOLE_FOOT_MM, SIDE_HOLE_TOP_MM),
         Math.fround(7.95),
         towardTheBass * Math.fround(7.025),
       ),
     )
     const { walls } = planCarving([slot, ...sideHoles])
     expect(walls.map((planned) => planned.into.length)).toEqual([2, 1, 1])
+  })
+
+  it('draws a milled cut’s walls on its plan, its box less the corners beyond its cutter', () => {
+    const walls = millWalls(SLOT_BOX, 48)
+    walls.computeBoundingBox()
+    const { min, max } = walls.boundingBox as Box3
+    // A few roundings of millimeters under forty in three's single precision.
+    const near = (found: number, expected: number) => Math.abs(found - expected) <= 1e-5
+    expect(
+      [min.x, min.y, min.z, max.x, max.y, max.z].every((found, index) =>
+        near(found, [...SLOT_BOX.minMm, ...SLOT_BOX.maxMm][index] as number),
+      ),
+    ).toBe(true)
+    const position = walls.getAttribute('position')
+    const radiusMm = SLOT_WIDTH_MM / 2
+    let farthestMm = Number.NEGATIVE_INFINITY
+    for (let vertex = 0; vertex < position.count; vertex += 1) {
+      const pastTheWallMm = Math.max(Math.abs(position.getX(vertex)) - WALL_HALF_MM, 0)
+      farthestMm = Math.max(farthestMm, Math.hypot(pastTheWallMm, position.getZ(vertex)) - radiusMm)
+    }
+    expect(near(farthestMm, 0)).toBe(true)
   })
 
   it('tells a box that shares a volume from one that only touches it', () => {
@@ -233,13 +285,18 @@ describe('the carving of the solid', () => {
     ).toThrow()
   })
 
-  it('tells the shader which cuts are round', () => {
+  it('tells the shader which cuts have their ends rounded', () => {
     const { fragmentShader } = ShaderLib.lambert
-    expect(patchShader('', fragmentShader).fragment).toContain('uniform bool cutIsRound[MAX_CUTS];')
-    expect(packCuts([SLOT_HOLLOW, HOLE_HOLLOW], null).cutIsRound).toEqual([
-      false,
+    const { fragment } = patchShader('', fragmentShader)
+    expect(fragment).toContain('uniform bool cutHasRoundEnds[MAX_CUTS];')
+    expect(fragment).toContain(
+      '!cutHasRoundEnds[cutIndex] || measureBeyondTheCutter(vCarve, low, high)',
+    )
+    const [sideHole] = SIDE_HOLE_HOLLOWS as [Hollow]
+    expect(packCuts([SLOT_HOLLOW, sideHole, HOLE_HOLLOW], null).cutHasRoundEnds).toEqual([
       true,
       false,
+      true,
       false,
     ])
   })

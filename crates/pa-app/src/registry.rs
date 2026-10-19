@@ -734,7 +734,7 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
             Control::Slider {
                 path: path::BALANCE_MORTISE_TRAVEL,
                 label: Label::BalanceMortiseTravel,
-                soft: soft(0.0, 15.0, 0.1),
+                soft: soft(0.1, 15.0, 0.1),
             },
             Control::Slider {
                 path: path::BALANCE_MORTISE_FLOOR,

@@ -23,25 +23,16 @@ export function pairUp(points: readonly number[]): Array<[number, number]> {
   return pairs
 }
 
-/** Bounds an extruded or a bored outline: the box around its points in the
- * section, across its width, or, bored round, about the axis the engine
- * sends, as far from it across the keyboard as along the key. */
+/** Bounds an extruded or a milled outline: the box around its points in
+ * the section, across its width, which for a milled cut is its cutter's
+ * diameter. */
 export function measureBounds(outline: Outline): Box {
   const points = pairUp(outline.points_mm)
   const xs = points.map(([x]) => x)
   const ys = points.map(([, y]) => y)
-  const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
-  if (outline.sweep === 'bored') {
-    const axis = outline.axis_x_mm
-    const radiusMm = Math.max(...xs.map((x) => Math.abs(x - axis)))
-    return {
-      minMm: [axis - radiusMm, minY, -radiusMm],
-      maxMm: [axis + radiusMm, maxY, radiusMm],
-    }
-  }
   const half = outline.width_mm / 2
   return {
-    minMm: [Math.min(...xs), minY, outline.across_mm - half],
-    maxMm: [Math.max(...xs), maxY, outline.across_mm + half],
+    minMm: [Math.min(...xs), Math.min(...ys), outline.across_mm - half],
+    maxMm: [Math.max(...xs), Math.max(...ys), outline.across_mm + half],
   }
 }

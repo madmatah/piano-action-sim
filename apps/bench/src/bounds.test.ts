@@ -40,20 +40,23 @@ describe('the bounds of an outline', () => {
     expect(near(minMm[2], -3) && near(maxMm[2], -1.7)).toBe(true)
   })
 
-  it('bounds a bored hole about the axis the engine sends, as far across the keyboard as along the key', () => {
-    // A 3 mm hole 2.5 mm deep, 10 mm along the key, each coordinate a short
-    // binary fraction, so that the bounds are exact.
-    const [axisMm, radiusMm, depthMm] = [10, 1.5, 2.5]
-    const [backMm, frontMm] = [axisMm - radiusMm, axisMm + radiusMm]
-    const hole = buildOutline([backMm, frontMm, 0, depthMm], {
-      sweep: 'bored',
-      width_mm: 0,
+  it('bounds a milled cut as wide across the keyboard as its cutter', () => {
+    // A 3 mm cutter moved 2 mm, 10 mm along the key, 2.5 mm deep, each
+    // coordinate a short binary fraction, so that the bounds are exact.
+    const [middleMm, cutterMm, travelMm, depthMm] = [10, 3, 2, 2.5]
+    const [backMm, frontMm] = [
+      middleMm - (travelMm + cutterMm) / 2,
+      middleMm + (travelMm + cutterMm) / 2,
+    ]
+    const mortise = buildOutline([backMm, frontMm, 0, depthMm], {
+      sweep: 'milled',
+      width_mm: cutterMm,
       across_mm: 0,
-      axis_x_mm: axisMm,
+      axis_x_mm: 0,
     })
-    expect(measureBounds(hole)).toEqual({
-      minMm: [backMm, 0, -radiusMm],
-      maxMm: [frontMm, depthMm, radiusMm],
+    expect(measureBounds(mortise)).toEqual({
+      minMm: [backMm, 0, -cutterMm / 2],
+      maxMm: [frontMm, depthMm, cutterMm / 2],
     })
   })
 })

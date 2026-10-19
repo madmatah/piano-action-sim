@@ -33,13 +33,13 @@
  * far side is drawn as seen beyond the plane where a void opens onto it, the
  * bushing's leg down the slot's wall through the slot and behind the pin,
  * and not its leg out through the side hole, inside the wall; the near ones,
- * cut away with the near half of the key, are not drawn. The **solid** sweeps every part across the
- * keyboard, each lining on its side of the slot, and carves each
- * rectangular cut that has a width, and the round balance hole, out of the
- * wood it runs through, leaving that wood unpainted
- * inside it and drawing its walls from inside, in the color of the wood
- * they are cut in (`carving.ts`); the front mortise, whose width the model
- * does not know, stays inside the key.
+ * cut away with the near half of the key, are not drawn. The **solid**
+ * sweeps every part across the keyboard, each lining on its side of the
+ * slot, and carves each rectangular cut that has a width out of the wood it
+ * runs through, a milled one, the two mortises and the balance hole, with
+ * its ends rounded to its cutter's radius: it leaves that wood unpainted
+ * inside it and draws its walls from inside, in the color of the wood they
+ * are cut in (`carving.ts`).
  *
  * Over both views, the contacts the engine's rows find within a millimeter
  * of closing are marked where the rows put them, in the keybed's frame: a
@@ -84,6 +84,7 @@ import {
   type Carving,
   type Hollow,
   MAX_CUTS,
+  millWalls,
   packCuts,
   patchShader,
   planCarving,
@@ -228,7 +229,7 @@ function useCarvingShader(cuts: readonly Hollow[], keep: Box | null) {
     () => ({
       cutMin: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
       cutMax: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
-      cutIsRound: { value: Array.from({ length: MAX_CUTS }, () => 0) },
+      cutHasRoundEnds: { value: Array.from({ length: MAX_CUTS }, () => 0) },
       cutCount: { value: 0 },
       keepMin: { value: new THREE.Vector3() },
       keepMax: { value: new THREE.Vector3() },
@@ -239,7 +240,7 @@ function useCarvingShader(cuts: readonly Hollow[], keep: Box | null) {
   for (let cutIndex = 0; cutIndex < MAX_CUTS; cutIndex += 1) {
     uniforms.cutMin.value[cutIndex]?.set(...(packed.cutMin[cutIndex] ?? [0, 0, 0]))
     uniforms.cutMax.value[cutIndex]?.set(...(packed.cutMax[cutIndex] ?? [0, 0, 0]))
-    uniforms.cutIsRound.value[cutIndex] = packed.cutIsRound[cutIndex] ? 1 : 0
+    uniforms.cutHasRoundEnds.value[cutIndex] = packed.cutHasRoundEnds[cutIndex] ? 1 : 0
   }
   uniforms.cutCount.value = packed.cutCount
   uniforms.keepMin.value.set(...packed.keepMin)
@@ -276,24 +277,15 @@ function useExtrusion(points: number[], width: number, across: number) {
 }
 
 /** The surface a cut's walls are drawn on: its outline swept across its
- * width, or, round, the side of the cylinder its box holds about the axis
- * the engine sends, open at both ends. */
+ * width, or, milled, its plan swept up its height. */
 function useWallsSurface({ cut, hollow }: Walls) {
-  const geometry = useMemo(() => {
-    if (!hollow.isRound) return extrude(cut.points_mm, cut.width_mm, cut.across_mm)
-    const { minMm, maxMm } = hollow.box
-    const radiusMm = (maxMm[0] - minMm[0]) / 2
-    const bore = new THREE.CylinderGeometry(
-      radiusMm,
-      radiusMm,
-      maxMm[1] - minMm[1],
-      ROUND_SEGMENTS,
-      1,
-      true,
-    )
-    bore.translate(cut.axis_x_mm, (minMm[1] + maxMm[1]) / 2, 0)
-    return bore
-  }, [cut, hollow])
+  const geometry = useMemo(
+    () =>
+      hollow.hasRoundEnds
+        ? millWalls(hollow.box, ROUND_SEGMENTS)
+        : extrude(cut.points_mm, cut.width_mm, cut.across_mm),
+    [cut, hollow],
+  )
   useDisposal(geometry)
   return geometry
 }
@@ -369,7 +361,7 @@ function Extruded({
 
 /**
  * The walls of a cut through a body's wood, seen from inside it: its box,
- * or the round hole's cylinder, drawn from within, in each part it runs
+ * or a milled cut's rounded plan swept up its height, drawn from within, in each part it runs
  * through, in that part's color and only where it runs through that part,
  * and open where it opens into another cut, as the slot's floor into the
  * balance hole; and its edges.
@@ -432,7 +424,7 @@ function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; c
 /**
  * One part in the solid: an extruded part swept across the keyboard, carved
  * by `cuts`, its lines marked by provenance on the face toward the camera
- * where `marked`; a turned part lathed. A bored part is a hole, which the
+ * where `marked`; a turned part lathed. A milled part is a cut, which the
  * solid carves out of the wood and never draws.
  */
 function SolidPart({
@@ -471,7 +463,7 @@ function SolidPart({
       return (
         <Lathed profile={outline.points_mm} axisX={outline.axis_x_mm} color={colorOf(outline)} />
       )
-    case 'bored':
+    case 'milled':
       return null
   }
 }
@@ -654,9 +646,9 @@ function SectionPart({
 }) {
   const color = colorOf(outline)
   switch (outline.sweep) {
-    // A bored part's outline is its section through its axis, as drawn.
+    // A milled part's outline is its section through its middle, as drawn.
     case 'extruded':
-    case 'bored':
+    case 'milled':
       return (
         <>
           <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
