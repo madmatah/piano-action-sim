@@ -86,8 +86,8 @@ returns an instrument to its own profile. The page chooses between the two
 profiles shipped: his key, and the owner's measured key section on the key
 frame he measured, its key front assumed and its key unweighed until one is
 weighed on the bench. Every line of
-the section, and the outlines of the extruded parts in the solid, can be
-marked by how the number that draws it is known: measured, published, traced,
+the section, and the outlines of the extruded parts in the solid but the
+carved cuts' walls, can be marked by how the number that draws it is known: measured, published, traced,
 derived by a rule, borrowed from another instrument, assumed, or set on the
 bench. The key can be drawn as transparent as the reader wants, to see the
 pins inside it.

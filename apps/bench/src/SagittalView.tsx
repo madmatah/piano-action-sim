@@ -32,8 +32,11 @@
  * plane: the one on the far side is drawn as seen beyond the plane, through
  * the void and behind the pin, and the near one, cut away with the near
  * half of the key, is not drawn. The **solid** sweeps every part across the
- * keyboard, each lining on its side of the slot, and leaves the cuts out:
- * they are not carved from the key's wood.
+ * keyboard, each lining on its side of the slot, and carves each
+ * rectangular cut that has a width out of the wood it runs through, leaving that wood unpainted
+ * inside it and drawing its walls from inside, in the color of the wood
+ * they are cut in (`carving.ts`); the front mortise, whose width the model
+ * does not know, stays inside the key.
  *
  * Over both views, the contacts the engine's rows find within a millimeter
  * of closing are marked where the rows put them, in the keybed's frame: a
@@ -71,8 +74,18 @@
 import type { How, MarkedContact, Marker, Outline, Pose, Scene, State } from '@pas/wasm/types'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
-import { createContext, useContext, useEffect, useMemo } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import {
+  type Box,
+  type Carving,
+  MAX_CUTS,
+  measureBounds,
+  packCuts,
+  patchShader,
+  planCarving,
+  type Walls,
+} from './carving'
 import { bodyOpacity } from './opacity'
 import {
   axisSegments,
@@ -183,11 +196,116 @@ function useDisposal(geometry: THREE.BufferGeometry) {
 
 // ---- the solid ------------------------------------------------------------
 
+/** No cut through a part. */
+const UNCARVED: readonly Box[] = []
+
+/** A body with nothing carved. */
+const NOTHING_CARVED: Carving = { cutsThrough: new Map(), walls: [] }
+
+/** The program every carved part shares: the cuts are uniforms, so its
+ * source is the same whatever they are. */
+const carvedProgram = () => 'carved'
+
+/**
+ * The hook a Lambert material compiles through to leave unpainted what
+ * stands inside `cuts`, and outside `keep` where it is given
+ * ([`patchShader`]). The boxes are uniforms, written in place as they
+ * change, so an edit of the key moves them without compiling anything.
+ */
+function useCarvingShader(cuts: readonly Box[], keep: Box | null) {
+  const uniforms = useMemo(
+    () => ({
+      cutMin: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
+      cutMax: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
+      cutCount: { value: 0 },
+      keepMin: { value: new THREE.Vector3() },
+      keepMax: { value: new THREE.Vector3() },
+    }),
+    [],
+  )
+  const packed = packCuts(cuts, keep)
+  for (let cutIndex = 0; cutIndex < MAX_CUTS; cutIndex += 1) {
+    uniforms.cutMin.value[cutIndex]?.set(...(packed.cutMin[cutIndex] ?? [0, 0, 0]))
+    uniforms.cutMax.value[cutIndex]?.set(...(packed.cutMax[cutIndex] ?? [0, 0, 0]))
+  }
+  uniforms.cutCount.value = packed.cutCount
+  uniforms.keepMin.value.set(...packed.keepMin)
+  uniforms.keepMax.value.set(...packed.keepMax)
+  return useCallback(
+    (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      Object.assign(shader.uniforms, uniforms)
+      const patched = patchShader(shader.vertexShader, shader.fragmentShader)
+      shader.vertexShader = patched.vertex
+      shader.fragmentShader = patched.fragment
+    },
+    [uniforms],
+  )
+}
+
+/** An outline swept across the keyboard, its middle where the engine puts
+ * it: the sagittal plane for all but a lining. */
+function useExtrusion(points: number[], width: number, across: number) {
+  const geometry = useMemo(() => {
+    const extrusion = new THREE.ExtrudeGeometry(toShape(points), {
+      depth: width,
+      bevelEnabled: false,
+    })
+    extrusion.translate(0, 0, across - width / 2)
+    extrusion.computeVertexNormals()
+    return extrusion
+  }, [points, width, across])
+  useDisposal(geometry)
+  return geometry
+}
+
+/** The edges of a solid, faint, where its faces meet at an angle. */
+function SolidEdges({ geometry }: { geometry: THREE.BufferGeometry }) {
+  const edges = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry])
+  const opacity = useContext(Opacity)
+  useDisposal(edges)
+  return (
+    <lineSegments geometry={edges}>
+      <lineBasicMaterial color="#3a342b" transparent opacity={0.4 * opacity} />
+    </lineSegments>
+  )
+}
+
+/** A Lambert material, faded with its body, carved by `cuts` and kept
+ * within `keep` where either is given. */
+function CarvedMaterial({
+  color,
+  cuts,
+  keep,
+  side,
+}: {
+  color: string
+  cuts: readonly Box[]
+  keep: Box | null
+  side: THREE.Side
+}) {
+  const opacity = useContext(Opacity)
+  const onBeforeCompile = useCarvingShader(cuts, keep)
+  const carved = cuts.length > 0 || keep !== null
+  return carved ? (
+    <meshLambertMaterial
+      key={`${fadeKey(opacity)} carved`}
+      color={color}
+      side={side}
+      onBeforeCompile={onBeforeCompile}
+      customProgramCacheKey={carvedProgram}
+      {...fadeTo(opacity)}
+    />
+  ) : (
+    <meshLambertMaterial key={fadeKey(opacity)} color={color} side={side} {...fadeTo(opacity)} />
+  )
+}
+
 function Extruded({
   points,
   width,
   across,
   color,
+  cuts,
 }: {
   points: number[]
   width: number
@@ -195,27 +313,42 @@ function Extruded({
    * bass. */
   across: number
   color: string
+  /** The cuts through it, which leave it unpainted inside them. */
+  cuts: readonly Box[]
 }) {
-  const geometry = useMemo(() => {
-    const g = new THREE.ExtrudeGeometry(toShape(points), { depth: width, bevelEnabled: false })
-    // Extrusion runs along +z from the outline's plane; center it on where
-    // the engine puts its middle, the sagittal plane for all but a lining.
-    g.translate(0, 0, across - width / 2)
-    g.computeVertexNormals()
-    return g
-  }, [points, width, across])
-  const edges = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry])
-  const opacity = useContext(Opacity)
-  useDisposal(geometry)
-  useDisposal(edges)
+  const geometry = useExtrusion(points, width, across)
   return (
     <group>
       <mesh geometry={geometry}>
-        <meshLambertMaterial key={fadeKey(opacity)} color={color} {...fadeTo(opacity)} />
+        <CarvedMaterial color={color} cuts={cuts} keep={null} side={THREE.FrontSide} />
       </mesh>
-      <lineSegments geometry={edges}>
-        <lineBasicMaterial color="#3a342b" transparent opacity={0.4 * opacity} />
-      </lineSegments>
+      <SolidEdges geometry={geometry} />
+    </group>
+  )
+}
+
+/**
+ * The walls of a cut through a body's wood, seen from inside it: its box
+ * drawn from within, in each part it runs through, in that part's color and
+ * only where it runs through that part, and open where it opens into
+ * another cut, as the slot's floor into the balance hole; and its edges.
+ */
+function CutWalls({ walls }: { walls: Walls }) {
+  const { cut, through, into } = walls
+  const geometry = useExtrusion(cut.points_mm, cut.width_mm, cut.across_mm)
+  return (
+    <group>
+      {through.map((part, partIndex) => (
+        <mesh key={`${part.code}-${partIndex}`} geometry={geometry}>
+          <CarvedMaterial
+            color={colorOf(part)}
+            cuts={into}
+            keep={measureBounds(part)}
+            side={THREE.BackSide}
+          />
+        </mesh>
+      ))}
+      <SolidEdges geometry={geometry} />
     </group>
   )
 }
@@ -552,6 +685,7 @@ function Body({
   body,
   pose,
   outlines,
+  carving,
   mode,
   marker,
   marked,
@@ -560,6 +694,8 @@ function Body({
   body: number
   pose: Pose
   outlines: Outline[]
+  /** What the solid carves in it. */
+  carving: Carving
   mode: ViewMode
   marker: Marker | undefined
   /** Whether its lines are marked by provenance. */
@@ -579,36 +715,42 @@ function Body({
     <group matrix={matrix} matrixAutoUpdate={false}>
       <Opacity.Provider value={opacity}>
         {mode === 'solid' ? (
-          parts.map((o, i) =>
-            o.sweep === 'revolved' ? (
-              <Lathed
-                key={`${o.code}-${i}`}
-                profile={o.points_mm}
-                axisX={o.axis_x_mm}
-                color={colorOf(o)}
-              />
-            ) : (
-              <group key={`${o.code}-${i}`}>
-                <Extruded
-                  points={o.points_mm}
-                  width={o.width_mm}
-                  across={o.across_mm}
+          <>
+            {parts.map((o, i) =>
+              o.sweep === 'revolved' ? (
+                <Lathed
+                  key={`${o.code}-${i}`}
+                  profile={o.points_mm}
+                  axisX={o.axis_x_mm}
                   color={colorOf(o)}
                 />
-                {/* Marked by provenance, on the face toward the camera. */}
-                {marked && (
-                  <OutlineEdges
-                    outline={o}
-                    skip={new Set()}
-                    layer={LAYER.marks}
-                    marked
-                    z={o.across_mm + o.width_mm / 2 + 0.05}
-                    depthTest
+              ) : (
+                <group key={`${o.code}-${i}`}>
+                  <Extruded
+                    points={o.points_mm}
+                    width={o.width_mm}
+                    across={o.across_mm}
+                    color={colorOf(o)}
+                    cuts={carving.cutsThrough.get(o) ?? UNCARVED}
                   />
-                )}
-              </group>
-            ),
-          )
+                  {/* Marked by provenance, on the face toward the camera. */}
+                  {marked && (
+                    <OutlineEdges
+                      outline={o}
+                      skip={new Set()}
+                      layer={LAYER.marks}
+                      marked
+                      z={o.across_mm + o.width_mm / 2 + 0.05}
+                      depthTest
+                    />
+                  )}
+                </group>
+              ),
+            )}
+            {carving.walls.map((walls, cutIndex) => (
+              <CutWalls key={`${walls.cut.code}-${cutIndex}`} walls={walls} />
+            ))}
+          </>
         ) : (
           <>
             {beyond.map((o, i) => (
@@ -698,6 +840,12 @@ export function SagittalView({
   keyOpacity: number
 }) {
   const preset = CAMERA[mode]
+  // Planned once a scene, so that a weight on the key, which moves only the
+  // poses, leaves every part's cuts as they were.
+  const carvings = useMemo(
+    () => state.poses.map((_, body) => planCarving(scene.outlines.filter((o) => o.body === body))),
+    [scene, state.poses.length],
+  )
 
   return (
     <Canvas
@@ -728,6 +876,7 @@ export function SagittalView({
             body={body}
             pose={pose}
             outlines={scene.outlines.filter((o) => o.body === body)}
+            carving={carvings[body] ?? NOTHING_CARVED}
             mode={mode}
             marker={state.measuring_point.body === body ? state.measuring_point : undefined}
             marked={marked}
