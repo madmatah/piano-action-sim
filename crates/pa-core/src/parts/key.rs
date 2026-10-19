@@ -405,8 +405,8 @@ impl KeyDesign {
         let mortise_outline = polygon(&[
             Point::new(mortise_back, 0.0),
             Point::new(mortise_front, 0.0),
-            Point::new(mortise_front, self.front_mortise_depth),
-            Point::new(mortise_back, self.front_mortise_depth),
+            Point::new(mortise_front, self.front_mortise.depth),
+            Point::new(mortise_back, self.front_mortise.depth),
         ]);
         let front_mortise = push(Part {
             body,
@@ -419,7 +419,7 @@ impl KeyDesign {
             ],
             outline: mortise_outline,
             sweep: Sweep::Milled {
-                width: self.front_mortise_cutter_diameter,
+                width: self.front_mortise.cutter_diameter,
             },
             role: Role::Cut,
             material: Material::KeyWood,
@@ -1154,7 +1154,7 @@ mod tests {
         assert_eq!(stick[4].start().x.to_bits(), back.to_bits());
         assert_eq!(stick[4].end().x.to_bits(), forward.to_bits());
         let top = ranges.front_mortise_top.segs(&parts)[0];
-        assert_eq!(top.start().y.to_bits(), key.front_mortise_depth.to_bits());
+        assert_eq!(top.start().y.to_bits(), key.front_mortise.depth.to_bits());
         assert!(
             top.start().x > top.end().x,
             "a cut's top runs back over its void"
@@ -1424,10 +1424,8 @@ mod tests {
 
         // A mortise cut forward of the key's flat, out of reach: nothing of
         // the flat is over it.
-        let odd = KeyDesign {
-            front_mortise_from_front_edge: -0.010,
-            ..crate::test_fixture::key()
-        };
+        let mut odd = crate::test_fixture::key();
+        odd.front_mortise.from_front_edge = -0.010;
         let (parts, ranges) = built(&odd);
         let flat: Vec<Seg> = ranges
             .underside_flat

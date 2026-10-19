@@ -1233,7 +1233,7 @@ mod tests {
             let mut a = regulated();
             if kind == KeyKind::Sharp {
                 let rows = &a.frame.sections;
-                a.key.front_mortise_from_front_edge +=
+                a.key.front_mortise.from_front_edge +=
                     rows.front.sharp_row_offset - rows.balance.sharp_row_offset;
             }
             let k = on_frame(&a, kind, 0.0, true);

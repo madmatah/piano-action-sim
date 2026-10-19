@@ -77,7 +77,8 @@ use pa_core::parts::frame::{
 };
 use pa_core::parts::mounts::{on_its_frame, KeyMount};
 use pa_core::parts::{
-    BalanceMortise, Capstan, FrameDesign, KeyDesign, KeyMass, NotAWeighing, TopClearance,
+    BalanceMortise, Capstan, FrameDesign, FrontMortise, KeyDesign, KeyMass, NotAWeighing,
+    TopClearance,
 };
 use pa_core::regulation::Targets;
 use pa_core::solve::Statics;
@@ -1311,10 +1312,12 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
             Some(c) => c.x,
             None => b.length("capstan.x")?,
         },
-        front_mortise_from_front_edge: b.length("front_mortise.from_front_edge")?,
-        front_mortise_cutter_diameter: b.length("front_mortise.cutter_diameter")?,
-        front_mortise_travel: b.length("front_mortise.travel")?,
-        front_mortise_depth: b.length("front_mortise.depth")?,
+        front_mortise: FrontMortise {
+            from_front_edge: b.length("front_mortise.from_front_edge")?,
+            cutter_diameter: b.length("front_mortise.cutter_diameter")?,
+            travel: b.length("front_mortise.travel")?,
+            depth: b.length("front_mortise.depth")?,
+        },
         stick_height: b.length("stick_height")?,
         capsule_height: b.length("capsule_height")?,
         capsule_length: b.length("capsule_length")?,

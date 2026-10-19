@@ -233,7 +233,7 @@ fn corpus() -> Vec<(Class, Setup)> {
         f.front_rail += mm(rng.uniform(-1.4, 1.4));
         f.back_rail = mm(rng.uniform(-235.0, -150.0));
         f.sections.front.pin_height = mm(rng.uniform(22.0, 26.0));
-        a.key.front_mortise_depth = mm(rng.uniform(20.0, 24.0));
+        a.key.front_mortise.depth = mm(rng.uniform(20.0, 24.0));
         a.key.tail_rise = mm(rng.uniform(0.0, 3.5));
         a.key.tail_rise_run = mm(rng.uniform(50.0, 90.0));
         out.push((Class::Near, a));
@@ -244,7 +244,7 @@ fn corpus() -> Vec<(Class, Setup)> {
         f.balance_punching.felt = mm(rng.uniform(0.0, 4.0));
         f.front_punching.felt = mm(rng.uniform(0.0, 4.0));
         f.sections.front.pin_height = mm(rng.uniform(5.0, 40.0));
-        a.key.front_mortise_depth = mm(rng.uniform(5.0, 40.0));
+        a.key.front_mortise.depth = mm(rng.uniform(5.0, 40.0));
         f.back_rail_cloth = mm(rng.uniform(0.0, 6.0));
         a.key.capstan = -mm(rng.uniform(60.0, 200.0));
         a.key.front_edge = mm(rng.uniform(150.0, 340.0));
