@@ -51,16 +51,21 @@ pub mod path {
     pub const CAPSTAN_HEIGHT: &str = "key.capstan.height_mm";
     /// The front mortise's depth above the underside.
     pub const FRONT_MORTISE_DEPTH: &str = "key.front_mortise.depth_mm";
+    /// The diameter of the cutter the front mortise is milled with.
+    pub const FRONT_MORTISE_CUTTER_DIAMETER: &str = "key.front_mortise.cutter_diameter_mm";
+    /// How far the front mortise's cutter moves along the key.
+    pub const FRONT_MORTISE_TRAVEL: &str = "key.front_mortise.travel_mm";
     /// The key button's height above the keystick.
     pub const CAPSULE_HEIGHT: &str = "key.capsule_height_mm";
     /// The key button's length along the key.
     pub const CAPSULE_LENGTH: &str = "key.capsule_length_mm";
     /// The radius the key button's ends are rounded by.
     pub const CAPSULE_END_RADIUS: &str = "key.capsule_end_radius_mm";
-    /// The balance mortise's length along the key.
-    pub const BALANCE_MORTISE_LENGTH: &str = "key.balance_mortise.length_mm";
-    /// The balance mortise's width across the key.
-    pub const BALANCE_MORTISE_WIDTH: &str = "key.balance_mortise.width_mm";
+    /// The diameter of the cutter the balance mortise is milled with, its
+    /// width across the key.
+    pub const BALANCE_MORTISE_CUTTER_DIAMETER: &str = "key.balance_mortise.cutter_diameter_mm";
+    /// How far the balance mortise's cutter moves along the key.
+    pub const BALANCE_MORTISE_TRAVEL: &str = "key.balance_mortise.travel_mm";
     /// The balance mortise's floor above the underside.
     pub const BALANCE_MORTISE_FLOOR: &str = "key.balance_mortise.floor_mm";
     /// The balance hole's diameter.
@@ -260,7 +265,7 @@ const fn millimeters(path: &'static str, field: Field) -> Entry {
 
 /// Every path of the instrument, in a fixed order: the protocol, the
 /// experiment, the regulation's targets, the key, the frame.
-pub const ENTRIES: [Entry; 34] = [
+pub const ENTRIES: [Entry; 36] = [
     millimeters(
         path::MEASURING_POINT,
         Field::Protocol(TouchweightProtocol::PARAMS[0]),
@@ -280,13 +285,23 @@ pub const ENTRIES: [Entry; 34] = [
     key(path::CAPSULE_HEIGHT, KeyDesign::PARAMS[4], false),
     key(path::CAPSULE_LENGTH, KeyDesign::PARAMS[5], false),
     key(path::CAPSULE_END_RADIUS, KeyDesign::PARAMS[6], false),
-    key(path::BALANCE_MORTISE_LENGTH, KeyDesign::PARAMS[7], false),
-    key(path::BALANCE_MORTISE_WIDTH, KeyDesign::PARAMS[8], false),
+    key(
+        path::BALANCE_MORTISE_CUTTER_DIAMETER,
+        KeyDesign::PARAMS[7],
+        false,
+    ),
+    key(path::BALANCE_MORTISE_TRAVEL, KeyDesign::PARAMS[8], false),
     key(path::BALANCE_MORTISE_FLOOR, KeyDesign::PARAMS[9], false),
     key(path::BALANCE_HOLE_DIAMETER, KeyDesign::PARAMS[10], false),
     key(path::BUSHING_THICKNESS, KeyDesign::PARAMS[11], false),
     key(path::BUSHING_DEPTH, KeyDesign::PARAMS[12], false),
     key(path::SIDE_HOLE_HEIGHT, KeyDesign::PARAMS[13], false),
+    key(
+        path::FRONT_MORTISE_CUTTER_DIAMETER,
+        KeyDesign::PARAMS[14],
+        false,
+    ),
+    key(path::FRONT_MORTISE_TRAVEL, KeyDesign::PARAMS[15], false),
     Entry {
         path: path::FRICTION_TORQUE,
         unit: Unit::GramMillimeter,
@@ -374,6 +389,8 @@ pub enum Label {
     FrontPin,
     BalancePin,
     FrontMortise,
+    FrontMortiseCutterDiameter,
+    FrontMortiseTravel,
     BackCloth,
     Capstan,
     FrontEdge,
@@ -381,8 +398,8 @@ pub enum Label {
     CapsuleHeight,
     CapsuleLength,
     CapsuleEndRadius,
-    BalanceMortiseLength,
-    BalanceMortiseWidth,
+    BalanceMortiseCutterDiameter,
+    BalanceMortiseTravel,
     BalanceMortiseFloor,
     BalanceHole,
     BushingThickness,
@@ -660,6 +677,16 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
                 soft: soft(5.0, 40.0, 0.5),
             },
             Control::Slider {
+                path: path::FRONT_MORTISE_CUTTER_DIAMETER,
+                label: Label::FrontMortiseCutterDiameter,
+                soft: soft(3.5, 10.0, 0.05),
+            },
+            Control::Slider {
+                path: path::FRONT_MORTISE_TRAVEL,
+                label: Label::FrontMortiseTravel,
+                soft: soft(0.0, 10.0, 0.1),
+            },
+            Control::Slider {
                 path: path::BACK_RAIL_CLOTH,
                 label: Label::BackCloth,
                 soft: soft(0.0, 6.0, 0.05),
@@ -700,14 +727,14 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
                 soft: soft(0.0, 30.0, 0.1),
             },
             Control::Slider {
-                path: path::BALANCE_MORTISE_LENGTH,
-                label: Label::BalanceMortiseLength,
-                soft: soft(4.0, 20.0, 0.1),
+                path: path::BALANCE_MORTISE_CUTTER_DIAMETER,
+                label: Label::BalanceMortiseCutterDiameter,
+                soft: soft(3.0, 10.0, 0.05),
             },
             Control::Slider {
-                path: path::BALANCE_MORTISE_WIDTH,
-                label: Label::BalanceMortiseWidth,
-                soft: soft(3.0, 10.0, 0.05),
+                path: path::BALANCE_MORTISE_TRAVEL,
+                label: Label::BalanceMortiseTravel,
+                soft: soft(0.0, 15.0, 0.1),
             },
             Control::Slider {
                 path: path::BALANCE_MORTISE_FLOOR,

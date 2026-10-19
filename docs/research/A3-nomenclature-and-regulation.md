@@ -664,6 +664,8 @@ empty rather than filled from a dictionary.
 | Fronton | key front | — | `key_front` |
 | Capsule de touche | key button / chase | — | `key_button` |
 | Mortaise (de balancier / d'enfoncement) | balance / front mortise | — | `balance_mortise`, `front_mortise` |
+| Fraise (d'une mortaise) | cutter (descriptive) | — | `cutter_diameter`: the cutter a mortise is milled with, turning about a vertical axis; its diameter is the mortise's width |
+| Course (de la fraise) | travel (descriptive) | — | `travel`: how far the cutter moves along the key between its two end positions; the mortise is that much longer than it is wide |
 | Garniture de mortaise | bushing (cloth) | — | `mortise_bushing`; the balance mortise's, set into its two long sides in its upper part, `balance_mortise_bushing` |
 | Casimir | bushing cloth | — | `bushing_cloth`: the thin woven wool a mortise is bushed with |
 | Trou de balancier | balance hole | — | `balance_hole`: through the floor under the balance mortise, round, fitted to the pin, which it holds fore and aft |

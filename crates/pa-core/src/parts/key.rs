@@ -401,9 +401,8 @@ impl KeyDesign {
             material: Material::Steel,
         });
 
-        // The front mortise, cut up from the underside. How wide it is across
-        // the keyboard is not a dimension the model has: the slot is bushed
-        // and close on the pin's flats, out of the sagittal plane.
+        // The front mortise, cut up from the underside. Its cutter's width
+        // across the keyboard is not swept: only the section draws it.
         let mortise_outline = polygon(&[
             Point::new(mortise_back, 0.0),
             Point::new(mortise_front, 0.0),
@@ -414,7 +413,7 @@ impl KeyDesign {
             body,
             code: PartCode::FrontMortise,
             placed_by: vec![
-                (0..1, "front_mortise.length"),
+                (0..1, "front_mortise.travel"),
                 (1..2, "front_mortise.from_front_edge"),
                 (2..3, "front_mortise.depth"),
                 (3..4, "front_mortise.from_front_edge"),
@@ -537,7 +536,7 @@ impl KeyDesign {
     /// The balance mortise's slot, meters along the key from the balance
     /// pin: centered on it.
     fn balance_slot_span(&self) -> (f64, f64) {
-        let half = 0.5 * self.balance_mortise.length;
+        let half = 0.5 * self.balance_mortise.length();
         (-half, half)
     }
 
@@ -640,15 +639,15 @@ impl KeyDesign {
             PartCode::BalanceMortise,
             vec![
                 (0..floor_segments, "balance_mortise.floor"),
-                (floor_segments..floor_segments + 1, "balance_mortise.length"),
+                (floor_segments..floor_segments + 1, "balance_mortise.travel"),
                 (floor_segments + 1..floor_segments + 2, "capsule_height"),
                 (
                     floor_segments + 2..floor_segments + 3,
-                    "balance_mortise.length",
+                    "balance_mortise.travel",
                 ),
             ],
             polygon(&slot),
-            mortise.width,
+            mortise.cutter_diameter,
         );
         let hole = Part {
             sweep: Sweep::Bored {
@@ -672,9 +671,9 @@ impl KeyDesign {
             )
         };
         let bushing_bottom = mouth_y - mortise.bushing_depth;
-        let bushing_across = 0.5 * (mortise.width - mortise.bushing_thickness);
-        let side = 0.5 * (self.width - mortise.width);
-        let side_across = 0.25 * (self.width + mortise.width);
+        let bushing_across = 0.5 * (mortise.cutter_diameter - mortise.bushing_thickness);
+        let side = 0.5 * (self.width - mortise.cutter_diameter);
+        let side_across = 0.25 * (self.width + mortise.cutter_diameter);
         let side_hole_top = bushing_bottom + mortise.bushing_thickness;
         let along_the_slot = |bottom: f64, top: f64, placed: [PlacedBy; 2]| {
             let outline = polygon(&[
@@ -685,9 +684,9 @@ impl KeyDesign {
             ]);
             let placed_by: Placements = vec![
                 (0..1, placed[0]),
-                (1..2, "balance_mortise.length"),
+                (1..2, "balance_mortise.travel"),
                 (2..3, placed[1]),
-                (3..4, "balance_mortise.length"),
+                (3..4, "balance_mortise.travel"),
             ];
             (outline, placed_by)
         };
@@ -1204,7 +1203,7 @@ mod tests {
                 .collect()
         };
         let slot = segments(ranges.balance_mortise);
-        let half_slot = 0.5 * key.balance_mortise.length;
+        let half_slot = 0.5 * key.balance_mortise.length();
         let mouth = shared(&slot, &segments(ranges.key_button));
         assert_eq!(mouth.len(), 1, "{mouth:?}");
         let (front, back) = mouth[0];

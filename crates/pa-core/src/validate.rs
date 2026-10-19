@@ -145,8 +145,9 @@ pub enum Problem {
         /// How far the two reach past each other, meters along the key.
         by: f64,
     },
-    /// A part of the balance mortise does not fit where it is cut or set:
-    /// the slot along the key button's flat top, the cavity's floor at or
+    /// A part of a mortise does not fit where it is cut or set: the front
+    /// mortise's cutter within the keystick's width; the balance mortise's
+    /// slot along the key button's flat top, the cavity's floor at or
     /// under the keystick's top and the slot within its width, the balance
     /// hole within the slot, the bushing's two thicknesses within the
     /// slot's width and its depth within the key button's height, and the
@@ -455,7 +456,8 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
     let does_not_fit = |part, within, by| Err(Problem::DoesNotFit { part, within, by });
     let (button_back, button_front) = key.key_button_span();
     let (flat_back, flat_front) = (button_back + reach, button_front - reach);
-    let past_the_flat = (0.5 * mortise.length - flat_front).max(flat_back + 0.5 * mortise.length);
+    let length = mortise.length();
+    let past_the_flat = (0.5 * length - flat_front).max(flat_back + 0.5 * length);
     if past_the_flat > 0.0 {
         return does_not_fit(PartCode::BalanceMortise, PartCode::KeyButton, past_the_flat);
     }
@@ -466,26 +468,26 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
             mortise.floor - key.stick_height,
         );
     }
-    if mortise.width > key.width {
+    if mortise.cutter_diameter > key.width {
         return does_not_fit(
             PartCode::BalanceMortise,
             PartCode::Keystick,
-            mortise.width - key.width,
+            mortise.cutter_diameter - key.width,
         );
     }
-    let narrowest = mortise.length.min(mortise.width);
-    if mortise.hole_diameter > narrowest {
+    // The slot is never shorter than its cutter is wide.
+    if mortise.hole_diameter > mortise.cutter_diameter {
         return does_not_fit(
             PartCode::BalanceHole,
             PartCode::BalanceMortise,
-            mortise.hole_diameter - narrowest,
+            mortise.hole_diameter - mortise.cutter_diameter,
         );
     }
-    if 2.0 * mortise.bushing_thickness > mortise.width {
+    if 2.0 * mortise.bushing_thickness > mortise.cutter_diameter {
         return does_not_fit(
             PartCode::BalanceMortiseBushing,
             PartCode::BalanceMortise,
-            2.0 * mortise.bushing_thickness - mortise.width,
+            2.0 * mortise.bushing_thickness - mortise.cutter_diameter,
         );
     }
     if mortise.side_hole_height < mortise.bushing_thickness {
@@ -523,7 +525,8 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
 }
 
 /// The front mortise is cut up from the flat of the underside, between the
-/// chamfer and the key front, and leaves wood above it.
+/// chamfer and the key front, leaves wood above it, and is milled no wider
+/// than the keystick.
 fn mortise(key: &KeyDesign) -> Result<(), Problem> {
     let (back, front) = key.front_mortise_span();
     let chamfer_end = key.tail_end + key.tail_rise_run;
@@ -546,6 +549,13 @@ fn mortise(key: &KeyDesign) -> Result<(), Problem> {
             wood: key.stick_height,
         });
     }
+    if key.front_mortise_cutter_diameter > key.width {
+        return Err(Problem::DoesNotFit {
+            part: PartCode::FrontMortise,
+            within: PartCode::Keystick,
+            by: key.front_mortise_cutter_diameter - key.width,
+        });
+    }
     Ok(())
 }
 
@@ -564,7 +574,8 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         tail_end,
         capstan,
         front_mortise_from_front_edge,
-        front_mortise_length,
+        front_mortise_cutter_diameter,
+        front_mortise_travel,
         front_mortise_depth,
         stick_height,
         capsule_height,
@@ -606,7 +617,11 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
             "front_mortise.from_front_edge",
             *front_mortise_from_front_edge,
         ),
-        ("front_mortise.length", *front_mortise_length),
+        (
+            "front_mortise.cutter_diameter",
+            *front_mortise_cutter_diameter,
+        ),
+        ("front_mortise.travel", *front_mortise_travel),
         ("front_mortise.depth", *front_mortise_depth),
         ("stick_height", *stick_height),
         ("capsule_height", *capsule_height),
@@ -616,8 +631,8 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         out.push(("capsule_center", *c));
     }
     let crate::parts::BalanceMortise {
-        length,
-        width: mortise_width,
+        cutter_diameter,
+        travel,
         floor,
         hole_diameter,
         bushing_thickness,
@@ -626,8 +641,8 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
     } = balance_mortise;
     out.extend([
         ("capsule_end_radius", *capsule_end_radius),
-        ("balance_mortise.length", *length),
-        ("balance_mortise.width", *mortise_width),
+        ("balance_mortise.cutter_diameter", *cutter_diameter),
+        ("balance_mortise.travel", *travel),
         ("balance_mortise.floor", *floor),
         ("balance_mortise.hole_diameter", *hole_diameter),
         ("balance_mortise.bushing_thickness", *bushing_thickness),
@@ -1255,6 +1270,26 @@ mod tests {
         ));
     }
 
+    /// Consistency: **a front mortise milled wider than the keystick is
+    /// refused**, by how much wider: a cutter a micrometer wider than the
+    /// test key's 22 mm, and one as wide is taken.
+    #[test]
+    fn a_front_mortise_milled_wider_than_the_keystick_is_refused() {
+        const MICROMETER: f64 = 1e-6;
+        let mut s = Standard::new();
+        s.key.front_mortise_cutter_diameter = s.key.width;
+        assert_eq!(s.validate(), Ok(()));
+        s.key.front_mortise_cutter_diameter = s.key.width + MICROMETER;
+        match s.validate() {
+            Err(Problem::DoesNotFit {
+                part: PartCode::FrontMortise,
+                within: PartCode::Keystick,
+                by,
+            }) if (by - MICROMETER).abs() <= 4.0 * f64::EPSILON * 0.022 => {}
+            other => panic!("{other:?}"),
+        }
+    }
+
     /// Consistency: **the key button's rounded ends meet at most**: on the
     /// test key, 6 mm high, ends of 12 mm reach in √(2·12·6 − 6²) = √108 mm
     /// each from their ends, 20.78 mm together. A key button a micrometer
@@ -1308,7 +1343,8 @@ mod tests {
             (
                 |s, over| {
                     let flat = 0.062 - 2.0 * 0.001 * 108.0_f64.sqrt();
-                    s.key.balance_mortise.length = flat + 2.0 * over;
+                    s.key.balance_mortise.travel =
+                        flat + 2.0 * over - s.key.balance_mortise.cutter_diameter;
                 },
                 PartCode::BalanceMortise,
                 PartCode::KeyButton,
@@ -1319,13 +1355,14 @@ mod tests {
                 PartCode::Keystick,
             ),
             (
-                |s, over| s.key.balance_mortise.width = s.key.width + over,
+                |s, over| s.key.balance_mortise.cutter_diameter = s.key.width + over,
                 PartCode::BalanceMortise,
                 PartCode::Keystick,
             ),
             (
                 |s, over| {
-                    s.key.balance_mortise.hole_diameter = s.key.balance_mortise.width + over;
+                    s.key.balance_mortise.hole_diameter =
+                        s.key.balance_mortise.cutter_diameter + over;
                 },
                 PartCode::BalanceHole,
                 PartCode::BalanceMortise,
@@ -1335,7 +1372,7 @@ mod tests {
                 // cloth a micrometer short of filling the slot still passes
                 // through it.
                 |s, over| {
-                    let thickness = 0.5 * (s.key.balance_mortise.width + over);
+                    let thickness = 0.5 * (s.key.balance_mortise.cutter_diameter + over);
                     s.key.balance_mortise.bushing_thickness = thickness;
                     s.key.balance_mortise.side_hole_height = thickness;
                 },

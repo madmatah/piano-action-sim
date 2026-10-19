@@ -45,9 +45,14 @@
       "pointer": "/records/front_mortise_from_front_edge"
     },
     {
-      "param": "front_mortise.length",
+      "param": "front_mortise.cutter_diameter",
       "record": "key-section.json",
-      "pointer": "/records/front_mortise_length"
+      "pointer": "/records/front_mortise_cutter_diameter"
+    },
+    {
+      "param": "front_mortise.travel",
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_travel"
     },
     {
       "param": "front_mortise.depth",
@@ -82,19 +87,19 @@
       "why": "Assumed: twice the key button's 6.0 mm height, 12.0 mm, the proportion of the owner's sketch of a key button, its ends rounded from its flat top down to the key (balance-mortise.json, construction). Not measured."
     },
     {
-      "param": "balance_mortise.length",
-      "value": 10.2,
-      "unit": "mm",
-      "reliability": "S",
-      "why": "Assumed: three times the balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter), 10.2 mm, the proportion of the owner's sketch. It leaves the pin 3.4 mm either side, more than the key's tilt moves it at the key button's top. Not measured."
-    },
-    {
-      "param": "balance_mortise.width",
+      "param": "balance_mortise.cutter_diameter",
       "value": 6.0,
       "unit": "mm",
       "reliability": "E",
-      "rule": "The balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter) plus the bushing's two 1.3 mm thicknesses: 6.0 mm.",
+      "rule": "The balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter) plus the bushing's two 1.3 mm thicknesses: 6.0 mm, the slot's width.",
       "why": "Derived from the assumed bushing, so that the key has the least side play on its pin. Not measured."
+    },
+    {
+      "param": "balance_mortise.travel",
+      "value": 4.2,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: a slot three times the balance pin's 3.4 mm diameter long (key-frame-sections.json, balance_pin_diameter), 10.2 mm, the proportion of the owner's sketch, less the 6.0 mm cutter: 4.2 mm. It leaves the pin 3.4 mm either side, more than the key's tilt moves it at the key button's top. Not measured."
     },
     {
       "param": "balance_mortise.floor",

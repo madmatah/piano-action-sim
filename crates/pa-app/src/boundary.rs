@@ -609,6 +609,11 @@ pub struct CapstanSettings {
 pub struct MortiseSettings {
     /// Its depth above the underside, millimeters.
     pub depth_mm: f64,
+    /// The diameter of the cutter it is milled with, its width across the
+    /// key, millimeters.
+    pub cutter_diameter_mm: f64,
+    /// How far that cutter moves along the key, millimeters.
+    pub travel_mm: f64,
 }
 
 /// The balance mortise: the slot through the key button, its cavity in the
@@ -617,10 +622,11 @@ pub struct MortiseSettings {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct BalanceMortiseSettings {
-    /// The slot's length along the key, millimeters.
-    pub length_mm: f64,
-    /// The slot's width across the key, millimeters.
-    pub width_mm: f64,
+    /// The diameter of the cutter the slot is milled with, its width across
+    /// the key, millimeters.
+    pub cutter_diameter_mm: f64,
+    /// How far that cutter moves along the key, millimeters.
+    pub travel_mm: f64,
     /// The cavity's floor above the underside, millimeters.
     pub floor_mm: f64,
     /// The balance hole's diameter, millimeters.
@@ -757,13 +763,15 @@ impl Settings {
                 },
                 front_mortise: MortiseSettings {
                     depth_mm: at(path::FRONT_MORTISE_DEPTH),
+                    cutter_diameter_mm: at(path::FRONT_MORTISE_CUTTER_DIAMETER),
+                    travel_mm: at(path::FRONT_MORTISE_TRAVEL),
                 },
                 capsule_height_mm: at(path::CAPSULE_HEIGHT),
                 capsule_length_mm: at(path::CAPSULE_LENGTH),
                 capsule_end_radius_mm: at(path::CAPSULE_END_RADIUS),
                 balance_mortise: BalanceMortiseSettings {
-                    length_mm: at(path::BALANCE_MORTISE_LENGTH),
-                    width_mm: at(path::BALANCE_MORTISE_WIDTH),
+                    cutter_diameter_mm: at(path::BALANCE_MORTISE_CUTTER_DIAMETER),
+                    travel_mm: at(path::BALANCE_MORTISE_TRAVEL),
                     floor_mm: at(path::BALANCE_MORTISE_FLOOR),
                     hole_diameter_mm: at(path::BALANCE_HOLE_DIAMETER),
                     bushing_thickness_mm: at(path::BUSHING_THICKNESS),

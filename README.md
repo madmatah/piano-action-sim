@@ -71,7 +71,8 @@ catalog. An edit that describes a key no part could be built as is refused
 before any solve, with the limiting dimension and the shortfall, and the bench
 is left as it was: a key front brought back until its covering runs into the
 key button, a capstan in a glued block or over the thinned tail, a front
-mortise cut through the key top, a key button whose rounded ends overlap, a
+mortise cut through the key top or milled wider than the key, a key button
+whose rounded ends overlap, a
 balance mortise or its bushing that does not fit where it is cut, a measuring
 point off the covering, a mass
 of nothing, a value that is not a number. Everything an assembled keyboard can be, however badly

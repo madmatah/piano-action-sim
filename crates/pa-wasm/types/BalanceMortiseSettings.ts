@@ -7,13 +7,14 @@
  */
 export type BalanceMortiseSettings = { 
 /**
- * The slot's length along the key, millimeters.
+ * The diameter of the cutter the slot is milled with, its width across
+ * the key, millimeters.
  */
-length_mm: number, 
+cutter_diameter_mm: number, 
 /**
- * The slot's width across the key, millimeters.
+ * How far that cutter moves along the key, millimeters.
  */
-width_mm: number, 
+travel_mm: number, 
 /**
  * The cavity's floor above the underside, millimeters.
  */

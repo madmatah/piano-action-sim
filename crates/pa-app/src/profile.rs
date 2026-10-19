@@ -1312,7 +1312,8 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
             None => b.length("capstan.x")?,
         },
         front_mortise_from_front_edge: b.length("front_mortise.from_front_edge")?,
-        front_mortise_length: b.length("front_mortise.length")?,
+        front_mortise_cutter_diameter: b.length("front_mortise.cutter_diameter")?,
+        front_mortise_travel: b.length("front_mortise.travel")?,
         front_mortise_depth: b.length("front_mortise.depth")?,
         stick_height: b.length("stick_height")?,
         capsule_height: b.length("capsule_height")?,
@@ -1320,8 +1321,8 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
         capsule_center: b.optional("capsule_center", Quantity::Length)?,
         capsule_end_radius: b.length("capsule_end_radius")?,
         balance_mortise: BalanceMortise {
-            length: b.length("balance_mortise.length")?,
-            width: b.length("balance_mortise.width")?,
+            cutter_diameter: b.length("balance_mortise.cutter_diameter")?,
+            travel: b.length("balance_mortise.travel")?,
             floor: b.length("balance_mortise.floor")?,
             hole_diameter: b.length("balance_mortise.hole_diameter")?,
             bushing_thickness: b.length("balance_mortise.bushing_thickness")?,
@@ -2648,7 +2649,8 @@ mod tests {
         }
         for (param, how) in [
             ("balance_rail.half_length", Known::Assumed),
-            ("front_mortise.length", Known::Assumed),
+            ("front_mortise.cutter_diameter", Known::Assumed),
+            ("front_mortise.travel", Known::Assumed),
             ("drawer", Known::Measured),
             ("measuring_point_from_lip", Known::Published),
         ] {
