@@ -377,8 +377,10 @@ included, by no more than the row margin, an overlap the solve then resolves
 through its rows. Where no attitude on its punching clears, its stops fighting
 or a pin standing in its wood, the key is lowered onto its frame from above
 instead: at each attitude the least lift that clears, found by halving the
-slide's range to within the margin, and of those the least, so the key starts
-within a margin or two of the stops it will rest on. A key riding on two stops
+slide's range to within the margin, and of those level, unless another clears a
+margin lower, since lifts closer than the margin are told apart by where the
+halving's steps fall and not by the frame; so the key starts within a margin or
+two of the stops it will rest on. A key riding on two stops
 clears them only near the attitude it rides at, each whole degree either side of
 it costing the angle between them times the stops' arms of lift, up to a
 millimeter or two; so where no attitude a degree apart clears below the top of

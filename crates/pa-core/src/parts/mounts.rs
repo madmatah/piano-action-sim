@@ -464,9 +464,10 @@ impl Mounted {
 /// they do; either way an overlap a solve resolves through its rows. A key
 /// free to lift that has no such attitude on its punching, its stops
 /// fighting or a pin standing in its wood, is lowered onto its frame from
-/// above instead, at the attitude that clears its frame standing least far
-/// off its punching: at each attitude the least lift that clears, found by
-/// halving the slide's range to within the row margin, the attitude narrowed
+/// above instead, level unless another attitude clears its frame standing a
+/// row margin lower off its punching: at each attitude the least lift that
+/// clears, found by halving the slide's range to within the row margin, the
+/// attitude narrowed
 /// between two whole degrees, by golden-section steps, where no whole degree
 /// clears. On a pivot, or where nothing clears below where the key leaves
 /// its balance pin ([`Mounted::leaves_its_pin`]) at any attitude, whole or
@@ -645,7 +646,8 @@ fn attitude_of_least_overlap(mounted: &Mounted, m: &Mechanism, level: &[f64]) ->
 /// the frame's `parts.1` as well as through the pairs, is found by halving
 /// the slide's range until what is left of it is under the row margin, so
 /// the key starts within a margin of where it first touches; the first
-/// attitude of the lowest lift is kept.
+/// attitude is kept, level before any other, unless another clears the
+/// frame more than a margin lower.
 ///
 /// Where no attitude a degree apart clears below the slide's upper limit,
 /// where the key leaves its balance pin, the attitude is narrowed instead:
@@ -712,7 +714,15 @@ fn lowered(
             continue;
         }
         let high = lowest(angle);
-        if best.as_ref().is_none_or(|(lowest, _)| high < *lowest) {
+        // Each lift is found to within the row margin, so two attitudes
+        // whose lifts differ by less are told apart by where the halving's
+        // steps fall, which the slide's range sets, and not by the frame:
+        // the first, level before any other, stays unless another clears a
+        // margin lower.
+        if best
+            .as_ref()
+            .is_none_or(|(lowest, _)| high < *lowest - ROW_MARGIN)
+        {
             best = Some((high, at(angle, high)));
         }
     }
@@ -1682,7 +1692,11 @@ mod tests {
     /// the margin, while a key turned until it has gone right through its
     /// cloth or its punching reads clear of both, standing in the rail under
     /// it: the key starts level, raised off its punching until nothing
-    /// overlaps, by the margin at a time, and no lower.
+    /// overlaps, by the margin at a time, and no lower; and so it does on a
+    /// balance pin 24 mm taller, standing above its key button, though a
+    /// degree nose-down clears the frame a fraction of a margin lower: the
+    /// slide's range, longer by as much, moves where the halving's steps
+    /// fall, and not the frame.
     #[test]
     fn the_nominal_pose_is_level_where_it_can_be_and_never_past_a_stop() {
         let (m, _, _) = mounted(&regulated());
@@ -1700,6 +1714,12 @@ mod tests {
             "on its punching"
         );
         assert!(m.mechanism.overlap(&m.mechanism.pose(&q)) <= ROW_MARGIN);
+
+        let mut on_a_taller_pin = wedged();
+        on_a_taller_pin.frame.sections.balance.pin_height += 0.024;
+        let (m, _, _) = mounted(&on_a_taller_pin);
+        let q = nominal_pose(&m);
+        assert_eq!(q[m.angle.0].to_bits(), 0.0_f64.to_bits(), "level: {q:?}");
 
         let (m, _, _) = mounted(&wedged());
         let q = nominal_pose(&m);
