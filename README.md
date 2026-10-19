@@ -14,7 +14,8 @@ expected values.
 
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
 front, key button with its rounded ends, the balance mortise through it with
-its bushing and the balance hole under it, back check block, thinned tail and
+its bushing, which turns out through the key button's side holes, and the
+balance hole under it, back check block, thinned tail and
 chamfer, a clearance cut in its top for the wippen rail where it has one, a
 turned capstan) stands on a parametric frame (balance, front and back rails,
 their pins, and punchings laid from a drawer of real papers). A key is weighed whole, its leads

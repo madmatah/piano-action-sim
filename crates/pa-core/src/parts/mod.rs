@@ -209,9 +209,11 @@ pub struct TopClearance {
 
 /// The balance mortise, as the owner describes it: an oblong slot through
 /// the key button, its upper part bushed on its two long sides, which guides
-/// the key across the keyboard; under it a cavity in the keystick, as long
-/// as the slot; and at that cavity's floor, just above the underside, the
-/// balance hole, fitted to the pin, where the key is held fore and aft. The
+/// the key across the keyboard, the cloth on each side turning out at its
+/// foot through a side hole in the key button's wall; under it a cavity in
+/// the keystick, as long as the slot; and at that cavity's floor, just above
+/// the underside, the balance hole, fitted to the pin, where the key is held
+/// fore and aft. The
 /// slot runs along the key's front axis, the model's `x`, whatever the key's
 /// crank behind its covering, so that every key rocks the same way;
 /// centered on the balance pin.
@@ -232,8 +234,13 @@ pub struct BalanceMortise {
     /// Thickness of the cloth on each long side of the slot, meters.
     pub bushing_thickness: f64,
     /// How far down the slot that cloth runs from the key button's top,
-    /// meters: only its upper part is bushed.
+    /// meters: only its upper part is bushed. At its foot the cloth turns
+    /// out through the key button's side holes, glued against their top.
     pub bushing_depth: f64,
+    /// Height of the key button's side holes, meters: no less than the
+    /// thickness of the cloth turned out through them, which is glued
+    /// against their top; taller, it passes through them easily.
+    pub side_hole_height: f64,
 }
 
 /// A glued block's front, top and back, counter-clockwise from the foot of
@@ -854,8 +861,9 @@ impl KeyDesign {
     /// keystick, its top lowered by the clearance for the wippen rail where
     /// it has one, the covering, the key front, the glued blocks and the
     /// tail's felt, the front mortise's and the balance mortise's voids
-    /// taken out, the turned capstan and the bushing beside the sagittal
-    /// plane left out; `None` for a section that encloses nothing.
+    /// taken out, the turned capstan left out, and so are the bushing and
+    /// the key button's side holes, which stand beside the sagittal plane;
+    /// `None` for a section that encloses nothing.
     ///
     /// **What stands in for the height of a weighed key's center of mass**,
     /// which no scale gives (`docs/FOUNDATIONS.md` > Named simplifications): where the center of
@@ -1057,7 +1065,8 @@ mod tests {
     /// drawn parts is the section polygon's with the voids' rectangles
     /// removed by hand: the front mortise, the balance mortise's slot and
     /// cavity, and the balance hole; the turned capstan, and the bushing
-    /// beside the sagittal plane, are in neither. On every key the fixture
+    /// and the key button's side holes beside the sagittal plane, are in
+    /// neither. On every key the fixture
     /// has, its centroid stands over the key's underside, under its top, and
     /// between its tail and its lip. The bound is derived: two shoelace sums,
     /// one over the outline's points and one over every drawn part's, and

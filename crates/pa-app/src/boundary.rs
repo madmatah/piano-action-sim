@@ -156,6 +156,7 @@ pub enum Part {
     BalanceMortise,
     BalanceMortiseBushing,
     BalanceHole,
+    KeyButtonSideHole,
     BalanceRail,
     BalanceRailPin,
     BalanceRailPunching,
@@ -182,6 +183,7 @@ impl From<PartCode> for Part {
             PartCode::BalanceMortise => Self::BalanceMortise,
             PartCode::BalanceMortiseBushing => Self::BalanceMortiseBushing,
             PartCode::BalanceHole => Self::BalanceHole,
+            PartCode::KeyButtonSideHole => Self::KeyButtonSideHole,
             PartCode::BalanceRail => Self::BalanceRail,
             PartCode::BalanceRailPin => Self::BalanceRailPin,
             PartCode::BalanceRailPunching => Self::BalanceRailPunching,
@@ -2245,11 +2247,12 @@ pub struct Outline {
     pub width_mm: f32,
     /// Where the extrusion's middle stands across the keyboard, millimeters
     /// from the sagittal plane, positive toward the bass, the player's left:
-    /// zero but for a lining set into one side of a slot, which the section
-    /// does not cut; zero when turned.
+    /// zero but for the parts beside the plane, which the section does not
+    /// cut, the balance mortise's bushing and the key button's side holes;
+    /// zero when turned.
     pub across_mm: f32,
     /// Whether the sagittal plane cuts it, so that the section draws it in
-    /// its plane: every part but a lining set into one side of a slot.
+    /// its plane: every part but those beside it.
     pub is_in_the_section: bool,
     /// Where a turned part's axis stands along its body's `x`, millimeters;
     /// zero when extruded.
@@ -3169,25 +3172,52 @@ mod tests {
 
     /// Consistency: **the scene sends where each part stands across the
     /// keyboard, and whether the section cuts it**: on the measured section,
-    /// the balance mortise's two bushings 2.35 mm from the sagittal plane,
-    /// on the treble side and on the bass side, out of the section; every
-    /// other part centered on the plane, in it.
+    /// the bushing's legs down the slot's walls 2.35 mm from the sagittal
+    /// plane, and the key button's side holes, with the bushing's legs out
+    /// through them, 7 mm from it, between the slot's wall at 3 mm and the
+    /// key button's side at 11 mm, each on the treble side then on the bass
+    /// side, out of the section; every other part centered on the plane, in
+    /// it.
     #[test]
     fn the_scene_sends_where_each_part_stands_across_the_keyboard() {
         let scene = Scene::of(&Instrument::weighed_section());
-        let (bushings, others): (Vec<&Outline>, Vec<&Outline>) = scene
-            .outlines
-            .iter()
-            .partition(|o| o.code == Part::BalanceMortiseBushing);
-        let across: Vec<f32> = bushings.iter().map(|o| o.across_mm).collect();
-        // Millimeters in single precision, a few of its ulps at 2.35 mm.
-        let near = |a: f32, b: f32| (a - b).abs() <= 4.0 * f32::EPSILON * 2.35;
+        let is_beside = |outline: &&Outline| {
+            matches!(
+                outline.code,
+                Part::BalanceMortiseBushing | Part::KeyButtonSideHole
+            )
+        };
+        let (aside, centered): (Vec<&Outline>, Vec<&Outline>) =
+            scene.outlines.iter().partition(is_beside);
+        let across = |code: Part| -> Vec<f32> {
+            aside
+                .iter()
+                .filter(|o| o.code == code)
+                .map(|o| o.across_mm)
+                .collect()
+        };
+        // Millimeters in single precision, a few of its ulps at each.
+        let near = |found: Vec<f32>, expected: &[f32]| {
+            found.len() == expected.len()
+                && found.iter().zip(expected).all(|(found, expected)| {
+                    (found - expected).abs() <= 4.0 * f32::EPSILON * expected.abs()
+                })
+        };
         assert!(
-            across.len() == 2 && near(across[0], -2.35) && near(across[1], 2.35),
-            "{across:?}"
+            near(
+                across(Part::BalanceMortiseBushing),
+                &[-2.35, 2.35, -7.0, 7.0]
+            ),
+            "{:?}",
+            across(Part::BalanceMortiseBushing)
         );
-        assert!(bushings.iter().all(|o| !o.is_in_the_section));
-        assert!(others
+        assert!(
+            near(across(Part::KeyButtonSideHole), &[-7.0, 7.0]),
+            "{:?}",
+            across(Part::KeyButtonSideHole)
+        );
+        assert!(aside.iter().all(|o| !o.is_in_the_section));
+        assert!(centered
             .iter()
             .all(|o| o.across_mm == 0.0 && o.is_in_the_section));
     }
@@ -3220,6 +3250,10 @@ mod tests {
             PartCode::KeyTailFelt,
             PartCode::Capstan,
             PartCode::FrontMortise,
+            PartCode::BalanceMortise,
+            PartCode::BalanceMortiseBushing,
+            PartCode::BalanceHole,
+            PartCode::KeyButtonSideHole,
             PartCode::BalanceRail,
             PartCode::BalanceRailPin,
             PartCode::BalanceRailPunching,

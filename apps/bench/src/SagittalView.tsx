@@ -21,17 +21,19 @@
  *
  * The **section** is the sagittal plane itself, drawn flat: each part's
  * outline, a turned part's profile beside its mirror, so a washer shows the
- * hole its pin stands in. A cut, a mortise or the balance hole, is a void in
- * its body's solids: drawn into the stencil buffer first, it keeps the key's
- * wood, and the wood's edges, from being painted there, so the pin in it
- * shows through, while a pin standing inside the key's wood stays hidden by
- * it, unless the key is drawn faded, as the reader may choose and as a key no
- * equilibrium places is. A cut's mouth, where it opens through the key's
- * outline or into another cut, is no edge of the section. A lining set into
- * one side of a slot, the balance mortise's bushing, stands out of the
- * plane: the one on the far side is drawn as seen beyond the plane, through
- * the void and behind the pin, and the near one, cut away with the near
- * half of the key, is not drawn. The **solid** sweeps every part across the
+ * hole its pin stands in. A cut the plane cuts, a mortise or the balance
+ * hole, is a void in its body's solids: drawn into the stencil buffer first,
+ * it keeps the key's wood, and the wood's edges, from being painted there,
+ * so the pin in it shows through, while a pin standing inside the key's wood
+ * stays hidden by it, unless the key is drawn faded, as the reader may
+ * choose and as a key no equilibrium places is. A cut's mouth, where it
+ * opens through the key's outline or into another cut, is no edge of the
+ * section. The parts beside the plane, the balance mortise's bushing and the
+ * key button's side holes, are not cut by it (`section.ts`): a part on the
+ * far side is drawn as seen beyond the plane where a void opens onto it, the
+ * bushing's leg down the slot's wall through the slot and behind the pin,
+ * and not its leg out through the side hole, inside the wall; the near ones,
+ * cut away with the near half of the key, are not drawn. The **solid** sweeps every part across the
  * keyboard, each lining on its side of the slot, and carves each
  * rectangular cut that has a width out of the wood it runs through, leaving that wood unpainted
  * inside it and drawing its walls from inside, in the color of the wood
@@ -107,6 +109,7 @@ import {
   PAPER_FILL,
   UNGRADED_FILL,
 } from './palette'
+import { divideTheSection, type Section } from './section'
 
 /** Each segment of an outline by how the number that places it is known. */
 function howOf(o: Outline): Map<number, How> {
@@ -199,8 +202,12 @@ function useDisposal(geometry: THREE.BufferGeometry) {
 /** No cut through a part. */
 const UNCARVED: readonly Box[] = []
 
-/** A body with nothing carved. */
-const NOTHING_CARVED: Carving = { cutsThrough: new Map(), walls: [] }
+/** A body with no part: nothing to draw, carve or cut. */
+const NO_BODY: BodyParts = {
+  outlines: [],
+  carving: { cutsThrough: new Map(), walls: [] },
+  section: { cuts: [], inPlane: [], beyond: [] },
+}
 
 /** The program every carved part shares: the cuts are uniforms, so its
  * source is the same whatever they are. */
@@ -243,7 +250,7 @@ function useCarvingShader(cuts: readonly Box[], keep: Box | null) {
 }
 
 /** An outline swept across the keyboard, its middle where the engine puts
- * it: the sagittal plane for all but a lining. */
+ * it: the sagittal plane for all but the parts beside it. */
 function useExtrusion(points: number[], width: number, across: number) {
   const geometry = useMemo(() => {
     const extrusion = new THREE.ExtrudeGeometry(toShape(points), {
@@ -676,6 +683,14 @@ function Keybed() {
   )
 }
 
+/** One body's parts, what the solid carves in them and what the section
+ * draws of them: the same for every pose of a scene. */
+type BodyParts = {
+  readonly outlines: readonly Outline[]
+  readonly carving: Carving
+  readonly section: Section
+}
+
 /**
  * One body: its parts in its own frame, carried by its pose. The group's
  * matrix is the pose and nothing else; three.js is told not to rebuild it from
@@ -684,8 +699,7 @@ function Keybed() {
 function Body({
   body,
   pose,
-  outlines,
-  carving,
+  parts: { outlines, carving, section },
   mode,
   marker,
   marked,
@@ -693,9 +707,7 @@ function Body({
 }: {
   body: number
   pose: Pose
-  outlines: Outline[]
-  /** What the solid carves in it. */
-  carving: Carving
+  parts: BodyParts
   mode: ViewMode
   marker: Marker | undefined
   /** Whether its lines are marked by provenance. */
@@ -704,12 +716,8 @@ function Body({
   opacity: number
 }) {
   const matrix = useMemo(() => poseMatrix(pose), [pose])
-  const cuts = outlines.filter((o) => o.role === 'cut')
-  const parts = outlines.filter((o) => o.role !== 'cut')
-  const inPlane = parts.filter((o) => o.is_in_the_section)
-  // The camera looks at the section from +z, the bass side: what stands at
-  // negative z, out of the plane, is beyond it.
-  const beyond = parts.filter((o) => !o.is_in_the_section && o.across_mm < 0)
+  const parts = useMemo(() => outlines.filter((outline) => outline.role !== 'cut'), [outlines])
+  const { cuts, inPlane, beyond } = section
   const grounded = body === GROUND
   return (
     <group matrix={matrix} matrixAutoUpdate={false}>
@@ -840,10 +848,14 @@ export function SagittalView({
   keyOpacity: number
 }) {
   const preset = CAMERA[mode]
-  // Planned once a scene, so that a weight on the key, which moves only the
+  // Sorted once a scene, so that a weight on the key, which moves only the
   // poses, leaves every part's cuts as they were.
-  const carvings = useMemo(
-    () => state.poses.map((_, body) => planCarving(scene.outlines.filter((o) => o.body === body))),
+  const bodies = useMemo(
+    () =>
+      state.poses.map((_, body): BodyParts => {
+        const outlines = scene.outlines.filter((outline) => outline.body === body)
+        return { outlines, carving: planCarving(outlines), section: divideTheSection(outlines) }
+      }),
     [scene, state.poses.length],
   )
 
@@ -875,8 +887,7 @@ export function SagittalView({
             key={body}
             body={body}
             pose={pose}
-            outlines={scene.outlines.filter((o) => o.body === body)}
-            carving={carvings[body] ?? NOTHING_CARVED}
+            parts={bodies[body] ?? NO_BODY}
             mode={mode}
             marker={state.measuring_point.body === body ? state.measuring_point : undefined}
             marked={marked}

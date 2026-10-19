@@ -149,7 +149,9 @@ pub enum Problem {
     /// the slot along the key button's flat top, the cavity's floor at or
     /// under the keystick's top and the slot within its width, the balance
     /// hole within the slot, the bushing's two thicknesses within the
-    /// slot's width and its depth within the slot and the cavity under it.
+    /// slot's width and its depth within the key button's height, and the
+    /// side holes, no lower than the cloth turned out through them is
+    /// thick, within the key button's height.
     DoesNotFit {
         /// The part that does not fit.
         part: PartCode,
@@ -440,9 +442,13 @@ fn key_button(key: &KeyDesign) -> Result<(), Problem> {
 /// The balance mortise fits where it is cut: its slot along the key
 /// button's flat top, where it opens through it, and not into a rounded
 /// end; its cavity's floor no higher than the keystick's top and its width
-/// within the keystick's; its hole within the slot; and its bushing's two
-/// thicknesses within the slot's width, and its depth within the slot and
-/// the cavity under it.
+/// within the keystick's; its hole within the slot; its bushing's two
+/// thicknesses within the slot's width, the cloth no thicker than the side
+/// holes it turns out through, and its depth within the key button's
+/// height; and the side holes within the key button's wall, their bottom
+/// no lower than the key button's and their top, where the cloth is glued,
+/// no higher than its top. A side hole whose top is the key button's top,
+/// a groove open at the top, is taken: it can be drawn.
 fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
     let reach = crate::parts::end_reach(key.capsule_height, key.capsule_end_radius);
     let mortise = key.balance_mortise;
@@ -482,12 +488,35 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
             2.0 * mortise.bushing_thickness - mortise.width,
         );
     }
-    let slot_and_cavity = key.stick_height + key.capsule_height - mortise.floor;
-    if mortise.bushing_depth > slot_and_cavity {
+    if mortise.side_hole_height < mortise.bushing_thickness {
         return does_not_fit(
             PartCode::BalanceMortiseBushing,
-            PartCode::BalanceMortise,
-            mortise.bushing_depth - slot_and_cavity,
+            PartCode::KeyButtonSideHole,
+            mortise.bushing_thickness - mortise.side_hole_height,
+        );
+    }
+    if mortise.bushing_depth > key.capsule_height {
+        return does_not_fit(
+            PartCode::BalanceMortiseBushing,
+            PartCode::KeyButton,
+            mortise.bushing_depth - key.capsule_height,
+        );
+    }
+    let below_the_key_button = mortise.bushing_depth - mortise.bushing_thickness
+        + mortise.side_hole_height
+        - key.capsule_height;
+    if below_the_key_button > 0.0 {
+        return does_not_fit(
+            PartCode::KeyButtonSideHole,
+            PartCode::KeyButton,
+            below_the_key_button,
+        );
+    }
+    if mortise.bushing_depth < mortise.bushing_thickness {
+        return does_not_fit(
+            PartCode::KeyButtonSideHole,
+            PartCode::KeyButton,
+            mortise.bushing_thickness - mortise.bushing_depth,
         );
     }
     Ok(())
@@ -593,6 +622,7 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         hole_diameter,
         bushing_thickness,
         bushing_depth,
+        side_hole_height,
     } = balance_mortise;
     out.extend([
         ("capsule_end_radius", *capsule_end_radius),
@@ -602,6 +632,7 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         ("balance_mortise.hole_diameter", *hole_diameter),
         ("balance_mortise.bushing_thickness", *bushing_thickness),
         ("balance_mortise.bushing_depth", *bushing_depth),
+        ("balance_mortise.side_hole_height", *side_hole_height),
     ]);
     out.extend([
         ("back_check_block_height", *back_check_block_height),
@@ -1259,9 +1290,12 @@ mod tests {
     /// button less its two ends of 12 mm reach on its 6 mm of height,
     /// √108 mm each; the cavity's floor above the keystick's top, the slot
     /// wider than the key, the hole wider than the slot, the bushing's two
-    /// thicknesses wider than the slot, and the bushing deeper than the slot
-    /// and the cavity under it, the keystick's 24.5 mm and the key button's
-    /// 6 mm less the 2.5 mm floor.
+    /// thicknesses wider than the slot, the cloth thicker than the side hole
+    /// it turns out through, the bushing deeper than the key button's 6 mm,
+    /// the side hole's bottom below the key button's, 4.7 mm down for a
+    /// 2.6 mm hole under 1.3 mm of cloth, and the bushing less deep than its
+    /// 1.3 mm thickness, which would raise the side hole's top past the key
+    /// button's.
     #[test]
     fn each_part_of_the_balance_mortise_is_refused_where_it_does_not_fit() {
         const MICROMETER: f64 = 1e-6;
@@ -1270,7 +1304,7 @@ mod tests {
         let close = |by: f64| (by - MICROMETER).abs() <= 8.0 * f64::EPSILON * 0.1;
         // Puts a part of the mortise a length past its limit, or short of it.
         type Push = fn(&mut Standard, f64);
-        let checks: [(Push, PartCode, PartCode); 6] = [
+        let checks: [(Push, PartCode, PartCode); 9] = [
             (
                 |s, over| {
                     let flat = 0.062 - 2.0 * 0.001 * 108.0_f64.sqrt();
@@ -1297,21 +1331,53 @@ mod tests {
                 PartCode::BalanceMortise,
             ),
             (
+                // The side hole as tall as the thicker cloth, so that the
+                // cloth a micrometer short of filling the slot still passes
+                // through it.
                 |s, over| {
-                    s.key.balance_mortise.bushing_thickness =
-                        0.5 * (s.key.balance_mortise.width + over);
+                    let thickness = 0.5 * (s.key.balance_mortise.width + over);
+                    s.key.balance_mortise.bushing_thickness = thickness;
+                    s.key.balance_mortise.side_hole_height = thickness;
                 },
                 PartCode::BalanceMortiseBushing,
                 PartCode::BalanceMortise,
             ),
             (
                 |s, over| {
-                    s.key.balance_mortise.bushing_depth = s.key.stick_height + s.key.capsule_height
-                        - s.key.balance_mortise.floor
-                        + over;
+                    s.key.balance_mortise.side_hole_height =
+                        s.key.balance_mortise.bushing_thickness - over;
                 },
                 PartCode::BalanceMortiseBushing,
-                PartCode::BalanceMortise,
+                PartCode::KeyButtonSideHole,
+            ),
+            (
+                // A side hole as tall as the cloth, so that it reaches no
+                // lower than the bushing.
+                |s, over| {
+                    s.key.balance_mortise.side_hole_height =
+                        s.key.balance_mortise.bushing_thickness;
+                    s.key.balance_mortise.bushing_depth = s.key.capsule_height + over;
+                },
+                PartCode::BalanceMortiseBushing,
+                PartCode::KeyButton,
+            ),
+            (
+                |s, over| {
+                    let mortise = s.key.balance_mortise;
+                    s.key.balance_mortise.bushing_depth =
+                        s.key.capsule_height + mortise.bushing_thickness - mortise.side_hole_height
+                            + over;
+                },
+                PartCode::KeyButtonSideHole,
+                PartCode::KeyButton,
+            ),
+            (
+                |s, over| {
+                    s.key.balance_mortise.bushing_depth =
+                        s.key.balance_mortise.bushing_thickness - over;
+                },
+                PartCode::KeyButtonSideHole,
+                PartCode::KeyButton,
             ),
         ];
         for (push, part, within) in checks {
@@ -1329,6 +1395,20 @@ mod tests {
                 other => panic!("{part:?} in {within:?}: {other:?}"),
             }
         }
+    }
+
+    /// Consistency: **a side hole flush with the key button's top is
+    /// taken**: the bushing as deep as its 1.3 mm cloth is thick stands the
+    /// side hole's top on the key button's, a groove open at the top, and
+    /// every part the key is built of closes.
+    #[test]
+    fn a_side_hole_flush_with_the_key_buttons_top_is_taken() {
+        let mut s = Standard::new();
+        s.key.balance_mortise.bushing_depth = s.key.balance_mortise.bushing_thickness;
+        assert_eq!(s.validate(), Ok(()));
+        let mut parts = Vec::new();
+        s.key.parts(crate::mechanism::BodyId(1), &mut parts);
+        assert!(parts.iter().all(crate::contact::Part::is_closed));
     }
 
     /// Consistency: **the measuring point stands on the covering**, from its

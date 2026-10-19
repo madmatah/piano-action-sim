@@ -110,6 +110,7 @@ const THE_PART: Named<Part> = {
   balance_mortise: 'la mortaise de balancier',
   balance_mortise_bushing: 'la garniture de la mortaise de balancier',
   balance_hole: 'le trou de balancier',
+  key_button_side_hole: 'le trou latéral de la capsule de touche',
   balance_rail: 'la barre de balancier',
   balance_rail_pin: 'la pointe de balancier',
   balance_rail_punching: 'la mouche de balancier',
