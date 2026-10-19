@@ -1289,47 +1289,50 @@ if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
 }
 console.log("  ok  Hirschkorn's key chosen again reads the sheet the page booted on")
 
-// The key button's and the balance mortise's sliders, and the balance pin's,
-// reach the engine. A slot narrowed under the balance hole fitted to the pin is
-// refused beside its slider, by how much the hole is wider: 3 mm under a hole
-// of 3.4 mm, by 0.4 mm; the setting stays as it was. Then each slider moved holds the
-// value it was moved to; his key has its mass and its center published, and
-// nothing the key bears on is any of these parts, so no reading of the sheet
-// moves with them. His key chosen again is the one the page booted on.
-const SLOT_WIDTH = 'key.balance_mortise.width_mm'
-const widthBefore = await slider(SLOT_WIDTH)
-if (widthBefore === null) fail('slot width slider missing')
-if ((await moveSlider(SLOT_WIDTH, 3)) !== 'ok') fail('slot width slider missing')
+// The key button's sliders, the two mortises' and the balance pin's reach
+// the engine. A slot milled narrower than the balance hole fitted to the pin
+// is refused beside its cutter's slider, by how much the hole is wider: a
+// 3 mm cutter under a hole of 3.4 mm, by 0.4 mm; the setting stays as it was.
+// Then each slider moved holds the value it was moved to; his key has its
+// mass and its center published, and nothing the key bears on is any of these
+// parts, the front mortise widened clear of its pin, so no reading of the
+// sheet moves with them. His key chosen again is the one the page booted on.
+const SLOT_CUTTER = 'key.balance_mortise.cutter_diameter_mm'
+const cutterBefore = await slider(SLOT_CUTTER)
+if (cutterBefore === null) fail('slot cutter slider missing')
+if ((await moveSlider(SLOT_CUTTER, 3)) !== 'ok') fail('slot cutter slider missing')
 await settle()
-const widthRefused = await refusalShown(`.edit-refused[data-for-path="${SLOT_WIDTH}"]`)
+const cutterRefused = await refusalShown(`.edit-refused[data-for-path="${SLOT_CUTTER}"]`)
 if (
-  widthRefused?.code !== 'does_not_fit' ||
-  !(Math.abs(widthRefused.byMm - 0.4) < 0.005) ||
-  widthRefused.after !== SLOT_WIDTH ||
-  !widthRefused.text
+  cutterRefused?.code !== 'does_not_fit' ||
+  !(Math.abs(cutterRefused.byMm - 0.4) < 0.005) ||
+  cutterRefused.after !== SLOT_CUTTER ||
+  !cutterRefused.text
 ) {
   fail(
-    `a slot narrower than its balance hole is not refused beside its slider: ${JSON.stringify(widthRefused)}`,
+    `a slot milled narrower than its balance hole is not refused beside its slider: ${JSON.stringify(cutterRefused)}`,
   )
 }
-if ((await slider(SLOT_WIDTH))?.holds !== widthBefore.holds) {
-  fail(`the refused slot width moved its setting: ${JSON.stringify(await slider(SLOT_WIDTH))}`)
+if ((await slider(SLOT_CUTTER))?.holds !== cutterBefore.holds) {
+  fail(`the refused slot cutter moved its setting: ${JSON.stringify(await slider(SLOT_CUTTER))}`)
 }
-console.log(`  ok  refused beside its slider: ${widthRefused.text}`)
-const BALANCE_MORTISE_SLIDERS = [
+console.log(`  ok  refused beside its slider: ${cutterRefused.text}`)
+const KEY_BUTTON_AND_MORTISE_SLIDERS = [
   ['frame.balance_rail.pin_height_mm', 12],
   ['key.capsule_height_mm', 7],
   ['key.capsule_length_mm', 60],
   ['key.capsule_end_radius_mm', 10],
-  ['key.balance_mortise.length_mm', 12],
-  ['key.balance_mortise.width_mm', 6.5],
+  ['key.balance_mortise.cutter_diameter_mm', 6.5],
+  ['key.balance_mortise.travel_mm', 5.5],
   ['key.balance_mortise.floor_mm', 3],
   ['key.balance_mortise.hole_diameter_mm', 3.5],
   ['key.balance_mortise.bushing_thickness_mm', 1.2],
   ['key.balance_mortise.bushing_depth_mm', 2.5],
   ['key.balance_mortise.side_hole_height_mm', 2.4],
+  ['key.front_mortise.cutter_diameter_mm', 6.5],
+  ['key.front_mortise.travel_mm', 2.5],
 ]
-for (const [path, value] of BALANCE_MORTISE_SLIDERS) {
+for (const [path, value] of KEY_BUTTON_AND_MORTISE_SLIDERS) {
   if ((await moveSlider(path, value)) !== 'ok') fail(`no slider over ${path}`)
   await settle()
   if (!(Math.abs(Number((await slider(path))?.holds) - value) < 1e-9)) {
@@ -1338,11 +1341,11 @@ for (const [path, value] of BALANCE_MORTISE_SLIDERS) {
 }
 if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
   fail(
-    `the key button or the balance mortise moved a published key's sheet: ${JSON.stringify(await measured())}`,
+    `the key button or a mortise moved a published key's sheet: ${JSON.stringify(await measured())}`,
   )
 }
 console.log(
-  `  ok  the key button's, the balance mortise's and the balance pin's ${BALANCE_MORTISE_SLIDERS.length} sliders reach the engine, and move no reading of his published key`,
+  `  ok  the key button's, the two mortises' and the balance pin's ${KEY_BUTTON_AND_MORTISE_SLIDERS.length} sliders reach the engine, and move no reading of his published key`,
 )
 if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
 await settle()

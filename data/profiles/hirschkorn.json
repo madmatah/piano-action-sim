@@ -71,9 +71,14 @@
       "why": "His tables give no front mortise. Borrowed from the owner's key as a slot sized not to bind on his geometry: placed over his front bearing, the owner's length and depth, its top about 0.9 mm above the borrowed front rail pin at the bottom of the stroke, so that the pin never stops the key."
     },
     {
-      "param": "front_mortise.length",
+      "param": "front_mortise.cutter_diameter",
       "record": "key-section.json",
-      "pointer": "/records/front_mortise_length"
+      "pointer": "/records/front_mortise_cutter_diameter"
+    },
+    {
+      "param": "front_mortise.travel",
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_travel"
     },
     {
       "param": "front_mortise.depth",
@@ -106,19 +111,19 @@
       "pointer": "/records/capsule_end_radius"
     },
     {
-      "param": "balance_mortise.length",
-      "value": 10.2,
-      "unit": "mm",
-      "reliability": "S",
-      "why": "Not published. Assumed as the measured section's is: three times the balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter), 10.2 mm, the proportion of the owner's sketch."
-    },
-    {
-      "param": "balance_mortise.width",
+      "param": "balance_mortise.cutter_diameter",
       "value": 6.0,
       "unit": "mm",
       "reliability": "E",
-      "rule": "The balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter) plus the bushing's two 1.3 mm thicknesses: 6.0 mm.",
+      "rule": "The balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter) plus the bushing's two 1.3 mm thicknesses: 6.0 mm, the slot's width.",
       "why": "Not published. Derived from the assumed bushing, so that the key has the least side play on its pin. Not measured."
+    },
+    {
+      "param": "balance_mortise.travel",
+      "value": 4.2,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Assumed as the measured section's is: a slot three times the balance pin's 3.4 mm diameter long (key-frame-sections.json, balance_pin_diameter), 10.2 mm, the proportion of the owner's sketch, less the 6.0 mm cutter: 4.2 mm."
     },
     {
       "param": "balance_mortise.floor",

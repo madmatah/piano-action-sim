@@ -815,9 +815,9 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   unpainted inside each cut and drawing the cut's walls from inside rather
   than by solid geometry operations, which would bring a library for a few
   boxes and a cylinder. It leaves the front
-  mortise uncarved: its place and length along the key are assumed
-  [S, `data/params/key-section.json`], its width across the keyboard not
-  modeled.
+  mortise uncarved: its place, its cutter and its travel are assumed
+  [S, `data/params/key-section.json`], and its cutter's width across the
+  keyboard is not swept.
 
 ### The bench
 
@@ -1954,7 +1954,7 @@ the chamfer past the key front; a clearance run back over the thinned tail,
 cut through the keystick, or no cut; the capstan in a glued block, wholly
 behind the back check block or over the thinned tail, or its dome narrower
 than its head; the front mortise off the flat of
-the underside, or cut through the top of the keystick; a key button whose
+the underside, cut through the top of the keystick, or milled wider than it; a key button whose
 rounded ends overlap; a part of the balance mortise that does not fit where it
 is cut, the slot past the key button's flat top or wider than the key, the
 cavity's floor above the keystick's top, the hole wider than the slot, the
@@ -1982,7 +1982,7 @@ arrives (built).
 
 **Planned.** Each setting's provenance sent beside it to the page; the paths a
 profile needs beyond the bench's page, the tail's end, the back check block's
-place, the front mortise's place and length, the key's row; the rails checked
+place, the front mortise's place, the key's row; the rails checked
 against one another and the capstan's thread against its hole ([Named simplifications](#named-simplifications)).
 
 ### Persistence

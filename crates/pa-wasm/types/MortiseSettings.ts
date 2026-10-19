@@ -7,4 +7,13 @@ export type MortiseSettings = {
 /**
  * Its depth above the underside, millimeters.
  */
-depth_mm: number, };
+depth_mm: number, 
+/**
+ * The diameter of the cutter it is milled with, its width across the
+ * key, millimeters.
+ */
+cutter_diameter_mm: number, 
+/**
+ * How far that cutter moves along the key, millimeters.
+ */
+travel_mm: number, };

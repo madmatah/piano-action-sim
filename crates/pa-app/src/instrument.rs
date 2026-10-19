@@ -4897,7 +4897,8 @@ mod edit_tests {
     /// behind the pin stands 9.5 mm in the back check block, 20 mm behind
     /// it in the key button, and 230 mm behind it, on the thinned tail,
     /// behind the back check block, 39.5 mm short of clearing it; a front
-    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick; a key
+    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick, and
+    /// one milled by a 25 mm cutter is 3 mm wider than the 22 mm key; a key
     /// button 20 mm long is shorter than its two ends of 12 mm reach on its
     /// 6 mm of height, 2·√108 mm, by 0.78 mm; a balance hole of 7 mm is a
     /// millimeter wider than its 6 mm slot, a bushing 7 mm deep a
@@ -4945,6 +4946,17 @@ mod edit_tests {
                 wood: 0.0245,
             })
         });
+        refuses(
+            &mut b,
+            set(path::FRONT_MORTISE_CUTTER_DIAMETER, 25.0),
+            &|w| {
+                matches!(w, EditRefusal::Problem(Problem::DoesNotFit {
+                part: PartCode::FrontMortise,
+                within: PartCode::Keystick,
+                by,
+            }) if (by - 0.003).abs() < 1e-12)
+            },
+        );
         refuses(&mut b, set(path::CAPSULE_LENGTH, 20.0), &|w| {
             matches!(w, EditRefusal::Problem(Problem::CapsuleEndsOverlap {
                 by,
