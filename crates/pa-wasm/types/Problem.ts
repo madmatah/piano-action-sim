@@ -111,6 +111,22 @@ wood_mm: number,
 /**
  * How far it reaches past the keystick's underside, millimeters.
  */
+by_mm: number, } | { "code": "capsule_ends_overlap", 
+/**
+ * How far, millimeters along the key.
+ */
+by_mm: number, } | { "code": "does_not_fit", 
+/**
+ * The part that does not fit.
+ */
+part: Part, 
+/**
+ * What it does not fit in.
+ */
+within: Part, 
+/**
+ * By how much, millimeters.
+ */
 by_mm: number, } | { "code": "mortise_through_key_top", 
 /**
  * Its depth, millimeters.

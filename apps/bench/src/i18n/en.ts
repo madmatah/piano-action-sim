@@ -97,6 +97,9 @@ const PART: Named<Part> = {
   key_tail_felt: 'key tail felt',
   capstan: 'capstan',
   front_mortise: 'front mortise',
+  balance_mortise: 'balance mortise',
+  balance_mortise_bushing: 'balance mortise bushing',
+  balance_hole: 'balance hole',
   balance_rail: 'balance rail',
   balance_rail_pin: 'balance rail pin',
   balance_rail_punching: 'balance rail punching',
@@ -324,6 +327,10 @@ const problem: Worded<Problem> = {
     `a ${PART.top_clearance} ${to(length_mm, PART_MM)} mm long and ${to(depth_mm, PART_MM)} mm deep cuts nothing: it is cut below the keystick's full top, its front end in front of its back end.`,
   clearance_through_keystick: ({ depth_mm, wood_mm }) =>
     `a ${PART.top_clearance} ${to(depth_mm, PART_MM)} mm deep goes through the keystick, which has ${to(wood_mm, PART_MM)} mm of wood under it.`,
+  capsule_ends_overlap: ({ by_mm }) =>
+    `the key button's rounded ends would reach ${to(by_mm, PART_MM)} mm past each other along its top: they meet at most.`,
+  does_not_fit: ({ part, within, by_mm }) =>
+    `the ${PART[part]} would not fit in the ${PART[within]}, by ${to(by_mm, PART_MM)} mm.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `a front mortise ${to(depth_mm, PART_MM)} mm deep goes through the ${to(wood_mm, PART_MM)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>

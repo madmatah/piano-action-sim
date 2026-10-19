@@ -3,4 +3,4 @@
 /**
  * A part of the key or of its frame, as the trade names it.
  */
-export type Part = "keystick" | "keytop" | "key_front" | "key_button" | "back_check_block" | "top_clearance" | "key_tail_felt" | "capstan" | "front_mortise" | "balance_rail" | "balance_rail_pin" | "balance_rail_punching" | "front_rail" | "front_rail_pin" | "front_rail_punching" | "paper_punching" | "back_rail" | "back_rail_cloth";
+export type Part = "keystick" | "keytop" | "key_front" | "key_button" | "back_check_block" | "top_clearance" | "key_tail_felt" | "capstan" | "front_mortise" | "balance_mortise" | "balance_mortise_bushing" | "balance_hole" | "balance_rail" | "balance_rail_pin" | "balance_rail_punching" | "front_rail" | "front_rail_pin" | "front_rail_punching" | "paper_punching" | "back_rail" | "back_rail_cloth";

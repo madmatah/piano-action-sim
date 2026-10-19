@@ -91,6 +91,15 @@ impl Dir {
     }
 }
 
+/// How many times an arc is halved where it is drawn, or read as it is
+/// drawn ([`Seg::drawn`]): a quarter circle in eight pieces, whose chords
+/// stand within 2.5 µm of the back rail cloth's 0.5 mm edges. The page draws
+/// every outline through it, the overlap readings read the drawn material
+/// through it, and a weighed key's center-of-mass height is estimated from
+/// the drawn section through it, so it is one of the solver's frozen
+/// numbers.
+pub const DRAWN_HALVINGS: u32 = 3;
+
 /// One segment of a part outline.
 ///
 /// These two primitives are enough for the whole action: Hirschkorn and Thorin

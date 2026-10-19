@@ -21,14 +21,19 @@
  *
  * The **section** is the sagittal plane itself, drawn flat: each part's
  * outline, a turned part's profile beside its mirror, so a washer shows the
- * hole its pin stands in. A cut, the front mortise, is a void in its body's
- * solids: drawn into the stencil buffer first, it keeps the key's wood from
- * being painted there, so the pin under it shows through, while a pin standing
- * inside the key's wood stays hidden by it, unless the key is drawn faded, as
- * the reader may choose and as a key no equilibrium places is. Its mouth, which runs along the
- * keystick's underside, is no edge of the section. The **solid** sweeps every
- * part across the keyboard, and leaves the cuts out: a mortise is inside the
- * key.
+ * hole its pin stands in. A cut, a mortise or the balance hole, is a void in
+ * its body's solids: drawn into the stencil buffer first, it keeps the key's
+ * wood, and the wood's edges, from being painted there, so the pin in it
+ * shows through, while a pin standing inside the key's wood stays hidden by
+ * it, unless the key is drawn faded, as the reader may choose and as a key no
+ * equilibrium places is. A cut's mouth, where it opens through the key's
+ * outline or into another cut, is no edge of the section. A lining set into
+ * one side of a slot, the balance mortise's bushing, stands out of the
+ * plane: the one on the far side is drawn as seen beyond the plane, through
+ * the void and behind the pin, and the near one, cut away with the near
+ * half of the key, is not drawn. The **solid** sweeps every part across the
+ * keyboard, each lining on its side of the slot, and leaves the cuts out:
+ * they are not carved from the key's wood.
  *
  * Over both views, the contacts the engine's rows find within a millimeter
  * of closing are marked where the rows put them, in the keybed's frame: a
@@ -128,6 +133,8 @@ export type ViewMode = 'section' | 'solid'
  * capstan over the wood it is screwed into, then what is marked on the key.
  */
 const LAYER = {
+  // Seen beyond the plane, through a void: under everything in it.
+  beyond: 0,
   ground: 1,
   groundEdges: 2,
   cut: 3,
@@ -176,15 +183,27 @@ function useDisposal(geometry: THREE.BufferGeometry) {
 
 // ---- the solid ------------------------------------------------------------
 
-function Extruded({ points, width, color }: { points: number[]; width: number; color: string }) {
+function Extruded({
+  points,
+  width,
+  across,
+  color,
+}: {
+  points: number[]
+  width: number
+  /** Where its middle stands across the keyboard, millimeters toward the
+   * bass. */
+  across: number
+  color: string
+}) {
   const geometry = useMemo(() => {
     const g = new THREE.ExtrudeGeometry(toShape(points), { depth: width, bevelEnabled: false })
-    // Extrusion runs along +z from the outline's plane; center it so the
-    // sagittal plane really is the middle of the part.
-    g.translate(0, 0, -width / 2)
+    // Extrusion runs along +z from the outline's plane; center it on where
+    // the engine puts its middle, the sagittal plane for all but a lining.
+    g.translate(0, 0, across - width / 2)
     g.computeVertexNormals()
     return g
-  }, [points, width])
+  }, [points, width, across])
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry])
   const opacity = useContext(Opacity)
   useDisposal(geometry)
@@ -303,6 +322,7 @@ function Edges({
   z = 0,
   depthTest = false,
   overlay = false,
+  masked = false,
 }: {
   pieces: number[]
   layer: number
@@ -313,6 +333,8 @@ function Edges({
   depthTest?: boolean
   /** Whether they are marks drawn over every part, a faded key's included. */
   overlay?: boolean
+  /** Whether a cut keeps them from being drawn: the key's own parts' are. */
+  masked?: boolean
 }) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry()
@@ -335,6 +357,12 @@ function Edges({
         depthTest={depthTest}
         depthWrite={false}
         toneMapped={false}
+        stencilWrite={masked}
+        stencilRef={CUT_STENCIL}
+        stencilFunc={THREE.NotEqualStencilFunc}
+        stencilFail={THREE.KeepStencilOp}
+        stencilZFail={THREE.KeepStencilOp}
+        stencilZPass={THREE.KeepStencilOp}
       />
     </lineSegments>
   )
@@ -350,6 +378,7 @@ function OutlineEdges({
   mirror = false,
   z = 0,
   depthTest = false,
+  masked = false,
 }: {
   outline: Outline
   skip: ReadonlySet<number>
@@ -358,6 +387,7 @@ function OutlineEdges({
   mirror?: boolean
   z?: number
   depthTest?: boolean
+  masked?: boolean
 }) {
   const sets = marked
     ? piecesByHow(outline, skip).map(({ how, pieces }) => ({ color: HOW_COLOR[how], pieces }))
@@ -372,6 +402,7 @@ function OutlineEdges({
           color={color}
           z={z}
           depthTest={depthTest}
+          masked={masked}
         />
       ))}
     </>
@@ -405,7 +436,13 @@ function SectionPart({
     return (
       <>
         <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
-        <OutlineEdges outline={outline} skip={open} layer={edgeLayer} marked={marked} />
+        <OutlineEdges
+          outline={outline}
+          skip={open}
+          layer={edgeLayer}
+          marked={marked}
+          masked={masked}
+        />
       </>
     )
   }
@@ -414,8 +451,21 @@ function SectionPart({
     <group position={[outline.axis_x_mm, 0, 0]}>
       <Fill points={outline.points_mm} color={color} layer={layer} masked={masked} />
       <Fill points={mirrored(outline.points_mm)} color={color} layer={layer} masked={masked} />
-      <OutlineEdges outline={outline} skip={onAxis} layer={edgeLayer} marked={marked} />
-      <OutlineEdges outline={outline} skip={onAxis} layer={edgeLayer} marked={marked} mirror />
+      <OutlineEdges
+        outline={outline}
+        skip={onAxis}
+        layer={edgeLayer}
+        marked={marked}
+        masked={masked}
+      />
+      <OutlineEdges
+        outline={outline}
+        skip={onAxis}
+        layer={edgeLayer}
+        marked={marked}
+        masked={masked}
+        mirror
+      />
     </group>
   )
 }
@@ -520,6 +570,10 @@ function Body({
   const matrix = useMemo(() => poseMatrix(pose), [pose])
   const cuts = outlines.filter((o) => o.role === 'cut')
   const parts = outlines.filter((o) => o.role !== 'cut')
+  const inPlane = parts.filter((o) => o.is_in_the_section)
+  // The camera looks at the section from +z, the bass side: what stands at
+  // negative z, out of the plane, is beyond it.
+  const beyond = parts.filter((o) => !o.is_in_the_section && o.across_mm < 0)
   const grounded = body === GROUND
   return (
     <group matrix={matrix} matrixAutoUpdate={false}>
@@ -535,7 +589,12 @@ function Body({
               />
             ) : (
               <group key={`${o.code}-${i}`}>
-                <Extruded points={o.points_mm} width={o.width_mm} color={colorOf(o)} />
+                <Extruded
+                  points={o.points_mm}
+                  width={o.width_mm}
+                  across={o.across_mm}
+                  color={colorOf(o)}
+                />
                 {/* Marked by provenance, on the face toward the camera. */}
                 {marked && (
                   <OutlineEdges
@@ -543,7 +602,7 @@ function Body({
                     skip={new Set()}
                     layer={LAYER.marks}
                     marked
-                    z={o.width_mm / 2 + 0.05}
+                    z={o.across_mm + o.width_mm / 2 + 0.05}
                     depthTest
                   />
                 )}
@@ -552,13 +611,22 @@ function Body({
           )
         ) : (
           <>
+            {beyond.map((o, i) => (
+              <group key={`${o.code}-beyond-${i}`}>
+                <Fill points={o.points_mm} color={colorOf(o)} layer={LAYER.beyond} />
+                <OutlineEdges outline={o} skip={new Set()} layer={LAYER.beyond} marked={marked} />
+              </group>
+            ))}
             {cuts.map((o, i) => (
               <Void key={`${o.code}-${i}`} points={o.points_mm} />
             ))}
             {cuts.map((o, i) => {
-              // A cut's mouth runs along its body's outline: no edge there.
+              // A cut's mouth runs along its body's outline, or opens into
+              // another cut: no edge there.
               const mouth = new Set<number>()
-              for (const p of parts) for (const s of sharedSegments(o, p)) mouth.add(s)
+              for (const p of [...parts, ...cuts.filter((c) => c !== o)]) {
+                for (const s of sharedSegments(o, p)) mouth.add(s)
+              }
               return (
                 <OutlineEdges
                   key={`${o.code}-edges-${i}`}
@@ -569,7 +637,7 @@ function Body({
                 />
               )
             })}
-            {parts.map((o, i) => {
+            {inPlane.map((o, i) => {
               const open = new Set<number>()
               for (const c of cuts) for (const s of sharedSegments(o, c)) open.add(s)
               const turned = o.sweep === 'revolved'

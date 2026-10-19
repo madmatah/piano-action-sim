@@ -379,7 +379,10 @@ mod tests {
             body: BodyId(1),
             code: PartCode::Keystick,
             outline,
-            sweep: Sweep::Extruded { width: 0.02 },
+            sweep: Sweep::Extruded {
+                width: 0.02,
+                across: 0.0,
+            },
             role,
             material: Material::KeyWood,
             placed_by: vec![(0..n, "a test")],

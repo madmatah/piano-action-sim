@@ -561,7 +561,7 @@ impl Mechanism {
                             Point::new(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y))
                         })
                         .collect(),
-                    Seg::Arc { .. } => seg.drawn(3),
+                    Seg::Arc { .. } => seg.drawn(crate::geometry::DRAWN_HALVINGS),
                 };
                 for q in points {
                     deepest = deepest.max(material.depth(placement.world(q)));
@@ -580,7 +580,7 @@ impl Mechanism {
             parts[i]
                 .silhouette()
                 .iter()
-                .flat_map(|seg| seg.drawn(3))
+                .flat_map(|seg| seg.drawn(crate::geometry::DRAWN_HALVINGS))
                 .map(|q| placement.world(q))
                 .collect()
         };
@@ -616,7 +616,7 @@ impl Mechanism {
             parts[i]
                 .silhouette()
                 .iter()
-                .flat_map(|seg| seg.drawn(3))
+                .flat_map(|seg| seg.drawn(crate::geometry::DRAWN_HALVINGS))
                 .map(|q| placement.world(q))
                 .collect()
         };

@@ -46,6 +46,18 @@ sweep: Sweep,
  */
 width_mm: number, 
 /**
+ * Where the extrusion's middle stands across the keyboard, millimeters
+ * from the sagittal plane, positive toward the bass, the player's left:
+ * zero but for a lining set into one side of a slot, which the section
+ * does not cut; zero when turned.
+ */
+across_mm: number, 
+/**
+ * Whether the sagittal plane cuts it, so that the section draws it in
+ * its plane: every part but a lining set into one side of a slot.
+ */
+is_in_the_section: boolean, 
+/**
  * Where a turned part's axis stands along its body's `x`, millimeters;
  * zero when extruded.
  */

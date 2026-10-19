@@ -352,6 +352,14 @@
    "what": "The key button's height above the keystick."
   },
   {
+   "name": "capsule_end_radius",
+   "value": 11.64,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/11-hirschkorn-key-outline.py",
+   "what": "The radius the key button's ends are drawn rounded to: each an arc tangent to the flat top where the top ends and through the foot of its end, reaching 10.30 mm along the top, the two ends' reaches averaged, on the button's 6.21 mm height."
+  },
+  {
    "name": "full_height_back",
    "value": -132.45,
    "unit": "mm",

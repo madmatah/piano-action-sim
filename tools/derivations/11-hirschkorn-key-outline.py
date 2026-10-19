@@ -203,6 +203,12 @@ def derived():
     button_height = (height(button[1]) + height(button[2])) / 2 - line_height(
         wood_top, line_top, button_center
     )
+    # Each end is drawn rounded from the end of the flat top down to its foot:
+    # an arc tangent to the top where the top ends and through the foot, whose
+    # radius r makes reach² + (r − h)² = r² with the end's reach along the top
+    # and the button's height h. The two ends' reaches are averaged.
+    reach = ((button[1][0] - button[0][0]) + (button[3][0] - button[2][0])) / 2
+    button_end_radius = (reach * reach + button_height * button_height) / (2 * button_height)
     check = f["back_check_block"]
     check_back, check_front = check[0][0], check[3][0]
     check_height = (height(check[1]) + height(check[2])) / 2 - line_height(
@@ -229,6 +235,7 @@ def derived():
         "capsule_length": button_front - button_back,
         "capsule_center": button_center,
         "capsule_height": button_height,
+        "capsule_end_radius": button_end_radius,
         "full_height_back": full_height_back,
         "back_check_block_back": check_back,
         "back_check_block_length": check_front - check_back,
@@ -248,6 +255,7 @@ def derived():
         "full height's top as drawn behind that line": raised_top,
         "  above the keystick's full height, dropped": raised_top - stick_height,
         "  its length, from where the full height ends": line - full_height_back,
+        "key button's ends, their reach along its top": reach,
         "capstan's seat, the keystick's full height": stick_height,
         "capstan's head, its bottom": head_bottom,
         "capstan's dome, its top (Pk3's height plus its radius)": pk3[1] + dome,

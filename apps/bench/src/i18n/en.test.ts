@@ -303,6 +303,19 @@ describe('a problem', () => {
       }),
     ).toBe('a front mortise 30.0 mm deep goes through the 24.5 mm of the keystick.')
     expect(
+      word(t.editRefusal, 'capsule_ends_overlap', { code: 'capsule_ends_overlap', by_mm: 0.78 }),
+    ).toBe(
+      "the key button's rounded ends would reach 0.8 mm past each other along its top: they meet at most.",
+    )
+    expect(
+      word(t.editRefusal, 'does_not_fit', {
+        code: 'does_not_fit',
+        part: 'balance_hole',
+        within: 'balance_mortise',
+        by_mm: 1,
+      }),
+    ).toBe('the balance hole would not fit in the balance mortise, by 1.0 mm.')
+    expect(
       t.refused.set({
         code: 'outline_crosses_itself',
         back: 'key_button',

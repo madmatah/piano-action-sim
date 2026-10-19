@@ -43,7 +43,7 @@ pub use key::KeyRanges;
 pub use key_mass::{FrontWeightReading, KeyMass, NotAWeighing};
 
 use crate::contact::{Part, PartId};
-use crate::geometry::{Point, Seg};
+use crate::geometry::{Dir, Point, Seg, DRAWN_HALVINGS};
 use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 
 /// A closed outline through `points`, in order.
@@ -207,6 +207,116 @@ pub struct TopClearance {
     pub depth: f64,
 }
 
+/// The balance mortise, as the owner describes it: an oblong slot through
+/// the key button, its upper part bushed on its two long sides, which guides
+/// the key across the keyboard; under it a cavity in the keystick, as long
+/// as the slot; and at that cavity's floor, just above the underside, the
+/// balance hole, fitted to the pin, where the key is held fore and aft. The
+/// slot runs along the key's front axis, the model's `x`, whatever the key's
+/// crank behind its covering, so that every key rocks the same way;
+/// centered on the balance pin.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BalanceMortise {
+    /// Length of the slot along the key, meters; the cavity under it is as
+    /// long.
+    pub length: f64,
+    /// Width of the slot across the keyboard between its bare walls,
+    /// meters: the cavity under it is as wide, and the bushing takes its two
+    /// thicknesses out of it.
+    pub width: f64,
+    /// Thickness of the keystick's wood under the cavity, meters, where the
+    /// balance hole is drilled.
+    pub floor: f64,
+    /// Diameter of the balance hole, meters: fitted to the pin.
+    pub hole_diameter: f64,
+    /// Thickness of the cloth on each long side of the slot, meters.
+    pub bushing_thickness: f64,
+    /// How far down the slot that cloth runs from the key button's top,
+    /// meters: only its upper part is bushed.
+    pub bushing_depth: f64,
+}
+
+/// A glued block's front, top and back, counter-clockwise from the foot of
+/// its front to the foot of its back, its two top corners rounded to
+/// `radius`. A radius up to the block's height rounds each corner into the
+/// block's end, which runs straight under the arc; a larger one runs each
+/// arc from the top down to the foot of the end, the block's length still
+/// its footprint's; a radius of zero leaves the corners square. Each arc
+/// reaches in from its end by [`end_reach`], and the two meet at most.
+pub(crate) fn rounded_ends(back: f64, front: f64, base: f64, height: f64, radius: f64) -> Vec<Seg> {
+    let top = base + height;
+    let (front_foot, back_foot) = (Point::new(front, base), Point::new(back, base));
+    let square = || {
+        polygon(&[
+            front_foot,
+            Point::new(front, top),
+            Point::new(back, top),
+            back_foot,
+        ])[..3]
+            .to_vec()
+    };
+    if radius <= 0.0 {
+        return square();
+    }
+    let reach = end_reach(height, radius);
+    let drop = if radius > height {
+        radius - height
+    } else {
+        0.0
+    };
+    let (Some(from_front), Some(to_back)) = (Dir::new(reach, drop), Dir::new(-reach, drop)) else {
+        return square();
+    };
+    let front_arc = Seg::Arc {
+        c: Point::new(front - reach, top - radius),
+        r: radius,
+        from: from_front,
+        to: Dir::Y,
+    };
+    let back_arc = Seg::Arc {
+        c: Point::new(back + reach, top - radius),
+        r: radius,
+        from: Dir::Y,
+        to: to_back,
+    };
+    let mut segs = Vec::with_capacity(5);
+    if radius < height {
+        segs.push(Seg::Line {
+            a: front_foot,
+            b: front_arc.start(),
+        });
+    }
+    segs.push(front_arc);
+    if front_arc.end() != back_arc.start() {
+        segs.push(Seg::Line {
+            a: front_arc.end(),
+            b: back_arc.start(),
+        });
+    }
+    segs.push(back_arc);
+    if radius < height {
+        segs.push(Seg::Line {
+            a: back_arc.end(),
+            b: back_foot,
+        });
+    }
+    segs
+}
+
+/// How far a rounded end of a block `height` high reaches in from its end
+/// along the block's top, at `radius`: the radius itself up to the
+/// block's height, where the arc rounds a corner; beyond, the arc runs
+/// from the top to the foot of the end, which lies `√(2rh − h²)` out from
+/// its tangent point on the top. Both no less than nothing, as their
+/// settings admit them, so the root is never of a negative number.
+pub fn end_reach(height: f64, radius: f64) -> f64 {
+    if radius <= height {
+        radius
+    } else {
+        (2.0 * radius * height - height * height).sqrt()
+    }
+}
+
 /// A block glued on the key's top: where it stands along the key and how
 /// high it stands above the wood under it.
 ///
@@ -307,6 +417,12 @@ pub struct KeyDesign {
     /// Where the capsule's middle stands along the key, meters from the
     /// balance pin; none where it stands centered on the pin.
     pub capsule_center: Option<f64>,
+    /// Radius of the key button's two rounded ends, meters, from its flat
+    /// top down to the key, each reaching in by [`end_reach`]; zero for
+    /// square ends.
+    pub capsule_end_radius: f64,
+    /// The balance mortise, through the key button and the keystick.
+    pub balance_mortise: BalanceMortise,
     /// Height of the block that carries the **back check**, above the wood
     /// it stands on: the keystick's full height, or the thinned tail where
     /// the tail runs on under it ([`Self::wood_under`]).
@@ -582,9 +698,10 @@ impl KeyDesign {
             capsule_front,
             self.wood_under(capsule_back, capsule_front),
             self.capsule_height,
+            self.capsule_end_radius,
         )];
         if let Some(c) = self.top_clearance {
-            blocks.push((c.back, c.front, top, -c.depth));
+            blocks.push((c.back, c.front, top, -c.depth, 0.0));
         }
         let check = self.back_check_block();
         blocks.push((
@@ -592,6 +709,7 @@ impl KeyDesign {
             check.front(),
             self.wood_under(check.back, check.front()),
             check.height,
+            0.0,
         ));
         let mut stepped = false;
         let step = |outline: &mut Vec<Point>| {
@@ -600,7 +718,7 @@ impl KeyDesign {
             }
             outline.push(Point::new(tail_front, tail_top));
         };
-        for (back, front, base, height) in blocks {
+        for (back, front, base, height, radius) in blocks {
             if !stepped && front <= tail_front {
                 step(&mut outline);
                 stepped = true;
@@ -608,10 +726,16 @@ impl KeyDesign {
             if outline.last() != Some(&Point::new(front, base)) {
                 outline.push(Point::new(front, base));
             }
-            outline.extend([
-                Point::new(front, base + height),
-                Point::new(back, base + height),
-            ]);
+            // Its front, its top and its back, its ends rounded where it has
+            // a radius, drawn as its part draws them: from the foot of its
+            // front, which is in the outline already, to the foot of its
+            // back, which follows.
+            let ends = rounded_ends(back, front, base, height, radius);
+            outline.extend(
+                ends.iter()
+                    .flat_map(|seg| seg.drawn(DRAWN_HALVINGS))
+                    .skip(1),
+            );
             // Where the tail begins right behind a block on the keystick, the
             // block's back face and the tail's front are one face, with no
             // corner at the keystick's top. Where it begins further back, the
@@ -674,8 +798,9 @@ impl KeyDesign {
     /// its parts as the sagittal section draws them ([`Self::parts`]), the
     /// keystick, its top lowered by the clearance for the wippen rail where
     /// it has one, the covering, the key front, the glued blocks and the
-    /// tail's felt, the front mortise's void taken out, the turned capstan
-    /// left out; `None` for a section that encloses nothing.
+    /// tail's felt, the front mortise's and the balance mortise's voids
+    /// taken out, the turned capstan and the bushing beside the sagittal
+    /// plane left out; `None` for a section that encloses nothing.
     ///
     /// **What stands in for the height of a weighed key's center of mass**,
     /// which no scale gives (`docs/FOUNDATIONS.md` > Named simplifications): where the center of
@@ -689,13 +814,16 @@ impl KeyDesign {
         let mut parts = Vec::new();
         self.parts(crate::mechanism::BodyId(0), &mut parts);
         let (mut area, mut along, mut across) = (0.0, 0.0, 0.0);
-        for part in parts
-            .iter()
-            .filter(|p| matches!(p.sweep, crate::contact::Sweep::Extruded { .. }))
-        {
-            // An arc, which no extruded part of a key has today, is read
-            // through its drawn chords.
-            let points: Vec<Point> = part.outline.iter().flat_map(|s| s.drawn(4)).collect();
+        for part in parts.iter().filter(|p| {
+            matches!(p.sweep, crate::contact::Sweep::Extruded { .. }) && p.sweep.is_in_the_section()
+        }) {
+            // An arc, the key button's rounded ends, is read through its
+            // drawn chords, as the section draws it.
+            let points: Vec<Point> = part
+                .outline
+                .iter()
+                .flat_map(|s| s.drawn(DRAWN_HALVINGS))
+                .collect();
             let (a, m) = area_and_moments(&points);
             let sign = if part.role == crate::contact::Role::Cut {
                 -1.0
@@ -716,6 +844,53 @@ impl KeyDesign {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Consistency: **a block's rounded ends reach in as their radius
+    /// says.** On a block 6 mm high and 40 mm long: a radius of 4 mm, under
+    /// the height, rounds each top corner, its end straight under the arc,
+    /// and reaches in by the radius; one of 12 mm, over it, runs each arc
+    /// from the top down to the foot of its end and reaches in
+    /// √(2·12·6 − 6²) = √108 mm. Each arc is tangent to the top where it
+    /// reaches in, its center a radius under the top, and the outline runs
+    /// from the foot of the front to the foot of the back.
+    #[test]
+    fn a_blocks_rounded_ends_reach_in_as_their_radius_says() {
+        let (back, front, base, height) = (-0.020, 0.020, 0.0245, 0.006);
+        let top = base + height;
+        // A few roundings of lengths under a decimeter.
+        let near = |a: f64, b: f64| (a - b).abs() <= 8.0 * f64::EPSILON * 0.1;
+        for (radius, reach, segments) in [(0.004, 0.004, 5), (0.012, 0.001 * 108.0_f64.sqrt(), 3)] {
+            assert!(near(end_reach(height, radius), reach), "{radius} m");
+            let ends = rounded_ends(back, front, base, height, radius);
+            assert_eq!(ends.len(), segments, "{radius} m: {ends:?}");
+            assert!(near(ends[0].start().x, front) && near(ends[0].start().y, base));
+            let last = ends[ends.len() - 1].end();
+            assert!(near(last.x, back) && near(last.y, base));
+            let arcs: Vec<(Point, f64, Point)> = ends
+                .iter()
+                .filter_map(|seg| match *seg {
+                    Seg::Arc { c, r, .. } => Some((c, r, seg.start())),
+                    Seg::Line { .. } => None,
+                })
+                .collect();
+            assert_eq!(arcs.len(), 2);
+            for ((c, r, _), end) in arcs.iter().zip([front, back]) {
+                assert_eq!(r.to_bits(), radius.to_bits());
+                assert!(near(c.y, top - radius));
+                assert!(
+                    near((end - c.x).abs(), reach),
+                    "{radius} m: reaches in {}",
+                    (end - c.x).abs()
+                );
+            }
+            let flat = ends.iter().find_map(|seg| match *seg {
+                Seg::Line { a, b } if a.y.to_bits() == b.y.to_bits() && a.x > b.x => Some((a, b)),
+                _ => None,
+            });
+            let (from, to) = flat.expect("a flat top between the ends");
+            assert!(near(from.y, top) && near(from.x, front - reach) && near(to.x, back + reach));
+        }
+    }
 
     /// Level 0: the shoelace sums against a shape whose answer is known.
     ///
@@ -748,13 +923,63 @@ mod tests {
     /// centroid, to the rounding of its sums.
     #[test]
     fn reversing_the_winding_changes_nothing() {
-        let mut v = crate::test_fixture::key().outline_vertices();
+        let key = crate::test_fixture::key();
+        let mut v = key.outline_vertices();
         let ccw = area_centroid(&v).expect("the key's section");
         let (area, _) = area_and_moments(&v);
         v.reverse();
         let cw = area_centroid(&v).expect("the key's section, the other way");
-        assert_eq!(area.to_bits(), area_and_moments(&v).0.to_bits());
+        // The rounding of a shoelace sum of `v.len()` terms, each within
+        // half an ulp of the largest, the reach squared: summed the other
+        // way, the key button's arc points round otherwise.
+        let reach = key.lip() - key.tail_end;
+        let bound = v.len() as f64 * f64::EPSILON * reach * reach;
+        assert!((area - area_and_moments(&v).0).abs() <= bound);
         assert!((cw.x - ccw.x).abs() <= 1e-15 && (cw.y - ccw.y).abs() <= 1e-15);
+    }
+
+    /// The voids the section's centroid takes out, each its area and its
+    /// middle: the front mortise, the balance mortise's slot and cavity,
+    /// and the balance hole, all rectangles in the sagittal plane.
+    /// How many points the drawn section's sums run over: every point of
+    /// every drawn part the section cuts.
+    fn drawn_points(key: &KeyDesign) -> usize {
+        let mut parts = Vec::new();
+        key.parts(crate::mechanism::BodyId(0), &mut parts);
+        parts
+            .iter()
+            .filter(|p| {
+                matches!(p.sweep, crate::contact::Sweep::Extruded { .. })
+                    && p.sweep.is_in_the_section()
+            })
+            .map(|p| {
+                p.outline
+                    .iter()
+                    .map(|seg| seg.drawn(DRAWN_HALVINGS).len())
+                    .sum::<usize>()
+            })
+            .sum()
+    }
+
+    fn voids(key: &KeyDesign) -> [(f64, Point); 3] {
+        let (back, front) = key.front_mortise_span();
+        let mortise = key.balance_mortise;
+        let (button_back, button_front) = key.key_button_span();
+        let button_top = key.wood_under(button_back, button_front) + key.capsule_height;
+        [
+            (
+                (front - back) * key.front_mortise_depth,
+                Point::new(0.5 * (back + front), 0.5 * key.front_mortise_depth),
+            ),
+            (
+                mortise.length * (button_top - mortise.floor),
+                Point::new(0.0, 0.5 * (mortise.floor + button_top)),
+            ),
+            (
+                mortise.hole_diameter * mortise.floor,
+                Point::new(0.0, 0.5 * mortise.floor),
+            ),
+        ]
     }
 
     /// Consistency: **a polygon that encloses nothing has no centroid**,
@@ -772,32 +997,36 @@ mod tests {
     }
 
     /// Consistency: **the drawn section's centroid is the section's, the
-    /// front mortise taken out.** The parts tile the key's section
+    /// mortises taken out.** The parts tile the key's section
     /// (`the_drawn_key_tiles_its_section`), so the centroid read off the
-    /// drawn parts is the section polygon's with the mortise's rectangle,
-    /// its length by its depth, removed by hand; the turned capstan is in
-    /// neither. On every key the fixture has, its centroid stands over the
-    /// key's underside, under its top, and between its tail and its lip.
-    /// The bound is derived: two shoelace sums of under 40 terms each, and
-    /// the removal's few products, each rounding within half an ulp of the
+    /// drawn parts is the section polygon's with the voids' rectangles
+    /// removed by hand: the front mortise, the balance mortise's slot and
+    /// cavity, and the balance hole; the turned capstan, and the bushing
+    /// beside the sagittal plane, are in neither. On every key the fixture
+    /// has, its centroid stands over the key's underside, under its top, and
+    /// between its tail and its lip. The bound is derived: two shoelace sums,
+    /// one over the outline's points and one over every drawn part's, and
+    /// the removals' few products, each rounding within half an ulp of the
     /// largest term, the reach to the third power over the area.
     #[test]
-    fn the_drawn_section_is_the_sections_with_the_mortise_taken_out() {
+    fn the_drawn_section_is_the_sections_with_the_mortises_taken_out() {
         for key in [
             crate::test_fixture::key(),
             crate::test_fixture::key_with_every_feature(),
         ] {
             let drawn = key.section_centroid().expect("the key encloses wood");
-            let (area, moments) = area_and_moments(&key.outline_vertices());
-            let (back, front) = key.front_mortise_span();
-            let void = (front - back) * key.front_mortise_depth;
-            let left = area - void;
-            let by_hand = Point::new(
-                (moments.x - void * 0.5 * (back + front)) / left,
-                (moments.y - void * 0.5 * key.front_mortise_depth) / left,
-            );
+            let outline = key.outline_vertices();
+            let (area, moments) = area_and_moments(&outline);
+            let (mut left, mut along, mut across) = (area, moments.x, moments.y);
+            for (void, middle) in voids(&key) {
+                left -= void;
+                along -= void * middle.x;
+                across -= void * middle.y;
+            }
+            let by_hand = Point::new(along / left, across / left);
             let reach = key.lip() - key.tail_end;
-            let bound = 200.0 * f64::EPSILON * reach * reach * reach / left;
+            let terms = (outline.len() + drawn_points(&key)) as f64;
+            let bound = (terms + 20.0) * f64::EPSILON * reach * reach * reach / left;
             assert!(
                 (drawn.x - by_hand.x).abs() <= bound && (drawn.y - by_hand.y).abs() <= bound,
                 "drawn {drawn:?}, by hand {by_hand:?}"
@@ -812,8 +1041,9 @@ mod tests {
     /// the one's drawn centroid is the other's with the clearance's
     /// rectangle, its length by its depth, taken out by hand, its middle
     /// halfway along it and half its depth under the full top. The bound is
-    /// the one the section's own takes, the reach to the third power over
-    /// the area.
+    /// derived as the section's own: the two keys' drawn parts' points and
+    /// the rectangle's few products, each rounding within half an ulp of the
+    /// largest term, the reach to the third power over the area.
     #[test]
     fn the_clearance_takes_its_wood_out_of_the_section() {
         let cut = crate::test_fixture::key_with_every_feature();
@@ -823,8 +1053,9 @@ mod tests {
             ..cut.clone()
         };
         let (area, _) = area_and_moments(&whole.outline_vertices());
-        let (back, front) = whole.front_mortise_span();
-        let area = area - (front - back) * whole.front_mortise_depth;
+        let area = voids(&whole)
+            .iter()
+            .fold(area, |left, (void, _)| left - void);
         let before = whole.section_centroid().expect("the key encloses wood");
         let rectangle = (c.front - c.back) * c.depth;
         let middle = Point::new(0.5 * (c.back + c.front), whole.stick_height - 0.5 * c.depth);
@@ -835,7 +1066,8 @@ mod tests {
         );
         let drawn = cut.section_centroid().expect("the key encloses wood");
         let reach = cut.lip() - cut.tail_end;
-        let bound = 200.0 * f64::EPSILON * reach * reach * reach / left;
+        let terms = (drawn_points(&whole) + drawn_points(&cut)) as f64;
+        let bound = (terms + 20.0) * f64::EPSILON * reach * reach * reach / left;
         assert!(
             (drawn.x - by_hand.x).abs() <= bound && (drawn.y - by_hand.y).abs() <= bound,
             "drawn {drawn:?}, by hand {by_hand:?}"

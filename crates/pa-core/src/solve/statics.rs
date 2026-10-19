@@ -1244,7 +1244,10 @@ pub(crate) mod tests {
             body: BodyId(body),
             code: PartCode::Keystick,
             outline,
-            sweep: Sweep::Extruded { width: 0.01 },
+            sweep: Sweep::Extruded {
+                width: 0.01,
+                across: 0.0,
+            },
             role: Role::Solid,
             material: Material::KeyWood,
             placed_by: vec![(0..n, "a test")],
