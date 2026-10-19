@@ -1,0 +1,12 @@
+{
+  "what": "The key button and the balance mortise: how a key is held on its balance pin.",
+  "construction": {
+    "statement": "The key button is glued on the key over the balance pin, flat on top, its two ends rounded down to the key. Through it runs an oblong slot along the key, the balance mortise, bushed on its two long sides only and only in its upper part. Under it a cavity in the keystick as long as the slot runs down to a thin floor just above the underside, where the pin passes through a hole fitted to it, which holds the key fore and aft; the bushing guides it across the keyboard. The pin is straight, perpendicular to the frame, its tip rounded, and stands above the key button at rest; the key's tilt sets its place in the slot. On a cranked key the slot runs along the key's front axis, under the covering, not along the key where it is cut, so that every key rocks the same way.",
+    "stated_by": "project owner, with his sketches of the key button and the balance mortise",
+    "date": "2026-10-19",
+    "what_for": "What the engine draws as the key button, the balance mortise, the balance hole and the bushing, every dimension of which is a setting."
+  },
+  "still_to_measure": [
+    "Every dimension of the key button's ends and of the balance mortise on a real key: the ends' radius, the slot's length and width, the cloth's thickness and how far it runs down the slot, the wood under the cavity, the balance hole's diameter, and how far the pin stands above the key button at rest."
+  ]
+}
