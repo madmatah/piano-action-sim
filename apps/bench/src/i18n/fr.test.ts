@@ -254,9 +254,27 @@ describe('a part named in a sentence', () => {
     )
   })
 
-  it('says a balance mortise milled without travel has no wall for its bushing', () => {
-    expect(word(t.editRefusal, 'bushing_without_wall', { code: 'bushing_without_wall' })).toBe(
-      `la fraise de la mortaise de balancier n’a pas de course${NO_BREAK_SPACE}: la fente est ronde, sans paroi droite où coller sa garniture.`,
+  it('says a mortise milled without travel has no wall for its bushing, naming the mortise', () => {
+    for (const [mortise, named] of [
+      ['balance_mortise', 'la mortaise de balancier'],
+      ['front_mortise', 'la mortaise d’enfoncement'],
+    ] as const) {
+      expect(
+        word(t.editRefusal, 'bushing_without_wall', { code: 'bushing_without_wall', mortise }),
+      ).toBe(
+        `la fraise de ${named} n’a pas de course${NO_BREAK_SPACE}: la mortaise est ronde, sans paroi droite où coller sa garniture.`,
+      )
+    }
+  })
+
+  it('says a groove too long for the front punching would hold the punching', () => {
+    expect(
+      word(t.editRefusal, 'punching_in_the_groove', {
+        code: 'punching_in_the_groove',
+        by_mm: 3.83,
+      }),
+    ).toBe(
+      `la fente de la mortaise d’enfoncement serait trop longue de 3,8 mm pour la mouche d’enfoncement${NO_BREAK_SPACE}: à côté de la mortaise d’enfoncement, la mouche ne trouverait plus de bois où porter et se logerait dans la fente.`,
     )
   })
 })

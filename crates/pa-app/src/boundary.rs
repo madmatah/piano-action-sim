@@ -153,6 +153,8 @@ pub enum Part {
     KeyTailFelt,
     Capstan,
     FrontMortise,
+    FrontMortiseGroove,
+    FrontMortiseBushing,
     BalanceMortise,
     BalanceMortiseBushing,
     BalanceHole,
@@ -180,6 +182,8 @@ impl From<PartCode> for Part {
             PartCode::KeyTailFelt => Self::KeyTailFelt,
             PartCode::Capstan => Self::Capstan,
             PartCode::FrontMortise => Self::FrontMortise,
+            PartCode::FrontMortiseGroove => Self::FrontMortiseGroove,
+            PartCode::FrontMortiseBushing => Self::FrontMortiseBushing,
             PartCode::BalanceMortise => Self::BalanceMortise,
             PartCode::BalanceMortiseBushing => Self::BalanceMortiseBushing,
             PartCode::BalanceHole => Self::BalanceHole,
@@ -2273,8 +2277,8 @@ pub struct Outline {
     /// Where the extrusion's middle stands across the keyboard, millimeters
     /// from the sagittal plane, positive toward the bass, the player's left:
     /// zero but for the parts beside the plane, which the section does not
-    /// cut, the balance mortise's bushing and the key button's side holes;
-    /// zero when turned, milled or oval.
+    /// cut, the bushings of both mortises, the key button's side holes and
+    /// the front mortise's groove; zero when turned, milled or oval.
     pub across_mm: f32,
     /// Whether the sagittal plane cuts it, so that the section draws it in
     /// its plane: every part but those beside it.
@@ -2694,7 +2698,7 @@ pub enum Problem {
         /// How far, millimeters along the key.
         by_mm: f64,
     },
-    /// A part of the balance mortise does not fit where it is cut or set.
+    /// A part of a mortise does not fit where it is cut or set.
     DoesNotFit {
         /// The part that does not fit.
         part: Part,
@@ -2703,9 +2707,18 @@ pub enum Problem {
         /// By how much, millimeters.
         by_mm: f64,
     },
-    /// The balance mortise's cutter does not travel along the key: the slot
-    /// is round, with no straight wall for its bushing.
-    BushingWithoutWall,
+    /// The front mortise's groove is longer along the key than the front
+    /// rail punching is wide: the punching would stand in it.
+    PunchingInTheGroove {
+        /// How much longer, millimeters along the key.
+        by_mm: f64,
+    },
+    /// A mortise's cutter does not travel along the key: the mortise is
+    /// round, with no straight wall for its bushing.
+    BushingWithoutWall {
+        /// The mortise: the balance mortise or the front mortise.
+        mortise: Part,
+    },
     /// The front mortise is cut through the top of the keystick.
     MortiseThroughKeyTop {
         /// Its depth, millimeters.
@@ -2826,7 +2839,10 @@ impl Problem {
                 within: within.into(),
                 by_mm: mm(by),
             },
-            CoreProblem::BushingWithoutWall => Self::BushingWithoutWall,
+            CoreProblem::PunchingInTheGroove { by } => Self::PunchingInTheGroove { by_mm: mm(by) },
+            CoreProblem::BushingWithoutWall { mortise } => Self::BushingWithoutWall {
+                mortise: mortise.into(),
+            },
             CoreProblem::MortiseThroughKeyTop { depth, wood } => Self::MortiseThroughKeyTop {
                 depth_mm: mm(depth),
                 wood_mm: mm(wood),
@@ -3203,19 +3219,25 @@ mod tests {
 
     /// Consistency: **the scene sends where each part stands across the
     /// keyboard, and whether the section cuts it**: on the measured section,
-    /// the bushing's legs down the slot's walls 2.35 mm from the sagittal
-    /// plane, and the key button's side holes, with the bushing's legs out
-    /// through them, 7 mm from it, between the slot's wall at 3 mm and the
-    /// key button's side at 11 mm, each on the treble side then on the bass
-    /// side, out of the section; every other part centered on the plane, in
-    /// it.
+    /// the balance mortise's bushing's legs down the slot's walls 2.35 mm
+    /// from the sagittal plane, and the key button's side holes, with the
+    /// bushing's legs out through them, 7 mm from it, between the slot's wall
+    /// at 3 mm and the key button's side at 11 mm; the front mortise's
+    /// bushing's legs up its walls 2.35 mm from the plane, its legs 5 mm
+    /// wide flat in the groove 5.5 mm from it, and the groove 7 mm from it,
+    /// between the mortise's wall at 3 mm and the key's side at 11 mm; each
+    /// on the treble side then on the bass side, out of the section; every
+    /// other part centered on the plane, in it.
     #[test]
     fn the_scene_sends_where_each_part_stands_across_the_keyboard() {
         let scene = Scene::of(&Instrument::weighed_section());
         let is_beside = |outline: &&Outline| {
             matches!(
                 outline.code,
-                Part::BalanceMortiseBushing | Part::KeyButtonSideHole
+                Part::BalanceMortiseBushing
+                    | Part::KeyButtonSideHole
+                    | Part::FrontMortiseBushing
+                    | Part::FrontMortiseGroove
             )
         };
         let (aside, centered): (Vec<&Outline>, Vec<&Outline>) =
@@ -3246,6 +3268,16 @@ mod tests {
             near(across(Part::KeyButtonSideHole), &[-7.0, 7.0]),
             "{:?}",
             across(Part::KeyButtonSideHole)
+        );
+        assert!(
+            near(across(Part::FrontMortiseBushing), &[-2.35, 2.35, -5.5, 5.5]),
+            "{:?}",
+            across(Part::FrontMortiseBushing)
+        );
+        assert!(
+            near(across(Part::FrontMortiseGroove), &[-7.0, 7.0]),
+            "{:?}",
+            across(Part::FrontMortiseGroove)
         );
         assert!(aside.iter().all(|o| !o.is_in_the_section));
         assert!(centered
@@ -3372,6 +3404,8 @@ mod tests {
             PartCode::KeyTailFelt,
             PartCode::Capstan,
             PartCode::FrontMortise,
+            PartCode::FrontMortiseGroove,
+            PartCode::FrontMortiseBushing,
             PartCode::BalanceMortise,
             PartCode::BalanceMortiseBushing,
             PartCode::BalanceHole,
@@ -3470,6 +3504,22 @@ mod tests {
                 &pa_core::test_fixture::drawer()
             ))),
             r#"{"code":"outline_crosses_itself","back":"key_tail_felt","front":"back_check_block","by_mm":12.5}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::PunchingInTheGroove { by: 0.003_75 },
+                &pa_core::test_fixture::drawer()
+            ))),
+            r#"{"code":"punching_in_the_groove","by_mm":3.75}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::BushingWithoutWall {
+                    mortise: PartCode::FrontMortise,
+                },
+                &pa_core::test_fixture::drawer()
+            ))),
+            r#"{"code":"bushing_without_wall","mortise":"front_mortise"}"#
         );
         assert_eq!(
             written(&Problem::of(

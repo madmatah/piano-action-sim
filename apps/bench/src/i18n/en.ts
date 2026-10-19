@@ -97,6 +97,8 @@ const PART: Named<Part> = {
   key_tail_felt: 'key tail felt',
   capstan: 'capstan',
   front_mortise: 'front mortise',
+  front_mortise_groove: 'front mortise groove',
+  front_mortise_bushing: 'front mortise bushing',
   balance_mortise: 'balance mortise',
   balance_mortise_bushing: 'balance mortise bushing',
   balance_hole: 'balance hole',
@@ -332,8 +334,10 @@ const problem: Worded<Problem> = {
     `the key button's rounded ends would reach ${to(by_mm, PART_MM)} mm past each other along its top: they meet at most.`,
   does_not_fit: ({ part, within, by_mm }) =>
     `the ${PART[part]} would not fit in the ${PART[within]}, by ${to(by_mm, PART_MM)} mm.`,
-  bushing_without_wall: () =>
-    `the ${PART.balance_mortise}'s cutter does not travel along the key: the slot is round, with no straight wall to glue its bushing on.`,
+  punching_in_the_groove: ({ by_mm }) =>
+    `the ${PART.front_mortise_groove} would be ${to(by_mm, PART_MM)} mm too long for the ${PART.front_rail_punching}: it would leave the punching no wood to bear on beside the ${PART.front_mortise}, and the punching would stand in it.`,
+  bushing_without_wall: ({ mortise }) =>
+    `the ${PART[mortise]}'s cutter does not travel along the key: the mortise is round, with no straight wall to glue its bushing on.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `a front mortise ${to(depth_mm, PART_MM)} mm deep goes through the ${to(wood_mm, PART_MM)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>

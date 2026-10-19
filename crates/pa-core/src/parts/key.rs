@@ -13,10 +13,13 @@
 //! mortise through the key button with its cavity and the balance hole under
 //! it, each milled, its ends rounded to its cutter's radius, and drawn as the
 //! void it is; and beside the sagittal plane, which does not cut them, the
-//! key button's side holes, through its wall on each side of the slot. Set
-//! into the balance mortise's two straight walls, also beside the plane, its
-//! bushing, an L on each side: down the slot's wall, then out through the
-//! side hole to the key button's side.
+//! key button's side holes, through its wall on each side of the slot, and
+//! the groove the front mortise is milled through, across the underside
+//! from the mortise's wall to the key's side on each side. Set into each
+//! mortise's two straight walls, also beside the plane, its bushing, an L on
+//! each side: in the balance mortise down the slot's wall, then out through
+//! the side hole to the key button's side; in the front mortise up its wall
+//! from the groove, then flat on the groove's floor toward the key's side.
 //!
 //! Each piece is its own part with its own material, so the keytop and the key
 //! front can be drawn white and the glued blocks in their own wood: what a
@@ -75,6 +78,16 @@ pub struct KeyRanges {
     pub capstan: PartId,
     /// The front mortise, a cut.
     pub front_mortise: PartId,
+    /// The groove the front mortise is milled through, beside it on each
+    /// side out to the key's side, on the treble side and on the bass side.
+    pub front_mortise_grooves: [PartId; 2],
+    /// The front mortise's bushing on each straight wall, each an L: its
+    /// leg up the wall from the groove, on the treble side and on the bass
+    /// side.
+    pub front_mortise_bushings_up_the_walls: [PartId; 2],
+    /// The bushing's other leg, flat on the groove's floor toward the key's
+    /// side, on the treble side and on the bass side.
+    pub front_mortise_bushings_flat_in_the_groove: [PartId; 2],
     /// The balance mortise, a cut: the slot through the key button and the
     /// cavity under it.
     pub balance_mortise: PartId,
@@ -402,28 +415,16 @@ impl KeyDesign {
             material: Material::Steel,
         });
 
-        let mortise_outline = polygon(&[
-            Point::new(mortise_back, 0.0),
-            Point::new(mortise_front, 0.0),
-            Point::new(mortise_front, self.front_mortise.depth),
-            Point::new(mortise_back, self.front_mortise.depth),
-        ]);
-        let front_mortise = push(Part {
-            body,
-            code: PartCode::FrontMortise,
-            placed_by: vec![
-                (0..1, "front_mortise.travel"),
-                (1..2, "front_mortise.from_front_edge"),
-                (2..3, "front_mortise.depth"),
-                (3..4, "front_mortise.from_front_edge"),
-            ],
-            outline: mortise_outline,
-            sweep: Sweep::Milled {
-                width: self.front_mortise.cutter_diameter,
-            },
-            role: Role::Cut,
-            material: Material::KeyWood,
-        });
+        let FrontMortiseParts {
+            mortise,
+            grooves: [treble_groove, bass_groove],
+            up_the_walls: [treble_wall, bass_wall],
+            flat_in_the_groove: [treble_flat, bass_flat],
+        } = self.front_mortise_parts(body);
+        let front_mortise = push(mortise);
+        let front_mortise_grooves = [push(treble_groove), push(bass_groove)];
+        let front_mortise_bushings_up_the_walls = [push(treble_wall), push(bass_wall)];
+        let front_mortise_bushings_flat_in_the_groove = [push(treble_flat), push(bass_flat)];
 
         let BalanceMortiseParts {
             slot_and_cavity,
@@ -484,6 +485,9 @@ impl KeyDesign {
             key_tail_felt,
             capstan,
             front_mortise,
+            front_mortise_grooves,
+            front_mortise_bushings_up_the_walls,
+            front_mortise_bushings_flat_in_the_groove,
             balance_mortise,
             balance_hole,
             key_button_side_holes,
@@ -748,6 +752,135 @@ impl KeyDesign {
             ],
         }
     }
+
+    /// The front mortise's parts, carried by `body`. The groove it is
+    /// milled through runs along the mortise's straight walls, the cutter's
+    /// travel, and across the key from one side to the other: in the plane
+    /// the mortise is cut through it, so each side of it stands beside the
+    /// plane, from the mortise's wall out to the key's side. The bushing
+    /// lines the straight walls, its rounded ends left bare: up each wall
+    /// from the groove's floor, and from the foot of the wall flat on that
+    /// floor, glued against it, toward the key's side.
+    fn front_mortise_parts(&self, body: BodyId) -> FrontMortiseParts {
+        let mortise = self.front_mortise;
+        let (mortise_back, mortise_front) = self.front_mortise_span();
+        let middle = self.front_mortise_x();
+        let (wall_back, wall_front) =
+            (middle - 0.5 * mortise.travel, middle + 0.5 * mortise.travel);
+        let along_the_walls = |bottom: f64, top: f64, placed: [PlacedBy; 2]| {
+            let outline = polygon(&[
+                Point::new(wall_back, bottom),
+                Point::new(wall_front, bottom),
+                Point::new(wall_front, top),
+                Point::new(wall_back, top),
+            ]);
+            let placed_by: Placements = vec![
+                (0..1, placed[0]),
+                (1..2, "front_mortise.travel"),
+                (2..3, placed[1]),
+                (3..4, "front_mortise.travel"),
+            ];
+            (outline, placed_by)
+        };
+        let side = 0.5 * (self.width - mortise.cutter_diameter);
+        let side_across = 0.25 * (self.width + mortise.cutter_diameter);
+        let groove = |across: f64| {
+            let (outline, placed_by) = along_the_walls(
+                0.0,
+                mortise.groove_depth,
+                ["front_mortise.travel", "front_mortise.groove_depth"],
+            );
+            Part {
+                body,
+                code: PartCode::FrontMortiseGroove,
+                placed_by,
+                outline,
+                sweep: Sweep::Extruded {
+                    width: side,
+                    across,
+                },
+                role: Role::Cut,
+                material: Material::KeyWood,
+            }
+        };
+        let bushing_bottom = mortise.groove_depth - mortise.bushing_thickness;
+        let bushing = |top: f64, top_placed: PlacedBy, width: f64, across: f64| {
+            let (outline, placed_by) = along_the_walls(
+                bushing_bottom,
+                top,
+                ["front_mortise.bushing_thickness", top_placed],
+            );
+            Part {
+                body,
+                code: PartCode::FrontMortiseBushing,
+                placed_by,
+                outline,
+                sweep: Sweep::Extruded { width, across },
+                role: Role::Lining,
+                material: Material::BushingCloth,
+            }
+        };
+        let wall_across = 0.5 * (mortise.cutter_diameter - mortise.bushing_thickness);
+        let up_the_wall = |across: f64| {
+            bushing(
+                mortise.groove_depth + mortise.bushing_height,
+                "front_mortise.bushing_height",
+                mortise.bushing_thickness,
+                across,
+            )
+        };
+        let flat_across = 0.5 * (mortise.cutter_diameter + mortise.bushing_flat_width);
+        let flat_in_the_groove = |across: f64| {
+            bushing(
+                mortise.groove_depth,
+                "front_mortise.groove_depth",
+                mortise.bushing_flat_width,
+                across,
+            )
+        };
+        FrontMortiseParts {
+            mortise: Part {
+                body,
+                code: PartCode::FrontMortise,
+                placed_by: vec![
+                    (0..1, "front_mortise.travel"),
+                    (1..2, "front_mortise.from_front_edge"),
+                    (2..3, "front_mortise.depth"),
+                    (3..4, "front_mortise.from_front_edge"),
+                ],
+                outline: polygon(&[
+                    Point::new(mortise_back, 0.0),
+                    Point::new(mortise_front, 0.0),
+                    Point::new(mortise_front, mortise.depth),
+                    Point::new(mortise_back, mortise.depth),
+                ]),
+                sweep: Sweep::Milled {
+                    width: mortise.cutter_diameter,
+                },
+                role: Role::Cut,
+                material: Material::KeyWood,
+            },
+            grooves: [groove(-side_across), groove(side_across)],
+            up_the_walls: [up_the_wall(-wall_across), up_the_wall(wall_across)],
+            flat_in_the_groove: [
+                flat_in_the_groove(-flat_across),
+                flat_in_the_groove(flat_across),
+            ],
+        }
+    }
+}
+
+/// The front mortise's parts, each pair on the treble side then on the bass
+/// side.
+struct FrontMortiseParts {
+    /// The mortise.
+    mortise: Part,
+    /// The groove it is milled through, either side of it.
+    grooves: [Part; 2],
+    /// The bushing's legs up the mortise's walls.
+    up_the_walls: [Part; 2],
+    /// The bushing's legs flat on the groove's floor.
+    flat_in_the_groove: [Part; 2],
 }
 
 /// The balance mortise's parts, each pair on the treble side then on the
@@ -869,7 +1002,7 @@ mod tests {
             let (parts, ranges) = built(&key);
             assert_eq!(
                 parts.len(),
-                15 + usize::from(key.damper_felt.is_some()),
+                21 + usize::from(key.damper_felt.is_some()),
                 "a felt where the tail has one"
             );
             for part in &parts {
@@ -894,8 +1027,9 @@ mod tests {
 
     /// Consistency: the drawn key tiles its section, one polygon through the
     /// key's fields, with no gap and no part drawn over another. The capstan
-    /// is turned, and the balance mortise's bushing stands beside the
-    /// sagittal plane: neither is in either; the mortises and the balance
+    /// is turned, and the bushings, the key button's side holes and the
+    /// front mortise's groove stand beside the sagittal plane: none is in
+    /// either; the mortises and the balance
     /// hole are cuts, which the polygon does not take out. The two enclose the same area with the same first
     /// moments along and across the key, so a part drawn in one place and
     /// tiled in another, as a block slid along the key's top, is caught where
@@ -1323,29 +1457,13 @@ mod tests {
         let (parts, ranges) = built(&key);
         // A few roundings of lengths under a decimeter.
         let near = |found: f64, expected: f64| (found - expected).abs() <= 8.0 * f64::EPSILON * 0.1;
-        let span = |lengths: &[f64]| {
-            (
-                lengths.iter().copied().fold(f64::INFINITY, f64::min),
-                lengths.iter().copied().fold(f64::NEG_INFINITY, f64::max),
-            )
-        };
-        let across_along_and_up = |part: &Part, toward_the_bass: f64| {
-            let Sweep::Extruded { width, across } = part.sweep else {
-                panic!("{:?} is extruded", part.code);
-            };
-            let out = toward_the_bass * across;
-            let corners = vertices(part);
-            let xs: Vec<f64> = corners.iter().map(|corner| corner.x).collect();
-            let ys: Vec<f64> = corners.iter().map(|corner| corner.y).collect();
-            ((out - 0.5 * width, out + 0.5 * width), span(&xs), span(&ys))
-        };
         for (side, toward_the_bass) in [-1.0, 1.0].into_iter().enumerate() {
             let hole = &parts[ranges.key_button_side_holes[side].index()];
             let leg = &parts[ranges.balance_mortise_bushings_out_through_the_sides[side].index()];
             assert_eq!((hole.role, leg.role), (Role::Cut, Role::Lining));
-            let (hole_across, hole_along, (hole_bottom, hole_top)) =
+            let [hole_across, hole_along, (hole_bottom, hole_top)] =
                 across_along_and_up(hole, toward_the_bass);
-            let (leg_across, leg_along, (leg_bottom, leg_top)) =
+            let [leg_across, leg_along, (leg_bottom, leg_top)] =
                 across_along_and_up(leg, toward_the_bass);
             assert!(
                 near(hole_across.0, 0.003) && near(hole_across.1, 0.011),
@@ -1365,6 +1483,126 @@ mod tests {
                 leg_top.to_bits(),
                 hole_top.to_bits(),
                 "against the hole's top"
+            );
+        }
+    }
+
+    /// Where an extruded part of the key stands: across the keyboard, its
+    /// near and far faces from the sagittal plane, on the side
+    /// `toward_the_bass` says; along the key and up, the span of its
+    /// corners.
+    fn across_along_and_up(part: &Part, toward_the_bass: f64) -> [(f64, f64); 3] {
+        let Sweep::Extruded { width, across } = part.sweep else {
+            panic!("{:?} is extruded", part.code);
+        };
+        let out = toward_the_bass * across;
+        let span = |lengths: Vec<f64>| {
+            (
+                lengths.iter().copied().fold(f64::INFINITY, f64::min),
+                lengths.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+            )
+        };
+        let corners = vertices(part);
+        [
+            (out - 0.5 * width, out + 0.5 * width),
+            span(corners.iter().map(|corner| corner.x).collect()),
+            span(corners.iter().map(|corner| corner.y).collect()),
+        ]
+    }
+
+    /// Consistency: **the front mortise is milled through a groove across
+    /// the key.** On the test key, its 6 mm cutter moved 2 mm along the key
+    /// about the mortise's middle, 225 mm in front of the balance pin: the
+    /// groove runs from the mortise's wall, 3 mm from the sagittal plane, to
+    /// the key's side, 11 mm from it, on the treble side and on the bass
+    /// side, along the mortise's straight walls, from 224 to 226 mm, and up
+    /// from the underside to its 3 mm floor; the mortise's rounded ends reach
+    /// the cutter's 3 mm radius past its walls, from 221 to 229 mm.
+    #[test]
+    fn the_front_mortise_is_milled_through_a_groove_across_the_key() {
+        let key = crate::test_fixture::key();
+        let (parts, ranges) = built(&key);
+        // A few roundings of lengths under a meter.
+        let near = |found: f64, expected: f64| (found - expected).abs() <= 8.0 * f64::EPSILON;
+        for (side, toward_the_bass) in [-1.0, 1.0].into_iter().enumerate() {
+            let groove = &parts[ranges.front_mortise_grooves[side].index()];
+            assert_eq!(
+                (groove.code, groove.role),
+                (PartCode::FrontMortiseGroove, Role::Cut)
+            );
+            let [across, along, (bottom, top)] = across_along_and_up(groove, toward_the_bass);
+            assert!(
+                near(across.0, 0.003) && near(across.1, 0.011),
+                "{across:?} m"
+            );
+            assert!(near(along.0, 0.224) && near(along.1, 0.226), "{along:?} m");
+            assert!(near(bottom, 0.0) && near(top, 0.003), "{bottom} to {top} m");
+        }
+        let (back, front) = key.front_mortise_span();
+        assert!(
+            near(back, 0.221) && near(front, 0.229),
+            "{back} to {front} m"
+        );
+    }
+
+    /// Consistency: **the front mortise's bushing runs up its straight walls
+    /// from the groove and turns flat on the groove's floor, glued against
+    /// it.** On the test key, each leg runs along the straight walls, the
+    /// cutter's 2 mm of travel, from 224 to 226 mm in front of the balance
+    /// pin, its rounded ends left bare. The leg up each wall is the cloth's
+    /// 1.3 mm thick, from 1.7 mm from the sagittal plane to the wall at
+    /// 3 mm, and runs from the foot of the cloth turned flat, 1.7 mm above
+    /// the underside, up 3 mm past the groove's 3 mm floor, to 6 mm; the leg
+    /// flat in the groove runs 5 mm from the wall toward the key's side,
+    /// from 3 to 8 mm, and from 1.7 mm up to the groove's floor; on the
+    /// treble side and on the bass side.
+    #[test]
+    fn the_front_mortise_bushing_runs_up_its_walls_and_flat_in_the_groove() {
+        let key = crate::test_fixture::key();
+        let (parts, ranges) = built(&key);
+        // A few roundings of lengths under a meter.
+        let near = |found: f64, expected: f64| (found - expected).abs() <= 8.0 * f64::EPSILON;
+        for (side, toward_the_bass) in [-1.0, 1.0].into_iter().enumerate() {
+            let wall = &parts[ranges.front_mortise_bushings_up_the_walls[side].index()];
+            let flat = &parts[ranges.front_mortise_bushings_flat_in_the_groove[side].index()];
+            let groove = &parts[ranges.front_mortise_grooves[side].index()];
+            for leg in [wall, flat] {
+                assert_eq!(
+                    (leg.code, leg.role, leg.material),
+                    (
+                        PartCode::FrontMortiseBushing,
+                        Role::Lining,
+                        Material::BushingCloth
+                    )
+                );
+            }
+            let [wall_across, wall_along, (wall_bottom, wall_top)] =
+                across_along_and_up(wall, toward_the_bass);
+            assert!(
+                near(wall_across.0, 0.0017) && near(wall_across.1, 0.003),
+                "{wall_across:?} m"
+            );
+            assert!(
+                near(wall_along.0, 0.224) && near(wall_along.1, 0.226),
+                "{wall_along:?} m"
+            );
+            assert!(
+                near(wall_bottom, 0.0017) && near(wall_top, 0.006),
+                "{wall_bottom} to {wall_top} m"
+            );
+            let [flat_across, flat_along, (flat_bottom, flat_top)] =
+                across_along_and_up(flat, toward_the_bass);
+            assert!(
+                near(flat_across.0, 0.003) && near(flat_across.1, 0.008),
+                "{flat_across:?} m"
+            );
+            assert_eq!(flat_along, wall_along);
+            assert_eq!(flat_bottom.to_bits(), wall_bottom.to_bits());
+            let [_, _, (_, groove_floor)] = across_along_and_up(groove, toward_the_bass);
+            assert_eq!(
+                flat_top.to_bits(),
+                groove_floor.to_bits(),
+                "against the groove's floor"
             );
         }
     }

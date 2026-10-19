@@ -224,8 +224,8 @@ enum Side {
 }
 
 /// Whether the overlap readings read `part`: the model is planar and reads
-/// the sagittal section, so a part beside it, the balance mortise's bushing
-/// or the key button's side holes, is in none of them.
+/// the sagittal section, so a part beside it, a mortise's bushing, the key
+/// button's side holes or the front mortise's groove, is in none of them.
 fn is_read(part: &Part) -> bool {
     part.sweep.is_in_the_section()
 }

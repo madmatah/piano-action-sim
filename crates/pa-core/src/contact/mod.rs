@@ -106,6 +106,18 @@ pub enum PartCode {
     Capstan,
     /// The slot the front rail pin stands in, cut up from the underside.
     FrontMortise,
+    /// The groove the front mortise is milled through: cut across the key's
+    /// underside from one side to the other, as long along the key as the
+    /// mortise's straight walls, where the bushing's cloth is turned and
+    /// glued flat. Beside the mortise on each side, out to the key's side,
+    /// each side a part of its own.
+    FrontMortiseGroove,
+    /// The cloth lining one straight wall of the front mortise, in its
+    /// lower part: what guides the key across the keyboard on the front rail
+    /// pin's oval head. An L on each side, up the mortise's wall from the
+    /// groove, then flat on the groove's floor toward the key's side, each
+    /// leg a part of its own.
+    FrontMortiseBushing,
     /// The balance mortise: the slot through the key button and the cavity
     /// under it in the keystick, over the balance hole.
     BalanceMortise,
@@ -155,6 +167,8 @@ impl PartCode {
             Self::KeyTailFelt => "key_tail_felt",
             Self::Capstan => "capstan",
             Self::FrontMortise => "front_mortise",
+            Self::FrontMortiseGroove => "front_mortise_groove",
+            Self::FrontMortiseBushing => "front_mortise_bushing",
             Self::BalanceMortise => "balance_mortise",
             Self::BalanceMortiseBushing => "balance_mortise_bushing",
             Self::BalanceHole => "balance_hole",
@@ -233,8 +247,9 @@ pub enum Sweep {
         /// sagittal plane, positive toward the bass, the player's left, so
         /// that `x` toward the player, `y` up and this direction make a
         /// right-handed frame: zero for every part centered on the plane,
-        /// all but those beside it, which the plane does not cut: the balance
-        /// mortise's bushing and the key button's side holes.
+        /// all but those beside it, which the plane does not cut: the
+        /// bushings of both mortises, the key button's side holes, and the
+        /// front mortise's groove either side of the mortise.
         across: f64,
     },
     /// Turned about a vertical axis: punchings, papers, a round pin, the

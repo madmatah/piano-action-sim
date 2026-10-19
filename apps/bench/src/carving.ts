@@ -46,13 +46,14 @@ export type Carving = {
 /** How many cuts a part is carved by, or a cut's walls open into, at most:
  * the key button is carved by the balance mortise and the two side holes,
  * which the slot's walls open into with the balance hole, and the keystick
- * by the balance mortise, its hole and the front mortise; one more would
- * still be carved. */
-export const MAX_CUTS = 4
+ * by the balance mortise, its hole, the front mortise and the groove it is
+ * milled through, either side of it; one more would still be carved. */
+export const MAX_CUTS = 6
 
 /** How far past a cut's faces a face lying on them goes with it,
  * millimeters: the key button's top over the slot, its sides over the side
- * holes and the underside over the hole lie on the cuts' own faces. */
+ * holes, the underside over the hole and the groove, and the key's sides
+ * over the groove lie on the cuts' own faces. */
 const SLACK_MM = 0.001
 
 /** A coordinate past every part, millimeters, for a material kept whole. */

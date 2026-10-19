@@ -107,6 +107,8 @@ const THE_PART: Named<Part> = {
   key_tail_felt: 'le feutre de bout de touche',
   capstan: 'le pilote',
   front_mortise: 'la mortaise d’enfoncement',
+  front_mortise_groove: 'la fente de la mortaise d’enfoncement',
+  front_mortise_bushing: 'la garniture de la mortaise d’enfoncement',
   balance_mortise: 'la mortaise de balancier',
   balance_mortise_bushing: 'la garniture de la mortaise de balancier',
   balance_hole: 'le trou de balancier',
@@ -354,8 +356,10 @@ const problem: Worded<Problem> = {
     `les bouts arrondis de la capsule de touche empiéteraient de ${to(by_mm, PART_MM)} mm l’un sur l’autre sur son dessus : ils se rejoignent au plus.`,
   does_not_fit: ({ part, within, by_mm }) =>
     `${THE_PART[part]} ne tiendrait pas dans ${THE_PART[within]} : ${to(by_mm, PART_MM)} mm de trop.`,
-  bushing_without_wall: () =>
-    `la fraise de ${THE_PART.balance_mortise} n’a pas de course : la fente est ronde, sans paroi droite où coller sa garniture.`,
+  punching_in_the_groove: ({ by_mm }) =>
+    `${THE_PART.front_mortise_groove} serait trop longue de ${to(by_mm, PART_MM)} mm pour ${THE_PART.front_rail_punching} : à côté de ${THE_PART.front_mortise}, la mouche ne trouverait plus de bois où porter et se logerait dans la fente.`,
+  bushing_without_wall: ({ mortise }) =>
+    `la fraise de ${THE_PART[mortise]} n’a pas de course : la mortaise est ronde, sans paroi droite où coller sa garniture.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `une mortaise d’enfoncement de ${to(depth_mm, PART_MM)} mm de profondeur traverse les ${to(wood_mm, PART_MM)} mm du corps de la touche.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>

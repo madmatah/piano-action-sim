@@ -15,7 +15,9 @@ expected values.
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
 front, key button with its rounded ends, the balance mortise through it with
 its bushing, which turns out through the key button's side holes, and the
-balance hole under it, back check block, thinned tail and
+balance hole under it, the front mortise with its bushing, turned flat in the
+groove across the underside the mortise is milled through, back check block,
+thinned tail and
 chamfer, a clearance cut in its top for the wippen rail where it has one, a
 turned capstan) stands on a parametric frame (balance, front and back rails,
 their pins, and punchings laid from a drawer of real papers). A key is weighed whole, its leads
@@ -73,7 +75,7 @@ is left as it was: a key front brought back until its covering runs into the
 key button, a capstan in a glued block or over the thinned tail, a front
 mortise cut through the key top or milled wider than the key, a key button
 whose rounded ends overlap, a
-balance mortise or its bushing that does not fit where it is cut, a measuring
+mortise, its groove or its bushing that does not fit where it is cut, a measuring
 point off the covering, a mass
 of nothing, a value that is not a number. Everything an assembled keyboard can be, however badly
 regulated, is computed and reported. Every edit taken is logged, and the log

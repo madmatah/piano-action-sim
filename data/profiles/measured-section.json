@@ -60,6 +60,32 @@
       "pointer": "/records/front_mortise_depth"
     },
     {
+      "param": "front_mortise.groove_depth",
+      "record": "key-section.json",
+      "pointer": "/records/front_mortise_groove_depth"
+    },
+    {
+      "param": "front_mortise.bushing_thickness",
+      "value": 1.3,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: 1.3 mm of bushing cloth on each straight wall of the mortise, as in the balance mortise; the mortise's assumed 6.0 mm cutter is the front rail pin's 3.4 mm and this cloth on each side. Not measured."
+    },
+    {
+      "param": "front_mortise.bushing_height",
+      "value": 3.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: the cloth runs 3.0 mm up the mortise's walls from the groove's floor, as far as the groove is deep; the mortise is bushed in its lower part only (key-section.json, front_mortise_construction). Not measured."
+    },
+    {
+      "param": "front_mortise.bushing_flat_width",
+      "value": 5.0,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Assumed: the cloth is glued 5.0 mm flat on the groove's floor from the mortise's wall, a strip that stops short of the key's side, 8.0 mm from the wall, as in the owner's photograph (key-section.json, front_mortise_construction). Not measured."
+    },
+    {
       "param": "stick_height",
       "record": "key-section.json",
       "pointer": "/records/stick_thickness"
@@ -210,7 +236,7 @@
       "value": 22.0,
       "unit": "mm",
       "reliability": "S",
-      "why": "Assumed: the key's width across the keyboard, which the solid view extrudes it by and nothing else reads."
+      "why": "Assumed: the key's width across the keyboard, which the solid view extrudes it by, the mortises are milled no wider than and the front mortise's groove runs across; no reading depends on it."
     },
     {
       "param": "capstan.height",

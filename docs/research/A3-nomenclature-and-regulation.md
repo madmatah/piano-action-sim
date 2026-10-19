@@ -666,10 +666,11 @@ empty rather than filled from a dictionary.
 | Mortaise (de balancier / d'enfoncement) | balance / front mortise | — | `balance_mortise`, `front_mortise`: each milled, a cutter moved along the key, its ends rounded |
 | Fraise (d'une mortaise) | cutter (descriptive) | — | `cutter_diameter`: the cutter a mortise is milled with, turning about a vertical axis; its diameter is the mortise's width |
 | Course (de la fraise) | travel (descriptive) | — | `travel`: how far the cutter moves along the key between its two end positions; the mortise is that much longer than it is wide |
-| Garniture de mortaise | bushing (cloth) | — | `mortise_bushing`; the balance mortise's, set into its two long sides in its upper part, `balance_mortise_bushing` |
+| Garniture de mortaise | bushing (cloth) | — | `mortise_bushing`; the balance mortise's, set into its two long sides in its upper part, `balance_mortise_bushing`; the front mortise's, set into its two long sides in their lower part and turned flat on the floor of its groove, `front_mortise_bushing` |
 | Casimir | bushing cloth | — | `bushing_cloth`: the thin woven wool a mortise is bushed with |
 | Trou de balancier | balance hole | — | `balance_hole`: through the floor under the balance mortise, round, fitted to the pin, which it holds fore and aft |
 | Trou latéral (de la capsule de touche) | key button side hole (descriptive) | — | `key_button_side_hole`: through the key button's wall, from the balance mortise's slot to its side, taller than the cloth, where the bushing's cloth turns out and is glued against its top, flush with the side |
+| Fente (de la mortaise d'enfoncement) | front mortise groove (descriptive) | — | `front_mortise_groove`: cut across the key's underside, as long along the key as the front mortise's straight walls, from one side of the key to the other or a few millimeters either side of the mortise; the mortise is milled through its floor, where the bushing's cloth is turned and glued flat |
 | Patin de balancier | key shoe | — | `key_shoe` |
 | Plomb de touche | key lead | — | `key_lead` |
 | **Pilote (de touche)** | **capstan (screw)** | — | `capstan` |
