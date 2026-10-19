@@ -10,7 +10,7 @@
  */
 
 import type { Outline } from '@pas/wasm/types'
-import { measureBounds } from './carving'
+import { measureBounds } from './bounds'
 
 /**
  * How far a void must reach past a part's near face to show it, millimeters.

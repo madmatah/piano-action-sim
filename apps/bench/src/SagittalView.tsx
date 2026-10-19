@@ -79,12 +79,11 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { createContext, useCallback, useContext, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { type Box, measureBounds } from './bounds'
 import {
-  type Box,
   type Carving,
   type Hollow,
   MAX_CUTS,
-  measureBounds,
   packCuts,
   patchShader,
   planCarving,

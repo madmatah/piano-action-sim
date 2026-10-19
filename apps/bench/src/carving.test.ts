@@ -1,16 +1,8 @@
 import type { Outline, Part } from '@pas/wasm/types'
 import { ShaderLib } from 'three'
 import { describe, expect, it } from 'vitest'
-import {
-  type Box,
-  type Hollow,
-  MAX_CUTS,
-  measureBounds,
-  overlaps,
-  packCuts,
-  patchShader,
-  planCarving,
-} from './carving'
+import type { Box } from './bounds'
+import { type Hollow, MAX_CUTS, overlaps, packCuts, patchShader, planCarving } from './carving'
 
 // The measured section's key, millimeters (`data/profiles/measured-section.json`):
 // a keystick 24.5 mm high and 22 mm wide, a key button 62 mm long and 6 mm
@@ -181,22 +173,6 @@ describe('the carving of the solid', () => {
     }
   })
 
-  it('bounds a bored hole about the axis the engine sends', () => {
-    // A 3 mm hole 10 mm along the key, each coordinate a short binary
-    // fraction, so that the bounds are exact.
-    const [axisMm, radiusMm] = [10, 1.5]
-    const [backMm, frontMm] = [axisMm - radiusMm, axisMm + radiusMm]
-    const hole: Outline = {
-      ...HOLE,
-      axis_x_mm: axisMm,
-      points_mm: [backMm, 0, frontMm, 0, frontMm, FLOOR_MM, backMm, FLOOR_MM],
-    }
-    expect(measureBounds(hole)).toEqual({
-      minMm: [backMm, 0, -radiusMm],
-      maxMm: [frontMm, FLOOR_MM, radiusMm],
-    })
-  })
-
   it('carves the keystick by the slot and the balance hole, and never the bushing standing in the slot', () => {
     const { cutsThrough } = planCarving(KEY)
     expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_HOLLOW, HOLE_HOLLOW])
@@ -220,14 +196,6 @@ describe('the carving of the solid', () => {
       const walls = planCarving(KEY).walls.find((planned) => planned.cut === sideHole)
       expect([walls?.through, walls?.into]).toEqual([[KEY_BUTTON], [SLOT_HOLLOW]])
     }
-  })
-
-  it('stands a lining set beside the plane where it stands across the keyboard', () => {
-    const { minMm, maxMm } = measureBounds(DOWN_THE_WALLS[0] as Outline)
-    // One halving and one sum of millimeters under ten, each rounded once.
-    const near = (value: number, expected: number) =>
-      Math.abs(value - expected) <= 4 * Number.EPSILON * 10
-    expect(near(minMm[2], -3) && near(maxMm[2], -1.7)).toBe(true)
   })
 
   it('opens the slot into side holes whose faces single precision rounds off its walls', () => {
