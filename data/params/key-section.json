@@ -143,6 +143,22 @@
       "note": "Not measured, and not the lateral fit: across the keyboard the mortise is bushed and close on the pin's wide faces, which is what holds the key straight and is not a dimension in the sagittal plane. 8 mm is 3 mm of total slack on a 5 mm pin."
     },
     {
+      "name": "front_mortise_cutter_diameter",
+      "value": 6.0,
+      "unit": "mm",
+      "reliability": "S",
+      "what_for": "The diameter of the cutter the front mortise is milled with, as the owner describes how it is cut: from below, the cutter turning about a vertical axis and moved along the key. It is the mortise's width across the keyboard, and twice the radius its two ends are rounded to; the mortise's length along the key is the cutter's travel plus this diameter.",
+      "note": "Not measured. Assumed as the 3.4 mm the front rail pin's flats stand apart (key-frame-sections.json) and a bushing cloth of 1.3 mm on each, as the balance mortise's cloth is assumed."
+    },
+    {
+      "name": "front_mortise_travel",
+      "value": 2.0,
+      "unit": "mm",
+      "reliability": "S",
+      "what_for": "How far the cutter moves along the key between its two end positions as it mills the front mortise: the mortise is that much longer than the cutter is wide.",
+      "note": "Not measured. The 8 mm the slot's length is assumed to be (front_mortise_length) less the 6 mm cutter."
+    },
+    {
       "name": "front_mortise_depth",
       "value": 22.0,
       "unit": "mm",
@@ -163,7 +179,7 @@
     "One of these keys weighed whole, as a key that arrives leaded is weighed: its mass on a scale, its front weight on Stanwood's jig, and how far back from the covering's lip the weight was centered. Until then the measured section has no mass and refuses every reading that needs one. It is the entry point of the first validation (`docs/FOUNDATIONS.md` > Validation instruments, 'One real key, measured by the owner'), and the measurement to ask for first.",
     "Where the key stands along its balance pin: the distance from the center of the balance hole to the key front, or to the covering's lip. The measured section assumes its key front 258 mm in front of the pin and lays its measured 500 mm back from the lip for its tail; with the capstan measured at 122 mm, that front gives a key weight ratio of 0.494, under the 0.50 to 0.60 published for a natural, so the distance decides the ratio.",
     "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the measured section beds flat, and it holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
-    "The front mortise: how far back from the key's front end it is cut, and how long the slot is along the key. Both are S above, and the second is the tolerance a frame design is judged against.",
+    "The front mortise: how far back from the key's front end it is cut, and the diameter and travel of the cutter it is milled with, which make its length along the key. All are S above, and that length is the tolerance a frame design is judged against.",
     "Where the back check block stands along the key, as a distance from the balance pin to its back end. The measured section's 220 mm is where the measured tail ends, derived and not measured.",
     "The clearance cut in the top of the key between the capstan and the back check block, not right behind the capstan: it is there so that the wippen rail, which runs across the keyboard over the keys, cannot rub the key, and behind it the key comes back to its full height, the back check block glued on that. Where its two ends stand, as distances behind the balance pin, and how deep it is cut below the full top. The engine draws such a clearance, placed from the balance pin as the back check block is, since the action places the rail it clears; the measured section's profile states it absent until it is measured.",
     "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm the key bears at and meets the targets on each, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.049 degrees and leaves key height and dip on their targets, within the paper the drawer lays them in: a back rail's position is forgiving. The bound is real and the number is not critical.",
