@@ -7,4 +7,8 @@ export type BalanceRailSettings = {
 /**
  * The bare rail's height above the keybed, millimeters.
  */
-height_mm: number, };
+height_mm: number, 
+/**
+ * How far its pin stands above the bare rail, millimeters.
+ */
+pin_height_mm: number, };

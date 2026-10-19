@@ -4853,7 +4853,12 @@ mod edit_tests {
     /// behind the pin stands 9.5 mm in the back check block, 20 mm behind
     /// it in the key button, and 230 mm behind it, on the thinned tail,
     /// behind the back check block, 39.5 mm short of clearing it; a front
-    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick; a
+    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick; a key
+    /// button 20 mm long is shorter than its two ends of 12 mm reach on its
+    /// 6 mm of height, 2·√108 mm, by 0.78 mm; a balance hole of 7 mm is a
+    /// millimeter wider than its 6 mm slot, and a bushing 30 mm deep 2 mm
+    /// deeper than the slot and the cavity under it, the keystick's 24.5 mm
+    /// and the key button's 6 mm less the 2.5 mm floor; a
     /// measuring point 160 mm back from the lip is off a 155 mm covering; a
     /// felt thinner than nothing is out of range; a key weighed at no mass,
     /// or less, is no key (the audit's BWA-3); a paper no drawer holds is no
@@ -4894,6 +4899,25 @@ mod edit_tests {
                 depth: 0.030,
                 wood: 0.0245,
             })
+        });
+        refuses(&mut b, set(path::CAPSULE_LENGTH, 20.0), &|w| {
+            matches!(w, EditRefusal::Problem(Problem::CapsuleEndsOverlap {
+                by,
+            }) if (by - 0.000_784_609_690_826_5).abs() < 1e-12)
+        });
+        refuses(&mut b, set(path::BALANCE_HOLE_DIAMETER, 7.0), &|w| {
+            matches!(w, EditRefusal::Problem(Problem::DoesNotFit {
+                part: PartCode::BalanceHole,
+                within: PartCode::BalanceMortise,
+                by,
+            }) if (by - 0.001).abs() < 1e-12)
+        });
+        refuses(&mut b, set(path::BUSHING_DEPTH, 30.0), &|w| {
+            matches!(w, EditRefusal::Problem(Problem::DoesNotFit {
+                part: PartCode::BalanceMortiseBushing,
+                within: PartCode::BalanceMortise,
+                by,
+            }) if (by - 0.002).abs() < 1e-12)
         });
         refuses(&mut b, set(path::MEASURING_POINT, 160.0), &|w| {
             *w == EditRefusal::Problem(Problem::MeasuringPointOffCovering {

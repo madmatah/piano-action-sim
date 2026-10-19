@@ -1288,6 +1288,68 @@ if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
   )
 }
 console.log("  ok  Hirschkorn's key chosen again reads the sheet the page booted on")
+
+// The key button's and the balance mortise's sliders, and the balance pin's,
+// reach the engine. A slot narrowed under the balance hole fitted to the pin is
+// refused beside its slider, by how much the hole is wider: 3 mm under a hole
+// of 3.4 mm, by 0.4 mm; the setting stays as it was. Then each slider moved holds the
+// value it was moved to; his key has its mass and its center published, and
+// nothing the key bears on is any of these parts, so no reading of the sheet
+// moves with them. His key chosen again is the one the page booted on.
+const SLOT_WIDTH = 'key.balance_mortise.width_mm'
+const widthBefore = await slider(SLOT_WIDTH)
+if (widthBefore === null) fail('slot width slider missing')
+if ((await moveSlider(SLOT_WIDTH, 3)) !== 'ok') fail('slot width slider missing')
+await settle()
+const widthRefused = await refusalShown(`.edit-refused[data-for-path="${SLOT_WIDTH}"]`)
+if (
+  widthRefused?.code !== 'does_not_fit' ||
+  !(Math.abs(widthRefused.byMm - 0.4) < 0.005) ||
+  widthRefused.after !== SLOT_WIDTH ||
+  !widthRefused.text
+) {
+  fail(
+    `a slot narrower than its balance hole is not refused beside its slider: ${JSON.stringify(widthRefused)}`,
+  )
+}
+if ((await slider(SLOT_WIDTH))?.holds !== widthBefore.holds) {
+  fail(`the refused slot width moved its setting: ${JSON.stringify(await slider(SLOT_WIDTH))}`)
+}
+console.log(`  ok  refused beside its slider: ${widthRefused.text}`)
+const BALANCE_MORTISE_SLIDERS = [
+  ['frame.balance_rail.pin_height_mm', 12],
+  ['key.capsule_height_mm', 7],
+  ['key.capsule_length_mm', 60],
+  ['key.capsule_end_radius_mm', 10],
+  ['key.balance_mortise.length_mm', 12],
+  ['key.balance_mortise.width_mm', 6.5],
+  ['key.balance_mortise.floor_mm', 3],
+  ['key.balance_mortise.hole_diameter_mm', 3.5],
+  ['key.balance_mortise.bushing_thickness_mm', 1.2],
+  ['key.balance_mortise.bushing_depth_mm', 2.5],
+]
+for (const [path, value] of BALANCE_MORTISE_SLIDERS) {
+  if ((await moveSlider(path, value)) !== 'ok') fail(`no slider over ${path}`)
+  await settle()
+  if (!(Math.abs(Number((await slider(path))?.holds) - value) < 1e-9)) {
+    fail(`${path} moved to ${value} holds ${JSON.stringify(await slider(path))}`)
+  }
+}
+if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
+  fail(
+    `the key button or the balance mortise moved a published key's sheet: ${JSON.stringify(await measured())}`,
+  )
+}
+console.log(
+  `  ok  the key button's, the balance mortise's and the balance pin's ${BALANCE_MORTISE_SLIDERS.length} sliders reach the engine, and move no reading of his published key`,
+)
+if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
+await settle()
+if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
+  fail(
+    `his key chosen again is not the one the page booted on: ${JSON.stringify(await measured())}`,
+  )
+}
 // The marks are lines the view paints, in the section and on the solid's faces
 // alike, two drawings apart: a toggle whose attribute and legend change while
 // the lines stay as they were reaches nothing. So each view is captured below

@@ -554,6 +554,15 @@ pub struct KeySettings {
     pub capstan: CapstanSettings,
     /// Its front mortise.
     pub front_mortise: MortiseSettings,
+    /// Its key button's height above the keystick, millimeters.
+    pub capsule_height_mm: f64,
+    /// Its key button's length along the key, millimeters.
+    pub capsule_length_mm: f64,
+    /// The radius its key button's ends are rounded by, millimeters: none
+    /// for square ends.
+    pub capsule_end_radius_mm: f64,
+    /// Its balance mortise.
+    pub balance_mortise: BalanceMortiseSettings,
     /// Its bushings.
     pub friction: FrictionSettings,
     /// Its weighing as it was typed; `null` while it is published or not
@@ -598,6 +607,26 @@ pub struct CapstanSettings {
 pub struct MortiseSettings {
     /// Its depth above the underside, millimeters.
     pub depth_mm: f64,
+}
+
+/// The balance mortise: the slot through the key button, its cavity in the
+/// keystick, its hole and its bushing.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct BalanceMortiseSettings {
+    /// The slot's length along the key, millimeters.
+    pub length_mm: f64,
+    /// The slot's width across the key, millimeters.
+    pub width_mm: f64,
+    /// The cavity's floor above the underside, millimeters.
+    pub floor_mm: f64,
+    /// The balance hole's diameter, millimeters.
+    pub hole_diameter_mm: f64,
+    /// The bushing's thickness on each side of the slot, millimeters.
+    pub bushing_thickness_mm: f64,
+    /// How far down from the key button's top the bushing lines the slot,
+    /// millimeters.
+    pub bushing_depth_mm: f64,
 }
 
 /// The bushings.
@@ -645,6 +674,8 @@ pub struct FrameSettings {
 pub struct BalanceRailSettings {
     /// The bare rail's height above the keybed, millimeters.
     pub height_mm: f64,
+    /// How far its pin stands above the bare rail, millimeters.
+    pub pin_height_mm: f64,
 }
 
 /// The front rail.
@@ -722,6 +753,17 @@ impl Settings {
                 front_mortise: MortiseSettings {
                     depth_mm: at(path::FRONT_MORTISE_DEPTH),
                 },
+                capsule_height_mm: at(path::CAPSULE_HEIGHT),
+                capsule_length_mm: at(path::CAPSULE_LENGTH),
+                capsule_end_radius_mm: at(path::CAPSULE_END_RADIUS),
+                balance_mortise: BalanceMortiseSettings {
+                    length_mm: at(path::BALANCE_MORTISE_LENGTH),
+                    width_mm: at(path::BALANCE_MORTISE_WIDTH),
+                    floor_mm: at(path::BALANCE_MORTISE_FLOOR),
+                    hole_diameter_mm: at(path::BALANCE_HOLE_DIAMETER),
+                    bushing_thickness_mm: at(path::BUSHING_THICKNESS),
+                    bushing_depth_mm: at(path::BUSHING_DEPTH),
+                },
                 friction: FrictionSettings {
                     torque_gmm: at(path::FRICTION_TORQUE),
                 },
@@ -743,6 +785,7 @@ impl Settings {
             frame: FrameSettings {
                 balance_rail: BalanceRailSettings {
                     height_mm: at(path::BALANCE_RAIL_HEIGHT),
+                    pin_height_mm: at(path::BALANCE_PIN_HEIGHT),
                 },
                 front_rail: FrontRailSettings {
                     height_mm: at(path::FRONT_RAIL_HEIGHT),

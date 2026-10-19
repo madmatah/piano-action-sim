@@ -51,6 +51,24 @@ pub mod path {
     pub const CAPSTAN_HEIGHT: &str = "key.capstan.height_mm";
     /// The front mortise's depth above the underside.
     pub const FRONT_MORTISE_DEPTH: &str = "key.front_mortise.depth_mm";
+    /// The key button's height above the keystick.
+    pub const CAPSULE_HEIGHT: &str = "key.capsule_height_mm";
+    /// The key button's length along the key.
+    pub const CAPSULE_LENGTH: &str = "key.capsule_length_mm";
+    /// The radius the key button's ends are rounded by.
+    pub const CAPSULE_END_RADIUS: &str = "key.capsule_end_radius_mm";
+    /// The balance mortise's length along the key.
+    pub const BALANCE_MORTISE_LENGTH: &str = "key.balance_mortise.length_mm";
+    /// The balance mortise's width across the key.
+    pub const BALANCE_MORTISE_WIDTH: &str = "key.balance_mortise.width_mm";
+    /// The balance mortise's floor above the underside.
+    pub const BALANCE_MORTISE_FLOOR: &str = "key.balance_mortise.floor_mm";
+    /// The balance hole's diameter.
+    pub const BALANCE_HOLE_DIAMETER: &str = "key.balance_mortise.hole_diameter_mm";
+    /// The bushing's thickness in the balance mortise.
+    pub const BUSHING_THICKNESS: &str = "key.balance_mortise.bushing_thickness_mm";
+    /// How far down from the key button's top the bushing lines the slot.
+    pub const BUSHING_DEPTH: &str = "key.balance_mortise.bushing_depth_mm";
     /// The torque the bushings hold.
     pub const FRICTION_TORQUE: &str = "key.friction.torque_gmm";
     /// The key's mass as it was weighed.
@@ -67,6 +85,8 @@ pub mod path {
     pub const FRONT_RAIL_AT: &str = "frame.front_rail.at_mm";
     /// How far the front rail pin stands above its rail.
     pub const FRONT_PIN_HEIGHT: &str = "frame.front_rail.pin_height_mm";
+    /// How far the balance rail pin stands above its rail.
+    pub const BALANCE_PIN_HEIGHT: &str = "frame.balance_rail.pin_height_mm";
     /// The bare back rail's height.
     pub const BACK_RAIL_HEIGHT: &str = "frame.back_rail.height_mm";
     /// Where the back rail stands, behind the balance pin.
@@ -237,7 +257,7 @@ const fn millimeters(path: &'static str, field: Field) -> Entry {
 
 /// Every path of the instrument, in a fixed order: the protocol, the
 /// experiment, the regulation's targets, the key, the frame.
-pub const ENTRIES: [Entry; 23] = [
+pub const ENTRIES: [Entry; 33] = [
     millimeters(
         path::MEASURING_POINT,
         Field::Protocol(TouchweightProtocol::PARAMS[0]),
@@ -254,6 +274,15 @@ pub const ENTRIES: [Entry; 23] = [
     key(path::CAPSTAN_BEHIND, KeyDesign::PARAMS[1], true),
     key(path::CAPSTAN_HEIGHT, KeyDesign::PARAMS[2], false),
     key(path::FRONT_MORTISE_DEPTH, KeyDesign::PARAMS[3], false),
+    key(path::CAPSULE_HEIGHT, KeyDesign::PARAMS[4], false),
+    key(path::CAPSULE_LENGTH, KeyDesign::PARAMS[5], false),
+    key(path::CAPSULE_END_RADIUS, KeyDesign::PARAMS[6], false),
+    key(path::BALANCE_MORTISE_LENGTH, KeyDesign::PARAMS[7], false),
+    key(path::BALANCE_MORTISE_WIDTH, KeyDesign::PARAMS[8], false),
+    key(path::BALANCE_MORTISE_FLOOR, KeyDesign::PARAMS[9], false),
+    key(path::BALANCE_HOLE_DIAMETER, KeyDesign::PARAMS[10], false),
+    key(path::BUSHING_THICKNESS, KeyDesign::PARAMS[11], false),
+    key(path::BUSHING_DEPTH, KeyDesign::PARAMS[12], false),
     Entry {
         path: path::FRICTION_TORQUE,
         unit: Unit::GramMillimeter,
@@ -277,6 +306,7 @@ pub const ENTRIES: [Entry; 23] = [
     frame(path::FRONT_RAIL_HEIGHT, FrameDesign::PARAMS[1], false),
     frame(path::FRONT_RAIL_AT, FrameDesign::PARAMS[3], false),
     frame(path::FRONT_PIN_HEIGHT, FrameDesign::PARAMS[5], false),
+    frame(path::BALANCE_PIN_HEIGHT, FrameDesign::PARAMS[9], false),
     frame(path::BACK_RAIL_HEIGHT, FrameDesign::PARAMS[2], false),
     frame(path::BACK_RAIL_BEHIND, FrameDesign::PARAMS[4], true),
     frame(path::BACK_RAIL_CLOTH, FrameDesign::PARAMS[6], false),
@@ -338,11 +368,21 @@ pub enum Label {
     BalanceFelt,
     FrontFelt,
     FrontPin,
+    BalancePin,
     FrontMortise,
     BackCloth,
     Capstan,
     FrontEdge,
     CapstanHeight,
+    CapsuleHeight,
+    CapsuleLength,
+    CapsuleEndRadius,
+    BalanceMortiseLength,
+    BalanceMortiseWidth,
+    BalanceMortiseFloor,
+    BalanceHole,
+    BushingThickness,
+    BushingDepth,
     KeyMass,
     FrontWeight,
     ReadAt,
@@ -605,6 +645,11 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
                 soft: soft(5.0, 40.0, 0.5),
             },
             Control::Slider {
+                path: path::BALANCE_PIN_HEIGHT,
+                label: Label::BalancePin,
+                soft: soft(5.0, 60.0, 0.1),
+            },
+            Control::Slider {
                 path: path::FRONT_MORTISE_DEPTH,
                 label: Label::FrontMortise,
                 soft: soft(5.0, 40.0, 0.5),
@@ -633,6 +678,51 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
                 path: path::CAPSTAN_HEIGHT,
                 label: Label::CapstanHeight,
                 soft: soft(4.0, 24.0, 0.5),
+            },
+            Control::Slider {
+                path: path::CAPSULE_HEIGHT,
+                label: Label::CapsuleHeight,
+                soft: soft(2.0, 12.0, 0.05),
+            },
+            Control::Slider {
+                path: path::CAPSULE_LENGTH,
+                label: Label::CapsuleLength,
+                soft: soft(30.0, 90.0, 0.5),
+            },
+            Control::Slider {
+                path: path::CAPSULE_END_RADIUS,
+                label: Label::CapsuleEndRadius,
+                soft: soft(0.0, 30.0, 0.1),
+            },
+            Control::Slider {
+                path: path::BALANCE_MORTISE_LENGTH,
+                label: Label::BalanceMortiseLength,
+                soft: soft(4.0, 20.0, 0.1),
+            },
+            Control::Slider {
+                path: path::BALANCE_MORTISE_WIDTH,
+                label: Label::BalanceMortiseWidth,
+                soft: soft(3.0, 10.0, 0.05),
+            },
+            Control::Slider {
+                path: path::BALANCE_MORTISE_FLOOR,
+                label: Label::BalanceMortiseFloor,
+                soft: soft(0.5, 10.0, 0.1),
+            },
+            Control::Slider {
+                path: path::BALANCE_HOLE_DIAMETER,
+                label: Label::BalanceHole,
+                soft: soft(2.0, 6.0, 0.05),
+            },
+            Control::Slider {
+                path: path::BUSHING_THICKNESS,
+                label: Label::BushingThickness,
+                soft: soft(0.0, 2.5, 0.05),
+            },
+            Control::Slider {
+                path: path::BUSHING_DEPTH,
+                label: Label::BushingDepth,
+                soft: soft(0.0, 8.0, 0.05),
             },
         ],
     ),

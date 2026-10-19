@@ -835,7 +835,7 @@ punching papers; the key friction weight, typed in grams at the measuring point
 and shown as Stanwood's protocol reads it, to the gram with its value in full
 beside it, refused with why where no bushings read it and not offered where the
 protocol cannot be read); punchings and cloth (felts, front rail pin and mortise,
-back rail cloth); the key, and the key weighed whole (its mass and its front
+balance rail pin, back rail cloth); the key, and the key weighed whole (its mass and its front
 weight typed in grams, with the distance back from the lip the front weight was
 read at in millimeters, what each is for said beside them, and refused with why
 where no key could weigh so; on a key nobody has weighed, the line under them

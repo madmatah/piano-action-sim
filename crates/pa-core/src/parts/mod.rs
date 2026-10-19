@@ -516,6 +516,26 @@ pub struct KeyDesign {
     pub capstan_screw: Capstan,
 }
 
+/// A dimension of the key: no less than nothing, and under a meter, longer
+/// than any key, so that no setting squares or cubes a length past what a
+/// number holds.
+const fn key_length(
+    name: &'static str,
+    get: fn(&KeyDesign) -> f64,
+    set: fn(&mut KeyDesign, f64),
+) -> ParamSpec<KeyDesign> {
+    ParamSpec {
+        name,
+        quantity: Quantity::Length,
+        hard: (0.0, 1.0),
+        step: Step::Continuous,
+        layer: Layer::Design,
+        kind: Kind::Actuated,
+        get,
+        set,
+    }
+}
+
 impl KeyDesign {
     /// The key's settings: what an instrument may set on it, each with what
     /// it admits ([`ParamSpec`]).
@@ -527,18 +547,13 @@ impl KeyDesign {
     /// tail and of a clearance in the top, is [`crate::validate`]'s to say,
     /// since it reads several at once. The
     /// capstan turns continuously, a screw having no quantum, within the
-    /// 2 to 30 mm above the keystick the bench has always held it to.
-    pub const PARAMS: [ParamSpec<Self>; 4] = [
-        ParamSpec {
-            name: "front_edge",
-            quantity: Quantity::Length,
-            hard: (0.0, f64::INFINITY),
-            step: Step::Continuous,
-            layer: Layer::Design,
-            kind: Kind::Actuated,
-            get: |k| k.front_edge,
-            set: |k, v| k.front_edge = v,
-        },
+    /// 2 to 30 mm above the keystick the bench has always held it to. The
+    /// key front, the front mortise's depth and the key button's and the
+    /// balance mortise's dimensions are no less than nothing and under a
+    /// meter; whether they fit each other and the keystick is
+    /// [`crate::validate`]'s to say too.
+    pub const PARAMS: [ParamSpec<Self>; 13] = [
+        key_length("front_edge", |k| k.front_edge, |k, v| k.front_edge = v),
         ParamSpec {
             name: "capstan.x",
             quantity: Quantity::Length,
@@ -559,16 +574,56 @@ impl KeyDesign {
             get: |k| k.capstan_screw.height,
             set: |k, v| k.capstan_screw.height = v,
         },
-        ParamSpec {
-            name: "front_mortise.depth",
-            quantity: Quantity::Length,
-            hard: (0.0, f64::INFINITY),
-            step: Step::Continuous,
-            layer: Layer::Design,
-            kind: Kind::Actuated,
-            get: |k| k.front_mortise_depth,
-            set: |k, v| k.front_mortise_depth = v,
-        },
+        key_length(
+            "front_mortise.depth",
+            |k| k.front_mortise_depth,
+            |k, v| k.front_mortise_depth = v,
+        ),
+        key_length(
+            "capsule_height",
+            |k| k.capsule_height,
+            |k, v| k.capsule_height = v,
+        ),
+        key_length(
+            "capsule_length",
+            |k| k.capsule_length,
+            |k, v| k.capsule_length = v,
+        ),
+        key_length(
+            "capsule_end_radius",
+            |k| k.capsule_end_radius,
+            |k, v| k.capsule_end_radius = v,
+        ),
+        key_length(
+            "balance_mortise.length",
+            |k| k.balance_mortise.length,
+            |k, v| k.balance_mortise.length = v,
+        ),
+        key_length(
+            "balance_mortise.width",
+            |k| k.balance_mortise.width,
+            |k, v| k.balance_mortise.width = v,
+        ),
+        key_length(
+            "balance_mortise.floor",
+            |k| k.balance_mortise.floor,
+            |k, v| k.balance_mortise.floor = v,
+        ),
+        key_length(
+            "balance_mortise.hole_diameter",
+            |k| k.balance_mortise.hole_diameter,
+            |k, v| k.balance_mortise.hole_diameter = v,
+        ),
+        key_length(
+            "balance_mortise.bushing_thickness",
+            |k| k.balance_mortise.bushing_thickness,
+            |k, v| k.balance_mortise.bushing_thickness = v,
+        ),
+        key_length(
+            "balance_mortise.bushing_depth",
+            |k| k.balance_mortise.bushing_depth,
+            |k, v| k.balance_mortise.bushing_depth = v,
+        ),
     ];
 
     /// The covering's lip, meters in front of the balance pin: the front edge
