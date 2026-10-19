@@ -23,9 +23,9 @@ export function pairUp(points: readonly number[]): Array<[number, number]> {
   return pairs
 }
 
-/** Bounds an extruded or a milled outline: the box around its points in
- * the section, across its width, which for a milled cut is its cutter's
- * diameter. */
+/** Bounds an extruded, a milled or an oval outline: the box around its
+ * points in the section, across its width, which for a milled cut is its
+ * cutter's diameter and for an oval part its short axis. */
 export function measureBounds(outline: Outline): Box {
   const points = pairUp(outline.points_mm)
   const xs = points.map(([x]) => x)

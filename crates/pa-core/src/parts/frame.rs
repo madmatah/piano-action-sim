@@ -328,10 +328,11 @@ pub enum KeyKind {
 ///
 /// The two are not interchangeable, and the difference is functional. A
 /// **balance pin is round**: the key turns on it, and a round pin lets the
-/// mortise swing without binding. A **front rail pin is oblong** — flattened,
-/// its wide faces presented to the bushing cloth on either side of the key's
-/// front mortise. That is what holds the key straight: the wide face gives the
-/// cloth a flat to bear on, while the key is free to rise and fall along it.
+/// mortise swing without binding. A **front rail pin is oval**, as the owner
+/// describes it: longer along the key than across it, its domed sides
+/// presented to the bushing cloth on either side of the key's front mortise.
+/// That is what holds the key straight, while the key is free to rise and
+/// fall along it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PinShape {
     /// Turned round.
@@ -339,18 +340,18 @@ pub enum PinShape {
         /// Diameter, meters.
         diameter: f64,
     },
-    /// Flattened, with its wide faces across the keyboard. The sagittal
-    /// section shows the length.
+    /// Oval, its long axis along the key, its sides domed, with no flat on
+    /// them. The sagittal section shows the length.
     ///
-    /// **Only the part that shows is oblong.** The shank driven into the rail
-    /// is turned round, like any pin, and swells to the flattened head at a
+    /// **Only the part that shows is oval.** The shank driven into the rail
+    /// is turned round, like any pin, and swells to the oval head at a
     /// shoulder sitting about at the rail's surface. This describes the head,
     /// which is the whole of what the key and the punchings ever touch — the
     /// shank is buried in wood and is not drawn.
-    Oblong {
-        /// Extent along the key, meters.
+    Oval {
+        /// Extent along the key, meters: the oval's long axis.
         length: f64,
-        /// Extent across the keyboard, meters.
+        /// Extent across the keyboard, meters: the oval's short axis.
         thickness: f64,
     },
 }
@@ -360,7 +361,7 @@ impl PinShape {
     pub fn length(&self) -> f64 {
         match *self {
             PinShape::Round { diameter } => diameter,
-            PinShape::Oblong { length, .. } => length,
+            PinShape::Oval { length, .. } => length,
         }
     }
 
@@ -368,7 +369,7 @@ impl PinShape {
     pub fn thickness(&self) -> f64 {
         match *self {
             PinShape::Round { diameter } => diameter,
-            PinShape::Oblong { thickness, .. } => thickness,
+            PinShape::Oval { thickness, .. } => thickness,
         }
     }
 }
@@ -436,7 +437,7 @@ pub struct RailSection {
     /// Measured rather than derived from the pin, because a punching is pierced
     /// with a **round** die: the hole is round even where the pin is not, and
     /// its diameter is a stock size and not a clearance anybody chose. On the
-    /// measured frame the front rail's 5 mm hole is *exactly* its oblong pin's
+    /// measured frame the front rail's 5 mm hole is *exactly* its oval pin's
     /// long axis — the circle touches the pin at its two ends, which is the
     /// design and not a coincidence.
     pub punching_hole_radius: f64,
@@ -484,7 +485,7 @@ impl RailSection {
 pub struct FrameSections {
     /// The balance rail: crowned, round pin.
     pub balance: RailSection,
-    /// The front rail: a plain block, oblong pin.
+    /// The front rail: a plain block, oval pin.
     pub front: RailSection,
     /// The back rail: a plain block, no pin, cloth along its whole length.
     pub back: RailSection,
@@ -1045,9 +1046,8 @@ impl FrameDesign {
 
         // The pins. They guide the key and carry no vertical load, which is
         // why the bearing is the punching and not the pin; they are drawn
-        // because a reader checks that the key is on its pins. A round pin is
-        // turned, its tip rounded, its height assumed; an oblong one
-        // extruded, measured.
+        // because a reader checks that the key is on its pins. A round pin's
+        // height is assumed, an oval one's measured.
         let balance_rail_pin = s.balance.pin.map(|pin| {
             let (bottom, top) = (
                 self.balance_rail_height,
@@ -1143,7 +1143,7 @@ fn rounded_pin(radius: f64, bottom: f64, top: f64) -> Vec<Seg> {
     profile
 }
 
-/// A pin, turned if it is round and extruded if it is flattened, pushed by
+/// A pin, turned if it is round and swept oval if it is oval, pushed by
 /// `push`; with the range of its silhouette that is its top.
 fn pin_part(
     pin: PinShape,
@@ -1180,17 +1180,14 @@ fn pin_part(
             });
             (id, top_of_turned(id, segments).segs)
         }
-        PinShape::Oblong { length, thickness } => {
+        PinShape::Oval { length, thickness } => {
             let outline = rect(x - 0.5 * length, bottom, x + 0.5 * length, top);
             let id = push(Part {
                 body: BodyId::GROUND,
                 code,
                 placed_by: each(&[n.height, n.pin_length, n.pin_height, n.pin_length]),
                 outline,
-                sweep: Sweep::Extruded {
-                    width: thickness,
-                    across: 0.0,
-                },
+                sweep: Sweep::Oval { width: thickness },
                 role: Role::Solid,
                 material: Material::Steel,
             });
@@ -1406,7 +1403,7 @@ mod part_tests {
     fn axis(part: &Part) -> f64 {
         match part.sweep {
             Sweep::Revolved { axis_x } => axis_x,
-            Sweep::Extruded { .. } | Sweep::Milled { .. } => {
+            Sweep::Extruded { .. } | Sweep::Milled { .. } | Sweep::Oval { .. } => {
                 let ((x0, x1), _) = extent(part);
                 0.5 * (x0 + x1)
             }
@@ -1561,7 +1558,7 @@ mod part_tests {
     /// the one feature that says the key is located rather than merely resting.
     ///
     /// The bound is `>=`, not `>`, because at the front rail the measured hole
-    /// is *exactly* the pin's long axis: a 5 mm circle round a 5 mm oblong,
+    /// is *exactly* the pin's long axis: a 5 mm circle round a 5 mm oval,
     /// touching at its two ends. Demanding a clearance there would reject the
     /// real part.
     #[test]
@@ -1818,7 +1815,18 @@ mod part_tests {
         );
     }
 
-    /// The balance pin is turned and the front rail pin is flattened.
+    /// Consistency: **an oval pin's outline is the rectangle its head
+    /// fills**, flat-topped, so that the ellipse the solid sweeps up the box
+    /// it bounds is the head the section and the contacts read.
+    #[test]
+    fn an_oval_pins_outline_is_the_rectangle_its_head_fills() {
+        let (parts, ranges) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
+        let pin = &parts[ranges.front_rail_pin.expect("a front pin").index()];
+        let ((back, front), (bottom, top)) = extent(pin);
+        assert_eq!(pin.outline, rect(back, bottom, front, top));
+    }
+
+    /// The balance pin is turned and the front rail pin is oval.
     #[test]
     fn the_two_pins_are_not_the_same_part() {
         let (parts, ranges) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
@@ -1828,13 +1836,13 @@ mod part_tests {
             "a balance pin is round"
         );
         let front = &parts[ranges.front_rail_pin.expect("a front pin").index()];
-        let Sweep::Extruded { width, .. } = front.sweep else {
-            panic!("a front rail pin is oblong");
+        let Sweep::Oval { width } = front.sweep else {
+            panic!("a front rail pin is oval");
         };
         let ((x0, x1), _) = extent(front);
         assert!(
             x1 - x0 > width,
-            "an oblong pin is longer along the key than it is thick across it"
+            "an oval pin is longer along the key than it is thick across it"
         );
     }
 }

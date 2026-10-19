@@ -17,6 +17,7 @@
 import type { Outline } from '@pas/wasm/types'
 import * as THREE from 'three'
 import { type Box, measureBounds, pairUp } from './bounds'
+import { standUp } from './upright'
 
 /** A cut as the solid carves it: the box it stands in, in a body's frame,
  * and whether its ends are rounded, milled by a cutter as wide as the box
@@ -208,18 +209,9 @@ export function millWalls({ minMm, maxMm }: Box, segments: number): THREE.Buffer
   plan.absarc(frontMm - radiusMm, middleMm, radiusMm, -Math.PI / 2, Math.PI / 2, false)
   plan.lineTo(backMm + radiusMm, bassMm)
   plan.absarc(backMm + radiusMm, middleMm, radiusMm, Math.PI / 2, (3 * Math.PI) / 2, false)
-  const walls = new THREE.ExtrudeGeometry(plan, {
-    depth: topMm - bottomMm,
-    bevelEnabled: false,
-    // three draws an arc through twice as many points as it is given
-    // segments: a quarter of a circle's faces for each half circle.
-    curveSegments: segments / 4,
-  })
-  // The plan is drawn in x and z and swept along its own third axis: a
-  // quarter turn about x sweeps it down from the top.
-  walls.rotateX(Math.PI / 2)
-  walls.translate(0, topMm, 0)
-  return walls
+  // three draws an arc through twice as many points as it is given
+  // segments: a quarter of a circle's faces for each half circle.
+  return standUp(plan, bottomMm, topMm, segments / 4)
 }
 
 /** The cuts a patched shader reads, padded to [`MAX_CUTS`]: their boxes as

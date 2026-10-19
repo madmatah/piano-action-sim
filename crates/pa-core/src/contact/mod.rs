@@ -130,7 +130,7 @@ pub enum PartCode {
     BalanceRailPunching,
     /// The front rail.
     FrontRail,
-    /// The oblong pin standing in the key's front mortise.
+    /// The oval pin standing in the key's front mortise.
     FrontRailPin,
     /// The felt washer on the front rail.
     FrontRailPunching,
@@ -224,8 +224,8 @@ pub enum Material {
 /// How a part's outline becomes a solid.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Sweep {
-    /// Swept sideways across the keyboard: keys, rails, the back rail cloth,
-    /// an oblong pin. The outline is in its body's `x` and `y`.
+    /// Swept sideways across the keyboard: keys, rails, the back rail cloth.
+    /// The outline is in its body's `x` and `y`.
     Extruded {
         /// Extent across the keyboard, meters.
         width: f64,
@@ -255,6 +255,16 @@ pub enum Sweep {
     Milled {
         /// The cutter's diameter, meters: the cut's width across the
         /// keyboard.
+        width: f64,
+    },
+    /// Oval in plan, standing upright: the front rail pin's head. The
+    /// outline is its section through its middle along the key, the oval's
+    /// long axis, in the body's `x` and `y`, and is its silhouette: the
+    /// rectangle the head fills, flat-topped, whose box holds the ellipse
+    /// the solid sweeps up its height. Across the keyboard it is centered on
+    /// the sagittal plane.
+    Oval {
+        /// The oval's short axis, meters: its width across the keyboard.
         width: f64,
     },
 }
@@ -303,7 +313,7 @@ impl Sweep {
     pub fn is_in_the_section(&self) -> bool {
         match *self {
             Sweep::Extruded { width, across } => across == 0.0 || 2.0 * across.abs() < width,
-            Sweep::Revolved { .. } | Sweep::Milled { .. } => true,
+            Sweep::Revolved { .. } | Sweep::Milled { .. } | Sweep::Oval { .. } => true,
         }
     }
 }
@@ -362,8 +372,8 @@ impl Part {
     /// The part as the sagittal plane sees it, in its body's frame: the only
     /// geometry a [`SurfaceRef`] or an [`Anchor`] reads.
     ///
-    /// A prism's is its outline, and so is a milled cut's, its section
-    /// through its middle. A turned part's is its profile and the
+    /// A prism's is its outline, and so are a milled cut's and an oval
+    /// part's, their sections through their middles. A turned part's is its profile and the
     /// profile's mirror about the axis, **with its hole hidden**: the key bears
     /// on a washer's annulus on both sides of the plane, so a washer's top
     /// runs from `−r_out` to `+r_out` across the axis. Derived from the stored
@@ -377,7 +387,9 @@ impl Part {
     /// and `n − 1`.
     pub fn silhouette(&self) -> Vec<Seg> {
         let axis_x = match self.sweep {
-            Sweep::Extruded { .. } | Sweep::Milled { .. } => return self.outline.clone(),
+            Sweep::Extruded { .. } | Sweep::Milled { .. } | Sweep::Oval { .. } => {
+                return self.outline.clone()
+            }
             Sweep::Revolved { axis_x } => axis_x,
         };
         let n = self.outline.len();
@@ -509,7 +521,7 @@ mod tests {
 
     /// Consistency: **the sagittal plane cuts every part but one set beside
     /// it**: a part centered on it, one straddling it off center, a turned
-    /// one and a milled one are cut; a lining whose near face stands on it,
+    /// one, a milled one and an oval one are cut; a lining whose near face stands on it,
     /// or past it on either side, is not.
     #[test]
     fn the_sagittal_plane_cuts_every_part_but_one_set_beside_it() {
@@ -519,6 +531,7 @@ mod tests {
         assert!(extruded(0.0, 0.0).is_in_the_section());
         assert!(Sweep::Revolved { axis_x: 0.225 }.is_in_the_section());
         assert!(Sweep::Milled { width: 0.006 }.is_in_the_section());
+        assert!(Sweep::Oval { width: 0.0034 }.is_in_the_section());
         assert!(!extruded(0.0013, 0.00065).is_in_the_section());
         assert!(!extruded(0.0013, -0.00235).is_in_the_section());
         assert!(!extruded(0.0013, 0.00235).is_in_the_section());
