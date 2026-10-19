@@ -8,9 +8,10 @@
  * it, and draws its walls from inside. Every cut the engine sends with a
  * width is a rectangle in the section, so the box its outline bounds, swept
  * across that width, is the cut itself; a bored hole, the balance hole, is
- * carved as the box it stands in. A cut with no width, the front mortise,
- * whose width the model does not know, is not carved, and neither is one
- * whose outline is no rectangle, which a box would misdraw.
+ * the cylinder that box holds, about the box's vertical middle. A cut with
+ * no width, the front mortise, whose width the model does not know, is not
+ * carved, and neither is one whose outline is no rectangle, which a box
+ * would misdraw.
  */
 
 import type { Outline } from '@pas/wasm/types'
@@ -22,19 +23,27 @@ export type Box = {
   readonly maxMm: readonly [number, number, number]
 }
 
-/** The walls of one cut: the cut, its box, the parts of the body it runs
+/** A cut as the solid carves it: the box it stands in, in a body's frame,
+ * and whether it is round, the cylinder that box holds about its vertical
+ * middle, the hole's axis, as wide across the keyboard as along the key. */
+export type Hollow = {
+  readonly box: Box
+  readonly isRound: boolean
+}
+
+/** The walls of one cut: the cut, its hollow, the parts of the body it runs
  * through, and the other cuts it opens into. */
 export type Walls = {
   readonly cut: Outline
-  readonly box: Box
+  readonly hollow: Hollow
   readonly through: readonly Outline[]
-  readonly into: readonly Box[]
+  readonly into: readonly Hollow[]
 }
 
 /** What the solid carves in one body: the cuts each part is carved by, and
  * each cut's walls. */
 export type Carving = {
-  readonly cutsThrough: ReadonlyMap<Outline, readonly Box[]>
+  readonly cutsThrough: ReadonlyMap<Outline, readonly Hollow[]>
   readonly walls: readonly Walls[]
 }
 
@@ -137,23 +146,23 @@ export function planCarving(outlines: readonly Outline[]): Carving {
         ((outline.sweep === 'extruded' && outline.width_mm > 0) || outline.sweep === 'bored') &&
         isRectangle(outline),
     )
-    .map((cut) => ({ cut, box: measureBounds(cut) }))
+    .map((cut) => ({ cut, hollow: { box: measureBounds(cut), isRound: cut.sweep === 'bored' } }))
   const solids = outlines.filter(
     (outline) => outline.role === 'solid' && outline.sweep === 'extruded',
   )
-  const cutsThrough = new Map<Outline, readonly Box[]>()
-  for (const part of solids) {
-    const box = measureBounds(part)
-    const carvedBy = cuts.filter((cut) => overlaps(cut.box, box)).map((cut) => cut.box)
+  const solidBoxes = solids.map((part) => ({ part, box: measureBounds(part) }))
+  const cutsThrough = new Map<Outline, readonly Hollow[]>()
+  for (const { part, box } of solidBoxes) {
+    const carvedBy = cuts.filter((cut) => overlaps(cut.hollow.box, box)).map((cut) => cut.hollow)
     if (carvedBy.length > 0) cutsThrough.set(part, carvedBy)
   }
-  const walls = cuts.map(({ cut, box }) => ({
+  const walls = cuts.map(({ cut, hollow }) => ({
     cut,
-    box,
-    through: solids.filter((part) => overlaps(box, measureBounds(part))),
+    hollow,
+    through: solidBoxes.filter(({ box }) => overlaps(hollow.box, box)).map(({ part }) => part),
     into: cuts
-      .filter((other) => other.cut !== cut && meets(other.box, box))
-      .map((other) => other.box),
+      .filter((other) => other.cut !== cut && meets(other.hollow.box, hollow.box))
+      .map((other) => other.hollow),
   }))
   return { cutsThrough, walls }
 }
@@ -161,15 +170,15 @@ export function planCarving(outlines: readonly Outline[]): Carving {
 /**
  * Patches a three.js shader's source to leave unpainted what stands inside
  * any of the cuts its `cutMin` and `cutMax` uniforms hold, `cutCount` of
- * them, and what stands outside the box `keepMin` and `keepMax` hold, or on
- * one of its faces, where a cut's walls open through the part's outline, as
- * the hole's through the underside and the side holes' through the key
- * button's sides: positions read in the body's frame, as the part's geometry
- * holds them.
- * Inside means within a hair of the cut's box, so that a face lying on
- * one of its faces over the void goes with it: the key button's top over
- * the slot, its sides over the side holes, the underside over the hole.
- * The source is the same for every set of boxes, so every carved part
+ * them, each the cylinder its box holds where `cutIsRound` says so, and
+ * what stands outside the box `keepMin` and `keepMax` hold, or on one of its
+ * faces, where a cut's walls open through the part's outline, as the hole's
+ * through the underside and the side holes' through the key button's sides:
+ * positions read in the body's frame, as the part's geometry holds them.
+ * Inside means within a hair of the cut, so that a face lying on one of its
+ * faces over the void goes with it: the key button's top over the slot,
+ * its sides over the side holes, the underside over the hole.
+ * The source is the same for every set of cuts, so every carved part
  * shares one program.
  */
 export function patchShader(
@@ -189,6 +198,7 @@ export function patchShader(
 varying vec3 vCarve;
 uniform vec3 cutMin[MAX_CUTS];
 uniform vec3 cutMax[MAX_CUTS];
+uniform bool cutIsRound[MAX_CUTS];
 uniform int cutCount;
 uniform vec3 keepMin;
 uniform vec3 keepMax;`,
@@ -202,22 +212,24 @@ uniform vec3 keepMax;`,
 \t\tif (cutIndex >= cutCount) break;
 \t\tvec3 low = cutMin[cutIndex];
 \t\tvec3 high = cutMax[cutIndex];
-\t\tif (all(greaterThan(vCarve, low - ${slack})) && all(lessThan(vCarve, high + ${slack}))) discard;
+\t\tbool isInBox = all(greaterThan(vCarve, low - ${slack})) && all(lessThan(vCarve, high + ${slack}));
+\t\tif (isInBox && (!cutIsRound[cutIndex] || distance(vCarve.xz, 0.5 * (low.xz + high.xz)) < 0.5 * (high.x - low.x) + ${slack})) discard;
 \t}`,
       ),
   }
 }
 
-/** The boxes a patched shader reads, as flat triples padded to
- * [`MAX_CUTS`]: the cuts, how many, and the box to keep within, every part
- * kept where none is given. Refuses more cuts than the shader holds, as a
- * drawing that would paint wood over a void. */
+/** The cuts a patched shader reads, padded to [`MAX_CUTS`]: their boxes as
+ * flat triples, whether each is round, how many, and the box to keep
+ * within, every part kept where none is given. Refuses more cuts than the
+ * shader holds, as a drawing that would paint wood over a void. */
 export function packCuts(
-  cuts: readonly Box[],
+  cuts: readonly Hollow[],
   keep: Box | null,
 ): {
   cutMin: Array<[number, number, number]>
   cutMax: Array<[number, number, number]>
+  cutIsRound: boolean[]
   cutCount: number
   keepMin: [number, number, number]
   keepMax: [number, number, number]
@@ -229,12 +241,13 @@ export function packCuts(
   }
   const padded = (end: 'minMm' | 'maxMm') =>
     Array.from({ length: MAX_CUTS }, (_, cutIndex): [number, number, number] => {
-      const box = cuts[cutIndex]
-      return box ? [...box[end]] : [0, 0, 0]
+      const hollow = cuts[cutIndex]
+      return hollow ? [...hollow.box[end]] : [0, 0, 0]
     })
   return {
     cutMin: padded('minMm'),
     cutMax: padded('maxMm'),
+    cutIsRound: Array.from({ length: MAX_CUTS }, (_, cutIndex) => cuts[cutIndex]?.isRound ?? false),
     cutCount: cuts.length,
     keepMin: keep ? [...keep.minMm] : [-FAR_MM, -FAR_MM, -FAR_MM],
     keepMax: keep ? [...keep.maxMm] : [FAR_MM, FAR_MM, FAR_MM],

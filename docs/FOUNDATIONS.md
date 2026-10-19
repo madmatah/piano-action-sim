@@ -809,12 +809,12 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   or its bushing, so the pin is drawn in its slot without guiding the key, and
   nothing reads how the balance hole and the bushing fit the pin: a tight or
   an eased mortise moves no reading, the bushings' friction being typed as a
-  key friction weight. The solid carves the balance mortise, its hole and
-  the key button's side holes from the key's wood, each a rectangle swept
-  across its width, the round hole carved square, by leaving the wood
-  unpainted inside each cut's box and drawing the cut's walls from inside
-  rather than by solid geometry operations, which would bring a library for
-  a few boxes. It leaves the front
+  key friction weight. The solid carves the balance mortise and the key
+  button's side holes from the key's wood, each a rectangle swept across its
+  width, and the round balance hole, a cylinder, by leaving the wood
+  unpainted inside each cut and drawing the cut's walls from inside rather
+  than by solid geometry operations, which would bring a library for a few
+  boxes and a cylinder. It leaves the front
   mortise uncarved: its place and length along the key are assumed
   [S, `data/params/key-section.json`], its width across the keyboard not
   modeled.

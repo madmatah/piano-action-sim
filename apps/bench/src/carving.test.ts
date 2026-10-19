@@ -3,6 +3,7 @@ import { ShaderLib } from 'three'
 import { describe, expect, it } from 'vitest'
 import {
   type Box,
+  type Hollow,
   MAX_CUTS,
   measureBounds,
   overlaps,
@@ -153,14 +154,17 @@ const SIDE_HOLE_BOXES: Box[] = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
   minMm: [-SLOT_HALF_MM, SIDE_HOLE_FOOT_MM, across - SIDE_WIDTH_MM / 2],
   maxMm: [SLOT_HALF_MM, SIDE_HOLE_TOP_MM, across + SIDE_WIDTH_MM / 2],
 }))
+const SLOT_HOLLOW: Hollow = { box: SLOT_BOX, isRound: false }
+const HOLE_HOLLOW: Hollow = { box: HOLE_BOX, isRound: true }
+const SIDE_HOLE_HOLLOWS: Hollow[] = SIDE_HOLE_BOXES.map((box) => ({ box, isRound: false }))
 
 describe('the carving of the solid', () => {
   it('carves a cut with a width as the box its outline bounds, across that width', () => {
-    expect(planCarving([SLOT]).walls.map((walls) => walls.box)).toEqual([SLOT_BOX])
+    expect(planCarving([SLOT]).walls.map((walls) => walls.hollow)).toEqual([SLOT_HOLLOW])
   })
 
-  it('carves a bored hole as the box it stands in, as far across the keyboard as along the key', () => {
-    expect(planCarving([HOLE]).walls.map((walls) => walls.box)).toEqual([HOLE_BOX])
+  it('carves a bored hole round, in the box it stands in, as far across the keyboard as along the key', () => {
+    expect(planCarving([HOLE]).walls.map((walls) => walls.hollow)).toEqual([HOLE_HOLLOW])
   })
 
   it('carves only an extruded cut that has a width', () => {
@@ -195,26 +199,26 @@ describe('the carving of the solid', () => {
 
   it('carves the keystick by the slot and the balance hole, and never the bushing standing in the slot', () => {
     const { cutsThrough } = planCarving(KEY)
-    expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_BOX, HOLE_BOX])
+    expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_HOLLOW, HOLE_HOLLOW])
     for (const leg of DOWN_THE_WALLS) expect(cutsThrough.has(leg)).toBe(false)
   })
 
   it('carves the key button by the slot and its two side holes, and never the cloth through them', () => {
     const { cutsThrough } = planCarving(KEY)
-    expect(cutsThrough.get(KEY_BUTTON)).toEqual([SLOT_BOX, ...SIDE_HOLE_BOXES])
+    expect(cutsThrough.get(KEY_BUTTON)).toEqual([SLOT_HOLLOW, ...SIDE_HOLE_HOLLOWS])
     for (const leg of OUT_THROUGH_THE_SIDES) expect(cutsThrough.has(leg)).toBe(false)
   })
 
   it('draws the slot’s walls in the wood it runs through, open into the balance hole and the side holes', () => {
     const slot = planCarving(KEY).walls.find((walls) => walls.cut === SLOT)
     expect(slot?.through).toEqual([KEYSTICK, KEY_BUTTON])
-    expect(slot?.into).toEqual([HOLE_BOX, ...SIDE_HOLE_BOXES])
+    expect(slot?.into).toEqual([HOLE_HOLLOW, ...SIDE_HOLE_HOLLOWS])
   })
 
   it('draws each side hole’s walls in the key button, open into the slot', () => {
     for (const sideHole of SIDE_HOLES) {
       const walls = planCarving(KEY).walls.find((planned) => planned.cut === sideHole)
-      expect([walls?.through, walls?.into]).toEqual([[KEY_BUTTON], [SLOT_BOX]])
+      expect([walls?.through, walls?.into]).toEqual([[KEY_BUTTON], [SLOT_HOLLOW]])
     }
   })
 
@@ -255,18 +259,27 @@ describe('the carving of the solid', () => {
   it('refuses more cuts through one part than the shader carves', () => {
     expect(() =>
       packCuts(
-        Array.from({ length: MAX_CUTS + 1 }, () => SLOT_BOX),
+        Array.from({ length: MAX_CUTS + 1 }, () => SLOT_HOLLOW),
         null,
       ),
     ).toThrow()
   })
 
+  it('tells the shader which cuts are round', () => {
+    const { fragmentShader } = ShaderLib.lambert
+    expect(patchShader('', fragmentShader).fragment).toContain('uniform bool cutIsRound[MAX_CUTS];')
+    expect(packCuts([SLOT_HOLLOW, HOLE_HOLLOW], null).cutIsRound).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ])
+  })
+
   it('patches three’s Lambert shader where it reads positions and clips', () => {
     const { vertexShader, fragmentShader } = ShaderLib.lambert
     const { vertex, fragment } = patchShader(vertexShader, fragmentShader)
-    expect([vertex.includes('vCarve = transformed'), fragment.includes('discard')]).toEqual([
-      true,
-      true,
-    ])
+    expect(vertex).toContain('#include <begin_vertex>\n\tvCarve = transformed;')
+    expect(fragment).toContain('#include <clipping_planes_fragment>\n\tif (any(lessThan(vCarve')
   })
 })
