@@ -169,8 +169,8 @@ const GOLDEN: f64 = 0.618_033_988_749_894_9;
 /// A key turning on a closed stop moves its farthest point a row margin a
 /// step at most, every step bounded by the stop's margin, and a key lifting
 /// off its punching under a pull turns up on its cloth until it leaves its
-/// balance pin ([`Mounted::leaves_its_pin`]): some 20 mm at its front on
-/// the test frame. A key riding on a front pin standing in its wood,
+/// balance pin ([`Mounted::leaves_its_pin`]): 33 mm above its punching on
+/// the test frame, some 70 mm at its front. A key riding on a front pin standing in its wood,
 /// solved from where it stands level on its punching, takes three quarters
 /// of a cap to come to rest with every row that carries it closed
 /// (`a_load_on_a_row_standing_open_is_no_rest`). Four caps hold either
@@ -1694,11 +1694,11 @@ mod tests {
     /// the margin, while a key turned until it has gone right through its
     /// cloth or its punching reads clear of both, standing in the rail under
     /// it: the key starts level, raised off its punching until nothing
-    /// overlaps, by the margin at a time, and no lower; and so it does on a
-    /// balance pin 24 mm taller, standing above its key button, though a
-    /// degree nose-down clears the frame a fraction of a margin lower: the
-    /// slide's range, longer by as much, moves where the halving's steps
-    /// fall, and not the frame.
+    /// overlaps, by the margin at a time, and no lower, on its balance pin
+    /// standing above its key button, though a degree nose-down clears the
+    /// frame a fraction of a margin lower: the slide's range moves where the
+    /// halving's steps fall, and not the frame; and so it does on a short
+    /// pin, 9 mm above its punching.
     #[test]
     fn the_nominal_pose_is_level_where_it_can_be_and_never_past_a_stop() {
         let (m, _, _) = mounted(&regulated());
@@ -1717,9 +1717,9 @@ mod tests {
         );
         assert!(m.mechanism.overlap(&m.mechanism.pose(&q)) <= ROW_MARGIN);
 
-        let mut on_a_taller_pin = wedged();
-        on_a_taller_pin.frame.sections.balance.pin_height += 0.024;
-        let (m, _, _) = mounted(&on_a_taller_pin);
+        let mut on_a_short_pin = wedged();
+        on_a_short_pin.frame.sections.balance.pin_height = crate::test_fixture::SHORT_BALANCE_PIN;
+        let (m, _, _) = mounted(&on_a_short_pin);
         let q = nominal_pose(&m);
         assert_eq!(q[m.angle.0].to_bits(), 0.0_f64.to_bits(), "level: {q:?}");
 

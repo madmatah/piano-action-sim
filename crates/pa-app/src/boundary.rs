@@ -3330,15 +3330,16 @@ mod tests {
     }
 
     /// Consistency: **the sheet and the settings cross whole, wherever the
-    /// key stands.** With the front rail raised to 50 mm the key has no seat
-    /// on its frame: its stops would hold it off its balance pin. Every
+    /// key stands.** With the front rail raised to 50 mm the key on a short
+    /// balance pin has no seat on its frame: its stops would hold it off its
+    /// pin. Every
     /// setting still crosses, the front rail at its 50 mm among them; every
     /// reading crosses, the jig's read and every other refused, key height
     /// with the very refusal the diagnostics give the frame; and what holds
     /// the key under the weight on it is said as it stands now.
     #[test]
     fn a_frame_that_cannot_be_seated_sends_every_setting_and_every_reading() {
-        let mut bench = Instrument::weighed_section();
+        let mut bench = Instrument::weighed_section().short_pinned();
         bench
             .set(path::FRONT_RAIL_HEIGHT, 50.0)
             .expect("a front rail raised");

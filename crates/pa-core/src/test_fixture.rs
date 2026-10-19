@@ -80,6 +80,13 @@ pub fn weighed() -> KeyMass {
     .expect("the test weighing is a key's")
 }
 
+/// A balance pin standing 11.2 mm above its rail, 9 mm above the measured
+/// section's regulated balance punching, its top inside the key's wood: short
+/// enough that a pull, or stops raised a few millimeters, take the key off
+/// it. The tests of a key leaving its pin stand it on this one; the measured
+/// section's own stands above its key button, 33 mm above the punching.
+pub const SHORT_BALANCE_PIN: f64 = 0.0112;
+
 /// The measured section's steel capstan.
 pub fn capstan() -> Capstan {
     Capstan {
@@ -178,7 +185,7 @@ pub fn sections() -> FrameSections {
                 height: 0.0060,
             }),
             pin: Some(PinShape::Round { diameter: 0.0034 }),
-            pin_height: 0.0112,
+            pin_height: 0.0352,
             punching_radius: 0.0060,
             punching_hole_radius: 0.0020,
             sharp_row_offset: 0.0270,

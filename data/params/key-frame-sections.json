@@ -140,7 +140,7 @@
   "still_to_measure": [
     "The three rails' real lengths along the key, which would replace the three E records above with measurements. The rule only gives the minimum that keeps a punching on the wood; a real rail is at least that and probably more.",
     "The balance crown's height above the shoulder, and the shape of its sides.",
-    "How far each pin stands above its punching stack at the balance. The front one is measured; the balance one waits on the balance mortise, since a pin's height and the depth of the slot it enters are one measurement.",
+    "How far the balance pin stands above its rail. It stands above the key button at rest, as the owner states (balance-mortise.json, construction); how far is not measured, and the profiles assume it.",
     "The back rail's length along the key, and the thickness of its cloth.",
     "Where the front rail and the back rail actually stand along the key on a real frame. They are frame coordinates now, placed under a key by rule when a frame is built and kept as their own numbers afterwards - so a measured frame replaces them rather than deriving them, and that is the whole point of their being coordinates."
   ],
