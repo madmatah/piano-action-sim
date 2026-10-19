@@ -402,6 +402,16 @@ const control: { readonly [K in Label]: Labeled } = {
   front_mortise: { label: 'mortaise d’enfoncement, depuis le dessous de la touche' },
   front_mortise_cutter_diameter: { label: 'diamètre de la fraise de la mortaise d’enfoncement' },
   front_mortise_travel: { label: 'course de la fraise de la mortaise d’enfoncement' },
+  front_mortise_groove_depth: { label: 'profondeur de la fente de la mortaise d’enfoncement' },
+  front_mortise_bushing_thickness: {
+    label: 'épaisseur de la garniture de la mortaise d’enfoncement',
+  },
+  front_mortise_bushing_height: {
+    label: 'garniture de la mortaise d’enfoncement, depuis le fond de la fente',
+  },
+  front_mortise_bushing_flat_width: {
+    label: 'garniture de la mortaise d’enfoncement, à plat dans la fente depuis la paroi',
+  },
   back_cloth: { label: 'drap de repos arrière' },
   capstan: { label: 'pilote, en arrière de la pointe de balancier' },
   front_edge: { label: 'fronton, en avant de la pointe de balancier' },

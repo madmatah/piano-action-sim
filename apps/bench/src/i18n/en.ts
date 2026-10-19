@@ -379,6 +379,14 @@ const control: { readonly [K in Label]: Labeled } = {
   front_mortise: { label: 'front mortise, above the underside' },
   front_mortise_cutter_diameter: { label: 'front mortise cutter diameter' },
   front_mortise_travel: { label: 'front mortise cutter travel' },
+  front_mortise_groove_depth: { label: 'front mortise groove depth' },
+  front_mortise_bushing_thickness: { label: 'front mortise bushing thickness' },
+  front_mortise_bushing_height: {
+    label: 'front mortise bushing, up the mortise from the groove’s floor',
+  },
+  front_mortise_bushing_flat_width: {
+    label: 'front mortise bushing, flat in the groove from the mortise’s wall',
+  },
   back_cloth: { label: 'back rail cloth' },
   capstan: { label: 'capstan behind the balance pin' },
   front_edge: { label: 'front edge from the balance pin' },
