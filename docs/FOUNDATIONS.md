@@ -281,11 +281,11 @@ has two: the height of its slide and its angle.
 frame is a pair of ranges of drawn parts and nothing else: the front punching's
 top and the balance punching's against the underside's flat; the back rail
 cloth's face, its rounded edges and the sides they lead into, against the whole
-underside, chamfer included; the front pin's top against the top of its mortise,
+underside, chamfer included; the front pin's tip against the top of its mortise,
 and against the wood round the slot: the underside beside it, which a pin
 standing outside its mortise but under the key reaches; the corners of the wood
 at the slot's mouth, which a pin straddling the slot's edge meets; and the
-slot's walls along the key, which the pin's top corners approach as the key
+slot's walls along the key, which the pin's rounded tip approaches as the key
 turns, the slot moving along the pin by the pin's height above the bearing times
 the turn. Where a surface runs across parts, as the underside runs from the
 keystick onto the key front, the joint is no corner. A mechanism carrying the
@@ -376,9 +376,10 @@ center, which is all its pair reads, clear. A key turning on a closed stop moves
 its farthest point a row margin a step at most, and a key pulled off its
 punching turns up on its cloth until its friction holds it or it leaves its
 balance pin, 33 mm above the punching and some 70 mm at its front on the
-measured section's frame; a key riding on a front pin standing in its
-wood, solved from where it stands level on its punching, takes three quarters of
-a cap to come to rest with every row that carries it closed. So the key free to
+measured section's frame; a key riding on its front punching, its front pin's
+tip against the wall of its slot, solved from where it is lowered onto its
+frame, takes three quarters of a cap to come to rest with every row that carries
+it closed. So the key free to
 lift is solved in up to four pieces of the cap, each going on from where the
 last stopped, and reported as one increment.
 
@@ -405,13 +406,16 @@ the slide's range, the attitude is narrowed, a degree either side of the one
 that overlaps least there, by 22 golden-section steps toward the attitude of
 least overlap. An overlap within the margin is not always one a motion of the
 key resolves: a front pin a few tenths of a millimeter into the wood beside its
-slot, its top well up in the slot, overlaps the wood along the key at the slot's
-mouth, which no turn moves along the key and no lift short of the pin's top
-clears. Where the top seat finds no seat from the nominal pose, a stop standing
-in the key or the key carried off its pin from a start at the top of the slide's
-range, the key is lowered onto its frame from above, clear of everything, as a
-technician puts a key on a frame it does not go onto, and it lands on what
-stands highest; where it finds none from there either, the first refusal stands.
+slot, well up in the slot, stands its rounded tip in the slot's wall along the
+key, which a turn draws back only through the wall's short arm about the bearing
+and no lift short of the pin's top clears, so that from there the stops leave
+the key no motion, or the solve reaches its cap of steps. Where the top seat
+finds no seat from the nominal pose, a stop standing in the key, a solve that
+reaches its cap with a stop standing in the key, or the key carried off its pin
+from a start at the top of the slide's range, the key is lowered onto its frame
+from above, clear of everything, as a technician puts a key on a frame it does
+not go onto, and it lands on what stands highest, the stalled steps counted with
+the seat's; where it finds none from there either, the first refusal stands.
 The key is lowered only through its slide's range, so a key that clears its
 frame only past where it leaves its balance pin has no pose on its pin to start
 from: where no attitude, a whole degree or narrowed, stands within the row
@@ -544,12 +548,13 @@ Their closed forms are test oracles, compiled for the domain's tests only.
 - **Key height and dip** are the seated pose run on the model ([Parts and statics](#parts-and-statics)): the back
   of the key held down at the capstan, then the front pressed down until a stop
   takes it, the two read at the key front's top. They see whichever stop binds
-  first: a front pin bottoming in its mortise meets the mortise's top with a
-  corner before its middle, and a front pin standing in the key's wood,
-  outside its mortise or a few tenths of a millimeter past the front of its
-  slot, lifts the key off its balance punching, the key riding on the pin and
-  its cloth, its key height read there and its dip nothing. Read as found, the
-  thinnest paper their resolution.
+  first: a front pin bottoming in its mortise meets the mortise's top on its
+  rounded tip, a little in front of its top as the key tilts nose-down onto
+  it, and a front pin standing in the key's wood, outside its mortise or a
+  few tenths of a millimeter past the front of its slot, lifts the key off its
+  balance punching, the key riding on the pin and its cloth, its key height
+  read there and its dip nothing. Read as found, the thinnest paper their
+  resolution.
 - **D and U** are the breakaway walk. The key is seated, at the top for D and
   at the bottom for U; on its measuring point goes the weight at which its
   balance there needs no friction, then a gram more at a time for D, a gram
@@ -778,10 +783,10 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   drawn pin, whose height, 35.2 mm above its rail, 2.5 mm above the key
   button as the owner's sketch draws it, is assumed until it is measured
   (`data/profiles/measured-section.json`).
-- **A front pin's sides carry no contact.** The pin declares its top and the
-  corners of its top, which are all a pin standing in its slot can meet. One
-  a few tenths of a millimeter into the wood behind its slot meets the wood's
-  corner at the slot's mouth with its side as the key comes down, which no
+- **A front pin's sides carry no contact.** The pin declares its rounded tip,
+  which is all a pin standing in its slot can meet. One a few tenths of a
+  millimeter into the wood behind its slot meets the wood's corner at the
+  slot's mouth with its side as the key comes down, which no
   contact reads: with little paper under the balance punching the key has no
   seat, refused with the pin sunk in it, and with some more the bottom seat
   can reach the static solve's cap.
@@ -809,8 +814,10 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   under his key follows the rule the measured section's frame is built by, the
   back rail 40 mm in from the tail [S], which stands his back rail in front of
   his 37 mm chamfer.
-- **Drawing**: one row of pins; a flat-topped front rail pin; a flat balance
-  crown only. The balance mortise's dimensions are assumed, none measured
+- **Drawing**: one row of pins; the front rail pin's tip a half sphere of half
+  the pin's length along the key, squeezed across to the oval, assumed
+  (`data/params/key-frame-sections.json`); a flat balance crown only. The
+  balance mortise's dimensions are assumed, none measured
   [S, E, `data/profiles/measured-section.json`, `data/profiles/hirschkorn.json`].
   Its slot runs along the model's
   `x`, the key's front axis, on a straight key: a cranked key, bent beside its

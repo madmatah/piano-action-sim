@@ -1098,19 +1098,28 @@ impl FrameDesign {
     }
 }
 
-/// A round pin's profile, its tip rounded as the owner describes a balance
-/// pin's, to the pin's own radius, which the model assumes: from its axis at
-/// its foot out to its side, up
-/// its side to the tip, over the tip to the axis at its top, and down the
-/// axis. A pin no taller than its radius is all tip, a cap of that sphere.
-fn rounded_pin(radius: f64, bottom: f64, top: f64) -> Vec<Seg> {
-    let height = top - bottom;
-    let reach = super::end_reach(height, radius);
+/// Where a pin's tip, rounded to `radius` on a pin `height` tall, leaves the
+/// pin: how far out from the axis, and how far under the tip's center. A
+/// pin taller than the radius has its tip leave its side level with the
+/// center; one no taller is all tip, a cap of that sphere, whose foot
+/// stands under the center by what the radius has over the height.
+fn tip_start(height: f64, radius: f64) -> (f64, f64) {
     let drop = if radius > height {
         radius - height
     } else {
         0.0
     };
+    (super::end_reach(height, radius), drop)
+}
+
+/// A round pin's profile, its tip rounded as the owner describes a balance
+/// pin's, to the pin's own radius, which the model assumes: from its axis at
+/// its foot out to its side, up
+/// its side to the tip, over the tip to the axis at its top, and down the
+/// axis. A pin no taller than its radius is all tip, a cap of that sphere.
+fn profile_round_pin(radius: f64, bottom: f64, top: f64) -> Vec<Seg> {
+    let height = top - bottom;
+    let (reach, drop) = tip_start(height, radius);
     let foot = Point::new(0.0, bottom);
     let Some(from) = Dir::new(reach, drop) else {
         return washer(0.0, radius, bottom, top);
@@ -1143,6 +1152,87 @@ fn rounded_pin(radius: f64, bottom: f64, top: f64) -> Vec<Seg> {
     profile
 }
 
+/// An oval pin's section along the key, through its middle at `x`, its
+/// tip rounded as a round pin's is, to a half sphere of half its `length`,
+/// its top at `top`: from its back foot along its foot, up its front, over
+/// its tip and down its back; with the range of it that is its tip. A pin
+/// no taller than that radius is all tip, a cap of that sphere.
+fn outline_oval_pin(
+    x: f64,
+    length: f64,
+    bottom: f64,
+    top: f64,
+) -> (Vec<Seg>, core::ops::Range<u16>) {
+    let radius = 0.5 * length;
+    let height = top - bottom;
+    let (reach, drop) = tip_start(height, radius);
+    let (Some(from_front), Some(to_back)) = (Dir::new(reach, drop), Dir::new(-reach, drop)) else {
+        return (rect(x - radius, bottom, x + radius, top), 2..3);
+    };
+    let center = Point::new(x, top - radius);
+    let front = Seg::Arc {
+        c: center,
+        r: radius,
+        from: from_front,
+        to: Dir::Y,
+    };
+    let back = Seg::Arc {
+        c: center,
+        r: radius,
+        from: Dir::Y,
+        to: to_back,
+    };
+    let has_sides = radius < height;
+    let (back_foot, front_foot) = if has_sides {
+        (
+            Point::new(x - radius, bottom),
+            Point::new(x + radius, bottom),
+        )
+    } else {
+        (back.end(), front.start())
+    };
+    let mut outline = vec![Seg::Line {
+        a: back_foot,
+        b: front_foot,
+    }];
+    if has_sides {
+        outline.push(Seg::Line {
+            a: front_foot,
+            b: front.start(),
+        });
+    }
+    let tip = super::count(&outline);
+    outline.extend([front, back]);
+    if has_sides {
+        outline.push(Seg::Line {
+            a: back.end(),
+            b: back_foot,
+        });
+    }
+    (outline, tip..tip + 2)
+}
+
+/// Which number places each segment of a pin's outline: its rounded tip the
+/// pin's height, a level line its rail's height, any other line `side`, the
+/// pin's diameter or its length along the key.
+fn place_the_pin(
+    outline: &[Seg],
+    n: &RailNames,
+    side: PlacedBy,
+) -> Vec<(core::ops::Range<u16>, PlacedBy)> {
+    (0u16..)
+        .zip(outline)
+        .map(|(index, seg)| {
+            let name = match seg {
+                Seg::Arc { .. } => n.pin_height,
+                Seg::Line { a, b } if a.y.to_bits() == b.y.to_bits() => n.height,
+                Seg::Line { .. } => side,
+            };
+            (index..index + 1, name)
+        })
+        .collect()
+}
+
 /// A pin, turned if it is round and swept oval if it is oval, pushed by
 /// `push`; with the range of its silhouette that is its top.
 fn pin_part(
@@ -1156,19 +1246,9 @@ fn pin_part(
 ) -> (PartId, core::ops::Range<u16>) {
     match pin {
         PinShape::Round { diameter } => {
-            let outline = rounded_pin(0.5 * diameter, bottom, top);
+            let outline = profile_round_pin(0.5 * diameter, bottom, top);
             let segments = super::count(&outline);
-            let placed_by = (0u16..)
-                .zip(&outline)
-                .map(|(index, seg)| {
-                    let name = match seg {
-                        Seg::Arc { .. } => n.pin_height,
-                        Seg::Line { a, b } if a.y.to_bits() == b.y.to_bits() => n.height,
-                        Seg::Line { .. } => n.pin_diameter,
-                    };
-                    (index..index + 1, name)
-                })
-                .collect();
+            let placed_by = place_the_pin(&outline, n, n.pin_diameter);
             let id = push(Part {
                 body: BodyId::GROUND,
                 code,
@@ -1181,17 +1261,28 @@ fn pin_part(
             (id, top_of_turned(id, segments).segs)
         }
         PinShape::Oval { length, thickness } => {
-            let outline = rect(x - 0.5 * length, bottom, x + 0.5 * length, top);
+            let (outline, tip) = outline_oval_pin(x, length, bottom, top);
+            let placed_by = place_the_pin(&outline, n, n.pin_length);
+            // A pin no taller than its tip's radius is a cap of the squeezed
+            // sphere, its foot shorter along the key than the oval, and as
+            // much narrower across.
+            let radius = 0.5 * length;
+            let (foot, _) = tip_start(top - bottom, radius);
+            let width = if foot < radius {
+                thickness * foot / radius
+            } else {
+                thickness
+            };
             let id = push(Part {
                 body: BodyId::GROUND,
                 code,
-                placed_by: each(&[n.height, n.pin_length, n.pin_height, n.pin_length]),
+                placed_by,
                 outline,
-                sweep: Sweep::Oval { width: thickness },
+                sweep: Sweep::Oval { width },
                 role: Role::Solid,
                 material: Material::Steel,
             });
-            (id, 2..3)
+            (id, tip)
         }
     }
 }
@@ -1786,7 +1877,7 @@ mod part_tests {
         let radius = 0.0017;
         let (rail_height, pin_height) = (0.0266, 0.0112);
         let (bottom, top) = (rail_height, rail_height + pin_height);
-        let profile = rounded_pin(radius, bottom, top);
+        let profile = profile_round_pin(radius, bottom, top);
         let [Seg::Line { .. }, Seg::Line {
             a: side,
             b: shoulder,
@@ -1803,7 +1894,7 @@ mod part_tests {
         // One rounding in the center's height, one in the shoulder's.
         assert!((shoulder.y - (top - radius)).abs() <= 2.0 * f64::EPSILON * top);
         assert!((profile[2].end().y - top).abs() <= 2.0 * f64::EPSILON * top);
-        let short = rounded_pin(radius, bottom, bottom + 0.001);
+        let short = profile_round_pin(radius, bottom, bottom + 0.001);
         let [Seg::Line { b: foot, .. }, Seg::Arc { .. }, Seg::Line { .. }] = short[..] else {
             panic!("{short:?}");
         };
@@ -1815,15 +1906,120 @@ mod part_tests {
         );
     }
 
-    /// Consistency: **an oval pin's outline is the rectangle its head
-    /// fills**, flat-topped, so that the ellipse the solid sweeps up the box
-    /// it bounds is the head the section and the contacts read.
+    /// Consistency: **an oval pin's tip is rounded to half its length**,
+    /// its top at the pin's height: a pin of the measured frame's 5 mm, 24 mm
+    /// tall, 225 mm in front of the balance pin, runs straight up its two
+    /// sides to 2.5 mm under its top, then over a half sphere of 2.5 mm
+    /// centered on its middle, the range of its top the two arcs. A pin a
+    /// millimeter tall is all tip, a cap of that sphere, whose foot reaches
+    /// √(2 · 2.5 · 1 − 1²) = 2 mm out from its middle on each side.
     #[test]
-    fn an_oval_pins_outline_is_the_rectangle_its_head_fills() {
+    fn an_oval_pins_tip_is_rounded_to_half_its_length() {
+        let (x, length) = (0.225, 0.005);
+        let radius = 0.5 * length;
+        let (bottom, top) = (0.0259, 0.0259 + 0.024);
+        let (outline, tip) = outline_oval_pin(x, length, bottom, top);
+        let [Seg::Line { .. }, Seg::Line { a: front_foot, .. }, Seg::Arc { c, r, .. }, Seg::Arc { .. }, Seg::Line { b: back_foot, .. }] =
+            outline[..]
+        else {
+            panic!("{outline:?}");
+        };
+        assert_eq!(tip, 2..4);
+        assert_eq!(r.to_bits(), radius.to_bits());
+        assert_eq!(c.x.to_bits(), x.to_bits(), "the tip is centered on the pin");
+        assert_eq!(
+            (front_foot.x.to_bits(), back_foot.x.to_bits()),
+            ((x + radius).to_bits(), (x - radius).to_bits())
+        );
+        // One rounding in the center's height, one in the top's.
+        assert!((c.y - (top - radius)).abs() <= 2.0 * f64::EPSILON * top);
+        assert!((outline[2].end().y - top).abs() <= 2.0 * f64::EPSILON * top);
+        let (short, short_tip) = outline_oval_pin(x, length, bottom, bottom + 0.001);
+        let [Seg::Line { a: back, b: front }, Seg::Arc { .. }, Seg::Arc { .. }] = short[..] else {
+            panic!("{short:?}");
+        };
+        assert_eq!(short_tip, 1..3);
+        // A square root and a few roundings of lengths near 225 mm.
+        let near = |found: f64, expected: f64| (found - expected).abs() <= 8.0 * f64::EPSILON * x;
+        assert!(
+            near(front.x - x, 0.002) && near(x - back.x, 0.002),
+            "{back:?} to {front:?}"
+        );
+    }
+
+    /// Consistency: **an oval pin's outline is the same either side of its
+    /// middle**, so that the solid turns its half about that middle.
+    #[test]
+    fn an_oval_pins_outline_is_the_same_either_side_of_its_middle() {
         let (parts, ranges) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
         let pin = &parts[ranges.front_rail_pin.expect("a front pin").index()];
-        let ((back, front), (bottom, top)) = extent(pin);
-        assert_eq!(pin.outline, rect(back, bottom, front, top));
+        let ((back, front), _) = extent(pin);
+        let middle = 0.5 * (back + front);
+        let corners: Vec<(f64, f64)> = pin
+            .outline
+            .iter()
+            .flat_map(|seg| seg.drawn(crate::geometry::DRAWN_HALVINGS))
+            .map(|corner| (corner.x - middle, corner.y))
+            .collect();
+        // Lengths near 225 mm, a few roundings each.
+        let near =
+            |found: f64, expected: f64| (found - expected).abs() <= 8.0 * f64::EPSILON * 0.25;
+        for &(along, up) in &corners {
+            assert!(
+                corners
+                    .iter()
+                    .any(|&(other, height)| near(other, -along) && near(height, up)),
+                "no twin for {along} m, {up} m"
+            );
+        }
+    }
+
+    /// Consistency: **an oval pin is as wide across the keyboard at its
+    /// foot as its oval is**, the measured frame's 3.4 mm, to the bit; a pin
+    /// a millimeter tall, a cap of its tip's sphere squeezed to the oval,
+    /// whose foot reaches 2 mm of the tip's 2.5 mm radius each side, is
+    /// 2/2.5 of that wide at its foot, 2.72 mm.
+    #[test]
+    fn an_oval_pin_is_as_wide_at_its_foot_as_its_oval_squeezed_there() {
+        let width_of = |frame: &FrameDesign| {
+            let (parts, ranges) = laid(frame, KeyKind::Natural);
+            match parts[ranges.front_rail_pin.expect("a front pin").index()].sweep {
+                Sweep::Oval { width } => width,
+                other => panic!("{other:?}"),
+            }
+        };
+        let mut frame = crate::test_fixture::frame();
+        let Some(PinShape::Oval { thickness, .. }) = frame.sections.front.pin else {
+            panic!("an oval front pin");
+        };
+        assert_eq!(width_of(&frame).to_bits(), thickness.to_bits());
+        frame.sections.front.pin_height = 0.001;
+        // A square root and a product and a quotient of lengths of a few
+        // millimeters.
+        assert!(
+            (width_of(&frame) - 0.8 * thickness).abs() <= 8.0 * f64::EPSILON * thickness,
+            "{} m",
+            width_of(&frame)
+        );
+    }
+
+    /// Consistency: **each segment of an oval pin is placed by its own
+    /// number**: its foot by its rail's height, its sides by its length
+    /// along the key, its rounded tip by its height.
+    #[test]
+    fn each_segment_of_an_oval_pin_is_placed_by_its_own_number() {
+        let (parts, ranges) = laid(&crate::test_fixture::frame(), KeyKind::Natural);
+        let pin = &parts[ranges.front_rail_pin.expect("a front pin").index()];
+        assert_eq!(
+            pin.placed_by,
+            vec![
+                (0..1, "front_rail.height"),
+                (1..2, "front_rail.pin.length"),
+                (2..3, "front_rail.pin_height"),
+                (3..4, "front_rail.pin_height"),
+                (4..5, "front_rail.pin.length"),
+            ]
+        );
     }
 
     /// The balance pin is turned and the front rail pin is oval.

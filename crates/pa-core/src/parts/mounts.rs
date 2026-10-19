@@ -170,9 +170,10 @@ const GOLDEN: f64 = 0.618_033_988_749_894_9;
 /// step at most, every step bounded by the stop's margin, and a key lifting
 /// off its punching under a pull turns up on its cloth until it leaves its
 /// balance pin ([`Mounted::leaves_its_pin`]): 33 mm above its punching on
-/// the test frame, some 70 mm at its front. A key riding on a front pin standing in its wood,
-/// solved from where it stands level on its punching, takes three quarters
-/// of a cap to come to rest with every row that carries it closed
+/// the test frame, some 70 mm at its front. A key riding on its front
+/// punching, its front pin's tip against the wall of its slot, solved from
+/// where it is lowered onto its frame, takes three quarters of a cap to come
+/// to rest with every row that carries it closed
 /// (`a_load_on_a_row_standing_open_is_no_rest`). Four caps hold either
 /// with room; a seat of the corpus takes a few steps.
 pub const FREE_PIECES: u32 = 4;
@@ -527,13 +528,14 @@ pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
 /// the punching whose overlap the rows read within their margin, gives the
 /// key no seat: an overlap no motion of the key on its frame resolves, such
 /// as a front rail pin standing a few tenths of a millimeter into the wood
-/// beside its mortise, its top well up in the slot, which overlaps the wood
-/// along the key where no turn moves the wood along the key and no lift
-/// short of the pin's top clears it; or a nominal pose lowered onto its
-/// frame at the top of the slide's range, a whole degree from where the key
-/// rides below it, from which the solve carries the key off its pin. A
-/// technician lowers such a key onto its frame, and it lands on what stands
-/// highest.
+/// beside its mortise, its tip well up in the slot and standing in the
+/// slot's wall, which a turn draws back only through the wall's short arm
+/// about the bearing and no lift short of the pin's top clears, so that
+/// the solve has no motion or reaches its cap; or a nominal pose lowered
+/// onto its frame at the top of the slide's range, a whole degree from
+/// where the key rides below it, from which the solve carries the key off
+/// its pin. A technician lowers such a key onto its frame, and it lands on
+/// what stands highest.
 pub fn lowered_onto_its_frame(mounted: &Mounted) -> Option<Vec<f64>> {
     let lift = mounted.lift.as_ref()?;
     let (key, frame) = key_and_frame(mounted);
@@ -1004,10 +1006,10 @@ fn pair(code: ContactCode, a: Surface, b: Surface, geometry: PairGeometry) -> Co
 ///   rounded edges, and the sides they lead into, against the whole
 ///   underside, chamfer, kink and flat ([`PairGeometry::Features`]): flat on
 ///   the cloth, on its edge, or on the key's own corner.
-/// - **The front rail pin in its mortise**: the pin's top corners against the
-///   top of the mortise, a cut presenting its inside.
-/// - **The front rail pin on the wood**: the pin's top and its corners
-///   against the wood round the mortise: the underside beside it, which a
+/// - **The front rail pin in its mortise**: the pin's rounded tip against
+///   the top of the mortise, a cut presenting its inside.
+/// - **The front rail pin on the wood**: the pin's rounded tip against the
+///   wood round the mortise: the underside beside it, which a
 ///   pin standing outside its mortise but under the key reaches; the corners
 ///   of the wood at the slot's mouth, which one straddling the slot's edge
 ///   meets; and the slot's walls along the key, which one standing off the

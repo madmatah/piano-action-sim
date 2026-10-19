@@ -2152,7 +2152,9 @@ pub enum Sweep {
     Milled,
     /// Oval in plan, standing upright: the front rail pin's head. Its
     /// outline is its section through its middle along the key, the long
-    /// axis; across the keyboard it is its width, the short axis.
+    /// axis, the same either side of its middle, its tip rounded; turned
+    /// about that middle, it is squeezed across the keyboard to its width at
+    /// its foot.
     Oval,
 }
 
@@ -2265,8 +2267,8 @@ pub struct Outline {
     /// How the outline becomes a solid.
     pub sweep: Sweep,
     /// Extrusion across the sagittal plane, a milled cut's cutter's
-    /// diameter, or an oval part's short axis, millimeters; zero when
-    /// turned.
+    /// diameter, or an oval part's width at its foot, its short axis but on
+    /// a pin that is all tip, millimeters; zero when turned.
     pub width_mm: f32,
     /// Where the extrusion's middle stands across the keyboard, millimeters
     /// from the sagittal plane, positive toward the bass, the player's left:
@@ -3578,13 +3580,13 @@ mod tests {
 
     /// Consistency, and what the owner sees: **a refused edit answers in
     /// codes and numbers, changes nothing, and the diagnostics keep it until
-    /// an edit is taken.** A 12 mm dip the front pin forbids, a mass of
-    /// nothing, a front weight read off the covering, a front weight that is
-    /// not a number, a key friction weight under what no friction reads, a
-    /// key front pushed into its key button, a path the instrument has not,
-    /// and JSON that is no action: each answers its code with the numbers
-    /// its wording needs, and the documents read as before. A dip the pin
-    /// allows is laid, and says what it was asked as it was asked.
+    /// an edit is taken.** A 12 mm dip the front punching's felt forbids, a
+    /// mass of nothing, a front weight read off the covering, a front weight
+    /// that is not a number, a key friction weight under what no friction
+    /// reads, a key front pushed into its key button, a path the instrument
+    /// has not, and JSON that is no action: each answers its code with the
+    /// numbers its wording needs, and the documents read as before. A dip
+    /// the felt allows is laid, and says what it was asked as it was asked.
     #[test]
     fn a_refused_edit_answers_in_codes_and_changes_nothing() {
         let mut bench = Instrument::weighed_section();
@@ -3615,10 +3617,10 @@ mod tests {
         };
         assert_eq!(
             (target, limited_by),
-            (Target::KeyDip, Limit::FrontPinInMortise)
+            (Target::KeyDip, Limit::FeltThickerThanTheStack)
         );
         assert_eq!(wanted_mm.to_bits(), 12.0_f64.to_bits());
-        assert!((shortfall_mm - 0.79).abs() < 0.005, "{shortfall_mm}");
+        assert!((shortfall_mm - 0.78).abs() < 0.005, "{shortfall_mm}");
         assert!((search_mm - 20.0).abs() < 1e-12);
         let kept = Diagnostics::of(&bench).refused_edit.expect("kept");
         assert_eq!(
@@ -4053,7 +4055,7 @@ mod tests {
     }
 
     /// Consistency: **what holds the key crosses as its code.** The front
-    /// rail raised to 41.7 mm tips the key forward off its balance punching,
+    /// rail raised to 44 mm tips the key forward off its balance punching,
     /// onto its front punching and its front pin against the wall of its
     /// slot, its cloth open: those two hold it, with no friction. Pulled
     /// 62.7 g, turned up on its cloth off its punching, the cloth alone
@@ -4062,7 +4064,7 @@ mod tests {
     fn what_holds_the_key_crosses_as_its_code() {
         let mut bench = Instrument::weighed_section();
         bench
-            .set(path::FRONT_RAIL_HEIGHT, 41.7)
+            .set(path::FRONT_RAIL_HEIGHT, 44.0)
             .expect("a front rail raised");
         let touch = Diagnostics::of(&bench).touch.expect("a verdict");
         let Verdict::LiftsOffBalancePunching {

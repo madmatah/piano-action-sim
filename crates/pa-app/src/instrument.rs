@@ -3356,17 +3356,17 @@ mod contact_readout_tests {
     }
 
     /// Consistency: **a key off its balance punching is said to touch what
-    /// the view marks it touching.** The front rail raised to 41.7 mm stands
+    /// the view marks it touching.** The front rail raised to 44 mm stands
     /// its punching so high that the key, front-heavy, tips forward onto it
     /// and leaves its balance punching: the front punching carries it, the
-    /// front pin's top corner meets the wall of the key's slot, and its tail
+    /// front pin's rounded tip meets the wall of the key's slot, and its tail
     /// stands clear of its cloth. The touch verdict names those two stops,
     /// the ones the view marks closed besides the balance punching, which
     /// stands open below the key, and not the cloth.
     #[test]
     fn a_key_off_its_punching_is_said_to_touch_what_the_view_marks() {
         let mut b = Instrument::weighed_section();
-        b.set(path::FRONT_RAIL_HEIGHT, 1000.0 * 0.0417)
+        b.set(path::FRONT_RAIL_HEIGHT, 1000.0 * 0.044)
             .expect("a front rail");
         let verdict = b.finger_verdict();
         let Some(TouchVerdict::LiftsOffBalancePunching { touching, .. }) = verdict else {
@@ -3760,10 +3760,10 @@ mod contact_readout_tests {
     ///
     /// The one other row within a millimeter at rest is the front pin's,
     /// open, beside the front wall of its mortise: the slot moves back along
-    /// the pin by the height of the pin's top corner above the bearing times
-    /// the key's turn, 0.04 rad at rest, which brings the wall to within
-    /// about 0.8 mm of the corner, from the 1.5 mm it stands off with the key
-    /// level.
+    /// the pin by the wall's height above the bearing times the key's turn,
+    /// 0.04 rad at rest, which brings the wall to within about 0.9 mm of the
+    /// pin where its rounded tip starts, from the 1.5 mm it stands off with
+    /// the key level.
     #[test]
     fn the_contacts_the_view_marks_are_where_the_key_touches() {
         let mut b = Instrument::weighed_section();
@@ -4222,13 +4222,18 @@ mod regulation_tests {
 
     /// Consistency, and what the owner sees: **a dip the front pin forbids is
     /// refused, with its shortfall in millimeters, and nothing changes.** On
-    /// the bench as built, 12 mm of dip is deeper than the front rail pin
-    /// lets the key go before it bottoms in its mortise, by 0.79 mm: refused,
-    /// naming the pin, and the papers, the targets, the key and every reading
-    /// stay as they were.
+    /// the bench as built, its front rail pin half a millimeter taller, 12 mm
+    /// of dip is deeper than the pin lets the key go before its rounded tip
+    /// bottoms in the mortise, by 1.35 mm: refused, naming the pin, and the
+    /// papers, the targets, the key and every reading stay as they were.
     #[test]
     fn a_dip_the_front_pin_forbids_is_refused_and_nothing_changes() {
         let mut b = Instrument::weighed_section();
+        let pin_height_mm = b
+            .value(crate::registry::path::FRONT_PIN_HEIGHT)
+            .expect("a front pin");
+        b.set(crate::registry::path::FRONT_PIN_HEIGHT, pin_height_mm + 0.5)
+            .expect("a taller front pin");
         let before = everything(&b);
         let targets = Targets {
             key_height: 0.0650,
@@ -4253,7 +4258,7 @@ mod regulation_tests {
             (Target::KeyDip, Limit::FrontPinInMortise)
         );
         assert!(
-            (shortfall_m - 0.000_79).abs() < 0.000_005,
+            (shortfall_m - 0.001_35).abs() < 0.000_005,
             "short by {shortfall_m} m"
         );
         assert_eq!(

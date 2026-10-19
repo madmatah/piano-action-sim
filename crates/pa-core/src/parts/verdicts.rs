@@ -424,12 +424,12 @@ mod tests {
 
     /// Consistency: **a key off its balance punching names what it
     /// touches, and whether they need its friction to hold it.** The front
-    /// rail raised to 41.7 mm stands its punching so high that the key,
+    /// rail raised to 44 mm stands its punching so high that the key,
     /// unweighted and front-heavy, tips forward onto it and leaves its
-    /// balance punching: the front punching carries it, the front pin's top
-    /// corner meets the wall of the key's slot, which moves along the pin as
-    /// the key turns, and holds it from turning further, and its tail stands
-    /// clear of its cloth. The two hold it with no friction at all: it comes
+    /// balance punching: the front punching carries it, the front pin's
+    /// rounded tip meets the wall of the key's slot, which moves along the
+    /// pin as the key turns, and holds it from turning further, and its tail
+    /// stands clear of its cloth. The two hold it with no friction at all: it comes
     /// to rest there with its friction off. Pulled up 62.7 g at its
     /// measuring point, a few hundredths of a gram past what its punching
     /// carries on the frame as built, the key turns up on its cloth instead
@@ -449,7 +449,7 @@ mod tests {
         };
 
         let mut a = regulated();
-        a.frame.front_rail_height = 0.0417;
+        a.frame.front_rail_height = 0.044;
         let arm = a.protocol.measuring_point(&a.key);
         let raised = on_frame(&a, KeyKind::Natural, 0.006 * G * arm, true);
         let start = crate::parts::mounts::nominal_pose(&raised.mounted);
