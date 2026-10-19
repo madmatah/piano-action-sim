@@ -179,7 +179,8 @@ slot, the cavity and the hole are cuts, taken out of the drawn section whose
 centroid estimates a weighed key's center-of-mass height; the bushing is a
 lining set into each side of the slot, out of the sagittal plane, and counts
 in no area of the section. Every one of its dimensions is a setting, and none
-is measured: each profile assumes them with its reasons.
+is measured: each profile assumes them with its reasons. The balance pin is
+straight, its tip rounded, to its own radius as the model assumes.
 
 **The key is weighed whole**, as a key that arrives leaded is weighed, its leads
 in it and their masses unknown: its mass on a scale, and its front weight on
@@ -787,8 +788,8 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   under his key follows the rule the measured section's frame is built by, the
   back rail 40 mm in from the tail [S], which stands his back rail in front of
   his 37 mm chamfer.
-- **Drawing**: one row of pins; flat-topped pins; a flat balance crown only.
-  The balance mortise's dimensions are assumed, none measured
+- **Drawing**: one row of pins; a flat-topped front rail pin; a flat balance
+  crown only. The balance mortise's dimensions are assumed, none measured
   [S, E, `data/profiles/measured-section.json`, `data/profiles/hirschkorn.json`].
   Its slot runs along the model's
   `x`, the key's front axis, on a straight key: a cranked key, bent beside its
