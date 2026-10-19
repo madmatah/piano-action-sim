@@ -15,7 +15,10 @@ import {
 // a keystick 24.5 mm high and 22 mm wide, a key button 62 mm long and 6 mm
 // high on it, its slot 10.2 mm long and 6 mm wide down to a 2.5 mm floor,
 // the 3.4 mm balance hole through it, and the bushing 1.3 mm thick, 3 mm
-// deep, set 2.35 mm either side of the sagittal plane.
+// deep, set 2.35 mm either side of the sagittal plane; at its foot the
+// cloth turns out through a 2.6 mm side hole on each side, 7 mm from the
+// plane and 8 mm wide, from the slot's wall to the key button's side,
+// glued against the hole's top.
 const STICK_TOP_MM = 24.5
 const KEY_WIDTH_MM = 22
 const BUTTON_TOP_MM = 30.5
@@ -25,6 +28,11 @@ const FLOOR_MM = 2.5
 const HOLE_HALF_MM = 1.7
 const BUSHING_MM = 1.3
 const BUSHING_ACROSS_MM = 2.35
+const BUSHING_FOOT_MM = BUTTON_TOP_MM - 3
+const SIDE_HOLE_TOP_MM = BUSHING_FOOT_MM + BUSHING_MM
+const SIDE_HOLE_FOOT_MM = SIDE_HOLE_TOP_MM - 2.6
+const SIDE_ACROSS_MM = 7
+const SIDE_WIDTH_MM = 8
 
 /** An extruded part of a key, as the engine sends it. */
 function buildOutline(
@@ -89,25 +97,46 @@ const KEY_BUTTON = buildOutline(
   [-31, STICK_TOP_MM, 31, STICK_TOP_MM, 31, BUTTON_TOP_MM, -31, BUTTON_TOP_MM],
   KEY_WIDTH_MM,
 )
-const BUSHINGS = [-BUSHING_ACROSS_MM, BUSHING_ACROSS_MM].map((across) =>
+/** A rectangle along the whole slot, from `bottom` to `top`. */
+function alongTheSlot(bottom: number, top: number): number[] {
+  return [-SLOT_HALF_MM, bottom, SLOT_HALF_MM, bottom, SLOT_HALF_MM, top, -SLOT_HALF_MM, top]
+}
+const DOWN_THE_WALLS = [-BUSHING_ACROSS_MM, BUSHING_ACROSS_MM].map((across) =>
   buildOutline(
     'balance_mortise_bushing',
     'lining',
-    [
-      -SLOT_HALF_MM,
-      27.5,
-      SLOT_HALF_MM,
-      27.5,
-      SLOT_HALF_MM,
-      BUTTON_TOP_MM,
-      -SLOT_HALF_MM,
-      BUTTON_TOP_MM,
-    ],
+    alongTheSlot(BUSHING_FOOT_MM, BUTTON_TOP_MM),
     BUSHING_MM,
     across,
   ),
 )
-const KEY = [SLOT, HOLE, KEYSTICK, KEY_BUTTON, ...BUSHINGS]
+const SIDE_HOLES = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
+  buildOutline(
+    'key_button_side_hole',
+    'cut',
+    alongTheSlot(SIDE_HOLE_FOOT_MM, SIDE_HOLE_TOP_MM),
+    SIDE_WIDTH_MM,
+    across,
+  ),
+)
+const OUT_THROUGH_THE_SIDES = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
+  buildOutline(
+    'balance_mortise_bushing',
+    'lining',
+    alongTheSlot(BUSHING_FOOT_MM, SIDE_HOLE_TOP_MM),
+    SIDE_WIDTH_MM,
+    across,
+  ),
+)
+const KEY = [
+  SLOT,
+  HOLE,
+  ...SIDE_HOLES,
+  KEYSTICK,
+  KEY_BUTTON,
+  ...DOWN_THE_WALLS,
+  ...OUT_THROUGH_THE_SIDES,
+]
 
 const SLOT_BOX: Box = {
   minMm: [-SLOT_HALF_MM, FLOOR_MM, -SLOT_WIDTH_MM / 2],
@@ -117,6 +146,10 @@ const HOLE_BOX: Box = {
   minMm: [-HOLE_HALF_MM, 0, -HOLE_HALF_MM],
   maxMm: [HOLE_HALF_MM, FLOOR_MM, HOLE_HALF_MM],
 }
+const SIDE_HOLE_BOXES: Box[] = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) => ({
+  minMm: [-SLOT_HALF_MM, SIDE_HOLE_FOOT_MM, across - SIDE_WIDTH_MM / 2],
+  maxMm: [SLOT_HALF_MM, SIDE_HOLE_TOP_MM, across + SIDE_WIDTH_MM / 2],
+}))
 
 describe('the carving of the solid', () => {
   it('carves a cut with a width as the box its outline bounds, across that width', () => {
@@ -137,25 +170,57 @@ describe('the carving of the solid', () => {
     }
   })
 
-  it('carves the keystick and the key button the slot runs through, and never the bushing standing in it', () => {
+  it('carves the keystick by the slot and the balance hole, and never the bushing standing in the slot', () => {
     const { cutsThrough } = planCarving(KEY)
     expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_BOX, HOLE_BOX])
-    expect(cutsThrough.get(KEY_BUTTON)).toEqual([SLOT_BOX])
-    for (const bushing of BUSHINGS) expect(cutsThrough.has(bushing)).toBe(false)
+    for (const leg of DOWN_THE_WALLS) expect(cutsThrough.has(leg)).toBe(false)
   })
 
-  it('draws the slot’s walls in the wood it runs through, open into the balance hole', () => {
+  it('carves the key button by the slot and its two side holes, and never the cloth through them', () => {
+    const { cutsThrough } = planCarving(KEY)
+    expect(cutsThrough.get(KEY_BUTTON)).toEqual([SLOT_BOX, ...SIDE_HOLE_BOXES])
+    for (const leg of OUT_THROUGH_THE_SIDES) expect(cutsThrough.has(leg)).toBe(false)
+  })
+
+  it('draws the slot’s walls in the wood it runs through, open into the balance hole and the side holes', () => {
     const slot = planCarving(KEY).walls.find((walls) => walls.cut === SLOT)
     expect(slot?.through).toEqual([KEYSTICK, KEY_BUTTON])
-    expect(slot?.into).toEqual([HOLE_BOX])
+    expect(slot?.into).toEqual([HOLE_BOX, ...SIDE_HOLE_BOXES])
+  })
+
+  it('draws each side hole’s walls in the key button, open into the slot', () => {
+    for (const sideHole of SIDE_HOLES) {
+      const walls = planCarving(KEY).walls.find((planned) => planned.cut === sideHole)
+      expect([walls?.through, walls?.into]).toEqual([[KEY_BUTTON], [SLOT_BOX]])
+    }
   })
 
   it('stands a lining set beside the plane where it stands across the keyboard', () => {
-    const { minMm, maxMm } = measureBounds(BUSHINGS[0] as Outline)
+    const { minMm, maxMm } = measureBounds(DOWN_THE_WALLS[0] as Outline)
     // One halving and one sum of millimeters under ten, each rounded once.
     const near = (value: number, expected: number) =>
       Math.abs(value - expected) <= 4 * Number.EPSILON * 10
     expect(near(minMm[2], -3) && near(maxMm[2], -1.7)).toBe(true)
+  })
+
+  it('opens the slot into side holes whose faces single precision rounds off its walls', () => {
+    // A 6.1 mm slot in a 22 mm key: each side hole 7.95 mm wide, 7.025 mm
+    // from the plane, its inner face 0.0000002 mm outside the slot's wall
+    // once each number is rounded to single precision, as the engine sends
+    // it.
+    const slotWidthMm = Math.fround(6.1)
+    const slot = buildOutline('balance_mortise', 'cut', SLOT.points_mm, slotWidthMm)
+    const sideHoles = [-1, 1].map((towardTheBass) =>
+      buildOutline(
+        'key_button_side_hole',
+        'cut',
+        alongTheSlot(SIDE_HOLE_FOOT_MM, SIDE_HOLE_TOP_MM),
+        Math.fround(7.95),
+        towardTheBass * Math.fround(7.025),
+      ),
+    )
+    const { walls } = planCarving([slot, ...sideHoles])
+    expect(walls.map((planned) => planned.into.length)).toEqual([2, 1, 1])
   })
 
   it('tells a box that shares a volume from one that only touches it', () => {

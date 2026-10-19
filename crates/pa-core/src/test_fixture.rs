@@ -124,6 +124,7 @@ pub fn key() -> KeyDesign {
             hole_diameter: 0.0034,
             bushing_thickness: 0.0013,
             bushing_depth: 0.0030,
+            side_hole_height: 0.0026,
         },
         back_check_block_height: 0.0080,
         back_check_block_back: -0.220,

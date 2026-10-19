@@ -13,7 +13,8 @@
 //! cut's range, every part of its body; for a center bearing the cuts are not
 //! taken out, since the key bears on the punching beside its slot, out of the
 //! plane. Only the pair's own parts count, because pins stand through a key
-//! in its mortises by design.
+//! in its mortises by design; and only the parts the sagittal section cuts,
+//! the model being planar.
 
 use super::{ContactPair, PairGeometry, Part, Role, Surface};
 use crate::geometry::{Point, Seg};
@@ -138,7 +139,8 @@ pub struct Material {
 impl Material {
     /// The material of one side at `pose`: the parts its ranges belong to,
     /// or every part of its body for a side that is a cut's range; less its
-    /// body's cuts unless `beside_the_cuts`.
+    /// body's cuts unless `beside_the_cuts`; of the parts the sagittal
+    /// section cuts alone.
     pub fn of(mechanism: &Mechanism, pose: &Pose, side: &Surface, beside_the_cuts: bool) -> Self {
         let parts = mechanism.parts();
         let body = parts[side.ranges[0].part.index()].body;
@@ -151,7 +153,11 @@ impl Material {
             .collect();
         let mut solids = Vec::new();
         let mut cuts = Vec::new();
-        for (i, part) in parts.iter().enumerate().filter(|(_, p)| p.body == body) {
+        for (i, part) in parts
+            .iter()
+            .enumerate()
+            .filter(|(_, part)| part.body == body && part.sweep.is_in_the_section())
+        {
             match part.role {
                 Role::Cut => {
                     if !beside_the_cuts {
@@ -427,7 +433,8 @@ pub mod polyline {
     impl Region {
         /// `body`'s material at `pose`, of the parts `keep` keeps, less every
         /// cut of the body unless `beside_the_cuts`: a key bears on a punching
-        /// beside its slot, out of the plane.
+        /// beside its slot, out of the plane. Only the parts the sagittal
+        /// section cuts count.
         pub fn of(
             mechanism: &Mechanism,
             pose: &Pose,
@@ -439,7 +446,7 @@ pub mod polyline {
             let mut solids = Vec::new();
             let mut cuts = Vec::new();
             for (i, part) in mechanism.parts().iter().enumerate() {
-                if part.body != body {
+                if part.body != body || !part.sweep.is_in_the_section() {
                     continue;
                 }
                 match part.role {

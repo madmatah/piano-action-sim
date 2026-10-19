@@ -100,6 +100,7 @@ const PART: Named<Part> = {
   balance_mortise: 'balance mortise',
   balance_mortise_bushing: 'balance mortise bushing',
   balance_hole: 'balance hole',
+  key_button_side_hole: 'key button side hole',
   balance_rail: 'balance rail',
   balance_rail_pin: 'balance rail pin',
   balance_rail_punching: 'balance rail punching',

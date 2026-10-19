@@ -1326,6 +1326,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
             hole_diameter: b.length("balance_mortise.hole_diameter")?,
             bushing_thickness: b.length("balance_mortise.bushing_thickness")?,
             bushing_depth: b.length("balance_mortise.bushing_depth")?,
+            side_hole_height: b.length("balance_mortise.side_hole_height")?,
         },
         back_check_block_height: b.length("back_check_block_height")?,
         back_check_block_back: b.length("back_check_block_back")?,

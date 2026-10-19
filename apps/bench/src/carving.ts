@@ -38,12 +38,14 @@ export type Carving = {
 }
 
 /** How many cuts a part is carved by, or a cut's walls open into, at most:
- * a key's balance mortise and its hole, and room for two more. */
+ * the key button is carved by the balance mortise and the two side holes,
+ * which the slot's walls open into with the balance hole, and one more
+ * would still be carved. */
 export const MAX_CUTS = 4
 
-/** How far past a cut's top and bottom a face lying on them goes with it,
- * millimeters: the key button's top over the slot and the underside over
- * the hole lie on the cuts' own faces. */
+/** How far past a cut's faces a face lying on them goes with it,
+ * millimeters: the key button's top over the slot, its sides over the side
+ * holes and the underside over the hole lie on the cuts' own faces. */
 const SLACK_MM = 0.001
 
 /** A coordinate past every part, millimeters, for a material kept whole. */
@@ -86,13 +88,16 @@ export function isRectangle(outline: Outline): boolean {
   })
 }
 
-/** Whether two boxes meet: they overlap or touch along every axis, as the
- * slot and the balance hole do at the slot's floor. */
+/** Whether two boxes meet: they overlap or touch along every axis, within
+ * a hair, as the slot and the balance hole do at the slot's floor and the
+ * side holes at the slot's walls. The engine sends millimeters in single
+ * precision, so a face it builds on another arrives a few of their ulps
+ * either side of it. */
 export function meets(first: Box, second: Box): boolean {
   return [0, 1, 2].every(
     (axis) =>
-      (first.minMm[axis] as number) <= (second.maxMm[axis] as number) &&
-      (second.minMm[axis] as number) <= (first.maxMm[axis] as number),
+      (first.minMm[axis] as number) <= (second.maxMm[axis] as number) + SLACK_MM &&
+      (second.minMm[axis] as number) <= (first.maxMm[axis] as number) + SLACK_MM,
   )
 }
 
@@ -147,13 +152,14 @@ export function planCarving(outlines: readonly Outline[]): Carving {
  * Patches a three.js shader's source to leave unpainted what stands inside
  * any of the cuts its `cutMin` and `cutMax` uniforms hold, `cutCount` of
  * them, and what stands outside the box `keepMin` and `keepMax` hold, or on
- * its top or bottom, where a cut's walls open through the part's outline,
- * as the hole's through the underside: positions read in the body's frame,
- * as the part's geometry holds them.
- * Inside means strictly between a cut's sides and ends, and within a hair
- * of its top and bottom, so that a face lying on a cut's top or bottom over
- * the void goes with it, while the edges a cut's walls meet the wood along
- * stay. The source is the same for every set of boxes, so every carved part
+ * one of its faces, where a cut's walls open through the part's outline, as
+ * the hole's through the underside and the side holes' through the key
+ * button's sides: positions read in the body's frame, as the part's geometry
+ * holds them.
+ * Inside means within a hair of the cut's box, so that a face lying on
+ * one of its faces over the void goes with it: the key button's top over
+ * the slot, its sides over the side holes, the underside over the hole.
+ * The source is the same for every set of boxes, so every carved part
  * shares one program.
  */
 export function patchShader(
@@ -181,13 +187,12 @@ uniform vec3 keepMax;`,
         '#include <clipping_planes_fragment>',
         `#include <clipping_planes_fragment>
 \tif (any(lessThan(vCarve, keepMin - ${slack})) || any(greaterThan(vCarve, keepMax + ${slack}))) discard;
-\tif (abs(vCarve.y - keepMin.y) < ${slack} || abs(vCarve.y - keepMax.y) < ${slack}) discard;
+\tif (any(lessThan(abs(vCarve - keepMin), vec3(${slack}))) || any(lessThan(abs(vCarve - keepMax), vec3(${slack})))) discard;
 \tfor (int cutIndex = 0; cutIndex < MAX_CUTS; cutIndex++) {
 \t\tif (cutIndex >= cutCount) break;
 \t\tvec3 low = cutMin[cutIndex];
 \t\tvec3 high = cutMax[cutIndex];
-\t\tif (vCarve.x > low.x && vCarve.x < high.x && vCarve.z > low.z && vCarve.z < high.z
-\t\t\t&& vCarve.y > low.y - ${slack} && vCarve.y < high.y + ${slack}) discard;
+\t\tif (all(greaterThan(vCarve, low - ${slack})) && all(lessThan(vCarve, high + ${slack}))) discard;
 \t}`,
       ),
   }

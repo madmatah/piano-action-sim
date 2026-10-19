@@ -667,6 +667,7 @@ empty rather than filled from a dictionary.
 | Garniture de mortaise | bushing (cloth) | — | `mortise_bushing`; the balance mortise's, set into its two long sides in its upper part, `balance_mortise_bushing` |
 | Casimir | bushing cloth | — | `bushing_cloth`: the thin woven wool a mortise is bushed with |
 | Trou de balancier | balance hole | — | `balance_hole`: through the floor under the balance mortise, fitted to the pin, which it holds fore and aft |
+| Trou latéral (de la capsule de touche) | key button side hole (descriptive) | — | `key_button_side_hole`: through the key button's wall, from the balance mortise's slot to its side, taller than the cloth, where the bushing's cloth turns out and is glued against its top, flush with the side |
 | Patin de balancier | key shoe | — | `key_shoe` |
 | Plomb de touche | key lead | — | `key_lead` |
 | **Pilote (de touche)** | **capstan (screw)** | — | `capstan` |

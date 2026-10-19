@@ -41,7 +41,7 @@
 //! an infinite margin.
 
 use super::features::{Feature, PairFeatures, Piece};
-use super::{PairGeometry, PartId};
+use super::{PairGeometry, Part, PartId, Role};
 use crate::geometry::{
     center_on_face, disc_on_disc, disc_on_face, Dir, Disc, Face, Point, Proximity, Seg,
 };
@@ -221,6 +221,19 @@ fn world_disc(placement: &Placement, d: &Disc) -> Disc {
 enum Side {
     A,
     B,
+}
+
+/// Whether the overlap readings read `part`: the model is planar and reads
+/// the sagittal section, so a part beside it, the balance mortise's bushing
+/// or the key button's side holes, is in none of them.
+fn is_read(part: &Part) -> bool {
+    part.sweep.is_in_the_section()
+}
+
+/// Whether the overlap readings sample `part`'s outline: a solid or a lining
+/// they read, never a cut.
+fn is_sampled(part: &Part) -> bool {
+    part.role != Role::Cut && is_read(part)
 }
 
 /// A side's drawn material, as polygons: its parts, less its cuts.
@@ -502,7 +515,7 @@ impl Mechanism {
                 .ranges
                 .iter()
                 .map(|r| r.part.index())
-                .filter(|&i| parts[i].role != super::Role::Cut)
+                .filter(|&i| is_sampled(&parts[i]))
                 .collect();
             deepest = deepest.max(self.sunk(pose, &owners, &self.material(pose, pair, into)));
         }
@@ -512,12 +525,14 @@ impl Mechanism {
     /// How deep the parts `a` and the parts `b` stand in one another at
     /// `pose`, meters: what [`Self::pair_overlap`] reads of a pair's sides,
     /// read of parts no pair declares, each set's material its parts less
-    /// the cuts of the bodies that carry them.
+    /// the cuts of the bodies that carry them. Like every overlap reading,
+    /// it reads the sagittal section: a part beside the plane is in none of
+    /// it.
     pub fn parts_overlap(&self, pose: &Pose, a: &[PartId], b: &[PartId]) -> f64 {
         let index = |ids: &[PartId]| -> Vec<usize> {
             ids.iter()
                 .map(|id| id.index())
-                .filter(|&i| self.parts()[i].role != super::Role::Cut)
+                .filter(|&i| is_sampled(&self.parts()[i]))
                 .collect()
         };
         let (a, b) = (index(a), index(b));
@@ -540,7 +555,7 @@ impl Mechanism {
             |p: Point, q: Point| p.x.to_bits() == q.x.to_bits() && p.y.to_bits() == q.y.to_bits();
         let mouths: Vec<(Point, Point)> = parts
             .iter()
-            .filter(|c| c.role == super::Role::Cut)
+            .filter(|c| c.role == Role::Cut && is_read(c))
             .flat_map(|c| c.silhouette().into_iter().map(|g| (g.start(), g.end())))
             .collect();
         let mut deepest = 0.0_f64;
@@ -572,7 +587,7 @@ impl Mechanism {
     }
 
     /// The drawn material of the parts `owners` at `pose`: their outlines,
-    /// less the cuts of every body that carries one of them.
+    /// less the cuts in the section of every body that carries one of them.
     fn material_of(&self, pose: &Pose, owners: &[usize]) -> Material {
         let parts = self.parts();
         let polygon = |i: usize| -> Vec<Point> {
@@ -588,15 +603,20 @@ impl Mechanism {
         Material {
             solids: owners.iter().map(|&i| polygon(i)).collect(),
             cuts: (0..parts.len())
-                .filter(|&i| parts[i].role == super::Role::Cut && bodies.contains(&parts[i].body))
+                .filter(|&i| {
+                    parts[i].role == Role::Cut
+                        && is_read(&parts[i])
+                        && bodies.contains(&parts[i].body)
+                })
                 .map(polygon)
                 .collect(),
         }
     }
 
     /// The drawn material of side `side` of pair `pair` at `pose`: the parts
-    /// its ranges belong to, or every part of its body for a side that is a
-    /// cut's range, less the body's cuts but for a pair read at its center.
+    /// its ranges belong to, or every part of its body in the section for a
+    /// side that is a cut's range, less the body's cuts in the section but
+    /// for a pair read at its center.
     fn material(&self, pose: &Pose, pair: u16, side: Side) -> Material {
         let declared = &self.pairs()[usize::from(pair)];
         let surface = match side {
@@ -610,7 +630,7 @@ impl Mechanism {
             .ranges
             .iter()
             .map(|r| r.part.index())
-            .filter(|&i| parts[i].role != super::Role::Cut)
+            .filter(|&i| is_sampled(&parts[i]))
             .collect();
         let polygon = |i: usize| -> Vec<Point> {
             parts[i]
@@ -626,11 +646,11 @@ impl Mechanism {
             cuts: Vec::new(),
         };
         for (i, part) in parts.iter().enumerate() {
-            if part.body != body {
+            if part.body != body || !is_read(part) {
                 continue;
             }
             match part.role {
-                super::Role::Cut => {
+                Role::Cut => {
                     if !centered {
                         material.cuts.push(polygon(i));
                     }
@@ -678,7 +698,7 @@ impl Mechanism {
 #[cfg(test)]
 mod tests {
     use super::super::fixtures;
-    use super::super::{Role, Seg};
+    use super::super::{Seg, Sweep};
     use super::*;
     use crate::mechanism::fixtures::{random_q, reach, XorShift};
     use crate::mechanism::{CoordId, CoordKind, MaterialPoint};
@@ -1092,6 +1112,103 @@ mod tests {
             kept += near.len();
         }
         assert!(kept > 0, "some rows fell within the margin");
+    }
+
+    /// Consistency: **the overlap readings read the sagittal section**, and
+    /// a part beside the plane is in none of them. A lining 40 by 15 mm set
+    /// in the block's 30 mm of wood, in the section, its top 10 mm under the
+    /// block's and every point of it at least 5 mm in, stands at least
+    /// 10 mm deep in it; the same lining beside the plane, its 4 mm width
+    /// short of reaching across it, stands in nothing, whichever side is
+    /// read. Parts beside the plane added to the bodies move no reading by a
+    /// bit: a cut on the block's body as the lining's outline, which in the
+    /// section would leave that outline as mouths and its wood out of the
+    /// block's, and a lining 2 m square on the slot's body, round the strip
+    /// that the slot's pair reads against that body's material, at seeded
+    /// random poses that slide the strip out of the slot.
+    #[test]
+    fn a_part_beside_the_sagittal_plane_is_in_no_overlap_reading() {
+        let fixture = fixtures::parts();
+        let pairs = fixtures::pairs(&fixture);
+        let block = fixture.parts[fixture.block.index()].clone();
+        let slot_body = fixture.parts[fixture.slot.index()].body;
+        let rectangle = |corners: [(f64, f64); 4]| -> Vec<Seg> {
+            (0..corners.len())
+                .map(|corner| {
+                    let (start, end) = (corners[corner], corners[(corner + 1) % corners.len()]);
+                    Seg::Line {
+                        a: Point::new(start.0, start.1),
+                        b: Point::new(end.0, end.1),
+                    }
+                })
+                .collect()
+        };
+        let set_in = |across: f64| Part {
+            outline: rectangle([(-0.02, 0.005), (0.02, 0.005), (0.02, 0.02), (-0.02, 0.02)]),
+            sweep: Sweep::Extruded {
+                width: 0.004,
+                across,
+            },
+            role: Role::Lining,
+            placed_by: vec![(0..4, "a test")],
+            ..block.clone()
+        };
+        let beside_the_plane = 0.008;
+        let mut parts = fixture.parts;
+        let next = u16::try_from(parts.len()).expect("a few parts");
+        let (in_the_section, beside) = (PartId(next), PartId(next + 1));
+        parts.extend([set_in(0.0), set_in(beside_the_plane)]);
+        let mut with_parts_beside = parts.clone();
+        with_parts_beside.extend([
+            Part {
+                role: Role::Cut,
+                ..set_in(beside_the_plane)
+            },
+            Part {
+                body: slot_body,
+                outline: rectangle([(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]),
+                ..set_in(beside_the_plane)
+            },
+        ]);
+        let slot_on_the_strip = pairs
+            .iter()
+            .position(|pair| pair.a.ranges[0].part == fixture.slot)
+            .and_then(|pair| u16::try_from(pair).ok())
+            .expect("the slot's pair");
+        let build = |parts: Vec<Part>| {
+            crate::mechanism::fixtures::chain()
+                .with_contacts(parts, pairs.clone())
+                .expect("the fixture's contacts are drawn")
+        };
+        let (mechanism, with_beside) = (build(parts), build(with_parts_beside));
+        let pose = mechanism.pose(&vec![0.0; mechanism.coords().len()]);
+        let overlap = mechanism.parts_overlap(&pose, &[fixture.block], &[in_the_section]);
+        assert!(overlap >= 0.01, "{overlap} m");
+        for (a, b) in [(fixture.block, beside), (beside, fixture.block)] {
+            assert_eq!(
+                mechanism.parts_overlap(&pose, &[a], &[b]).to_bits(),
+                0.0_f64.to_bits()
+            );
+        }
+        assert_eq!(
+            with_beside
+                .parts_overlap(&pose, &[fixture.block], &[in_the_section])
+                .to_bits(),
+            overlap.to_bits()
+        );
+        let mut rng = XorShift::new(0x0000_5ec7);
+        for _ in 0..20 {
+            let q = random_q(&mechanism, &mut rng);
+            assert_eq!(
+                with_beside
+                    .pair_overlap(&with_beside.pose(&q), slot_on_the_strip)
+                    .to_bits(),
+                mechanism
+                    .pair_overlap(&mechanism.pose(&q), slot_on_the_strip)
+                    .to_bits(),
+                "{q:?}"
+            );
+        }
     }
 }
 

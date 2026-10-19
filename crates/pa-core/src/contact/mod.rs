@@ -110,11 +110,18 @@ pub enum PartCode {
     /// under it in the keystick, over the balance hole.
     BalanceMortise,
     /// The cloth lining one long side of the balance mortise's slot, in its
-    /// upper part: what guides the key across the keyboard.
+    /// upper part: what guides the key across the keyboard. An L on each
+    /// side, down the slot's wall, then out through the key button's side
+    /// hole, each leg a part of its own.
     BalanceMortiseBushing,
     /// The balance hole, drilled through the floor of the balance mortise's
     /// cavity and fitted to the pin: where the key is held fore and aft.
     BalanceHole,
+    /// A side hole through the key button's wall, from the balance mortise's
+    /// slot out to the key button's side, along the slot at the foot of its
+    /// bushing: where the bushing's cloth turns and runs out to the side,
+    /// glued against the hole's top.
+    KeyButtonSideHole,
     /// The balance rail, its crown included.
     BalanceRail,
     /// The round pin the key turns on.
@@ -151,6 +158,7 @@ impl PartCode {
             Self::BalanceMortise => "balance_mortise",
             Self::BalanceMortiseBushing => "balance_mortise_bushing",
             Self::BalanceHole => "balance_hole",
+            Self::KeyButtonSideHole => "key_button_side_hole",
             Self::BalanceRail => "balance_rail",
             Self::BalanceRailPin => "balance_rail_pin",
             Self::BalanceRailPunching => "balance_rail_punching",
@@ -226,8 +234,8 @@ pub enum Sweep {
         /// sagittal plane, positive toward the bass, the player's left, so
         /// that `x` toward the player, `y` up and this direction make a
         /// right-handed frame: zero for every part centered on the plane,
-        /// all but a lining set into one side of a slot, which the plane
-        /// does not cut.
+        /// all but those beside it, which the plane does not cut: the balance
+        /// mortise's bushing and the key button's side holes.
         across: f64,
     },
     /// Turned about a vertical axis: punchings, papers, a round pin, the
@@ -277,8 +285,9 @@ pub struct Part {
 
 impl Sweep {
     /// Whether the sagittal plane cuts a part swept so, so that the section
-    /// draws it and its area counts in the section's: every part but a
-    /// lining set into one side of a slot ([`Sweep::Extruded`]'s `across`).
+    /// draws it and its area counts in the section's: every part but those
+    /// beside it, whose width does not reach across it
+    /// ([`Sweep::Extruded`]'s `across`).
     pub fn is_in_the_section(&self) -> bool {
         match *self {
             Sweep::Extruded { width, across } => across == 0.0 || 2.0 * across.abs() < width,
