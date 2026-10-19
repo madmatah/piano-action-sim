@@ -76,7 +76,9 @@ use pa_core::parts::frame::{
     Crown, Drawer, FrameSections, KeyKind, NotADrawer, PinShape, PunchingStack, RailSection, PAPER,
 };
 use pa_core::parts::mounts::{on_its_frame, KeyMount};
-use pa_core::parts::{Capstan, FrameDesign, KeyDesign, KeyMass, NotAWeighing, TopClearance};
+use pa_core::parts::{
+    BalanceMortise, Capstan, FrameDesign, KeyDesign, KeyMass, NotAWeighing, TopClearance,
+};
 use pa_core::regulation::Targets;
 use pa_core::solve::Statics;
 use pa_core::validate::DRAWER;
@@ -1316,6 +1318,15 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
         capsule_height: b.length("capsule_height")?,
         capsule_length: b.length("capsule_length")?,
         capsule_center: b.optional("capsule_center", Quantity::Length)?,
+        capsule_end_radius: b.length("capsule_end_radius")?,
+        balance_mortise: BalanceMortise {
+            length: b.length("balance_mortise.length")?,
+            width: b.length("balance_mortise.width")?,
+            floor: b.length("balance_mortise.floor")?,
+            hole_diameter: b.length("balance_mortise.hole_diameter")?,
+            bushing_thickness: b.length("balance_mortise.bushing_thickness")?,
+            bushing_depth: b.length("balance_mortise.bushing_depth")?,
+        },
         back_check_block_height: b.length("back_check_block_height")?,
         back_check_block_back: b.length("back_check_block_back")?,
         back_check_block_length: b.length("back_check_block_length")?,

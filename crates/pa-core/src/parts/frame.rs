@@ -876,7 +876,10 @@ impl FrameDesign {
                 code,
                 placed_by,
                 outline,
-                sweep: Sweep::Extruded { width: slice },
+                sweep: Sweep::Extruded {
+                    width: slice,
+                    across: 0.0,
+                },
                 role: Role::Solid,
                 material: Material::RailWood,
             })
@@ -955,7 +958,10 @@ impl FrameDesign {
                 BACK.half_length,
             ]),
             outline: cloth_outline,
-            sweep: Sweep::Extruded { width: slice },
+            sweep: Sweep::Extruded {
+                width: slice,
+                across: 0.0,
+            },
             role: Role::Lining,
             material: Material::Cloth,
         });
@@ -1115,7 +1121,10 @@ fn pin_part(
                 code,
                 placed_by: each(&[n.height, n.pin_length, n.pin_height, n.pin_length]),
                 outline,
-                sweep: Sweep::Extruded { width: thickness },
+                sweep: Sweep::Extruded {
+                    width: thickness,
+                    across: 0.0,
+                },
                 role: Role::Solid,
                 material: Material::Steel,
             });
@@ -1713,7 +1722,7 @@ mod part_tests {
             "a balance pin is round"
         );
         let front = &parts[ranges.front_rail_pin.expect("a front pin").index()];
-        let Sweep::Extruded { width } = front.sweep else {
+        let Sweep::Extruded { width, .. } = front.sweep else {
             panic!("a front rail pin is oblong");
         };
         let ((x0, x1), _) = extent(front);

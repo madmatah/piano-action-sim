@@ -106,6 +106,15 @@ pub enum PartCode {
     Capstan,
     /// The slot the front rail pin stands in, cut up from the underside.
     FrontMortise,
+    /// The balance mortise: the slot through the key button and the cavity
+    /// under it in the keystick, over the balance hole.
+    BalanceMortise,
+    /// The cloth lining one long side of the balance mortise's slot, in its
+    /// upper part: what guides the key across the keyboard.
+    BalanceMortiseBushing,
+    /// The balance hole, drilled through the floor of the balance mortise's
+    /// cavity and fitted to the pin: where the key is held fore and aft.
+    BalanceHole,
     /// The balance rail, its crown included.
     BalanceRail,
     /// The round pin the key turns on.
@@ -139,6 +148,9 @@ impl PartCode {
             Self::KeyTailFelt => "key_tail_felt",
             Self::Capstan => "capstan",
             Self::FrontMortise => "front_mortise",
+            Self::BalanceMortise => "balance_mortise",
+            Self::BalanceMortiseBushing => "balance_mortise_bushing",
+            Self::BalanceHole => "balance_hole",
             Self::BalanceRail => "balance_rail",
             Self::BalanceRailPin => "balance_rail_pin",
             Self::BalanceRailPunching => "balance_rail_punching",
@@ -191,6 +203,8 @@ pub enum Material {
     HardFelt,
     /// The back rail cloth.
     Cloth,
+    /// The cloth a mortise is bushed with.
+    BushingCloth,
     /// A punching paper. The trade identifies a paper by its color, and the
     /// color is its thickness, so the stock is named by the thickness.
     Paper {
@@ -205,9 +219,16 @@ pub enum Sweep {
     /// Swept sideways across the keyboard: keys, rails, the back rail cloth,
     /// an oblong pin. The outline is in its body's `x` and `y`.
     Extruded {
-        /// Extent across the keyboard, meters. Zero where the part has none
-        /// the model knows: a cut, which only the section draws.
+        /// Extent across the keyboard, meters. Zero where the model knows
+        /// none: the front mortise's, which only the section draws.
         width: f64,
+        /// Where its middle stands across the keyboard, meters from the
+        /// sagittal plane, positive toward the bass, the player's left, so
+        /// that `x` toward the player, `y` up and this direction make a
+        /// right-handed frame: zero for every part centered on the plane,
+        /// all but a lining set into one side of a slot, which the plane
+        /// does not cut.
+        across: f64,
     },
     /// Turned about a vertical axis: punchings, papers, a round pin, the
     /// capstan. The outline is the **profile** in radius and height, the
@@ -252,6 +273,18 @@ pub struct Part {
     /// Which number places each run of segments of the outline, in order,
     /// covering it ([`PlacedBy`]).
     pub placed_by: Vec<(Range<u16>, PlacedBy)>,
+}
+
+impl Sweep {
+    /// Whether the sagittal plane cuts a part swept so, so that the section
+    /// draws it and its area counts in the section's: every part but a
+    /// lining set into one side of a slot ([`Sweep::Extruded`]'s `across`).
+    pub fn is_in_the_section(&self) -> bool {
+        match *self {
+            Sweep::Extruded { width, across } => across == 0.0 || 2.0 * across.abs() < width,
+            Sweep::Revolved { .. } => true,
+        }
+    }
 }
 
 /// `p` moved `dx` along `x`: a profile's point carried out to its axis.
@@ -452,6 +485,22 @@ mod tests {
             .collect()
     }
 
+    /// Consistency: **the sagittal plane cuts every part but one set beside
+    /// it**: a part centered on it, one straddling it off center, and a
+    /// turned one are cut; a lining whose near face stands on it, or past
+    /// it on either side, is not.
+    #[test]
+    fn the_sagittal_plane_cuts_every_part_but_one_set_beside_it() {
+        let extruded = |width: f64, across: f64| Sweep::Extruded { width, across };
+        assert!(extruded(0.022, 0.0).is_in_the_section());
+        assert!(extruded(0.004, 0.0015).is_in_the_section());
+        assert!(extruded(0.0, 0.0).is_in_the_section());
+        assert!(Sweep::Revolved { axis_x: 0.225 }.is_in_the_section());
+        assert!(!extruded(0.0013, 0.00065).is_in_the_section());
+        assert!(!extruded(0.0013, -0.00235).is_in_the_section());
+        assert!(!extruded(0.0013, 0.00235).is_in_the_section());
+    }
+
     /// A washer of 2 to 11 mm turned about an axis 225 mm along its body, as
     /// the front punching is.
     fn washer() -> Part {
@@ -480,7 +529,10 @@ mod tests {
         assert_eq!(silhouette.len(), 2 * (part.outline.len() - 1));
         let silhouette_part = Part {
             outline: silhouette.clone(),
-            sweep: Sweep::Extruded { width: 0.0 },
+            sweep: Sweep::Extruded {
+                width: 0.0,
+                across: 0.0,
+            },
             ..part.clone()
         };
         assert!(silhouette_part.is_closed(), "{silhouette:?}");
@@ -547,7 +599,10 @@ mod tests {
                     b: Point::new(1.0, 0.0),
                 },
             ],
-            sweep: Sweep::Extruded { width: 0.0 },
+            sweep: Sweep::Extruded {
+                width: 0.0,
+                across: 0.0,
+            },
             ..washer()
         };
         let quarter = Anchor {

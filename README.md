@@ -13,10 +13,11 @@ expected values.
 ## What is built
 
 **Stage 1a, the key on its frame.** A parametric key (keystick, covering, key
-front, capsule, back check block, thinned tail and chamfer, a clearance cut in
-its top for the wippen rail where it has one, a turned capstan)
-stands on a parametric frame (balance, front and back rails, their pins, and
-punchings laid from a drawer of real papers). A key is weighed whole, its leads
+front, key button with its rounded ends, the balance mortise through it with
+its bushing and the balance hole under it, back check block, thinned tail and
+chamfer, a clearance cut in its top for the wippen rail where it has one, a
+turned capstan) stands on a parametric frame (balance, front and back rails,
+their pins, and punchings laid from a drawer of real papers). A key is weighed whole, its leads
 in it: its mass and its front weight are typed, and the bench keeps the static
 moment the front weight gives on the arm it was read at; the height of its
 center of mass, which no scale gives, is estimated from its drawn section. An
@@ -69,7 +70,9 @@ catalog. An edit that describes a key no part could be built as is refused
 before any solve, with the limiting dimension and the shortfall, and the bench
 is left as it was: a key front brought back until its covering runs into the
 key button, a capstan in a glued block or over the thinned tail, a front
-mortise cut through the key top, a measuring point off the covering, a mass
+mortise cut through the key top, a key button whose rounded ends overlap, a
+balance mortise or its bushing that does not fit where it is cut, a measuring
+point off the covering, a mass
 of nothing, a value that is not a number. Everything an assembled keyboard can be, however badly
 regulated, is computed and reported. Every edit taken is logged, and the log
 replayed gives the same state, which a hash names. The bench starts from no

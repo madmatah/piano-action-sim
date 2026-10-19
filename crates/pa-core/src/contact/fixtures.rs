@@ -36,7 +36,10 @@ fn part(body: usize, outline: Vec<Seg>, role: Role, sweep: Sweep) -> Part {
 }
 
 fn prism() -> Sweep {
-    Sweep::Extruded { width: 0.02 }
+    Sweep::Extruded {
+        width: 0.02,
+        across: 0.0,
+    }
 }
 
 /// A block with a square corner, a rounded one and a chamfer, the shape of
@@ -140,7 +143,10 @@ pub fn parts() -> Parts {
         3,
         polygon(&[(-0.04, 0.0), (0.06, 0.0), (0.06, 0.04), (-0.04, 0.04)]),
         Role::Cut,
-        Sweep::Extruded { width: 0.0 },
+        Sweep::Extruded {
+            width: 0.0,
+            across: 0.0,
+        },
     ));
     parts.push(part(
         5,

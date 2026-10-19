@@ -664,7 +664,9 @@ empty rather than filled from a dictionary.
 | Fronton | key front | — | `key_front` |
 | Capsule de touche | key button / chase | — | `key_button` |
 | Mortaise (de balancier / d'enfoncement) | balance / front mortise | — | `balance_mortise`, `front_mortise` |
-| Garniture de mortaise | bushing (cloth) | — | `mortise_bushing` |
+| Garniture de mortaise | bushing (cloth) | — | `mortise_bushing`; the balance mortise's, set into its two long sides in its upper part, `balance_mortise_bushing` |
+| Casimir | bushing cloth | — | `bushing_cloth`: the thin woven wool a mortise is bushed with |
+| Trou de balancier | balance hole | — | `balance_hole`: through the floor under the balance mortise, fitted to the pin, which it holds fore and aft |
 | Patin de balancier | key shoe | — | `key_shoe` |
 | Plomb de touche | key lead | — | `key_lead` |
 | **Pilote (de touche)** | **capstan (screw)** | — | `capstan` |

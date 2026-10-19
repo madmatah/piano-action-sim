@@ -126,9 +126,10 @@ its number is known ([The parameter registry and the validation layer](#the-para
 
 **The key**, `KeyDesign`, is a natural: a keystick of one wood thickness with
 what is glued to it or cut from it (the covering; the key front over the end
-grain, the covering's lip overhanging it; the capsule where the balance mortise
-is cut; the back check block; the thinned tail and its damper felt; the chamfer
-that lets the tail bed flat on its cloth) [V, `data/params/key-section.json`].
+grain, the covering's lip overhanging it; the key button, flat on top, its two
+ends rounded to a radius, where the balance mortise is cut; the back check block; the thinned tail and its damper felt; the chamfer
+that lets the tail bed flat on its cloth) [V, `data/params/key-section.json`,
+`data/params/balance-mortise.json`].
 The back check block stands where the action puts the hammer's tail, so it is
 placed from the balance pin and not from the key's end: a key lengthened at the
 back keeps its block in place, the keystick running at its full height between
@@ -167,6 +168,19 @@ body: the covering and the key front are of their own materials, the capsule and
 the back check block of one wood that is not the keystick's, and the front
 mortise is a cut, a void in the keystick open at its underside.
 
+**The balance mortise** is built as the owner describes it
+(`data/params/balance-mortise.json`, construction): an oblong slot through the key
+button along the key, open through the button's flat top, which it stays
+within; under it a cavity in the keystick as long and as wide as the slot,
+down to a thin floor; through that floor the balance hole, fitted to the pin,
+which holds the key fore and aft; and on the slot's two long sides, in its
+upper part only, the bushing that guides the key across the keyboard. The
+slot, the cavity and the hole are cuts, taken out of the drawn section whose
+centroid estimates a weighed key's center-of-mass height; the bushing is a
+lining set into each side of the slot, out of the sagittal plane, and counts
+in no area of the section. Every one of its dimensions is a setting, and none
+is measured: each profile assumes them with its reasons.
+
 **The key is weighed whole**, as a key that arrives leaded is weighed, its leads
 in it and their masses unknown: its mass on a scale, and its front weight on
 Stanwood's jig ([The protocols, as they are](#the-protocols-as-they-are)) with the distance back from the covering's lip it was read
@@ -178,8 +192,9 @@ editing the key, reads the same moment on another arm, and the front weight the
 jig reads follows by the lever. The moment over the key's weight stands its
 center of mass along the key. Its height, which no scale gives, is estimated
 from the key's drawn section: the area centroid of its parts as the section
-draws them, the front mortise and the clearance in the top, where the key has
-one, taken out and the turned capstan left out, where
+draws them, the front mortise, the balance mortise and its hole, and the
+clearance in the top, where the key has one, taken out, and the turned capstan
+and the balance mortise's bushing, beside the sagittal plane, left out, where
 the center of mass of a key of one material and one width would stand ([Named simplifications](#named-simplifications)).
 Every reading it reaches names it ([The protocols, as they are](#the-protocols-as-they-are)): it acts only through the key's tilt
 on its frame, about 0.02 g of down weight per millimeter on a key of 120 g
@@ -684,9 +699,9 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   key's estimated from its outline matched to its mass and front weight,
   marked estimated (planned). The one number of a weighed key no scale gives,
   the height of its center of mass, is estimated from the area centroid of
-  its drawn section, the front mortise and any clearance in its top taken
-  out (built), which treats the key
-  as one material of one width: a covering denser than the wood raises the
+  its drawn section, the front mortise, the balance mortise and its hole, and
+  any clearance in its top taken out (built), which treats the key as one
+  material of one width, each void taken out across the whole of it: a covering denser than the wood raises the
   true center, and leads set low in the keystick lower it, each millimeter
   moving D by about 0.02 g on a key of 120 g ([Parts and statics](#parts-and-statics)). No lead is modeled:
   a key arrives leaded, with lead masses nobody knows, and is weighed whole.
@@ -762,19 +777,31 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   the capstan's thread against its hole, so a capstan screwed up past its
   shaft's length, within the 2 to 30 mm the bench admits, is drawn standing
   above the wood ([The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)).
-- **Hirschkorn's key is drawn square** where his figure draws its key button
-  with rounded ends, its two blocks coved and its covering beveled, each
-  traced to its feet [E, 11]; its back check, wire and head, belongs to the
+- **Hirschkorn's key is drawn square** where his figure draws its blocks coved
+  and its covering beveled, each traced to its feet [E, 11]; its key button's
+  ends are rounded to the 11.64 mm radius traced from where his figure's
+  flat top ends [E, 11], and its balance mortise is assumed as the measured
+  section's is; its back check, wire and head, belongs to the
   action and is not drawn, though Table A.1's mass includes it. His front
   mortise is the owner's, placed over his front bearing. Placing the frame
   under his key follows the rule the measured section's frame is built by, the
   back rail 40 mm in from the tail [S], which stands his back rail in front of
   his 37 mm chamfer.
 - **Drawing**: one row of pins; flat-topped pins; a flat balance crown only.
-  The balance mortise is not drawn, none of its dimensions being measured, so
-  the balance pin stands hidden in the key's wood; the front mortise's place
-  and length along the key are assumed [S, `data/params/key-section.json`],
-  its width across the keyboard not modeled.
+  The balance mortise's dimensions are assumed, none measured
+  [S, E, `data/profiles/measured-section.json`, `data/profiles/hirschkorn.json`].
+  Its slot runs along the model's
+  `x`, the key's front axis, on a straight key: a cranked key, bent beside its
+  covering, keeps its slot along that axis and not along its own edges there,
+  and is planned with the keys side by side. No contact reads the slot's ends
+  or its bushing, so the pin is drawn in its slot without guiding the key, and
+  nothing reads how the balance hole and the bushing fit the pin: a tight or
+  an eased mortise moves no reading, the bushings' friction being typed as a
+  key friction weight. The
+  solid leaves every cut uncarved, the slot's mouth on the key button's top
+  included, which the section shows open. The front mortise's place and length
+  along the key are assumed [S, `data/params/key-section.json`], its width
+  across the keyboard not modeled.
 
 ### The bench
 
@@ -782,7 +809,10 @@ Their closed forms are test oracles, compiled for the domain's tests only.
 frame in section and in solid from parts computed in Rust, each in its own
 body's frame and placed by the pose the static solve gives that body. The
 section is the sagittal plane itself: a washer shows the hole its pin stands in,
-and the front pin stands in its mortise, a void open at the key's underside.
+the front pin stands in its mortise, a void open at the key's underside, and
+the balance pin in the balance hole and the cavity over it, the bushing on the
+slot's far side seen beyond the plane, behind the pin, the near one cut away
+with the near half of the key.
 Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
 parts that overlap. A key no equilibrium places is drawn faded, a note on the
@@ -1284,7 +1314,7 @@ fight, to a quarter of the step cap, and the walks' increments to half of it: a
 trial a hair past breakaway starts the key with a step of a femtometer, each
 accepted step three times the last. A fingerprint names the solver with its
 frozen numbers and travels with every reading, one name for one hash, never
-given back to other numbers (`statics/2`); a test hashes the caps,
+given back to other numbers (`statics/3`); a test hashes the caps,
 tolerances, margins and counts, the free key's pieces, the temporary weight's
 stations and the searches' reaches, and fails when one changes and the
 fingerprint does not; where the key leaves its balance pin is read off the
@@ -1772,8 +1802,8 @@ drawn range, so the invariant holds by structure; and
 drawn outlines wherever the key stands, seated, riding, lifted off its
 punching or turned across its stroke, by a sampling of the drawing that shares
 no code with the rows. No outline is weighed: the drawn parts tile one polygon
-through the key's fields, and their area centroid, the front mortise taken
-out, stands in for the height of a weighed key's center of mass. Planned: each
+through the key's fields, and their area centroid, the mortises and the balance
+hole taken out, stands in for the height of a weighed key's center of mass. Planned: each
 part's inertia derived from its outline or measured, by an explicit choice, a
 key's always measured ([Named simplifications](#named-simplifications)).
 
@@ -1902,8 +1932,12 @@ the chamfer past the key front; a clearance run back over the thinned tail,
 cut through the keystick, or no cut; the capstan in a glued block, wholly
 behind the back check block or over the thinned tail, or its dome narrower
 than its head; the front mortise off the flat of
-the underside, or cut through the top of the keystick; the measuring point off
-the covering. A refused edit leaves the instrument as it was, to the bit of its
+the underside, or cut through the top of the keystick; a key button whose
+rounded ends overlap; a part of the balance mortise that does not fit where it
+is cut, the slot past the key button's flat top or wider than the key, the
+cavity's floor above the keystick's top, the hole wider than the slot, the
+bushing's two thicknesses wider than the slot or the bushing deeper than the
+slot and the cavity under it; the measuring point off the covering. A refused edit leaves the instrument as it was, to the bit of its
 state hash, and the diagnostics keep it. Everything an assembled keyboard can
 be, however badly regulated, is computed and reported, not refused: a pin
 standing proud of its mortise is a state, the key riding on it; an action

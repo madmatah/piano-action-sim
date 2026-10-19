@@ -107,6 +107,9 @@ const THE_PART: Named<Part> = {
   key_tail_felt: 'le feutre de bout de touche',
   capstan: 'le pilote',
   front_mortise: 'la mortaise d’enfoncement',
+  balance_mortise: 'la mortaise de balancier',
+  balance_mortise_bushing: 'la garniture de la mortaise de balancier',
+  balance_hole: 'le trou de balancier',
   balance_rail: 'la barre de balancier',
   balance_rail_pin: 'la pointe de balancier',
   balance_rail_punching: 'la mouche de balancier',
@@ -346,6 +349,10 @@ const problem: Worded<Problem> = {
     `un dégagement de ${to(length_mm, PART_MM)} mm de long et ${to(depth_mm, PART_MM)} mm de profondeur n’entaille rien : il se taille sous le dessus du corps de la touche, là où il a toute sa hauteur, son extrémité avant en avant de son extrémité arrière.`,
   clearance_through_keystick: ({ depth_mm, wood_mm }) =>
     `un dégagement de ${to(depth_mm, PART_MM)} mm de profondeur traverse le corps de la touche, qui n’a que ${to(wood_mm, PART_MM)} mm de bois à cet endroit.`,
+  capsule_ends_overlap: ({ by_mm }) =>
+    `les bouts arrondis de la capsule de touche empiéteraient de ${to(by_mm, PART_MM)} mm l’un sur l’autre sur son dessus : ils se rejoignent au plus.`,
+  does_not_fit: ({ part, within, by_mm }) =>
+    `${THE_PART[part]} ne tiendrait pas dans ${THE_PART[within]} : ${to(by_mm, PART_MM)} mm de trop.`,
   mortise_through_key_top: ({ depth_mm, wood_mm }) =>
     `une mortaise d’enfoncement de ${to(depth_mm, PART_MM)} mm de profondeur traverse les ${to(wood_mm, PART_MM)} mm du corps de la touche.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>

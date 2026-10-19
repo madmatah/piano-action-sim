@@ -25,6 +25,8 @@ export const MATERIAL_FILL: Record<string, string> = {
   punching_felt: '#c8655d',
   hard_felt: '#5d5a6b',
   cloth: '#5e9a78',
+  // The cloth a balance mortise is bushed with, red as the owner drew it.
+  bushing_cloth: '#b84864',
 }
 
 /**

@@ -1,7 +1,9 @@
 {
   "profile": "hirschkorn",
   "what": "Hirschkorn's key, note 52 of a Boston GP-178 grand, on his printed frame (Hirschkorn 2004, Appendix A): his key's printed points and lines, its outline traced from his Figure A.1 where his tables give no number, its mass, center of mass and inertia from Table A.1, its bushings from Table A.9, and his dip target. His frame bears on the key where his model does, at Pg4 and Pg5, but on real felts: a flat front punching washer over Pg4, and a flat back rail cloth strip lying wholly under the tail's chamfer, its rounded front edge over Pg5, each with its top where his round of 5 mm has its, since what is drawn is what is touched. The key, nose-up at rest, bears on the cloth's front edge, 0.06 mm from where it bears on his round. His printed frame on his rounds lets the key fall 9.306 mm at Pk2, where his finger presses; on the real felts 9.308 mm, 1.7 µm more, from the curvature of his rounds and the printed length of Pk5's normal (tools/derivations/11-hirschkorn-key-outline.py). His keybed, rails, papers, pins and the key's width are not published: they are those of the owner's measured section (data/profiles/measured-section.json), so his key height is an indication. It arrives as his frame is printed, not regulated: his dip of 10.0 mm is one regulation away.",
-  "instruments": ["Boston GP-178 grand piano, note 52"],
+  "instruments": [
+    "Boston GP-178 grand piano, note 52"
+  ],
   "key_kind": {
     "is": "natural",
     "why": "His Figure A.1 draws a natural: a covering whose lip overhangs a key front."
@@ -97,6 +99,55 @@
       "param": "capsule_center",
       "record": "hirschkorn-key-outline.json",
       "pointer": "/records/capsule_center"
+    },
+    {
+      "param": "capsule_end_radius",
+      "record": "hirschkorn-key-outline.json",
+      "pointer": "/records/capsule_end_radius"
+    },
+    {
+      "param": "balance_mortise.length",
+      "value": 10.2,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Assumed as the measured section's is: three times the balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter), 10.2 mm, the proportion of the owner's sketch."
+    },
+    {
+      "param": "balance_mortise.width",
+      "value": 6.0,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "The balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter) plus the bushing's two 1.3 mm thicknesses: 6.0 mm.",
+      "why": "Not published. Derived from the assumed bushing, so that the key has the least side play on its pin. Not measured."
+    },
+    {
+      "param": "balance_mortise.floor",
+      "value": 2.5,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Assumed: about a tenth of the keystick's height, the proportion of the owner's sketch, where the balance hole is drilled. Not measured."
+    },
+    {
+      "param": "balance_mortise.hole_diameter",
+      "value": 3.4,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Fitted to the pin: the balance pin's 3.4 mm diameter (key-frame-sections.json, balance_pin_diameter).",
+      "why": "Not published. The owner: the balance hole at the cavity's floor is fitted to the pin, which holds the key fore and aft. Not measured."
+    },
+    {
+      "param": "balance_mortise.bushing_thickness",
+      "value": 1.3,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Assumed as the measured section's is: 1.3 mm of bushing cloth on each long side of the slot."
+    },
+    {
+      "param": "balance_mortise.bushing_depth",
+      "value": 3.105,
+      "unit": "mm",
+      "reliability": "S",
+      "why": "Not published. Assumed as the measured section's is: half his key button's 6.21 mm height, 3.105 mm, the proportion of the owner's sketch; the slot is bushed in its upper part only (balance-mortise.json, construction)."
     },
     {
       "param": "back_check_block_height",
@@ -235,7 +286,10 @@
     },
     {
       "param": "balance_punching.papers",
-      "values": [0.5, 0.2],
+      "values": [
+        0.5,
+        0.2
+      ],
       "unit": "mm",
       "reliability": "S",
       "why": "Not published. Borrowed from the frame of the owner's measured section, the papers its regulation lays under its balance punching: the balance bearing stands where that frame's does."
@@ -257,7 +311,11 @@
     },
     {
       "param": "front_punching.papers",
-      "values": [0.4, 0.4, 0.08],
+      "values": [
+        0.4,
+        0.4,
+        0.08
+      ],
       "unit": "mm",
       "reliability": "S",
       "why": "Not published. Borrowed from the frame of the owner's measured section, the papers its regulation lays on its front punching, so that regulating his dip has paper to lift as well as to lay."

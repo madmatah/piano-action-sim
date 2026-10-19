@@ -25,7 +25,7 @@ const extreme = (procedure: Procedure, value: number, shown: number, atMm: numbe
   },
   increments: 1,
   iterations: 1,
-  fingerprint: 'statics/2',
+  fingerprint: 'statics/3',
 })
 
 describe("the band's extremes", () => {

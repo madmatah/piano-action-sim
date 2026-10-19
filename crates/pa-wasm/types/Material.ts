@@ -3,4 +3,4 @@
 /**
  * What a part is made of; the view picks its color.
  */
-export type Material = "key_wood" | "block_wood" | "covering" | "key_front" | "rail_wood" | "steel" | "punching_felt" | "hard_felt" | "cloth" | "paper";
+export type Material = "key_wood" | "block_wood" | "covering" | "key_front" | "rail_wood" | "steel" | "punching_felt" | "hard_felt" | "cloth" | "bushing_cloth" | "paper";

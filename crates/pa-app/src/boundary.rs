@@ -153,6 +153,9 @@ pub enum Part {
     KeyTailFelt,
     Capstan,
     FrontMortise,
+    BalanceMortise,
+    BalanceMortiseBushing,
+    BalanceHole,
     BalanceRail,
     BalanceRailPin,
     BalanceRailPunching,
@@ -176,6 +179,9 @@ impl From<PartCode> for Part {
             PartCode::KeyTailFelt => Self::KeyTailFelt,
             PartCode::Capstan => Self::Capstan,
             PartCode::FrontMortise => Self::FrontMortise,
+            PartCode::BalanceMortise => Self::BalanceMortise,
+            PartCode::BalanceMortiseBushing => Self::BalanceMortiseBushing,
+            PartCode::BalanceHole => Self::BalanceHole,
             PartCode::BalanceRail => Self::BalanceRail,
             PartCode::BalanceRailPin => Self::BalanceRailPin,
             PartCode::BalanceRailPunching => Self::BalanceRailPunching,
@@ -2069,6 +2075,7 @@ pub enum Material {
     PunchingFelt,
     HardFelt,
     Cloth,
+    BushingCloth,
     Paper,
 }
 
@@ -2193,6 +2200,14 @@ pub struct Outline {
     pub sweep: Sweep,
     /// Extrusion across the sagittal plane, millimeters; zero when turned.
     pub width_mm: f32,
+    /// Where the extrusion's middle stands across the keyboard, millimeters
+    /// from the sagittal plane, positive toward the bass, the player's left:
+    /// zero but for a lining set into one side of a slot, which the section
+    /// does not cut; zero when turned.
+    pub across_mm: f32,
+    /// Whether the sagittal plane cuts it, so that the section draws it in
+    /// its plane: every part but a lining set into one side of a slot.
+    pub is_in_the_section: bool,
     /// Where a turned part's axis stands along its body's `x`, millimeters;
     /// zero when extruded.
     pub axis_x_mm: f32,
@@ -2222,9 +2237,11 @@ impl Scene {
                 .outlines()
                 .into_iter()
                 .map(|o| {
-                    let (sweep, width, axis_x) = match o.sweep {
-                        CoreSweep::Extruded { width } => (Sweep::Extruded, mm32(width), 0.0),
-                        CoreSweep::Revolved { axis_x } => (Sweep::Revolved, 0.0, mm32(axis_x)),
+                    let (sweep, width, across, axis_x) = match o.sweep {
+                        CoreSweep::Extruded { width, across } => {
+                            (Sweep::Extruded, mm32(width), mm32(across), 0.0)
+                        }
+                        CoreSweep::Revolved { axis_x } => (Sweep::Revolved, 0.0, 0.0, mm32(axis_x)),
                     };
                     Outline {
                         body: body_index(o.body.0),
@@ -2244,6 +2261,7 @@ impl Scene {
                             CoreMaterial::PunchingFelt => Material::PunchingFelt,
                             CoreMaterial::HardFelt => Material::HardFelt,
                             CoreMaterial::Cloth => Material::Cloth,
+                            CoreMaterial::BushingCloth => Material::BushingCloth,
                             CoreMaterial::Paper { .. } => Material::Paper,
                         },
                         paper_mm: match o.material {
@@ -2258,6 +2276,8 @@ impl Scene {
                         },
                         sweep,
                         width_mm: width,
+                        across_mm: across,
+                        is_in_the_section: o.sweep.is_in_the_section(),
                         axis_x_mm: axis_x,
                         points_mm: o
                             .points
@@ -2595,6 +2615,21 @@ pub enum Problem {
         /// How far it reaches past the keystick's underside, millimeters.
         by_mm: f64,
     },
+    /// The key button's two rounded ends reach past each other along its
+    /// top.
+    CapsuleEndsOverlap {
+        /// How far, millimeters along the key.
+        by_mm: f64,
+    },
+    /// A part of the balance mortise does not fit where it is cut or set.
+    DoesNotFit {
+        /// The part that does not fit.
+        part: Part,
+        /// What it does not fit in.
+        within: Part,
+        /// By how much, millimeters.
+        by_mm: f64,
+    },
     /// The front mortise is cut through the top of the keystick.
     MortiseThroughKeyTop {
         /// Its depth, millimeters.
@@ -2709,6 +2744,12 @@ impl Problem {
                     by_mm: mm(depth - wood),
                 }
             }
+            CoreProblem::CapsuleEndsOverlap { by } => Self::CapsuleEndsOverlap { by_mm: mm(by) },
+            CoreProblem::DoesNotFit { part, within, by } => Self::DoesNotFit {
+                part: part.into(),
+                within: within.into(),
+                by_mm: mm(by),
+            },
             CoreProblem::MortiseThroughKeyTop { depth, wood } => Self::MortiseThroughKeyTop {
                 depth_mm: mm(depth),
                 wood_mm: mm(wood),
@@ -3081,6 +3122,31 @@ mod tests {
                 .unwrap_or_else(|| panic!("no {key} on the way to {path}"));
         }
         v
+    }
+
+    /// Consistency: **the scene sends where each part stands across the
+    /// keyboard, and whether the section cuts it**: on the measured section,
+    /// the balance mortise's two bushings 2.35 mm from the sagittal plane,
+    /// on the treble side and on the bass side, out of the section; every
+    /// other part centered on the plane, in it.
+    #[test]
+    fn the_scene_sends_where_each_part_stands_across_the_keyboard() {
+        let scene = Scene::of(&Instrument::weighed_section());
+        let (bushings, others): (Vec<&Outline>, Vec<&Outline>) = scene
+            .outlines
+            .iter()
+            .partition(|o| o.code == Part::BalanceMortiseBushing);
+        let across: Vec<f32> = bushings.iter().map(|o| o.across_mm).collect();
+        // Millimeters in single precision, a few of its ulps at 2.35 mm.
+        let near = |a: f32, b: f32| (a - b).abs() <= 4.0 * f32::EPSILON * 2.35;
+        assert!(
+            across.len() == 2 && near(across[0], -2.35) && near(across[1], 2.35),
+            "{across:?}"
+        );
+        assert!(bushings.iter().all(|o| !o.is_in_the_section));
+        assert!(others
+            .iter()
+            .all(|o| o.across_mm == 0.0 && o.is_in_the_section));
     }
 
     /// Consistency: **a code crosses as the engine names it**: every

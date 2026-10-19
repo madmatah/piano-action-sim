@@ -517,8 +517,8 @@ pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
 /// drawn edge only half the washer's width times the tilt above where it
 /// stands on the felt's center, so one riding that close under its pin's top
 /// is not lowered onto its frame below it. The balance rail pin alone is
-/// left out, which stands hidden in the key's wood, the balance mortise not
-/// being drawn.
+/// left out, which stands in its balance hole and its slot, where no contact
+/// reads it.
 ///
 /// The start a placement goes back to when the nominal pose, an attitude on
 /// the punching whose overlap the rows read within their margin, gives the
@@ -579,7 +579,8 @@ fn key_and_rails(mounted: &Mounted) -> (Vec<PartId>, Vec<PartId>) {
 }
 
 /// The parts of `mounted`'s key, and every part of its frame but the balance
-/// rail pin, which stands hidden in the key's wood.
+/// rail pin, which stands in its balance hole and its slot, where no contact
+/// reads it.
 fn key_and_frame(mounted: &Mounted) -> (Vec<PartId>, Vec<PartId>) {
     let key = parts_where(mounted, &|p| p.body == mounted.key);
     let frame = parts_where(mounted, &|p| {

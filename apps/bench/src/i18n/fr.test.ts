@@ -240,6 +240,19 @@ describe('a part named in a sentence', () => {
       }),
     ).toContain('10,0 mm en avant de l’extrémité arrière de la capsule de touche')
   })
+
+  it('says what does not fit in what, each with its article', () => {
+    expect(
+      word(t.editRefusal, 'does_not_fit', {
+        code: 'does_not_fit',
+        part: 'balance_mortise_bushing',
+        within: 'key_button',
+        by_mm: 1,
+      }),
+    ).toBe(
+      `la garniture de la mortaise de balancier ne tiendrait pas dans la capsule de touche${NO_BREAK_SPACE}: 1,0 mm de trop.`,
+    )
+  })
 })
 
 describe('a form', () => {

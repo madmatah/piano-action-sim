@@ -33,7 +33,7 @@ pub use statics::{Equilibrium, Friction, Holder, Refusal, Statics, Support};
 /// `the_fingerprint_names_the_frozen_numbers`, which fails when one changes
 /// and the fingerprint does not. One name, one hash: a name is never given
 /// back to other frozen numbers.
-pub const SOLVER_FINGERPRINT: &str = "statics/2";
+pub const SOLVER_FINGERPRINT: &str = "statics/3";
 
 #[cfg(test)]
 mod tests {
@@ -66,8 +66,9 @@ mod tests {
     /// level, gravity, which turns every gram the procedures put on a key
     /// into newtons and every torque they read back into grams, the slack of
     /// a contact row's sector test, how flat a key's bearing on its cloth
-    /// counts as flat, and the step the band's sweep drives the measuring
-    /// point by.
+    /// counts as flat, the step the band's sweep drives the measuring
+    /// point by, and how finely an arc is drawn, which the overlap readings
+    /// and a weighed key's estimated center of mass read.
     ///
     /// Not here, because each reading carries it or its record holds it: the
     /// measuring point, a setting every reading names in its conditions; the
@@ -126,6 +127,7 @@ mod tests {
             crate::geometry::signed::SECTOR_SLACK.to_bits(),
             crate::contact::FLAT_WITHIN.to_bits(),
             sweep::STEP.to_bits(),
+            u64::from(crate::geometry::DRAWN_HALVINGS),
         ]);
         words
     }
@@ -139,7 +141,7 @@ mod tests {
         let hash = fnv1a(&frozen());
         assert_eq!(
             (SOLVER_FINGERPRINT, hash),
-            ("statics/2", 0x0891_4d79_7b51_9fb7),
+            ("statics/3", 0x0526_f513_9ebb_9e34),
             "a frozen number changed: the hash is now {hash:#018x}. Give the solver a new \
              fingerprint and record the hash beside it."
         );

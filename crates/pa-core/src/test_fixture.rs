@@ -21,7 +21,7 @@
 
 use crate::measure::TouchweightProtocol;
 use crate::parts::frame::{Crown, Drawer, FrameSections, PinShape, PunchingStack, RailSection};
-use crate::parts::{Capstan, FrameDesign, KeyDesign, KeyMass, TopClearance};
+use crate::parts::{BalanceMortise, Capstan, FrameDesign, KeyDesign, KeyMass, TopClearance};
 use crate::regulation::Targets;
 
 /// The thicknesses the owner's drawer holds, meters, thinnest first: 0.08,
@@ -109,6 +109,15 @@ pub fn key() -> KeyDesign {
         capsule_height: 0.0060,
         capsule_length: 0.062,
         capsule_center: None,
+        capsule_end_radius: 0.012,
+        balance_mortise: BalanceMortise {
+            length: 0.0102,
+            width: 0.0060,
+            floor: 0.0025,
+            hole_diameter: 0.0034,
+            bushing_thickness: 0.0013,
+            bushing_depth: 0.0030,
+        },
         back_check_block_height: 0.0080,
         back_check_block_back: -0.220,
         back_check_block_length: 0.027,

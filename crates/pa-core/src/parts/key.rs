@@ -5,11 +5,14 @@
 //! back, and its top lowered between the capstan and the back check block
 //! where it has a clearance for the wippen rail. Glued to it: the keytop,
 //! whose lip overhangs the key front; the key front over the end grain; the
-//! key button where the balance mortise is cut; the back check block; the
-//! hard felt on the thinned tail, where it has one. Each glued block stands
-//! on the wood under it, the keystick's full height or the bare tail.
-//! Screwed into its full height: the capstan, a turned part, its head flat or
-//! domed. Cut out of it: the front mortise, drawn as the void it is.
+//! key button, its ends rounded, where the balance mortise is cut; the back
+//! check block; the hard felt on the thinned tail, where it has one. Each
+//! glued block stands on the wood under it, the keystick's full height or the
+//! bare tail. Screwed into its full height: the capstan, a turned part, its
+//! head flat or domed. Cut out of it: the front mortise, and the balance
+//! mortise through the key button with its cavity and the balance hole under
+//! it, each drawn as the void it is; set into the balance mortise's two long
+//! sides, its bushing, out of the sagittal plane.
 //!
 //! Each piece is its own part with its own material, so the keytop and the key
 //! front can be drawn white and the glued blocks in their own wood: what a
@@ -17,23 +20,23 @@
 //! outline names the number of the key that places it ([`PlacedBy`]), so an
 //! application can say how that number is known. The key's mass is not
 //! integrated over these outlines; it is weighed or published. Their area
-//! centroid, the front mortise and the clearance taken out, stands in for
+//! centroid, the mortises and the clearance taken out, stands in for
 //! the height of a weighed key's center of mass, which no scale gives
 //! ([`KeyDesign::section_centroid`]).
 //!
-//! # The underside, and the mortise in it
+//! # The underside, and the mouths in it
 //!
 //! The keystick's underside is one straight chain from the end of its chamfer
-//! to its front, split at the front mortise's edges into collinear segments.
-//! The key bears on the front punching beside the slot, out of the sagittal
-//! plane, so the chain runs on across the slot; the split is what lets a pin
-//! read the wood beside the slot and not the slot itself. A straight vertex
-//! has no exterior angle, so it is no feature for a contact to catch on.
-//!
-//! The balance mortise is not drawn: none of its dimensions is measured, and
-//! the balance pin's height waits on it (`data/params/key-frame-sections.json`).
+//! to its front, split at the balance hole's edges and the front mortise's
+//! into collinear segments. The key bears on each punching beside its hole or
+//! its slot, out of the sagittal plane, so the chain runs on across them; the
+//! split is what lets a pin read the wood beside the slot and not the slot
+//! itself, and what gives each mouth a segment of its own, which the view
+//! leaves open. A straight vertex has no exterior angle, so it is no feature
+//! for a contact to catch on. The key button's flat top is split the same
+//! way at the slot's ends.
 
-use super::{count, next_id, polygon, GluedBlock, KeyDesign};
+use super::{count, next_id, polygon, rounded_ends, GluedBlock, KeyDesign};
 use crate::contact::{
     Anchor, AnchorCode, Material, Part, PartCode, PartId, PlacedBy, Role, SurfaceRef, Sweep,
 };
@@ -43,6 +46,9 @@ use crate::mechanism::BodyId;
 /// The numbers that place a glued block's four sides, from its bottom round
 /// counter-clockwise: the wood it stands on, its front, its top, its back.
 type BlockNames = [PlacedBy; 4];
+
+/// The number that places each run of an outline's segments.
+type Placements = Vec<(core::ops::Range<u16>, PlacedBy)>;
 
 /// What the key's parts declare: where each is, and the ranges and points of
 /// them that anything else may read.
@@ -64,17 +70,28 @@ pub struct KeyRanges {
     pub capstan: PartId,
     /// The front mortise, a cut.
     pub front_mortise: PartId,
+    /// The balance mortise, a cut: the slot through the key button and the
+    /// cavity under it.
+    pub balance_mortise: PartId,
+    /// The balance hole, a cut through the floor of that cavity.
+    pub balance_hole: PartId,
+    /// The bushing on each long side of the slot, on its treble side and on
+    /// its bass side ([`Sweep::Extruded`]'s `across`).
+    pub balance_mortise_bushings: [PartId; 2],
     /// The underside, from the tail forward: the keystick's chamfer and flat,
-    /// the flat split at the front mortise's edges, then the key front's
+    /// the flat split at the balance hole's edges and the front mortise's,
+    /// then the key front's
     /// bottom. The first segment of the first range is the chamfer. What the
     /// back rail cloth reads.
     pub underside: [SurfaceRef; 2],
     /// The underside's flat, from where the chamfer runs out to the front of
-    /// the key, the slot's mouth included: the key bears on a punching beside
-    /// the slot, out of the sagittal plane. What the punchings read.
+    /// the key, the mouths of the slot and of the balance hole included: the
+    /// key bears on a punching beside them, out of the sagittal plane. What
+    /// the punchings read.
     pub underside_flat: [SurfaceRef; 2],
-    /// The wood round the front mortise: the flat less the slot's mouth,
-    /// behind the slot and in front of it, each run chained at the slot's
+    /// The wood round the front mortise: the flat less the slot's mouth and
+    /// the balance hole's, behind the slot and in front of it, each run
+    /// chained at the slot's
     /// mouth to the slot's wall there, which the mortise's cut draws. What a
     /// front rail pin reads that stands outside its mortise but under the
     /// key, that straddles the slot's edge, or that a turning key brings
@@ -108,6 +125,7 @@ impl KeyDesign {
         let tail_front = self.tail_front();
         let kink = self.tail_end + self.tail_rise_run;
         let (mortise_back, mortise_front) = self.front_mortise_span();
+        let (hole_back, hole_front) = self.balance_hole_span();
         let mut push = |part: Part| {
             let id = next_id(out);
             out.push(part);
@@ -121,7 +139,10 @@ impl KeyDesign {
             code,
             placed_by,
             outline,
-            sweep: Sweep::Extruded { width: self.width },
+            sweep: Sweep::Extruded {
+                width: self.width,
+                across: 0.0,
+            },
             role: Role::Solid,
             material,
         };
@@ -153,15 +174,17 @@ impl KeyDesign {
         };
 
         // The keystick: the underside from the tail forward, split at the
-        // mortise's edges where they fall on the flat, then the end grain the
-        // key front covers, the top at its full height back to the tail's
-        // front, lowered by the clearance for the wippen rail where it has
-        // one, and the tail cut down behind it.
+        // balance hole's edges and the front mortise's where they fall on
+        // the flat, then the end grain the key front covers, the top at its
+        // full height back to the tail's front, lowered by the clearance for
+        // the wippen rail where it has one, and the tail cut down behind it.
         let mut underside = vec![
             Point::new(self.tail_end, self.tail_rise),
             Point::new(kink, 0.0),
         ];
-        for edge in [mortise_back, mortise_front] {
+        let mut mouths = [hole_back, hole_front, mortise_back, mortise_front];
+        mouths.sort_by(f64::total_cmp);
+        for edge in mouths {
             if edge > kink && edge < wood_front && underside.iter().all(|p| p.x < edge) {
                 underside.push(Point::new(edge, 0.0));
             }
@@ -171,12 +194,13 @@ impl KeyDesign {
         // Where the flat stops at the slot's two edges, for the wood round it:
         // the x the underside's points stand at.
         let edges: Vec<f64> = underside.iter().map(|p| p.x).collect();
-        // The flat's segments that are wood and not the slot's mouth, as runs
-        // of consecutive segments: whatever of the flat lies over the slot is
-        // not under the key's wood.
+        // The flat's segments that are wood and not the slot's mouth or the
+        // balance hole's, as runs of consecutive segments: whatever of the
+        // flat lies over either is not under the key's wood.
         let wood = |x0: f64, x1: f64| {
             let middle = 0.5 * (x0 + x1);
-            middle < mortise_back || middle > mortise_front
+            (middle < mortise_back || middle > mortise_front)
+                && (middle < hole_back || middle > hole_front)
         };
         let mut beside_runs: Vec<core::ops::Range<u16>> = Vec::new();
         for k in 1..underside_segments {
@@ -278,16 +302,12 @@ impl KeyDesign {
             ],
         ));
 
-        // The key button, where the balance mortise is cut through.
-        let (button_back, button_front) = self.key_button_span();
-        let key_button = push(block(
+        let (button_outline, button_placed, mouth_y) = self.key_button_outline();
+        let key_button = push(solid(
             PartCode::KeyButton,
-            GluedBlock {
-                back: button_back,
-                length: button_front - button_back,
-                height: self.capsule_height,
-            },
-            ["capsule_length", "capsule_height", "capsule_length"],
+            button_outline,
+            Material::BlockWood,
+            button_placed,
         ));
 
         // The back check block, where the action puts it: placed from the
@@ -389,10 +409,18 @@ impl KeyDesign {
                 (3..4, "front_mortise.from_front_edge"),
             ],
             outline: mortise_outline,
-            sweep: Sweep::Extruded { width: 0.0 },
+            sweep: Sweep::Extruded {
+                width: 0.0,
+                across: 0.0,
+            },
             role: Role::Cut,
             material: Material::KeyWood,
         });
+
+        let [mortise, hole, treble_side, bass_side] = self.balance_mortise_parts(body, mouth_y);
+        let balance_mortise = push(mortise);
+        let balance_hole = push(hole);
+        let balance_mortise_bushings = [push(treble_side), push(bass_side)];
 
         let front_bottom = SurfaceRef {
             part: key_front,
@@ -440,6 +468,9 @@ impl KeyDesign {
             key_tail_felt,
             capstan,
             front_mortise,
+            balance_mortise,
+            balance_hole,
+            balance_mortise_bushings,
             underside: [
                 SurfaceRef {
                     part: keystick,
@@ -480,6 +511,169 @@ impl KeyDesign {
                 code: AnchorCode::CapstanContact,
             },
         }
+    }
+
+    /// The balance mortise's slot, meters along the key from the balance
+    /// pin: centered on it.
+    fn balance_slot_span(&self) -> (f64, f64) {
+        let half = 0.5 * self.balance_mortise.length;
+        (-half, half)
+    }
+
+    /// The balance hole, meters along the key from the balance pin: centered
+    /// on the pin it is fitted to.
+    fn balance_hole_span(&self) -> (f64, f64) {
+        let half = 0.5 * self.balance_mortise.hole_diameter;
+        (-half, half)
+    }
+
+    /// The key button's outline on the wood under it, what places each of
+    /// its segments, and the height its flat top is drawn at. The top is
+    /// split at the balance mortise's slot's ends, so that the slot's mouth
+    /// is a segment of its own, which the slot's cut shares; the arcs' ends
+    /// set its height, which may round a bit off the key button's top.
+    fn key_button_outline(&self) -> (Vec<Seg>, Placements, f64) {
+        let (button_back, button_front) = self.key_button_span();
+        let button_base = self.wood_under(button_back, button_front);
+        let button_on = if button_base.to_bits() == self.stick_height.to_bits() {
+            "stick_height"
+        } else {
+            "tail_height"
+        };
+        let ends = rounded_ends(
+            button_back,
+            button_front,
+            button_base,
+            self.capsule_height,
+            self.capsule_end_radius,
+        );
+        let mut outline = vec![Seg::Line {
+            a: ends[ends.len() - 1].end(),
+            b: ends[0].start(),
+        }];
+        let (slot_back, slot_front) = self.balance_slot_span();
+        let mut mouth_y = button_base + self.capsule_height;
+        let mut split: Vec<Seg> = Vec::with_capacity(ends.len() + 2);
+        for seg in ends {
+            match seg {
+                Seg::Line { a, b } if a.y.to_bits() == b.y.to_bits() && a.x > b.x => {
+                    mouth_y = a.y;
+                    let mut from = a;
+                    for x in [slot_front, slot_back] {
+                        if x < from.x && x > b.x {
+                            let to = Point::new(x, a.y);
+                            split.push(Seg::Line { a: from, b: to });
+                            from = to;
+                        }
+                    }
+                    split.push(Seg::Line { a: from, b });
+                }
+                other => split.push(other),
+            }
+        }
+        let mut placed_by: Placements = vec![(0..1, button_on)];
+        for (index, seg) in (1u16..).zip(&split) {
+            let name = match seg {
+                Seg::Arc { .. } => "capsule_end_radius",
+                Seg::Line { a, b } if a.y.to_bits() == b.y.to_bits() => "capsule_height",
+                Seg::Line { .. } => "capsule_length",
+            };
+            placed_by.push((index..index + 1, name));
+        }
+        outline.extend(split);
+        (outline, placed_by, mouth_y)
+    }
+
+    /// The balance mortise's cut, the balance hole's under it, and the
+    /// bushing on each long side of the slot, on its treble side and on its
+    /// bass side, carried by `body`, the slot's top at `mouth_y`, the key
+    /// button's. The slot's floor is split at the hole's edges, so that the
+    /// hole's mouth is a segment of its own, which the hole shares.
+    fn balance_mortise_parts(&self, body: BodyId, mouth_y: f64) -> [Part; 4] {
+        let mortise = self.balance_mortise;
+        let (slot_back, slot_front) = self.balance_slot_span();
+        let (hole_back, hole_front) = self.balance_hole_span();
+        let mut slot = vec![Point::new(slot_back, mortise.floor)];
+        for x in [hole_back, hole_front] {
+            if x > slot_back && x < slot_front {
+                slot.push(Point::new(x, mortise.floor));
+            }
+        }
+        slot.push(Point::new(slot_front, mortise.floor));
+        let floor_segments = u16::try_from(slot.len() - 1).expect("a short floor");
+        slot.extend([
+            Point::new(slot_front, mouth_y),
+            Point::new(slot_back, mouth_y),
+        ]);
+        let cut = |code, placed_by, outline, width| Part {
+            body,
+            code,
+            placed_by,
+            outline,
+            sweep: Sweep::Extruded { width, across: 0.0 },
+            role: Role::Cut,
+            material: Material::KeyWood,
+        };
+        let slot_and_cavity = cut(
+            PartCode::BalanceMortise,
+            vec![
+                (0..floor_segments, "balance_mortise.floor"),
+                (floor_segments..floor_segments + 1, "balance_mortise.length"),
+                (floor_segments + 1..floor_segments + 2, "capsule_height"),
+                (
+                    floor_segments + 2..floor_segments + 3,
+                    "balance_mortise.length",
+                ),
+            ],
+            polygon(&slot),
+            mortise.width,
+        );
+        let hole = cut(
+            PartCode::BalanceHole,
+            vec![
+                (0..1, "balance_mortise.hole_diameter"),
+                (1..2, "balance_mortise.hole_diameter"),
+                (2..3, "balance_mortise.floor"),
+                (3..4, "balance_mortise.hole_diameter"),
+            ],
+            polygon(&[
+                Point::new(hole_back, 0.0),
+                Point::new(hole_front, 0.0),
+                Point::new(hole_front, mortise.floor),
+                Point::new(hole_back, mortise.floor),
+            ]),
+            mortise.hole_diameter,
+        );
+        let bushing_bottom = mouth_y - mortise.bushing_depth;
+        let bushing_across = 0.5 * (mortise.width - mortise.bushing_thickness);
+        let bushing = |across: f64| Part {
+            body,
+            code: PartCode::BalanceMortiseBushing,
+            placed_by: vec![
+                (0..1, "balance_mortise.bushing_depth"),
+                (1..2, "balance_mortise.length"),
+                (2..3, "capsule_height"),
+                (3..4, "balance_mortise.length"),
+            ],
+            outline: polygon(&[
+                Point::new(slot_back, bushing_bottom),
+                Point::new(slot_front, bushing_bottom),
+                Point::new(slot_front, mouth_y),
+                Point::new(slot_back, mouth_y),
+            ]),
+            sweep: Sweep::Extruded {
+                width: mortise.bushing_thickness,
+                across,
+            },
+            role: Role::Lining,
+            material: Material::BushingCloth,
+        };
+        [
+            slot_and_cavity,
+            hole,
+            bushing(-bushing_across),
+            bushing(bushing_across),
+        ]
     }
 }
 
@@ -545,9 +739,13 @@ mod tests {
         (parts, ranges)
     }
 
-    /// The polygon a closed outline of lines runs through.
+    /// The polygon a closed outline runs through, its arcs drawn as the
+    /// section draws them.
     fn vertices(part: &Part) -> Vec<Point> {
-        part.outline.iter().map(Seg::start).collect()
+        part.outline
+            .iter()
+            .flat_map(|seg| seg.drawn(crate::geometry::DRAWN_HALVINGS))
+            .collect()
     }
 
     /// Twice the signed area of a polygon, positive when counter-clockwise.
@@ -582,7 +780,7 @@ mod tests {
             let (parts, ranges) = built(&key);
             assert_eq!(
                 parts.len(),
-                7 + usize::from(key.damper_felt.is_some()),
+                11 + usize::from(key.damper_felt.is_some()),
                 "a felt where the tail has one"
             );
             for part in &parts {
@@ -607,8 +805,9 @@ mod tests {
 
     /// Consistency: the drawn key tiles its section, one polygon through the
     /// key's fields, with no gap and no part drawn over another. The capstan
-    /// is turned, and in neither; the mortise is a cut, which the polygon
-    /// does not take out. The two enclose the same area with the same first
+    /// is turned, and the balance mortise's bushing stands beside the
+    /// sagittal plane: neither is in either; the mortises and the balance
+    /// hole are cuts, which the polygon does not take out. The two enclose the same area with the same first
     /// moments along and across the key, so a part drawn in one place and
     /// tiled in another, as a block slid along the key's top, is caught where
     /// the area alone would not see it.
@@ -620,9 +819,10 @@ mod tests {
     /// back to the tail's front.
     ///
     /// The bounds are derived: each shoelace sum rounds once per vertex, on
-    /// terms no larger than the reach squared, and there are under 40 of them;
-    /// each first moment's term is rounded at most four times, on terms no
-    /// larger than twice the reach cubed.
+    /// terms no larger than the reach squared, as many as the parts and the
+    /// section have points, the key button's arcs drawn in theirs; each first
+    /// moment's term is rounded at most four times, on terms no larger than
+    /// twice the reach cubed.
     #[test]
     fn the_drawn_key_tiles_its_section() {
         for key in [
@@ -632,17 +832,24 @@ mod tests {
             cleared_to_the_tail(),
         ] {
             let (parts, _) = built(&key);
-            let drawn = parts
+            let tiles: Vec<Vec<Point>> = parts
                 .iter()
-                .filter(|p| p.role != Role::Cut && matches!(p.sweep, Sweep::Extruded { .. }))
-                .map(|p| moments(&vertices(p)))
-                .fold([0.0; 3], |sum, m| {
-                    [sum[0] + m[0], sum[1] + m[1], sum[2] + m[2]]
-                });
-            let section = moments(&key.outline_vertices());
+                .filter(|p| {
+                    p.role != Role::Cut
+                        && matches!(p.sweep, Sweep::Extruded { .. })
+                        && p.sweep.is_in_the_section()
+                })
+                .map(vertices)
+                .collect();
+            let drawn = tiles.iter().map(|t| moments(t)).fold([0.0; 3], |sum, m| {
+                [sum[0] + m[0], sum[1] + m[1], sum[2] + m[2]]
+            });
+            let outline = key.outline_vertices();
+            let section = moments(&outline);
+            let terms = (tiles.iter().map(Vec::len).sum::<usize>() + outline.len()) as f64;
             let reach = key.front_edge - key.tail_end;
             assert!(
-                (drawn[0] - section[0]).abs() <= 40.0 * f64::EPSILON * reach * reach,
+                (drawn[0] - section[0]).abs() <= terms * f64::EPSILON * reach * reach,
                 "the parts enclose {} m², the section {} m²",
                 drawn[0],
                 section[0]
@@ -650,7 +857,7 @@ mod tests {
             for axis in [1, 2] {
                 assert!(
                     (drawn[axis] - section[axis]).abs()
-                        <= 40.0 * 4.0 * f64::EPSILON * 2.0 * reach * reach * reach,
+                        <= terms * 4.0 * f64::EPSILON * 2.0 * reach * reach * reach,
                     "first moment {axis}: the parts {} m³, the section {} m³",
                     drawn[axis],
                     section[axis]
@@ -684,6 +891,14 @@ mod tests {
         key
     }
 
+    /// `key` with its key button's ends square.
+    fn square_ended(key: KeyDesign) -> KeyDesign {
+        KeyDesign {
+            capsule_end_radius: 0.0,
+            ..key
+        }
+    }
+
     /// The test key with its tail end taken `by` meters further back, its
     /// back check block left where the action puts it.
     fn lengthened_at_the_back(by: f64) -> KeyDesign {
@@ -709,9 +924,12 @@ mod tests {
     /// computed from the key's end, to the bit, and no corner at the
     /// keystick's top between them; the drawn block runs from the tail's
     /// front.
+    ///
+    /// Its key button is drawn square-ended, so that the outline's points
+    /// are its corners and can be counted.
     #[test]
     fn on_the_default_key_the_tail_begins_right_behind_the_block() {
-        let key = crate::test_fixture::key();
+        let key = square_ended(crate::test_fixture::key());
         let tail_front = key.tail_end + key.tail_length;
         assert_eq!(key.back_check_block_back.to_bits(), tail_front.to_bits());
         let top = key.stick_height;
@@ -775,7 +993,9 @@ mod tests {
             assert_eq!(at.y.to_bits(), height.to_bits(), "at {x} m");
         }
 
-        let outline = key.outline_vertices();
+        // Its key button square-ended, so that the outline's points are its
+        // corners and can be counted.
+        let outline = square_ended(key.clone()).outline_vertices();
         let tail = [
             Point::new(front, top),
             Point::new(front, top + key.back_check_block_height),
@@ -804,16 +1024,20 @@ mod tests {
     }
 
     /// The underside is the chamfer, then one straight flat to the front of
-    /// the key, split at the mortise's edges: the corners the key's fields
-    /// put it on are its vertices, bit for bit, and the mortise's bottom is a
-    /// segment of it.
+    /// the key, split at the balance hole's edges and the front mortise's:
+    /// the corners the key's fields put it on are its vertices, bit for bit,
+    /// and the bottoms of the hole and of the mortise are segments of it.
     #[test]
-    fn the_underside_is_split_at_the_mortise_edges_and_runs_on_across_the_slot() {
+    fn the_underside_is_split_at_the_mouths_of_its_cuts_and_runs_on_across_them() {
         let key = crate::test_fixture::key();
         let (parts, ranges) = built(&key);
         let stick = ranges.underside[0].segs(&parts);
         let front = ranges.underside[1].segs(&parts);
-        assert_eq!(stick.len(), 4, "chamfer, flat, the slot's mouth, flat");
+        assert_eq!(
+            stick.len(),
+            6,
+            "chamfer, flat, the hole's mouth, flat, the slot's mouth, flat"
+        );
         let [tail, kink, nose] = corners(&key);
         assert!(same(stick[0].start(), tail));
         assert!(same(stick[0].end(), kink));
@@ -829,13 +1053,17 @@ mod tests {
                 "{seg:?} is off the flat"
             );
         }
+        let hole = &parts[ranges.balance_hole.index()];
+        assert_eq!(hole.role, Role::Cut);
+        assert!(same(stick[2].start(), hole.outline[0].start()));
+        assert!(same(stick[2].end(), hole.outline[0].end()));
         let (back, forward) = key.front_mortise_span();
         let mortise = &parts[ranges.front_mortise.index()];
         assert_eq!(mortise.role, Role::Cut);
-        assert!(same(stick[2].start(), mortise.outline[0].start()));
-        assert!(same(stick[2].end(), mortise.outline[0].end()));
-        assert_eq!(stick[2].start().x.to_bits(), back.to_bits());
-        assert_eq!(stick[2].end().x.to_bits(), forward.to_bits());
+        assert!(same(stick[4].start(), mortise.outline[0].start()));
+        assert!(same(stick[4].end(), mortise.outline[0].end()));
+        assert_eq!(stick[4].start().x.to_bits(), back.to_bits());
+        assert_eq!(stick[4].end().x.to_bits(), forward.to_bits());
         let top = ranges.front_mortise_top.segs(&parts)[0];
         assert_eq!(top.start().y.to_bits(), key.front_mortise_depth.to_bits());
         assert!(
@@ -852,11 +1080,86 @@ mod tests {
         }
     }
 
+    /// Consistency: **the balance mortise's mouths are segments of what they
+    /// open through, to the bit**: the slot's top is a segment of the key
+    /// button's flat top, split at the slot's ends, and the hole's top a
+    /// segment of the slot's floor, split at the hole's edges, so that the
+    /// view leaves both open. The bushing stands on each long side of the
+    /// slot, its cloth's thickness wide and its outer face on the slot's
+    /// wall, from the slot's top down its depth: on the test key's 6.0 mm
+    /// slot and 1.3 mm cloth, 2.35 mm from the sagittal plane, on the
+    /// treble side and on the bass side.
+    #[test]
+    fn the_balance_mortises_mouths_are_segments_of_what_they_open_through() {
+        let key = crate::test_fixture::key();
+        let (parts, ranges) = built(&key);
+        let segments = |id: PartId| -> Vec<(Point, Point)> {
+            parts[id.index()]
+                .outline
+                .iter()
+                .map(|seg| (seg.start(), seg.end()))
+                .collect()
+        };
+        let shared = |a: &[(Point, Point)], b: &[(Point, Point)]| -> Vec<(Point, Point)> {
+            a.iter()
+                .copied()
+                .filter(|&(p, q)| {
+                    b.iter()
+                        .any(|&(u, v)| (same(p, u) && same(q, v)) || (same(p, v) && same(q, u)))
+                })
+                .collect()
+        };
+        let slot = segments(ranges.balance_mortise);
+        let half_slot = 0.5 * key.balance_mortise.length;
+        let mouth = shared(&slot, &segments(ranges.key_button));
+        assert_eq!(mouth.len(), 1, "{mouth:?}");
+        let (front, back) = mouth[0];
+        assert_eq!(
+            (front.x.to_bits(), back.x.to_bits()),
+            (half_slot.to_bits(), (-half_slot).to_bits())
+        );
+        let half_hole = 0.5 * key.balance_mortise.hole_diameter;
+        let hole_top = shared(&segments(ranges.balance_hole), &slot);
+        assert_eq!(hole_top.len(), 1, "{hole_top:?}");
+        let (p, q) = hole_top[0];
+        assert_eq!(
+            (p.y.to_bits(), q.y.to_bits()),
+            (
+                key.balance_mortise.floor.to_bits(),
+                key.balance_mortise.floor.to_bits()
+            )
+        );
+        assert_eq!(p.x.abs().to_bits(), half_hole.to_bits());
+
+        let top = front.y;
+        for (id, toward_the_bass) in ranges.balance_mortise_bushings.iter().zip([-1.0, 1.0]) {
+            let bushing = &parts[id.index()];
+            let Sweep::Extruded { width, across } = bushing.sweep else {
+                panic!("a bushing is extruded");
+            };
+            assert_eq!(
+                width.to_bits(),
+                key.balance_mortise.bushing_thickness.to_bits()
+            );
+            // One subtraction and one halving of millimeters.
+            assert!((across - toward_the_bass * 0.00235).abs() <= f64::EPSILON * 0.01);
+            let ys: Vec<f64> = vertices(bushing).iter().map(|v| v.y).collect();
+            let highest = ys.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+            let lowest = ys.iter().copied().fold(f64::INFINITY, f64::min);
+            assert_eq!(highest.to_bits(), top.to_bits(), "from the slot's top");
+            assert!(
+                (highest - lowest - key.balance_mortise.bushing_depth).abs() <= f64::EPSILON * 0.1,
+                "down its depth"
+            );
+        }
+    }
+
     /// The flat the punchings read runs from where the chamfer ends to the
-    /// front of the key, across the slot's mouth; the wood beside the mortise
-    /// is that flat less the mouth, behind the slot and in front of it, the
-    /// key front's bottom included. Moved off the flat, the mortise leaves
-    /// the whole flat beside it.
+    /// front of the key, across the mouths of the balance hole and of the
+    /// slot; the wood beside the mortise is that flat less the two mouths,
+    /// behind the slot and in front of it, the key front's bottom included.
+    /// Moved off the flat, the mortise leaves the whole flat but the hole's
+    /// mouth beside it.
     #[test]
     fn the_flat_and_the_wood_beside_the_mortise_are_declared() {
         let length = |segs: &[Seg]| -> f64 { segs.iter().map(|s| s.end().x - s.start().x).sum() };
@@ -890,17 +1193,19 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 (ranges.keystick, 1..2),
+                (ranges.keystick, 3..4),
                 (ranges.front_mortise, 3..4),
                 (ranges.front_mortise, 1..2),
-                (ranges.keystick, 3..4),
+                (ranges.keystick, 5..6),
                 (ranges.key_front, 0..1),
             ],
-            "behind, the slot's back wall, its front wall, in front, the key front"
+            "behind the hole, between it and the slot, the slot's back wall, \
+             its front wall, in front, the key front"
         );
         // The walls stand upright, so the flat's length less the wood's is
-        // the mouth.
-        let mouth = front - back;
-        assert!((length(&flat) - length(&beside) - mouth).abs() < 1e-15);
+        // the two mouths.
+        let mouths = front - back + key.balance_mortise.hole_diameter;
+        assert!((length(&flat) - length(&beside) - mouths).abs() < 1e-15);
 
         // A mortise cut forward of the key's flat, out of reach: nothing of
         // the flat is over it.
@@ -919,7 +1224,9 @@ mod tests {
             .iter()
             .flat_map(|r| r.segs(&parts))
             .collect();
-        assert_eq!(flat, beside);
+        let hole_mouth = ranges.underside[0].segs(&parts)[2];
+        let flat_but_the_hole: Vec<Seg> = flat.into_iter().filter(|s| *s != hole_mouth).collect();
+        assert_eq!(flat_but_the_hole, beside);
     }
 
     /// The named points stand where the protocols read them, to the bit: the

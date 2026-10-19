@@ -158,9 +158,6 @@
     "date": "2026-10-11",
     "what_for": "Each piece of the key is drawn as its own part with its own material, so that a reader tells the pieces apart as on a real key. A color is the view's choice from the material; the material is the model's."
   },
-  "deliberately_absent": [
-    "The balance mortise. None of its dimensions is measured, and the balance pin's height waits on the same measurement (key-frame-sections.json), so it is not drawn and the balance pin stands hidden in the key's wood, rather than in a hole shaped from a guess. The front mortise is drawn: its depth is measured (front_mortise_depth), and its place and length are the two S records above it."
-  ],
   "still_to_measure": [
     "Where the capsule sits along the key. It depends on whether the key is a natural or a sharp, and belongs with the balance rail rather than here.",
     "One of these keys weighed whole, as a key that arrives leaded is weighed: its mass on a scale, its front weight on Stanwood's jig, and how far back from the covering's lip the weight was centered. Until then the measured section has no mass and refuses every reading that needs one. It is the entry point of the first validation (`docs/FOUNDATIONS.md` > Validation instruments, 'One real key, measured by the owner'), and the measurement to ask for first.",
@@ -169,7 +166,8 @@
     "The front mortise: how far back from the key's front end it is cut, and how long the slot is along the key. Both are S above, and the second is the tolerance a frame design is judged against.",
     "Where the back check block stands along the key, as a distance from the balance pin to its back end. The measured section's 220 mm is where the measured tail ends, derived and not measured.",
     "The clearance cut in the top of the key between the capstan and the back check block, not right behind the capstan: it is there so that the wippen rail, which runs across the keyboard over the keys, cannot rub the key, and behind it the key comes back to its full height, the back check block glued on that. Where its two ends stand, as distances behind the balance pin, and how deep it is cut below the full top. The engine draws such a clearance, placed from the balance pin as the back check block is, since the action places the rail it clears; the measured section's profile states it absent until it is measured.",
-    "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm the key bears at and meets the targets on each, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.049 degrees and leaves key height and dip on their targets, within the paper the drawer lays them in: a back rail's position is forgiving. The bound is real and the number is not critical."
+    "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm the key bears at and meets the targets on each, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.049 degrees and leaves key height and dip on their targets, within the paper the drawer lays them in: a back rail's position is forgiving. The bound is real and the number is not critical.",
+    "The balance mortise and the key button's ends, as balance-mortise.json describes them: every dimension is a setting, drawn from stated assumptions until measured."
   ],
   "not_weighed_here": "No mass is recorded in this file: a key's mass is not a property of its section. The owner notes that keys differ across the keyboard in shape and in how much wood and lead they carry, so each key is weighed whole, on the bench, and an outline never weighs one."
 }

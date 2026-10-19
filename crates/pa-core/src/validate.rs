@@ -138,6 +138,26 @@ pub enum Problem {
         /// under it, meters.
         wood: f64,
     },
+    /// The key button's two rounded ends reach past each other along its
+    /// top: each reaches in from its end ([`crate::parts::end_reach`]), and
+    /// the two together run longer than the button.
+    CapsuleEndsOverlap {
+        /// How far the two reach past each other, meters along the key.
+        by: f64,
+    },
+    /// A part of the balance mortise does not fit where it is cut or set:
+    /// the slot along the key button's flat top, the cavity's floor at or
+    /// under the keystick's top and the slot within its width, the balance
+    /// hole within the slot, the bushing's two thicknesses within the
+    /// slot's width and its depth within the slot and the cavity under it.
+    DoesNotFit {
+        /// The part that does not fit.
+        part: PartCode,
+        /// What it does not fit in.
+        within: PartCode,
+        /// By how much, meters.
+        by: f64,
+    },
     /// The front mortise is cut through the top of the keystick.
     MortiseThroughKeyTop {
         /// Its depth above the underside, meters.
@@ -176,7 +196,8 @@ pub struct Design<'a> {
 /// its hard range, every paper one the drawer holds, a weighed mass, the
 /// key's outline, the capstan between its blocks on the keystick's full
 /// height, the front mortise on the flat of the underside and under the
-/// key's top, and the measuring point on the covering.
+/// key's top, the balance mortise and the key button's ends where they
+/// fit, and the measuring point on the covering.
 pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     for (param, value) in numbers(d) {
         if !value.is_finite() {
@@ -212,6 +233,8 @@ pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     outline(d.key)?;
     capstan(d.key)?;
     mortise(d.key)?;
+    key_button(d.key)?;
+    balance_mortise(d.key)?;
     let covering = d.key.keytop_length;
     let from_lip = d.protocol.measuring_point_from_lip;
     if !(0.0..=covering).contains(&from_lip) {
@@ -401,6 +424,75 @@ fn capstan(key: &KeyDesign) -> Result<(), Problem> {
     Ok(())
 }
 
+/// The key button's rounded ends meet at most: each reaches in from its end
+/// ([`crate::parts::end_reach`]), and the two together run no longer than
+/// the button.
+fn key_button(key: &KeyDesign) -> Result<(), Problem> {
+    let reach = crate::parts::end_reach(key.capsule_height, key.capsule_end_radius);
+    if 2.0 * reach > key.capsule_length {
+        return Err(Problem::CapsuleEndsOverlap {
+            by: 2.0 * reach - key.capsule_length,
+        });
+    }
+    Ok(())
+}
+
+/// The balance mortise fits where it is cut: its slot along the key
+/// button's flat top, where it opens through it, and not into a rounded
+/// end; its cavity's floor no higher than the keystick's top and its width
+/// within the keystick's; its hole within the slot; and its bushing's two
+/// thicknesses within the slot's width, and its depth within the slot and
+/// the cavity under it.
+fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
+    let reach = crate::parts::end_reach(key.capsule_height, key.capsule_end_radius);
+    let mortise = key.balance_mortise;
+    let does_not_fit = |part, within, by| Err(Problem::DoesNotFit { part, within, by });
+    let (button_back, button_front) = key.key_button_span();
+    let (flat_back, flat_front) = (button_back + reach, button_front - reach);
+    let past_the_flat = (0.5 * mortise.length - flat_front).max(flat_back + 0.5 * mortise.length);
+    if past_the_flat > 0.0 {
+        return does_not_fit(PartCode::BalanceMortise, PartCode::KeyButton, past_the_flat);
+    }
+    if mortise.floor > key.stick_height {
+        return does_not_fit(
+            PartCode::BalanceMortise,
+            PartCode::Keystick,
+            mortise.floor - key.stick_height,
+        );
+    }
+    if mortise.width > key.width {
+        return does_not_fit(
+            PartCode::BalanceMortise,
+            PartCode::Keystick,
+            mortise.width - key.width,
+        );
+    }
+    let narrowest = mortise.length.min(mortise.width);
+    if mortise.hole_diameter > narrowest {
+        return does_not_fit(
+            PartCode::BalanceHole,
+            PartCode::BalanceMortise,
+            mortise.hole_diameter - narrowest,
+        );
+    }
+    if 2.0 * mortise.bushing_thickness > mortise.width {
+        return does_not_fit(
+            PartCode::BalanceMortiseBushing,
+            PartCode::BalanceMortise,
+            2.0 * mortise.bushing_thickness - mortise.width,
+        );
+    }
+    let slot_and_cavity = key.stick_height + key.capsule_height - mortise.floor;
+    if mortise.bushing_depth > slot_and_cavity {
+        return does_not_fit(
+            PartCode::BalanceMortiseBushing,
+            PartCode::BalanceMortise,
+            mortise.bushing_depth - slot_and_cavity,
+        );
+    }
+    Ok(())
+}
+
 /// The front mortise is cut up from the flat of the underside, between the
 /// chamfer and the key front, and leaves wood above it.
 fn mortise(key: &KeyDesign) -> Result<(), Problem> {
@@ -449,6 +541,8 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         capsule_height,
         capsule_length,
         capsule_center,
+        capsule_end_radius,
+        balance_mortise,
         back_check_block_height,
         back_check_block_back,
         back_check_block_length,
@@ -492,6 +586,23 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
     if let Some(c) = capsule_center {
         out.push(("capsule_center", *c));
     }
+    let crate::parts::BalanceMortise {
+        length,
+        width: mortise_width,
+        floor,
+        hole_diameter,
+        bushing_thickness,
+        bushing_depth,
+    } = balance_mortise;
+    out.extend([
+        ("capsule_end_radius", *capsule_end_radius),
+        ("balance_mortise.length", *length),
+        ("balance_mortise.width", *mortise_width),
+        ("balance_mortise.floor", *floor),
+        ("balance_mortise.hole_diameter", *hole_diameter),
+        ("balance_mortise.bushing_thickness", *bushing_thickness),
+        ("balance_mortise.bushing_depth", *bushing_depth),
+    ]);
     out.extend([
         ("back_check_block_height", *back_check_block_height),
         ("back_check_block_back", *back_check_block_back),
@@ -1107,6 +1218,113 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    /// Consistency: **the key button's rounded ends meet at most**: on the
+    /// test key, 6 mm high, ends of 12 mm reach in √(2·12·6 − 6²) = √108 mm
+    /// each from their ends, 20.78 mm together. A key button a micrometer
+    /// longer has its ends meet a micrometer short of each other, its ends
+    /// taken; one a micrometer shorter is refused for its ends, by that
+    /// micrometer.
+    #[test]
+    fn a_key_button_whose_rounded_ends_overlap_is_refused() {
+        const MICROMETER: f64 = 1e-6;
+        let both_ends = 2.0 * 0.001 * 108.0_f64.sqrt();
+        let mut s = Standard::new();
+        s.key.capsule_length = both_ends + MICROMETER;
+        assert!(
+            !matches!(s.validate(), Err(Problem::CapsuleEndsOverlap { .. })),
+            "{:?}",
+            s.validate()
+        );
+        s.key.capsule_length = both_ends - MICROMETER;
+        match s.validate() {
+            Err(Problem::CapsuleEndsOverlap { by }) => {
+                // Two square roots and a subtraction of lengths under a
+                // decimeter, each rounded once.
+                assert!((by - MICROMETER).abs() <= 4.0 * f64::EPSILON * 0.1, "{by}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **each part of the balance mortise is refused where it
+    /// does not fit**, naming the part, what it does not fit in and by how
+    /// much, and taken a micrometer short of its limit: the slot past the
+    /// key button's flat top either side, the flat the 62 mm of the key
+    /// button less its two ends of 12 mm reach on its 6 mm of height,
+    /// √108 mm each; the cavity's floor above the keystick's top, the slot
+    /// wider than the key, the hole wider than the slot, the bushing's two
+    /// thicknesses wider than the slot, and the bushing deeper than the slot
+    /// and the cavity under it, the keystick's 24.5 mm and the key button's
+    /// 6 mm less the 2.5 mm floor.
+    #[test]
+    fn each_part_of_the_balance_mortise_is_refused_where_it_does_not_fit() {
+        const MICROMETER: f64 = 1e-6;
+        // Each shortfall is a difference of lengths under a decimeter, the
+        // flat's through two square roots, each rounded a few times.
+        let close = |by: f64| (by - MICROMETER).abs() <= 8.0 * f64::EPSILON * 0.1;
+        // Puts a part of the mortise a length past its limit, or short of it.
+        type Push = fn(&mut Standard, f64);
+        let checks: [(Push, PartCode, PartCode); 6] = [
+            (
+                |s, over| {
+                    let flat = 0.062 - 2.0 * 0.001 * 108.0_f64.sqrt();
+                    s.key.balance_mortise.length = flat + 2.0 * over;
+                },
+                PartCode::BalanceMortise,
+                PartCode::KeyButton,
+            ),
+            (
+                |s, over| s.key.balance_mortise.floor = s.key.stick_height + over,
+                PartCode::BalanceMortise,
+                PartCode::Keystick,
+            ),
+            (
+                |s, over| s.key.balance_mortise.width = s.key.width + over,
+                PartCode::BalanceMortise,
+                PartCode::Keystick,
+            ),
+            (
+                |s, over| {
+                    s.key.balance_mortise.hole_diameter = s.key.balance_mortise.width + over;
+                },
+                PartCode::BalanceHole,
+                PartCode::BalanceMortise,
+            ),
+            (
+                |s, over| {
+                    s.key.balance_mortise.bushing_thickness =
+                        0.5 * (s.key.balance_mortise.width + over);
+                },
+                PartCode::BalanceMortiseBushing,
+                PartCode::BalanceMortise,
+            ),
+            (
+                |s, over| {
+                    s.key.balance_mortise.bushing_depth = s.key.stick_height + s.key.capsule_height
+                        - s.key.balance_mortise.floor
+                        + over;
+                },
+                PartCode::BalanceMortiseBushing,
+                PartCode::BalanceMortise,
+            ),
+        ];
+        for (push, part, within) in checks {
+            let mut short = Standard::new();
+            push(&mut short, -MICROMETER);
+            assert_eq!(short.validate(), Ok(()), "{part:?} a micrometer short");
+            let mut past = Standard::new();
+            push(&mut past, MICROMETER);
+            match past.validate() {
+                Err(Problem::DoesNotFit {
+                    part: refused,
+                    within: limit,
+                    by,
+                }) if (refused, limit) == (part, within) && close(by) => {}
+                other => panic!("{part:?} in {within:?}: {other:?}"),
+            }
+        }
     }
 
     /// Consistency: **the measuring point stands on the covering**, from its

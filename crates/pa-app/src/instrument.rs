@@ -434,10 +434,6 @@ pub struct Outline {
     pub placed_by: Vec<(core::ops::Range<u16>, PlacedBy)>,
 }
 
-/// How many times an arc's sweep is halved for drawing: a quarter circle in
-/// eight pieces, whose chords stand within 2.5 µm of the cloth's 0.5 mm edges.
-const ARC_HALVINGS: u32 = 3;
-
 /// Where a contact is in a mounted key's list of pairs, as the rows name it.
 fn pair_of(mounted: &Mounted, code: ContactCode) -> Option<u16> {
     let i = mounted
@@ -1686,7 +1682,7 @@ impl Instrument {
                 let mut points = Vec::new();
                 let mut segs = Vec::new();
                 for (i, seg) in (0u16..).zip(&part.outline) {
-                    for p in seg.drawn(ARC_HALVINGS) {
+                    for p in seg.drawn(pa_core::geometry::DRAWN_HALVINGS) {
                         points.push(p);
                         segs.push(i);
                     }
