@@ -149,7 +149,7 @@
     "constraint": "pin_height <= punching stack + mortise recess + mortise depth, every term measured upward from the rail's wood. The recess and the mortise together, 3 + 19 = 22 mm from the key's underside, are the record front_mortise_depth in key-section.json.",
     "read_at_the_bottom_of_the_travel_not_at_rest": "At rest the key's front hangs clear of its punching - that gap IS the key dip - so the pin sits at its shallowest in the mortise. Pressing the key drives the mortise down onto the pin. Reading the constraint at rest instead gets the sign of the travel backwards and makes a sound frame look impossible.",
     "on_this_frame": "4 + 3 + 19 = 26 mm of room against a pin driven to stand 24 mm proud: 2 mm of headroom at the bottom of the travel.",
-    "still_to_test": "a_pin_too_proud_stops_the_key_before_the_punching_does holds the stop itself. What is not held is this frame's own headroom, because the model's front stack is 2.9 mm rather than the 4 mm measured here, which leaves 0.9 mm instead of 2."
+    "still_to_test": "a_pin_too_proud_holds_the_bottom_seat holds the stop itself. What is not held is this frame's own headroom, because the model's front stack is 2.9 mm rather than the 4 mm measured here, which leaves 0.9 mm instead of 2."
   },
   "a_rail_is_placed_under_a_key_and_then_stays_where_it_is": {
     "rule": "front rail = the key's front mortise; back rail = the key's tail end + back_rail_from_the_tail.",
