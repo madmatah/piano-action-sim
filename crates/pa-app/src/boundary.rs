@@ -2137,6 +2137,9 @@ pub enum Sweep {
     Extruded,
     /// Turned about a vertical axis.
     Revolved,
+    /// Bored round about a vertical axis: a hole, its outline its section
+    /// through the axis.
+    Bored,
 }
 
 /// How the number that places a stretch of an outline is known.
@@ -2247,22 +2250,24 @@ pub struct Outline {
     pub paper_color: Option<PaperColor>,
     /// How the outline becomes a solid.
     pub sweep: Sweep,
-    /// Extrusion across the sagittal plane, millimeters; zero when turned.
+    /// Extrusion across the sagittal plane, millimeters; zero when turned
+    /// or bored.
     pub width_mm: f32,
     /// Where the extrusion's middle stands across the keyboard, millimeters
     /// from the sagittal plane, positive toward the bass, the player's left:
     /// zero but for the parts beside the plane, which the section does not
     /// cut, the balance mortise's bushing and the key button's side holes;
-    /// zero when turned.
+    /// zero when turned or bored.
     pub across_mm: f32,
     /// Whether the sagittal plane cuts it, so that the section draws it in
     /// its plane: every part but those beside it.
     pub is_in_the_section: bool,
-    /// Where a turned part's axis stands along its body's `x`, millimeters;
-    /// zero when extruded.
+    /// Where a turned part's or a bored hole's axis stands along its body's
+    /// `x`, millimeters; zero when extruded.
     pub axis_x_mm: f32,
     /// Flat `[x0, y0, x1, y1, …]`, millimeters, in the body's frame; for a
-    /// turned part, its profile in radius and height.
+    /// turned part, its profile in radius and height; for a bored hole, its
+    /// section through its axis, in the body's frame.
     pub points_mm: Vec<f32>,
     /// The segment of the part's outline each point starts or lies on.
     pub segs: Vec<u16>,
@@ -2292,6 +2297,7 @@ impl Scene {
                             (Sweep::Extruded, mm32(width), mm32(across), 0.0)
                         }
                         CoreSweep::Revolved { axis_x } => (Sweep::Revolved, 0.0, 0.0, mm32(axis_x)),
+                        CoreSweep::Bored { axis_x } => (Sweep::Bored, 0.0, 0.0, mm32(axis_x)),
                     };
                     Outline {
                         body: body_index(o.body.0),
@@ -3224,6 +3230,36 @@ mod tests {
         assert!(centered
             .iter()
             .all(|o| o.across_mm == 0.0 && o.is_in_the_section));
+    }
+
+    /// Consistency: **the balance hole crosses bored about its pin**: its
+    /// outline is its section through the pin's axis, 3.4 mm across on the
+    /// measured section's key, the same either side of the axis, and it has
+    /// no width across the keyboard of its own.
+    #[test]
+    fn the_balance_hole_crosses_bored_about_its_pin() {
+        let scene = Scene::of(&Instrument::weighed_section());
+        let hole = scene
+            .outlines
+            .iter()
+            .find(|o| o.code == Part::BalanceHole)
+            .expect("a balance hole");
+        assert_eq!(
+            (hole.sweep, hole.width_mm, hole.axis_x_mm),
+            (Sweep::Bored, 0.0, 0.0)
+        );
+        let along: Vec<f32> = hole.points_mm.iter().step_by(2).copied().collect();
+        let (back, front) = along
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(back, front), &x| {
+                (back.min(x), front.max(x))
+            });
+        // Millimeters in single precision, a few of its ulps at 1.7 mm.
+        assert!(
+            (front - 1.7).abs() <= 4.0 * f32::EPSILON * 1.7,
+            "{front} mm"
+        );
+        assert_eq!(back.to_bits(), (-front).to_bits());
     }
 
     /// Consistency: **a code crosses as the engine names it**: every

@@ -79,12 +79,15 @@ const SLOT = buildOutline(
   ],
   SLOT_WIDTH_MM,
 )
-const HOLE = buildOutline(
-  'balance_hole',
-  'cut',
-  [-HOLE_HALF_MM, 0, HOLE_HALF_MM, 0, HOLE_HALF_MM, FLOOR_MM, -HOLE_HALF_MM, FLOOR_MM],
-  2 * HOLE_HALF_MM,
-)
+const HOLE: Outline = {
+  ...buildOutline(
+    'balance_hole',
+    'cut',
+    [-HOLE_HALF_MM, 0, HOLE_HALF_MM, 0, HOLE_HALF_MM, FLOOR_MM, -HOLE_HALF_MM, FLOOR_MM],
+    0,
+  ),
+  sweep: 'bored',
+}
 const KEYSTICK = buildOutline(
   'keystick',
   'solid',
@@ -156,7 +159,11 @@ describe('the carving of the solid', () => {
     expect(planCarving([SLOT]).walls.map((walls) => walls.box)).toEqual([SLOT_BOX])
   })
 
-  it('carves only a cut that has a width', () => {
+  it('carves a bored hole as the box it stands in, as far across the keyboard as along the key', () => {
+    expect(planCarving([HOLE]).walls.map((walls) => walls.box)).toEqual([HOLE_BOX])
+  })
+
+  it('carves only an extruded cut that has a width', () => {
     const frontMortise = buildOutline('front_mortise', 'cut', [221, 0, 229, 0, 229, 22, 221, 22], 0)
     expect(planCarving([frontMortise, KEYSTICK]).walls).toEqual([])
   })
@@ -168,6 +175,22 @@ describe('the carving of the solid', () => {
     for (const points of [notched, trapezoid, chamfered]) {
       expect(planCarving([buildOutline('balance_mortise', 'cut', points, 4)]).walls).toEqual([])
     }
+  })
+
+  it('bounds a bored hole about the axis the engine sends', () => {
+    // A 3 mm hole 10 mm along the key, each coordinate a short binary
+    // fraction, so that the bounds are exact.
+    const [axisMm, radiusMm] = [10, 1.5]
+    const [backMm, frontMm] = [axisMm - radiusMm, axisMm + radiusMm]
+    const hole: Outline = {
+      ...HOLE,
+      axis_x_mm: axisMm,
+      points_mm: [backMm, 0, frontMm, 0, frontMm, FLOOR_MM, backMm, FLOOR_MM],
+    }
+    expect(measureBounds(hole)).toEqual({
+      minMm: [backMm, 0, -radiusMm],
+      maxMm: [frontMm, FLOOR_MM, radiusMm],
+    })
   })
 
   it('carves the keystick by the slot and the balance hole, and never the bushing standing in the slot', () => {

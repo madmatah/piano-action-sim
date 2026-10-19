@@ -3,4 +3,4 @@
 /**
  * How an outline becomes a solid.
  */
-export type Sweep = "extruded" | "revolved";
+export type Sweep = "extruded" | "revolved" | "bored";

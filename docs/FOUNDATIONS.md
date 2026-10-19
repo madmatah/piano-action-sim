@@ -172,7 +172,7 @@ mortise is a cut, a void in the keystick open at its underside.
 (`data/params/balance-mortise.json`, construction): an oblong slot through the key
 button along the key, open through the button's flat top, which it stays
 within; under it a cavity in the keystick as long and as wide as the slot,
-down to a thin floor; through that floor the balance hole, fitted to the pin,
+down to a thin floor; through that floor the round balance hole, fitted to the pin,
 which holds the key fore and aft; and on the slot's two long sides, in its
 upper part only, the bushing that guides the key across the keyboard, an L
 on each side: its cloth runs down the slot's wall, then turns into a side
@@ -1807,7 +1807,9 @@ before.
 **One definition per part.** The key and its frame are built as parts: one
 closed outline of lines and arcs for each piece of material, on the body that
 carries it, several per body, a mortise a cut among them and a turned part read
-through its sagittal silhouette. Each part declares the ranges of its outline a
+through its sagittal silhouette; a round hole, the balance hole, is bored about
+a vertical axis from its section through it, so that its mouth stays one
+segment, which the wood it opens through shares. Each part declares the ranges of its outline a
 contact may read and the named points on it, the lip and the key front's top
 among them. The bench draws them and the faults read them; whatever a stop
 rounds is drawn rounded, the back rail cloth's edges included. The contacts read

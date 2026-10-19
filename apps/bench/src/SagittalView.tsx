@@ -341,8 +341,11 @@ function Extruded({
  * another cut, as the slot's floor into the balance hole; and its edges.
  */
 function CutWalls({ walls }: { walls: Walls }) {
-  const { cut, through, into } = walls
-  const geometry = useExtrusion(cut.points_mm, cut.width_mm, cut.across_mm)
+  const { cut, box, through, into } = walls
+  // A bored hole is carved as the box it stands in.
+  const [width, across] =
+    cut.sweep === 'bored' ? [box.maxMm[2] - box.minMm[2], 0] : [cut.width_mm, cut.across_mm]
+  const geometry = useExtrusion(cut.points_mm, width, across)
   return (
     <group>
       {through.map((part, partIndex) => (
