@@ -30,14 +30,16 @@
  * stays hidden by it, unless the key is drawn faded, as the reader may
  * choose and as a key no equilibrium places is. A cut's mouth, where it
  * opens through the key's outline or into another cut, is no edge of the
- * section. The parts beside the plane, the balance mortise's bushing and the
- * key button's side holes, are not cut by it (`section.ts`): a part on the
- * far side is drawn as seen beyond the plane where a void opens onto it, the
- * bushing's leg down the slot's wall through the slot and behind the pin,
- * and not its leg out through the side hole, inside the wall; the near ones,
- * cut away with the near half of the key, are not drawn. The **solid**
- * sweeps each extruded part across the keyboard, each lining on its side of
- * the slot, lathes each turned part and the front rail pin's oval head,
+ * section. The parts beside the plane, the bushings, the key button's side
+ * holes and the front mortise's groove, are not cut by it (`section.ts`): a
+ * part on the far side is drawn as seen beyond the plane where a void opens
+ * onto it, each bushing's leg along its mortise's wall through the mortise
+ * and behind the pin, and not the balance mortise's leg out through the
+ * side hole, inside the wall, nor the front mortise's leg flat in the
+ * groove, behind the leg up the wall; the near ones, cut away with the near
+ * half of the key, are not drawn. The **solid** sweeps each extruded part
+ * across the keyboard, each lining on its side of its mortise, lathes each
+ * turned part and the front rail pin's oval head,
  * squeezed across, and carves each rectangular cut that has a width out of
  * the wood it runs through, a milled one, the two mortises and the balance hole, with
  * its ends rounded to its cutter's radius: it leaves that wood unpainted

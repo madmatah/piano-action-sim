@@ -13,12 +13,14 @@
 //! capstan in a glued block, behind the back check block or on the thinned
 //! tail, a clearance cut in its top under its capstan or into a block, its
 //! front mortise cut through the top of the key, its measuring point off its
-//! covering. Everything an assembled keyboard can be, however badly
-//! regulated, is **computed and reported**: a frame placed for another key,
-//! stops that fight, a pin standing proud of its mortise, a key regulated
-//! into jamming are states, which the faults, the verdicts and the sheet's
-//! refusals describe, and are never refused here. What is computed is
-//! **drawn as it is**.
+//! covering; and the one pairing of a key with its frame the contacts could
+//! not read, a groove under the front mortise too long for the front rail
+//! punching to bear beside it. Everything an assembled keyboard can be,
+//! however badly regulated, is **computed and reported**: a frame placed
+//! for another key, stops that fight, a pin standing proud of its mortise,
+//! a key regulated into jamming are states, which the faults, the verdicts
+//! and the sheet's refusals describe, and are never refused here. What is
+//! computed is **drawn as it is**.
 //!
 //! [`validate`] runs on every edit and every load, before any solve, so the
 //! state an instrument holds always passes it: no number that is not finite
@@ -146,7 +148,11 @@ pub enum Problem {
         by: f64,
     },
     /// A part of a mortise does not fit where it is cut or set: the front
-    /// mortise's cutter within the keystick's width; the balance mortise's
+    /// mortise's cutter within the keystick's width, its groove under its
+    /// top, and its bushing's two thicknesses within its width, its cloth no
+    /// thicker than the groove is deep, up the walls under the mortise's top
+    /// and flat on the groove's floor within the key's side; the balance
+    /// mortise's
     /// slot along the key button's flat top, the cavity's floor at or
     /// under the keystick's top and the slot within its width, the balance
     /// hole within the slot, the bushing's two thicknesses within the
@@ -161,9 +167,21 @@ pub enum Problem {
         /// By how much, meters.
         by: f64,
     },
-    /// The balance mortise's cutter does not travel along the key: the slot
-    /// is a round hole, with no straight wall for its bushing to be glued on.
-    BushingWithoutWall,
+    /// The front mortise's groove is too long for the front rail punching:
+    /// the punching would reach no wood beside the mortise and stand in the
+    /// groove, under its floor, where the key bears on it either side of the
+    /// groove.
+    PunchingInTheGroove {
+        /// How much longer the groove runs along the key than the
+        /// punching's chord along the mortise's straight walls, meters.
+        by: f64,
+    },
+    /// A mortise's cutter does not travel along the key: the mortise is a
+    /// round hole, with no straight wall for its bushing to be glued on.
+    BushingWithoutWall {
+        /// The mortise: the balance mortise or the front mortise.
+        mortise: PartCode,
+    },
     /// The front mortise is cut through the top of the keystick.
     MortiseThroughKeyTop {
         /// Its depth above the underside, meters.
@@ -202,8 +220,9 @@ pub struct Design<'a> {
 /// its hard range, every paper one the drawer holds, a weighed mass, the
 /// key's outline, the capstan between its blocks on the keystick's full
 /// height, the front mortise on the flat of the underside and under the
-/// key's top, the balance mortise and the key button's ends where they
-/// fit, and the measuring point on the covering.
+/// key's top, its groove and its bushing where they fit, the groove over
+/// the front rail punching, the key button's ends and the balance mortise
+/// where they fit, and the measuring point on the covering.
 pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     for (param, value) in numbers(d) {
         if !value.is_finite() {
@@ -239,6 +258,7 @@ pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     outline(d.key)?;
     capstan(d.key)?;
     mortise(d.key)?;
+    groove_over_the_front_punching(d.key, d.frame)?;
     key_button(d.key)?;
     balance_mortise(d.key)?;
     let covering = d.key.keytop_length;
@@ -495,7 +515,9 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
         );
     }
     if mortise.travel <= 0.0 {
-        return Err(Problem::BushingWithoutWall);
+        return Err(Problem::BushingWithoutWall {
+            mortise: PartCode::BalanceMortise,
+        });
     }
     if mortise.side_hole_height < mortise.bushing_thickness {
         return does_not_fit(
@@ -533,8 +555,14 @@ fn balance_mortise(key: &KeyDesign) -> Result<(), Problem> {
 
 /// The front mortise is cut up from the flat of the underside, between the
 /// chamfer and the key front, leaves wood above it, and is milled no wider
-/// than the keystick.
+/// than the keystick, its cutter moved along the key, so that it has
+/// straight walls for its bushing; its groove no deeper than the mortise;
+/// its bushing's two thicknesses within its width, its cloth no thicker
+/// than the groove is deep, so that the leg turned flat on the groove's
+/// floor stands within it, its leg up the walls under the mortise's top,
+/// and its flat leg within the key's side.
 fn mortise(key: &KeyDesign) -> Result<(), Problem> {
+    let mortise = key.front_mortise;
     let (back, front) = key.front_mortise_span();
     let chamfer_end = key.tail_end + key.tail_rise_run;
     let wood_front = key.front_edge - key.front_board;
@@ -550,18 +578,86 @@ fn mortise(key: &KeyDesign) -> Result<(), Problem> {
             by: chamfer_end - back,
         });
     }
-    if key.front_mortise.depth >= key.stick_height {
+    if mortise.depth >= key.stick_height {
         return Err(Problem::MortiseThroughKeyTop {
-            depth: key.front_mortise.depth,
+            depth: mortise.depth,
             wood: key.stick_height,
         });
     }
-    if key.front_mortise.cutter_diameter > key.width {
-        return Err(Problem::DoesNotFit {
-            part: PartCode::FrontMortise,
-            within: PartCode::Keystick,
-            by: key.front_mortise.cutter_diameter - key.width,
+    let does_not_fit = |part, within, by| Err(Problem::DoesNotFit { part, within, by });
+    if mortise.cutter_diameter > key.width {
+        return does_not_fit(
+            PartCode::FrontMortise,
+            PartCode::Keystick,
+            mortise.cutter_diameter - key.width,
+        );
+    }
+    if mortise.travel <= 0.0 {
+        return Err(Problem::BushingWithoutWall {
+            mortise: PartCode::FrontMortise,
         });
+    }
+    if mortise.groove_depth > mortise.depth {
+        return does_not_fit(
+            PartCode::FrontMortiseGroove,
+            PartCode::FrontMortise,
+            mortise.groove_depth - mortise.depth,
+        );
+    }
+    if 2.0 * mortise.bushing_thickness > mortise.cutter_diameter {
+        return does_not_fit(
+            PartCode::FrontMortiseBushing,
+            PartCode::FrontMortise,
+            2.0 * mortise.bushing_thickness - mortise.cutter_diameter,
+        );
+    }
+    if mortise.bushing_thickness > mortise.groove_depth {
+        return does_not_fit(
+            PartCode::FrontMortiseBushing,
+            PartCode::FrontMortiseGroove,
+            mortise.bushing_thickness - mortise.groove_depth,
+        );
+    }
+    let over_the_top = mortise.groove_depth + mortise.bushing_height - mortise.depth;
+    if over_the_top > 0.0 {
+        return does_not_fit(
+            PartCode::FrontMortiseBushing,
+            PartCode::FrontMortise,
+            over_the_top,
+        );
+    }
+    let past_the_side =
+        0.5 * mortise.cutter_diameter + mortise.bushing_flat_width - 0.5 * key.width;
+    if past_the_side > 0.0 {
+        return does_not_fit(
+            PartCode::FrontMortiseBushing,
+            PartCode::FrontMortiseGroove,
+            past_the_side,
+        );
+    }
+    Ok(())
+}
+
+/// The front mortise's groove, where it has one, runs along the key no
+/// longer than the front rail punching's chord along the mortise's straight
+/// walls: past the groove's ends the punching reaches the wood beside the
+/// mortise's rounded ends, out of the sagittal plane, where the key bears on
+/// it, read at its middle ([`crate::contact::PairGeometry::CenterBearing`]).
+/// Over a longer groove the mortise and the groove cover the whole punching,
+/// which would stand in the groove, under its floor. A groove of no depth is
+/// none.
+fn groove_over_the_front_punching(key: &KeyDesign, frame: &FrameDesign) -> Result<(), Problem> {
+    let mortise = key.front_mortise;
+    if mortise.groove_depth <= 0.0 {
+        return Ok(());
+    }
+    let radius = frame.sections.front.punching_radius;
+    let half_width = 0.5 * mortise.cutter_diameter;
+    // A mortise as wide as the punching leaves it no chord at all.
+    let chord = 2.0 * (radius * radius - half_width * half_width).max(0.0).sqrt();
+    let past_the_chord = mortise.travel - chord;
+    if past_the_chord > 0.0 {
+        return Err(Problem::PunchingInTheGroove { by: past_the_chord });
     }
     Ok(())
 }
@@ -623,12 +719,20 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
         cutter_diameter,
         travel,
         depth,
+        groove_depth,
+        bushing_thickness,
+        bushing_height,
+        bushing_flat_width,
     } = front_mortise;
     out.extend([
         ("front_mortise.from_front_edge", *from_front_edge),
         ("front_mortise.cutter_diameter", *cutter_diameter),
         ("front_mortise.travel", *travel),
         ("front_mortise.depth", *depth),
+        ("front_mortise.groove_depth", *groove_depth),
+        ("front_mortise.bushing_thickness", *bushing_thickness),
+        ("front_mortise.bushing_height", *bushing_height),
+        ("front_mortise.bushing_flat_width", *bushing_flat_width),
         ("stick_height", *stick_height),
         ("capsule_height", *capsule_height),
         ("capsule_length", *capsule_length),
@@ -1278,11 +1382,15 @@ mod tests {
 
     /// Consistency: **a front mortise milled wider than the keystick is
     /// refused**, by how much wider: a cutter a micrometer wider than the
-    /// test key's 22 mm, and one as wide is taken.
+    /// test key's 22 mm, and one as wide is taken, milled with no groove
+    /// and no cloth, which would have no wood left beside it.
     #[test]
     fn a_front_mortise_milled_wider_than_the_keystick_is_refused() {
         const MICROMETER: f64 = 1e-6;
         let mut s = Standard::new();
+        s.key.front_mortise.groove_depth = 0.0;
+        s.key.front_mortise.bushing_thickness = 0.0;
+        s.key.front_mortise.bushing_flat_width = 0.0;
         s.key.front_mortise.cutter_diameter = s.key.width;
         assert_eq!(s.validate(), Ok(()));
         s.key.front_mortise.cutter_diameter = s.key.width + MICROMETER;
@@ -1447,8 +1555,136 @@ mod tests {
     fn a_balance_mortise_whose_cutter_does_not_travel_is_refused() {
         let mut s = Standard::new();
         s.key.balance_mortise.travel = 0.0;
-        assert_eq!(s.validate(), Err(Problem::BushingWithoutWall));
+        assert_eq!(
+            s.validate(),
+            Err(Problem::BushingWithoutWall {
+                mortise: PartCode::BalanceMortise
+            })
+        );
         s.key.balance_mortise.travel = 1e-6;
+        assert_eq!(s.validate(), Ok(()));
+    }
+
+    /// Consistency: **each part of the front mortise is refused where it
+    /// does not fit**, naming the part, what it does not fit in and by how
+    /// much, and taken a micrometer short of its limit: the groove deeper
+    /// than the 22 mm mortise, its cloth running no way up the walls; the
+    /// bushing's two thicknesses wider than the 6 mm cutter; the cloth
+    /// thicker than a 2 mm groove is deep, so that its leg turned flat would
+    /// stand proud of the underside; the cloth running up the walls past
+    /// the mortise's top, 19 mm over the 3 mm groove; the cloth laid flat
+    /// past the key's side, 8 mm from the mortise's wall on a 22 mm key.
+    #[test]
+    fn each_part_of_the_front_mortise_is_refused_where_it_does_not_fit() {
+        const MICROMETER: f64 = 1e-6;
+        // Each shortfall is a difference of lengths under a decimeter, each
+        // rounded a few times.
+        let close = |by: f64| (by - MICROMETER).abs() <= 8.0 * f64::EPSILON * 0.1;
+        // Puts a part of the mortise a length past its limit, or short of it.
+        type Push = fn(&mut Standard, f64);
+        let checks: [(Push, PartCode, PartCode); 5] = [
+            (
+                |s, over| {
+                    s.key.front_mortise.bushing_height = 0.0;
+                    s.key.front_mortise.groove_depth = s.key.front_mortise.depth + over;
+                },
+                PartCode::FrontMortiseGroove,
+                PartCode::FrontMortise,
+            ),
+            (
+                // A groove deeper than the thicker cloth, so that only its
+                // two thicknesses cross a limit.
+                |s, over| {
+                    s.key.front_mortise.groove_depth = 0.004;
+                    s.key.front_mortise.bushing_thickness =
+                        0.5 * (s.key.front_mortise.cutter_diameter + over);
+                },
+                PartCode::FrontMortiseBushing,
+                PartCode::FrontMortise,
+            ),
+            (
+                |s, over| {
+                    s.key.front_mortise.groove_depth = 0.002;
+                    s.key.front_mortise.bushing_thickness = 0.002 + over;
+                },
+                PartCode::FrontMortiseBushing,
+                PartCode::FrontMortiseGroove,
+            ),
+            (
+                |s, over| {
+                    let mortise = s.key.front_mortise;
+                    s.key.front_mortise.bushing_height =
+                        mortise.depth - mortise.groove_depth + over;
+                },
+                PartCode::FrontMortiseBushing,
+                PartCode::FrontMortise,
+            ),
+            (
+                |s, over| {
+                    s.key.front_mortise.bushing_flat_width =
+                        0.5 * (s.key.width - s.key.front_mortise.cutter_diameter) + over;
+                },
+                PartCode::FrontMortiseBushing,
+                PartCode::FrontMortiseGroove,
+            ),
+        ];
+        for (push, part, within) in checks {
+            let mut short = Standard::new();
+            push(&mut short, -MICROMETER);
+            assert_eq!(short.validate(), Ok(()), "{part:?} a micrometer short");
+            let mut past = Standard::new();
+            push(&mut past, MICROMETER);
+            match past.validate() {
+                Err(Problem::DoesNotFit {
+                    part: refused,
+                    within: limit,
+                    by,
+                }) if (refused, limit) == (part, within) && close(by) => {}
+                other => panic!("{part:?} in {within:?}: {other:?}"),
+            }
+        }
+    }
+
+    /// Consistency: **a groove too long for the front rail punching is
+    /// refused**, by how much too long: on the test key, the 22 mm punching
+    /// passes the 6 mm mortise's straight walls on a chord of
+    /// 2·√(11² − 3²) = 2·√112 mm, 21.17 mm, and a groove a micrometer longer
+    /// leaves it no wood beside the mortise, while one a micrometer shorter
+    /// is taken; with no groove cut, the mortise milled that long is taken.
+    #[test]
+    fn a_groove_too_long_for_the_front_punching_is_refused() {
+        const MICROMETER: f64 = 1e-6;
+        let chord = 2.0 * 0.001 * 112.0_f64.sqrt();
+        let mut s = Standard::new();
+        s.key.front_mortise.travel = chord - MICROMETER;
+        assert_eq!(s.validate(), Ok(()));
+        s.key.front_mortise.travel = chord + MICROMETER;
+        match s.validate() {
+            // Two square roots and a difference of lengths under a
+            // decimeter, each rounded once.
+            Err(Problem::PunchingInTheGroove { by })
+                if (by - MICROMETER).abs() <= 4.0 * f64::EPSILON * 0.1 => {}
+            other => panic!("{other:?}"),
+        }
+        s.key.front_mortise.groove_depth = 0.0;
+        s.key.front_mortise.bushing_thickness = 0.0;
+        assert_eq!(s.validate(), Ok(()));
+    }
+
+    /// Consistency: **a front mortise whose cutter does not travel is
+    /// refused**, a round hole with no straight wall for its bushing, and
+    /// one whose cutter travels a micrometer is taken.
+    #[test]
+    fn a_front_mortise_whose_cutter_does_not_travel_is_refused() {
+        let mut s = Standard::new();
+        s.key.front_mortise.travel = 0.0;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::BushingWithoutWall {
+                mortise: PartCode::FrontMortise
+            })
+        );
+        s.key.front_mortise.travel = 1e-6;
         assert_eq!(s.validate(), Ok(()));
     }
 

@@ -127,7 +127,15 @@ within: Part,
 /**
  * By how much, millimeters.
  */
-by_mm: number, } | { "code": "bushing_without_wall" } | { "code": "mortise_through_key_top", 
+by_mm: number, } | { "code": "punching_in_the_groove", 
+/**
+ * How much longer, millimeters along the key.
+ */
+by_mm: number, } | { "code": "bushing_without_wall", 
+/**
+ * The mortise: the balance mortise or the front mortise.
+ */
+mortise: Part, } | { "code": "mortise_through_key_top", 
 /**
  * Its depth, millimeters.
  */

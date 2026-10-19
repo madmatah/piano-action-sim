@@ -256,7 +256,14 @@ impl BalanceMortise {
 /// keystick from its underside by a cutter turning about a vertical axis and
 /// moved along the key, so that its two ends are half circles of the
 /// cutter's radius and its long sides straight walls between them; the front
-/// rail pin stands in it.
+/// rail pin stands in it. It is milled through the floor of a groove cut
+/// across the underside from one side of the key to the other, as long along
+/// the key as the straight walls, the rounded ends reaching past the
+/// groove's walls; bushed on the straight walls only and only in their lower
+/// part, the rounded ends left bare: on each side the cloth is glued up the
+/// mortise's wall from the groove, then turns at a right angle and is glued
+/// flat on the groove's floor toward the key's side, an L on each side. The
+/// bushing guides the key across the keyboard on the pin's oval head.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FrontMortise {
     /// Where it is cut, meters back from the key's **front edge**.
@@ -283,13 +290,26 @@ pub struct FrontMortise {
     /// Its depth above the key's underside, meters.
     ///
     /// The slot the front rail pin stands in, measured from the underside, so
-    /// it already includes the recess the slot begins after: 3 mm of notch and
-    /// 19 mm of mortise is 22 mm of room. [V]
+    /// it includes the groove it is milled through ([`Self::groove_depth`]):
+    /// 3 mm of groove and 19 mm of mortise is 22 mm of room. [V]
     ///
     /// It is a **stop**, not decoration: the key cannot descend past the point
     /// where the pin's tip reaches the top of the slot, whatever the punchings
     /// underneath would otherwise allow.
     pub depth: f64,
+    /// How deep the groove the mortise is milled through is cut into the
+    /// underside, meters: its floor, where the bushing's cloth is turned and
+    /// glued flat, stands this far above the underside. [V]
+    pub groove_depth: f64,
+    /// Thickness of the cloth on each straight wall, meters.
+    pub bushing_thickness: f64,
+    /// How far up the mortise's walls that cloth runs from the groove's
+    /// floor, meters: only the lower part of the mortise is bushed.
+    pub bushing_height: f64,
+    /// How far the cloth turned at the foot of each wall runs flat on the
+    /// groove's floor toward the key's side, meters, from the mortise's
+    /// wall.
+    pub bushing_flat_width: f64,
 }
 
 impl FrontMortise {
@@ -303,7 +323,7 @@ impl FrontMortise {
     ///
     /// What it is **not** is the lateral fit. Across the keyboard the mortise is
     /// bushed and close on the domed sides of the pin's oval head — that is
-    /// what holds the key straight — and that dimension is not in the
+    /// what holds the key straight — and the bushing stands beside the
     /// sagittal plane.
     pub fn length(&self) -> f64 {
         self.travel + self.cutter_diameter
@@ -911,8 +931,9 @@ impl KeyDesign {
     /// keystick, its top lowered by the clearance for the wippen rail where
     /// it has one, the covering, the key front, the glued blocks and the
     /// tail's felt, the front mortise's and the balance mortise's voids
-    /// taken out, the turned capstan left out, and so are the bushing and
-    /// the key button's side holes, which stand beside the sagittal plane;
+    /// taken out, the turned capstan left out, and so are the bushings, the
+    /// key button's side holes and the front mortise's groove, which stand
+    /// beside the sagittal plane;
     /// `None` for a section that encloses nothing.
     ///
     /// **What stands in for the height of a weighed key's center of mass**,
@@ -1115,9 +1136,9 @@ mod tests {
     /// (`the_drawn_key_tiles_its_section`), so the centroid read off the
     /// drawn parts is the section polygon's with the voids' rectangles
     /// removed by hand: the front mortise, the balance mortise's slot and
-    /// cavity, and the balance hole; the turned capstan, and the bushing
-    /// and the key button's side holes beside the sagittal plane, are in
-    /// neither. On every key the fixture
+    /// cavity, and the balance hole; the turned capstan, and the bushings,
+    /// the key button's side holes and the front mortise's groove beside
+    /// the sagittal plane, are in neither. On every key the fixture
     /// has, its centroid stands over the key's underside, under its top, and
     /// between its tail and its lip. The bound is derived: two shoelace sums,
     /// one over the outline's points and one over every drawn part's, and

@@ -21,7 +21,11 @@ import {
 // out through a 2.6 mm side hole on each side, 7 mm from the plane and 8 mm
 // wide, from the slot's wall to the key button's side, glued against the
 // hole's top. The front mortise is milled 8 mm long by a 6 mm cutter, 22 mm
-// up from the underside, 221 to 229 mm in front of the balance pin.
+// up from the underside, 221 to 229 mm in front of the balance pin, through
+// a groove 3 mm deep across the key along its straight walls, 224 to 226 mm,
+// each side of it from its wall, 3 mm from the plane, to the key's side; its
+// bushing runs up each wall 3 mm past the groove's floor, then 5 mm flat on
+// that floor, glued against it.
 const STICK_TOP_MM = 24.5
 const KEY_WIDTH_MM = 22
 const BUTTON_TOP_MM = 30.5
@@ -37,6 +41,10 @@ const SIDE_HOLE_TOP_MM = BUSHING_FOOT_MM + BUSHING_MM
 const SIDE_HOLE_FOOT_MM = SIDE_HOLE_TOP_MM - 2.6
 const SIDE_ACROSS_MM = 7
 const SIDE_WIDTH_MM = 8
+const GROOVE_TOP_MM = 3
+const FRONT_FOOT_MM = GROOVE_TOP_MM - BUSHING_MM
+const FLAT_ACROSS_MM = 5.5
+const FLAT_WIDTH_MM = 5
 
 /** An extruded part of a key, as the engine sends it. */
 function buildOutline(
@@ -115,6 +123,38 @@ const FRONT_MORTISE: Outline = {
   ...buildOutline('front_mortise', 'cut', [221, 0, 229, 0, 229, 22, 221, 22], SLOT_WIDTH_MM),
   sweep: 'milled',
 }
+/** A rectangle along the front mortise's straight walls, from `bottom` to
+ * `top`. */
+function alongTheFrontWalls(bottom: number, top: number): number[] {
+  return [224, bottom, 226, bottom, 226, top, 224, top]
+}
+const GROOVES = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
+  buildOutline(
+    'front_mortise_groove',
+    'cut',
+    alongTheFrontWalls(0, GROOVE_TOP_MM),
+    SIDE_WIDTH_MM,
+    across,
+  ),
+)
+const UP_THE_FRONT_WALLS = [-BUSHING_ACROSS_MM, BUSHING_ACROSS_MM].map((across) =>
+  buildOutline(
+    'front_mortise_bushing',
+    'lining',
+    alongTheFrontWalls(FRONT_FOOT_MM, GROOVE_TOP_MM + 3),
+    BUSHING_MM,
+    across,
+  ),
+)
+const FLAT_IN_THE_GROOVE = [-FLAT_ACROSS_MM, FLAT_ACROSS_MM].map((across) =>
+  buildOutline(
+    'front_mortise_bushing',
+    'lining',
+    alongTheFrontWalls(FRONT_FOOT_MM, GROOVE_TOP_MM),
+    FLAT_WIDTH_MM,
+    across,
+  ),
+)
 const DOWN_THE_WALLS = [-BUSHING_ACROSS_MM, BUSHING_ACROSS_MM].map((across) =>
   buildOutline(
     'balance_mortise_bushing',
@@ -146,9 +186,12 @@ const KEY = [
   SLOT,
   HOLE,
   FRONT_MORTISE,
+  ...GROOVES,
   ...SIDE_HOLES,
   KEYSTICK,
   KEY_BUTTON,
+  ...UP_THE_FRONT_WALLS,
+  ...FLAT_IN_THE_GROOVE,
   ...DOWN_THE_WALLS,
   ...OUT_THROUGH_THE_SIDES,
 ]
@@ -169,10 +212,15 @@ const SIDE_HOLE_BOXES: Box[] = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) =>
   minMm: [-WALL_HALF_MM, SIDE_HOLE_FOOT_MM, across - SIDE_WIDTH_MM / 2],
   maxMm: [WALL_HALF_MM, SIDE_HOLE_TOP_MM, across + SIDE_WIDTH_MM / 2],
 }))
+const GROOVE_BOXES: Box[] = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) => ({
+  minMm: [224, 0, across - SIDE_WIDTH_MM / 2],
+  maxMm: [226, GROOVE_TOP_MM, across + SIDE_WIDTH_MM / 2],
+}))
 const SLOT_HOLLOW: Hollow = { box: SLOT_BOX, hasRoundEnds: true }
 const HOLE_HOLLOW: Hollow = { box: HOLE_BOX, hasRoundEnds: true }
 const FRONT_MORTISE_HOLLOW: Hollow = { box: FRONT_MORTISE_BOX, hasRoundEnds: true }
 const SIDE_HOLE_HOLLOWS: Hollow[] = SIDE_HOLE_BOXES.map((box) => ({ box, hasRoundEnds: false }))
+const GROOVE_HOLLOWS: Hollow[] = GROOVE_BOXES.map((box) => ({ box, hasRoundEnds: false }))
 
 describe('the carving of the solid', () => {
   it('carves an extruded cut with a width as the box its outline bounds, across that width', () => {
@@ -204,10 +252,27 @@ describe('the carving of the solid', () => {
     }
   })
 
-  it('carves the keystick by the slot, the balance hole and the front mortise, and never the bushing standing in the slot', () => {
+  it('carves the keystick by the slot, the balance hole, the front mortise and its groove, and never a bushing standing in them', () => {
     const { cutsThrough } = planCarving(KEY)
-    expect(cutsThrough.get(KEYSTICK)).toEqual([SLOT_HOLLOW, HOLE_HOLLOW, FRONT_MORTISE_HOLLOW])
-    for (const leg of DOWN_THE_WALLS) expect(cutsThrough.has(leg)).toBe(false)
+    expect(cutsThrough.get(KEYSTICK)).toEqual([
+      SLOT_HOLLOW,
+      HOLE_HOLLOW,
+      FRONT_MORTISE_HOLLOW,
+      ...GROOVE_HOLLOWS,
+    ])
+    for (const leg of [...DOWN_THE_WALLS, ...UP_THE_FRONT_WALLS, ...FLAT_IN_THE_GROOVE]) {
+      expect(cutsThrough.has(leg)).toBe(false)
+    }
+  })
+
+  it('draws the front mortise’s walls and its groove’s in the keystick, each open into the other', () => {
+    const { walls } = planCarving(KEY)
+    const mortise = walls.find((planned) => planned.cut === FRONT_MORTISE)
+    expect([mortise?.through, mortise?.into]).toEqual([[KEYSTICK], GROOVE_HOLLOWS])
+    for (const groove of GROOVES) {
+      const planned = walls.find((each) => each.cut === groove)
+      expect([planned?.through, planned?.into]).toEqual([[KEYSTICK], [FRONT_MORTISE_HOLLOW]])
+    }
   })
 
   it('carves the key button by the slot and its two side holes, and never the cloth through them', () => {
@@ -297,7 +362,7 @@ describe('the carving of the solid', () => {
       true,
       false,
       true,
-      false,
+      ...Array.from({ length: MAX_CUTS - 3 }, () => false),
     ])
   })
 

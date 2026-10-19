@@ -684,7 +684,7 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
             Control::Slider {
                 path: path::FRONT_MORTISE_TRAVEL,
                 label: Label::FrontMortiseTravel,
-                soft: soft(0.0, 10.0, 0.1),
+                soft: soft(0.1, 10.0, 0.1),
             },
             Control::Slider {
                 path: path::BACK_RAIL_CLOTH,

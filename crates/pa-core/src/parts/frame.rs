@@ -420,7 +420,7 @@ pub struct RailSection {
     /// The constraint is therefore
     ///
     /// ```text
-    /// pin_height ≤ punching stack + mortise step + mortise depth
+    /// pin_height ≤ punching stack + groove depth + mortise depth above it
     /// ```
     ///
     /// with every term measured from the rail's wood upward. On the measured

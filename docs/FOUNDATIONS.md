@@ -170,9 +170,23 @@ mortise is a cut, a void in the keystick open at its underside, milled from
 below: a cutter turning about a vertical axis, moved along the key, so that
 the mortise is as wide across the keyboard as the cutter, as long along the
 key as the cutter's travel and diameter, its two ends rounded to the
-cutter's radius. Its cutter and travel are assumed [S,
-`data/params/key-section.json`]; its bushing, on the pin's sides beside the
-plane, is not drawn.
+cutter's radius. It is built as the owner describes it
+(`data/params/key-section.json`, front_mortise_construction): milled through
+the floor of a groove cut across the underside from one side of the key to
+the other, as long along the key as the mortise's straight walls, so that its
+rounded ends reach past the groove's walls; and on its straight walls, in
+their lower part only, the rounded ends left bare, the bushing that guides the
+key across the keyboard on the pin's oval head, an L on each side: its cloth
+runs up the mortise's wall from the groove, then turns and is glued flat on
+the groove's floor toward the key's side. The groove beside the mortise is a
+cut and the bushing a lining, both beside the sagittal plane, and count in no
+area of the section. Its depth and the groove's are measured, its cutter and
+travel assumed [S, `data/params/key-section.json`], and its bushing assumed
+by each profile [S, `data/profiles/measured-section.json`,
+`data/profiles/hirschkorn.json`]. On other keys
+the groove runs only a few millimeters either side of the mortise; the model
+cuts it across the whole key, as on the owner's
+([Named simplifications](#named-simplifications)).
 
 **The balance mortise** is built as the owner describes it
 (`data/params/balance-mortise.json`, construction): an oblong slot through the key
@@ -209,8 +223,8 @@ center of mass along the key. Its height, which no scale gives, is estimated
 from the key's drawn section: the area centroid of its parts as the section
 draws them, the front mortise, the balance mortise and its hole, and the
 clearance in the top, where the key has one, taken out, and the turned capstan,
-and the balance mortise's bushing and the key button's side holes beside the
-sagittal plane, left out: where
+and the bushings, the key button's side holes and the front mortise's groove
+beside the sagittal plane, left out: where
 the center of mass of a key of one material and one width would stand ([Named simplifications](#named-simplifications)).
 Every reading it reaches names it ([The protocols, as they are](#the-protocols-as-they-are)): it acts only through the key's tilt
 on its frame, about 0.02 g of down weight per millimeter on a key of 120 g
@@ -742,8 +756,9 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   from the owner's measured section, measured there or assumed there: his
   keybed, which no source gives, so that his key height is an indication;
   his rails, felts, cloth, papers and pins, and the front mortise, placed
-  over his front bearing. Assumed: the key's width, which only the solid view
-  reads. His felts' tops stand where his rounds' tops stand, each placed by a
+  over his front bearing. Assumed: the key's width, which the solid view
+  extrudes the key by, the mortises are milled no wider than and the front
+  mortise's groove runs across, and no reading depends on. His felts' tops stand where his rounds' tops stand, each placed by a
   rule from his frame stated in his profile. Beside it, chosen on the bench,
   **the owner's measured section**: his key section, his front mortise's
   depth and his capstan, 122 mm behind the balance pin, as he measured them
@@ -774,7 +789,11 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   overlaps the drawn felt's edge by what a real felt compresses, half the
   washer's width times the tilt: about a quarter of a millimeter under the
   measured section's key at its top seat on its balance punching. The bench reports it beside the
-  contacts, so that the idealization does not pass for a drawing error.
+  contacts, so that the idealization does not pass for a drawing error. The
+  front punching reads the line of the underside across the front mortise's
+  groove, on which the key bears either side of it: a groove too long for the
+  punching to reach past it beside the mortise, which the punching would
+  stand in, is refused.
 - **The key lifts without friction.** The bushings' friction against the key
   sliding along its balance pin is not modeled: it would act only while the
   key leaves its balance punching, a state the bench reports and the sheet
@@ -817,22 +836,26 @@ Their closed forms are test oracles, compiled for the domain's tests only.
 - **Drawing**: one row of pins; the front rail pin's tip a half sphere of half
   the pin's length along the key, squeezed across to the oval, assumed
   (`data/params/key-frame-sections.json`); a flat balance crown only. The
-  balance mortise's dimensions are assumed, none measured
+  balance mortise's dimensions are assumed, none measured, and so are the
+  front mortise's cutter, travel and bushing
   [S, E, `data/profiles/measured-section.json`, `data/profiles/hirschkorn.json`].
   Its slot runs along the model's
   `x`, the key's front axis, on a straight key: a cranked key, bent beside its
   covering, keeps its slot along that axis and not along its own edges there,
   and is planned with the keys side by side. No contact reads the slot's ends
-  or its bushing, so the pin is drawn in its slot without guiding the key, and
-  nothing reads how the balance hole and the bushing fit the pin: a tight or
-  an eased mortise moves no reading, the bushings' friction being typed as a
-  key friction weight. The solid carves the key button's side holes from the
-  key's wood, each a rectangle swept across its width, and the two mortises
+  or either mortise's bushing, so the balance pin is drawn in its slot without
+  guiding the key, and nothing reads how the balance hole and the bushings fit
+  their pins: a tight or an eased mortise moves no reading, the bushings'
+  friction being typed as a key friction weight. The front mortise's groove is
+  cut across the whole key, as on the owner's: a groove only a few
+  millimeters either side of the mortise, as other keys have, is drawn across
+  the key all the same. The solid carves the key button's side holes and the
+  front mortise's groove from the key's wood, each a rectangle swept across
+  its width, and the two mortises
   and the balance hole, each milled with its ends rounded to its cutter's
   radius, by leaving the wood unpainted inside each cut and drawing the
   cut's walls from inside rather than by solid geometry operations, which
-  would bring a library for a few boxes with rounded ends. The front
-  mortise's bushing, on the pin's sides beside the plane, is not drawn.
+  would bring a library for a few boxes with rounded ends.
 
 ### The bench
 
@@ -841,15 +864,16 @@ frame in section and in solid from parts computed in Rust, each in its own
 body's frame and placed by the pose the static solve gives that body. The
 section is the sagittal plane itself: a washer shows the hole its pin stands in,
 the front pin stands in its mortise, a void open at the key's underside, and
-the balance pin in the balance hole and the cavity over it, the bushing on the
-slot's far side seen beyond the plane, behind the pin, the near one cut away
-with the near half of the key. The solid carves the two mortises and the
-balance hole, milled, their ends rounded, and the key button's side holes,
-out of the key's wood and draws their walls, so the slot opens through the
-key button's top, the bushing on its straight walls and the pin standing in
-it, the front mortise opens under the key around its pin, and the bushing's
-cloth shows flush on the key button's sides, against the top of each side
-hole.
+the balance pin in the balance hole and the cavity over it, each mortise's
+bushing on its far side seen beyond the plane, behind the pin, the near one
+cut away with the near half of the key. The solid carves the two mortises and
+the balance hole, milled, their ends rounded, the key button's side holes and
+the front mortise's groove out of the key's wood and draws their walls, so
+the slot opens through the key button's top, the bushing on its straight
+walls and the pin standing in it, the balance mortise's cloth shows flush on
+the key button's sides, against the top of each side hole, and the front
+mortise opens under the key around its pin, in the groove across the key,
+its cloth turned flat on the groove's floor.
 Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
 parts that overlap. A key no equilibrium places is drawn faded, a note on the
@@ -1962,7 +1986,8 @@ lifting a paper; ratios have no path, being outputs
 
 `validate` (`pa_core::validate`) runs on every edit and on every design an
 instrument is built from, before any solve, and refuses what no part could be
-built as, naming the limiting dimension and the shortfall: a value that is not a
+built as, and the one pairing of a key with its frame the contacts could not
+read, naming the limiting dimension and the shortfall: a value that is not a
 number or an infinity, anywhere in the design; a value outside its setting's
 range; a paper no drawer holds; a key weighed at no mass; an outline crossing
 itself, a glued part run into the next along the key's top (a key front brought
@@ -1973,7 +1998,14 @@ the chamfer past the key front; a clearance run back over the thinned tail,
 cut through the keystick, or no cut; the capstan in a glued block, wholly
 behind the back check block or over the thinned tail, or its dome narrower
 than its head; the front mortise off the flat of
-the underside, cut through the top of the keystick, or milled wider than it; a key button whose
+the underside, cut through the top of the keystick, milled wider than it, or
+by a cutter not moved along the key, with no straight wall for its bushing;
+its groove deeper than the mortise, or too long for the front rail punching,
+which past the mortise's straight walls would find no wood beside the mortise
+and stand in the groove, under its floor, where its contact reads the line of
+the underside; its bushing's two thicknesses
+wider than the mortise, its cloth thicker than the groove is deep, run up the
+walls past the mortise's top or laid flat past the key's side; a key button whose
 rounded ends overlap; a part of the balance mortise that does not fit where it
 is cut, the slot past the key button's flat top or wider than the key, the
 cavity's floor above the keystick's top, the hole wider than the slot, the

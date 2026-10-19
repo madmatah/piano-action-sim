@@ -4902,15 +4902,19 @@ mod edit_tests {
     /// behind the pin stands 9.5 mm in the back check block, 20 mm behind
     /// it in the key button, and 230 mm behind it, on the thinned tail,
     /// behind the back check block, 39.5 mm short of clearing it; a front
-    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick, and
-    /// one milled by a 25 mm cutter is 3 mm wider than the 22 mm key; a key
+    /// mortise 30 mm deep is cut through the 24.5 mm of the keystick, one
+    /// milled by a 25 mm cutter is 3 mm wider than the 22 mm key, and one
+    /// whose cutter travels 25 mm is milled through a groove 3.83 mm longer
+    /// than the 22 mm front rail punching's chord along its walls, 3 mm from
+    /// the plane, 2·√112 mm; a key
     /// button 20 mm long is shorter than its two ends of 12 mm reach on its
     /// 6 mm of height, 2·√108 mm, by 0.78 mm; a balance hole of 7 mm is a
     /// millimeter wider than its 6 mm slot, a bushing 7 mm deep a
     /// millimeter deeper than the key button is high, where its side holes
     /// are cut, a side hole 1 mm high 0.3 mm lower than the 1.3 mm cloth
-    /// turned out through it is thick, and a balance mortise whose cutter
-    /// does not travel has no straight wall for its bushing; a measuring
+    /// turned out through it is thick, and a balance mortise or a front
+    /// mortise whose cutter does not travel has no straight wall for its
+    /// bushing; a measuring
     /// point 160 mm back from the lip is off a 155 mm covering; a felt
     /// thinner than nothing is out of range; a key weighed at no mass,
     /// or less, is no key (the audit's BWA-3); a paper no drawer holds is no
@@ -4983,7 +4987,23 @@ mod edit_tests {
             }) if (by - 0.001).abs() < 1e-12)
         });
         refuses(&mut b, set(path::BALANCE_MORTISE_TRAVEL, 0.0), &|w| {
-            *w == EditRefusal::Problem(Problem::BushingWithoutWall)
+            *w == EditRefusal::Problem(Problem::BushingWithoutWall {
+                mortise: PartCode::BalanceMortise,
+            })
+        });
+        refuses(&mut b, set(path::FRONT_MORTISE_TRAVEL, 0.0), &|w| {
+            *w == EditRefusal::Problem(Problem::BushingWithoutWall {
+                mortise: PartCode::FrontMortise,
+            })
+        });
+        refuses(&mut b, set(path::FRONT_MORTISE_TRAVEL, 25.0), &|w| {
+            // The punching's chord along the mortise's walls, 2·√(11² − 3²)
+            // mm: a square root and a difference of lengths under a
+            // decimeter, each rounded once.
+            let chord = 2.0 * 0.001 * 112.0_f64.sqrt();
+            matches!(w, EditRefusal::Problem(Problem::PunchingInTheGroove {
+                by,
+            }) if (by - (0.025 - chord)).abs() <= 4.0 * f64::EPSILON * 0.1)
         });
         refuses(&mut b, set(path::SIDE_HOLE_HEIGHT, 1.0), &|w| {
             matches!(w, EditRefusal::Problem(Problem::DoesNotFit {

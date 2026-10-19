@@ -315,8 +315,21 @@ describe('a problem', () => {
         by_mm: 1,
       }),
     ).toBe('the balance hole would not fit in the balance mortise, by 1.0 mm.')
-    expect(word(t.editRefusal, 'bushing_without_wall', { code: 'bushing_without_wall' })).toBe(
-      "the balance mortise's cutter does not travel along the key: the slot is round, with no straight wall to glue its bushing on.",
+    expect(
+      word(t.editRefusal, 'bushing_without_wall', {
+        code: 'bushing_without_wall',
+        mortise: 'front_mortise',
+      }),
+    ).toBe(
+      "the front mortise's cutter does not travel along the key: the mortise is round, with no straight wall to glue its bushing on.",
+    )
+    expect(
+      word(t.editRefusal, 'punching_in_the_groove', {
+        code: 'punching_in_the_groove',
+        by_mm: 3.83,
+      }),
+    ).toBe(
+      'the front mortise groove would be 3.8 mm too long for the front rail punching: it would leave the punching no wood to bear on beside the front mortise, and the punching would stand in it.',
     )
     expect(
       t.refused.set({
