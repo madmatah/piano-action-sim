@@ -54,7 +54,9 @@ is drawn as it is, its faults named in millimeters. The key's contacts with its
 frame are read off the drawn parts, as signed gaps with their gradients over
 every coordinate, and marked on the section and the solid. Each crosses to
 the page with its normal and the force it carries, which the view does not
-draw yet.
+draw yet. A key that no equilibrium has held since it was put on its frame,
+or that the weight on its measuring point lifts off it, is drawn faded,
+bearing on nothing.
 
 The bench is an instrument an application drives by two calls. Every setting
 has a path with its trade unit in its name (`frame.front_rail.pin_height_mm`)
@@ -84,7 +86,8 @@ weighed on the bench. Every line of
 the section, and the outlines of the extruded parts in the solid, can be
 marked by how the number that draws it is known: measured, published, traced,
 derived by a rule, borrowed from another instrument, assumed, or set on the
-bench.
+bench. The key can be drawn as transparent as the reader wants, to see the
+pins inside it.
 
 Every reading on the weighing sheet is a procedure run on the model; their
 closed forms are the tests' oracles. What the stage simplifies is listed in

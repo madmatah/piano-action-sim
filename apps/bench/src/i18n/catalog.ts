@@ -20,6 +20,7 @@ import type {
   FrictionRefusal,
   How,
   Input,
+  KeyPlace,
   Label,
   Panel,
   Problem,
@@ -123,6 +124,11 @@ export interface Catalog {
     readonly provenance: string
     /** Where a line's number comes from, as the overlay's legend names it. */
     readonly how: Named<How>
+    /** Why the key is drawn faded, by why no equilibrium places it where
+     * it is drawn. */
+    readonly notPlaced: Named<Exclude<KeyPlace, 'placed'>>
+    /** The control that makes the key more or less transparent. */
+    readonly keyOpacity: string
   }
 
   /** A shipped profile's name, as the page offers it: the engine sends

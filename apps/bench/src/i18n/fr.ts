@@ -465,6 +465,13 @@ export const fr: Catalog = {
       assumed: 'supposé',
       set_on_the_bench: 'réglé sur le banc d’essai',
     },
+    keyOpacity: 'opacité de la touche',
+    notPlaced: {
+      unplaced:
+        'La touche ne trouve aucune position d’équilibre sur ce châssis : elle est dessinée en transparence, à plat sur sa mouche de balancier, pour montrer ses pièces face à celles du châssis, pas là où elle se trouverait.',
+      lifted_off:
+        'Le poids sur le point de mesure soulève la touche hors de son châssis : elle est dessinée en transparence là où l’a laissée sa dernière position d’équilibre, qui ne la tient plus, et ne porte sur rien.',
+    },
   },
 
   profile: {
@@ -690,7 +697,7 @@ export const fr: Catalog = {
         overlaps.length === 0
           ? ''
           : `, ici ${overlaps.map((overlap) => `${to(overlap.overlap_mm, LENGTH_MM)} mm ${AT_THE[overlap.pair]}`).join(' et ')}`
-      }. La touche est libre de se soulever de sa mouche de balancier : là où ses butées s’opposent, elle est portée par elles, et une traction que sa mouche ne peut pas reprendre la soulève. Les contacts marqués sur la vue sont là où la touche porte, et ce qui se trouve à moins d’un millimètre d’elle.`,
+      }. La touche est libre de se soulever de sa mouche de balancier : là où ses butées s’opposent, elle est portée par elles, et une traction que sa mouche ne peut pas reprendre la soulève. Là où un équilibre place la touche, les contacts marqués sur la vue sont ceux où elle porte, et ce qui se trouve à moins d’un millimètre d’elle.`,
     notWeighed:
       'Cette touche n’est pas pesée : ce que fait un poids posé dessus dépend de l’équilibre propre de la touche, que seule une pesée donne, donc la touche est dessinée l’arrière posé sur son drap, comme pour lire la hauteur de touche, quel que soit le poids saisi. Pesez-la pour essayer les poids.',
     noPressNote:

@@ -442,9 +442,14 @@ paper, a weighing, any edit, is an increment from the state the last one left; a
 key standing on its balance punching rises and falls with it as papers are laid
 under it. Between the up weight and the down weight the key stays where it is,
 on either stop. A weight that lifts the key off its frame finds no equilibrium:
-the key stays drawn where the last one left it, and the bench says the weight
+the key stays drawn where the last one left it, faded and bearing on nothing,
+and the bench says the weight
 lifts it off, whether the increment finds it so or, the increment failing, the
-loading rule does. An edit that leaves the key sunk deeper than the row margin
+loading rule does. A key that no equilibrium has held since it was put on its
+frame, for instance one its frame lifts off its pin, has no place to be drawn: it is drawn
+faded, level on its balance punching, to show its parts against the frame's,
+and only the contacts where its drawn parts overlap the frame's are marked,
+none as bearing. An edit that leaves the key sunk deeper than the row margin
 in its frame, read as the nominal pose reads it, its rails and the keybed
 included, or from which no increment can be solved, puts it back by the loading
 rule instead; the bench's application layer reports that it did, and the page
@@ -780,7 +785,9 @@ section is the sagittal plane itself: a washer shows the hole its pin stands in,
 and the front pin stands in its mortise, a void open at the key's underside.
 Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
-parts that overlap. Colors follow each part's material: the covering and the
+parts that overlap. A key no equilibrium places is drawn faded, a note on the
+view saying why, and the reader can draw any key as faint as wanted, to see
+the pins inside it. Colors follow each part's material: the covering and the
 key front white, the capsule and the back check block in a wood other than the
 keystick's. It opens on Hirschkorn's key; its first panel chooses the
 instrument on the bench among those shipped, each offered by its whole name.
