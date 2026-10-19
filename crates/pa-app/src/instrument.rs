@@ -2891,6 +2891,35 @@ mod tests {
         );
     }
 
+    /// Consistency: **a pull that turns the key up to the end of its range
+    /// lifts it off its frame.** On a balance pin standing above its key
+    /// button, 35.2 mm above its rail, the key leaves it 33 mm above its
+    /// punching. With the back rail moved to 100 mm behind the balance pin,
+    /// a key pulled up turns on that rail's cloth so near its pin that it
+    /// meets the 15° its turn is bounded by with its balance hole still on
+    /// the pin, where nothing modeled holds it: 63 g and 100 g at its
+    /// measuring point lift it off its frame, as they do with the rail at
+    /// 140 mm, where the key leaves its pin first, and as 400 g does at
+    /// both.
+    #[test]
+    fn a_pull_that_turns_the_key_to_the_end_of_its_range_lifts_it_off_its_frame() {
+        for behind_mm in [100.0, 140.0] {
+            for pull_g in [-63.0, -100.0, -400.0] {
+                let mut b = Instrument::weighed_section();
+                b.set(path::BALANCE_PIN_HEIGHT, 35.2)
+                    .expect("a pin above the key button");
+                b.set(path::BACK_RAIL_BEHIND, behind_mm)
+                    .expect("a back rail moved");
+                b.set(path::WEIGHT, pull_g).expect("a pull");
+                assert_eq!(
+                    b.finger_verdict(),
+                    Some(TouchVerdict::LiftsOffItsFrame),
+                    "{pull_g} g, the back rail {behind_mm} mm behind"
+                );
+            }
+        }
+    }
+
     /// Consistency: **a pull never draws the key above its balance pin.**
     /// The key leaves its pin where its balance hole, the key frame's origin
     /// on the pin's axis, clears the drawn pin's top, 9 mm above its
