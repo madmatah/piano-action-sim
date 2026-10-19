@@ -607,7 +607,8 @@ pub struct CapstanSettings {
     pub height_mm: f64,
 }
 
-/// The front mortise.
+/// The front mortise: its cut, the groove it is milled through and its
+/// bushing.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 pub struct MortiseSettings {
@@ -618,6 +619,17 @@ pub struct MortiseSettings {
     pub cutter_diameter_mm: f64,
     /// How far that cutter moves along the key, millimeters.
     pub travel_mm: f64,
+    /// How deep the groove it is milled through is cut into the underside,
+    /// millimeters.
+    pub groove_depth_mm: f64,
+    /// The thickness of its bushing on each straight wall, millimeters.
+    pub bushing_thickness_mm: f64,
+    /// How far up its walls the bushing runs from the groove's floor,
+    /// millimeters.
+    pub bushing_height_mm: f64,
+    /// How far the bushing runs flat on the groove's floor from its wall,
+    /// millimeters.
+    pub bushing_flat_width_mm: f64,
 }
 
 /// The balance mortise: the slot through the key button, its cavity in the
@@ -769,6 +781,10 @@ impl Settings {
                     depth_mm: at(path::FRONT_MORTISE_DEPTH),
                     cutter_diameter_mm: at(path::FRONT_MORTISE_CUTTER_DIAMETER),
                     travel_mm: at(path::FRONT_MORTISE_TRAVEL),
+                    groove_depth_mm: at(path::FRONT_MORTISE_GROOVE_DEPTH),
+                    bushing_thickness_mm: at(path::FRONT_MORTISE_BUSHING_THICKNESS),
+                    bushing_height_mm: at(path::FRONT_MORTISE_BUSHING_HEIGHT),
+                    bushing_flat_width_mm: at(path::FRONT_MORTISE_BUSHING_FLAT_WIDTH),
                 },
                 capsule_height_mm: at(path::CAPSULE_HEIGHT),
                 capsule_length_mm: at(path::CAPSULE_LENGTH),

@@ -1331,6 +1331,10 @@ const KEY_BUTTON_AND_MORTISE_SLIDERS = [
   ['key.balance_mortise.side_hole_height_mm', 2.4],
   ['key.front_mortise.cutter_diameter_mm', 6.5],
   ['key.front_mortise.travel_mm', 2.5],
+  ['key.front_mortise.groove_depth_mm', 3.5],
+  ['key.front_mortise.bushing_thickness_mm', 1.2],
+  ['key.front_mortise.bushing_height_mm', 2.5],
+  ['key.front_mortise.bushing_flat_width_mm', 4.5],
 ]
 for (const [path, value] of KEY_BUTTON_AND_MORTISE_SLIDERS) {
   if ((await moveSlider(path, value)) !== 'ok') fail(`no slider over ${path}`)

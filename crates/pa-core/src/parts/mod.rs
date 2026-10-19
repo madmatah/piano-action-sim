@@ -610,11 +610,12 @@ impl KeyDesign {
     /// since it reads several at once. The
     /// capstan turns continuously, a screw having no quantum, within the
     /// 2 to 30 mm above the keystick the bench has always held it to. The
-    /// key front, the front mortise's depth, cutter and travel, and the key
-    /// button's and the balance mortise's dimensions, the side holes' height
-    /// among them, are no less than nothing and under a meter; whether they
-    /// fit each other and the keystick is [`crate::validate`]'s to say too.
-    pub const PARAMS: [ParamSpec<Self>; 16] = [
+    /// key front, the front mortise's depth, cutter and travel, its
+    /// groove's depth and its bushing, and the key button's and the balance
+    /// mortise's dimensions, the side holes' height among them, are no less
+    /// than nothing and under a meter; whether they fit each other and the
+    /// keystick is [`crate::validate`]'s to say too.
+    pub const PARAMS: [ParamSpec<Self>; 20] = [
         key_length("front_edge", |k| k.front_edge, |k, v| k.front_edge = v),
         ParamSpec {
             name: "capstan.x",
@@ -700,6 +701,26 @@ impl KeyDesign {
             "front_mortise.travel",
             |k| k.front_mortise.travel,
             |k, v| k.front_mortise.travel = v,
+        ),
+        key_length(
+            "front_mortise.groove_depth",
+            |k| k.front_mortise.groove_depth,
+            |k, v| k.front_mortise.groove_depth = v,
+        ),
+        key_length(
+            "front_mortise.bushing_thickness",
+            |k| k.front_mortise.bushing_thickness,
+            |k, v| k.front_mortise.bushing_thickness = v,
+        ),
+        key_length(
+            "front_mortise.bushing_height",
+            |k| k.front_mortise.bushing_height,
+            |k, v| k.front_mortise.bushing_height = v,
+        ),
+        key_length(
+            "front_mortise.bushing_flat_width",
+            |k| k.front_mortise.bushing_flat_width,
+            |k, v| k.front_mortise.bushing_flat_width = v,
         ),
     ];
 

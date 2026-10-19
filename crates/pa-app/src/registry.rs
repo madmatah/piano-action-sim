@@ -55,6 +55,17 @@ pub mod path {
     pub const FRONT_MORTISE_CUTTER_DIAMETER: &str = "key.front_mortise.cutter_diameter_mm";
     /// How far the front mortise's cutter moves along the key.
     pub const FRONT_MORTISE_TRAVEL: &str = "key.front_mortise.travel_mm";
+    /// How deep the groove the front mortise is milled through is cut into
+    /// the underside.
+    pub const FRONT_MORTISE_GROOVE_DEPTH: &str = "key.front_mortise.groove_depth_mm";
+    /// The front mortise's bushing's thickness.
+    pub const FRONT_MORTISE_BUSHING_THICKNESS: &str = "key.front_mortise.bushing_thickness_mm";
+    /// How far up the front mortise's walls its bushing runs from the
+    /// groove's floor.
+    pub const FRONT_MORTISE_BUSHING_HEIGHT: &str = "key.front_mortise.bushing_height_mm";
+    /// How far the front mortise's bushing runs flat on the groove's floor
+    /// from the mortise's wall.
+    pub const FRONT_MORTISE_BUSHING_FLAT_WIDTH: &str = "key.front_mortise.bushing_flat_width_mm";
     /// The key button's height above the keystick.
     pub const CAPSULE_HEIGHT: &str = "key.capsule_height_mm";
     /// The key button's length along the key.
@@ -265,7 +276,7 @@ const fn millimeters(path: &'static str, field: Field) -> Entry {
 
 /// Every path of the instrument, in a fixed order: the protocol, the
 /// experiment, the regulation's targets, the key, the frame.
-pub const ENTRIES: [Entry; 36] = [
+pub const ENTRIES: [Entry; 40] = [
     millimeters(
         path::MEASURING_POINT,
         Field::Protocol(TouchweightProtocol::PARAMS[0]),
@@ -302,6 +313,26 @@ pub const ENTRIES: [Entry; 36] = [
         false,
     ),
     key(path::FRONT_MORTISE_TRAVEL, KeyDesign::PARAMS[15], false),
+    key(
+        path::FRONT_MORTISE_GROOVE_DEPTH,
+        KeyDesign::PARAMS[16],
+        false,
+    ),
+    key(
+        path::FRONT_MORTISE_BUSHING_THICKNESS,
+        KeyDesign::PARAMS[17],
+        false,
+    ),
+    key(
+        path::FRONT_MORTISE_BUSHING_HEIGHT,
+        KeyDesign::PARAMS[18],
+        false,
+    ),
+    key(
+        path::FRONT_MORTISE_BUSHING_FLAT_WIDTH,
+        KeyDesign::PARAMS[19],
+        false,
+    ),
     Entry {
         path: path::FRICTION_TORQUE,
         unit: Unit::GramMillimeter,
@@ -391,6 +422,10 @@ pub enum Label {
     FrontMortise,
     FrontMortiseCutterDiameter,
     FrontMortiseTravel,
+    FrontMortiseGrooveDepth,
+    FrontMortiseBushingThickness,
+    FrontMortiseBushingHeight,
+    FrontMortiseBushingFlatWidth,
     BackCloth,
     Capstan,
     FrontEdge,
@@ -685,6 +720,26 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
                 path: path::FRONT_MORTISE_TRAVEL,
                 label: Label::FrontMortiseTravel,
                 soft: soft(0.1, 10.0, 0.1),
+            },
+            Control::Slider {
+                path: path::FRONT_MORTISE_GROOVE_DEPTH,
+                label: Label::FrontMortiseGrooveDepth,
+                soft: soft(0.0, 8.0, 0.1),
+            },
+            Control::Slider {
+                path: path::FRONT_MORTISE_BUSHING_THICKNESS,
+                label: Label::FrontMortiseBushingThickness,
+                soft: soft(0.0, 2.5, 0.05),
+            },
+            Control::Slider {
+                path: path::FRONT_MORTISE_BUSHING_HEIGHT,
+                label: Label::FrontMortiseBushingHeight,
+                soft: soft(0.0, 15.0, 0.1),
+            },
+            Control::Slider {
+                path: path::FRONT_MORTISE_BUSHING_FLAT_WIDTH,
+                label: Label::FrontMortiseBushingFlatWidth,
+                soft: soft(0.0, 8.0, 0.1),
             },
             Control::Slider {
                 path: path::BACK_RAIL_CLOTH,
