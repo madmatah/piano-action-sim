@@ -213,16 +213,18 @@ impl Mounted {
     /// Whether `refusal` is the key lifting off its frame: an increment that
     /// came to rest leaning on the slide's upper limit, where the key leaves
     /// its balance pin ([`Self::leaves_its_pin`]), or that has the key on a
-    /// punching standing above the pin's top.
+    /// punching standing above the pin's top; or one leaning on the upper
+    /// limit of its turn, [`KEY_ANGLE_LIMIT`] nose-up, where nothing modeled
+    /// holds it, and a key turning up about a stop near its pin meets that
+    /// limit before its balance hole clears a tall pin.
     pub fn lifts_off_its_frame(&self, refusal: &Refusal) -> bool {
         let Some(lift) = &self.lift else {
             return false;
         };
         match refusal {
-            Refusal::NoEquilibrium { on } => on.contains(&Holder::Limit {
-                coord: lift.coord,
-                upper: true,
-            }),
+            Refusal::NoEquilibrium { on } => [lift.coord, self.angle]
+                .into_iter()
+                .any(|coord| on.contains(&Holder::Limit { coord, upper: true })),
             _ => false,
         }
     }
