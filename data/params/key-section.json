@@ -148,7 +148,7 @@
       "unit": "mm",
       "reliability": "S",
       "what_for": "How far the cutter moves along the key between its two end positions as it mills the front mortise: the mortise is that much longer than the cutter is wide. Its length along the key, travel and diameter, is longer than the 5 mm pin standing in it, because the key swings about its balance pin and the mortise travels through a small arc past a pin that does not move; the clearance is also what lets a frame be a few tenths out of place without the key knowing, so it is the tolerance a frame design is judged against.",
-      "note": "Not measured. The slot is assumed 8 mm long, 3 mm of total slack on the 5 mm pin, less the 6 mm cutter. Across the keyboard the mortise is bushed and close on the domed sides of the pin's oval head, which holds the key straight; that cloth is not drawn."
+      "note": "Not measured. The slot is assumed 8 mm long, 3 mm of total slack on the 5 mm pin, less the 6 mm cutter. Across the keyboard the mortise is bushed and close on the domed sides of the pin's oval head, which holds the key straight (front_mortise_construction). The groove the mortise is milled through is as long along the key as this travel."
     },
     {
       "name": "front_mortise_depth",
@@ -156,10 +156,25 @@
       "unit": "mm",
       "reliability": "V",
       "confirmed": "2026-10-14",
-      "what_for": "How far the front mortise reaches up into the key, from its underside: 3 mm of recess, then 19 mm of mortise above it. It is the mortise stop: how far the front rail pin may rise into the key at the bottom of its stroke (key-frame-sections.json, the_pin_must_stay_in_its_mortise).",
-      "note": "Measured by the owner on these keys. The engine draws the mortise as one slot of this depth, open at the underside; the recess and the mortise are not told apart."
+      "what_for": "How far the front mortise reaches up into the key, from its underside: 3 mm of groove, then 19 mm of mortise above it. It is the mortise stop: how far the front rail pin may rise into the key at the bottom of its stroke (key-frame-sections.json, the_pin_must_stay_in_its_mortise).",
+      "note": "Measured by the owner on these keys. The engine draws the mortise as one slot of this depth from the underside, milled through the floor of its groove (front_mortise_groove_depth), which it draws beside it."
+    },
+    {
+      "name": "front_mortise_groove_depth",
+      "value": 3.0,
+      "unit": "mm",
+      "reliability": "V",
+      "confirmed": "2026-10-14",
+      "what_for": "How deep the groove the front mortise is milled through is cut into the key's underside: the mortise begins at its floor, where the bushing's cloth is turned and glued flat (front_mortise_construction).",
+      "note": "Measured by the owner on these keys: the 3 mm of front_mortise_depth's 22 under the 19 mm of mortise."
     }
   ],
+  "front_mortise_construction": {
+    "statement": "The front mortise is milled up into the keystick from its underside, a cutter turning about a vertical axis moved along the key, so that its two ends are half circles of the cutter's radius and its long sides straight walls between them. It is milled through the floor of a groove cut across the underside from one side of the key to the other, its floor flat and its walls square, as long along the key as the mortise's straight walls, so that the mortise's rounded ends reach past the groove's walls. It is bushed on its straight walls only and only in their lower part, the rounded ends left bare: on each side a strip of cloth as wide as the groove is long is glued up the mortise's wall from the groove, then turns at a right angle and is glued flat on the groove's floor toward the key's side, an L on each side. The bushing guides the key across the keyboard on the front rail pin's oval head. On other keys the groove runs only a few millimeters either side of the mortise, enough to glue the cloth in.",
+    "stated_by": "project owner, with his photograph of a key from underneath",
+    "date": "2026-10-19",
+    "what_for": "What the engine draws as the front mortise, the groove it is milled through and its bushing, every dimension of which is a setting or follows from one; the groove across the whole key, as on the owner's."
+  },
   "materials": {
     "statement": "The key front and the covering are white. The capsule and the back check block are of a wood different from the keystick's.",
     "stated_by": "project owner",
@@ -171,7 +186,7 @@
     "One of these keys weighed whole, as a key that arrives leaded is weighed: its mass on a scale, its front weight on Stanwood's jig, and how far back from the covering's lip the weight was centered. Until then the measured section has no mass and refuses every reading that needs one. It is the entry point of the first validation (`docs/FOUNDATIONS.md` > Validation instruments, 'One real key, measured by the owner'), and the measurement to ask for first.",
     "Where the key stands along its balance pin: the distance from the center of the balance hole to the key front, or to the covering's lip. The measured section assumes its key front 258 mm in front of the pin and lays its measured 500 mm back from the lip for its tail; with the capstan measured at 122 mm, that front gives a key weight ratio of 0.494, under the 0.50 to 0.60 published for a natural, so the distance decides the ratio.",
     "The chamfer, which of the three readings it is: 3.0 mm of rise over 77 mm, 2.5 mm over 63 mm, or a key whose dip is really 8.4 mm. The owner's answer - handle the flat case and the edge case rather than forcing the three to agree - is implemented, so nothing is blocked on it; what it decides is whether the measured section beds flat, and it holds 2.5 mm over 77, which is the third reading, beside a 10.2 mm dip, which is not. The bench reports the 0.41 degrees rather than arbitrating.",
-    "The front mortise: how far back from the key's front end it is cut, and the diameter and travel of the cutter it is milled with, which make its length along the key. All are S above, and that length is the tolerance a frame design is judged against.",
+    "The front mortise: how far back from the key's front end it is cut, and the diameter and travel of the cutter it is milled with, which make its length along the key; and its bushing, the cloth's thickness, how far it runs up the walls from the groove's floor and how far it is glued flat on that floor. All are S, and the mortise's length is the tolerance a frame design is judged against.",
     "Where the back check block stands along the key, as a distance from the balance pin to its back end. The measured section's 220 mm is where the measured tail ends, derived and not measured.",
     "The clearance cut in the top of the key between the capstan and the back check block, not right behind the capstan: it is there so that the wippen rail, which runs across the keyboard over the keys, cannot rub the key, and behind it the key comes back to its full height, the back check block glued on that. Where its two ends stand, as distances behind the balance pin, and how deep it is cut below the full top. The engine draws such a clearance, placed from the balance pin as the back check block is, since the action places the rail it clears; the measured section's profile states it absent until it is measured.",
     "Where the key's tail bears on the back rail cloth. Asked for and WORTH LESS THAN IT LOOKS, which is why it is last: the regulation solver re-places the punchings on whatever arm the key bears at and meets the targets on each, so sweeping the cloth from 170 to 225 mm behind the balance pin moves the bedding angle by 0.049 degrees and leaves key height and dip on their targets, within the paper the drawer lays them in: a back rail's position is forgiving. The bound is real and the number is not critical.",
