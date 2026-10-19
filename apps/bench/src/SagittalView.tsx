@@ -24,7 +24,8 @@
  * hole its pin stands in. A cut, the front mortise, is a void in its body's
  * solids: drawn into the stencil buffer first, it keeps the key's wood from
  * being painted there, so the pin under it shows through, while a pin standing
- * inside the key's wood stays hidden by it. Its mouth, which runs along the
+ * inside the key's wood stays hidden by it, unless the key is drawn faded, as
+ * the reader may choose and as a key no equilibrium places is. Its mouth, which runs along the
  * keystick's underside, is no edge of the section. The **solid** sweeps every
  * part across the keyboard, and leaves the cuts out: a mortise is inside the
  * key.
@@ -65,8 +66,9 @@
 import type { How, MarkedContact, Marker, Outline, Pose, Scene, State } from '@pas/wasm/types'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
-import { useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { bodyOpacity } from './opacity'
 import {
   axisSegments,
   contactStrokes,
@@ -143,6 +145,22 @@ const GROUND = 0
 /** The stencil value a cut leaves where the key's wood must not be painted. */
 const CUT_STENCIL = 1
 
+/** How opaque the parts of the body being drawn are: wholly, unless the
+ * body is drawn faded. */
+const Opacity = createContext(1)
+
+/** A material's transparency at `opacity`: a part drawn faded writes no
+ * depth, so that what stands behind it shows through. */
+function fadeTo(opacity: number) {
+  return { transparent: opacity < 1, opacity, depthWrite: opacity === 1 }
+}
+
+/** The key of a material at `opacity`, so that three builds it again when it
+ * turns transparent or opaque, which a changed property alone does not. */
+function fadeKey(opacity: number): string {
+  return opacity < 1 ? 'faded' : 'opaque'
+}
+
 /**
  * Disposes a geometry when it is replaced or unmounted.
  *
@@ -168,15 +186,16 @@ function Extruded({ points, width, color }: { points: number[]; width: number; c
     return g
   }, [points, width])
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry])
+  const opacity = useContext(Opacity)
   useDisposal(geometry)
   useDisposal(edges)
   return (
     <group>
       <mesh geometry={geometry}>
-        <meshLambertMaterial color={color} />
+        <meshLambertMaterial key={fadeKey(opacity)} color={color} {...fadeTo(opacity)} />
       </mesh>
       <lineSegments geometry={edges}>
-        <lineBasicMaterial color="#3a342b" transparent opacity={0.4} />
+        <lineBasicMaterial color="#3a342b" transparent opacity={0.4 * opacity} />
       </lineSegments>
     </group>
   )
@@ -203,10 +222,16 @@ function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; c
     if (first) points.push(first.clone())
     return new THREE.LatheGeometry(points, 48)
   }, [profile])
+  const opacity = useContext(Opacity)
   useDisposal(geometry)
   return (
     <mesh geometry={geometry} position={[axisX, 0, 0]}>
-      <meshLambertMaterial color={color} side={THREE.DoubleSide} />
+      <meshLambertMaterial
+        key={fadeKey(opacity)}
+        color={color}
+        side={THREE.DoubleSide}
+        {...fadeTo(opacity)}
+      />
     </mesh>
   )
 }
@@ -227,10 +252,13 @@ function Fill({
   masked?: boolean
 }) {
   const geometry = useMemo(() => new THREE.ShapeGeometry(toShape(points)), [points])
+  const opacity = useContext(Opacity)
   useDisposal(geometry)
   return (
     <mesh geometry={geometry} renderOrder={layer}>
       <meshBasicMaterial
+        key={fadeKey(opacity)}
+        {...fadeTo(opacity)}
         color={color}
         side={THREE.DoubleSide}
         depthTest={false}
@@ -274,6 +302,7 @@ function Edges({
   color = EDGE,
   z = 0,
   depthTest = false,
+  overlay = false,
 }: {
   pieces: number[]
   layer: number
@@ -282,6 +311,8 @@ function Edges({
   z?: number
   /** Whether the solids in front hide them, as on a solid's face. */
   depthTest?: boolean
+  /** Whether they are marks drawn over every part, a faded key's included. */
+  overlay?: boolean
 }) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry()
@@ -292,10 +323,14 @@ function Edges({
     g.setAttribute('position', new THREE.Float32BufferAttribute(xyz, 3))
     return g
   }, [pieces, z])
+  const opacity = useContext(Opacity)
   useDisposal(geometry)
   return (
     <lineSegments geometry={geometry} renderOrder={layer}>
       <lineBasicMaterial
+        key={fadeKey(opacity)}
+        {...fadeTo(opacity)}
+        transparent={overlay || opacity < 1}
         color={color}
         depthTest={depthTest}
         depthWrite={false}
@@ -400,7 +435,7 @@ function MeasuringPoint({ at }: { at: [number, number] }) {
   return (
     <mesh position={[x, y + 3.5, 0]} rotation={[Math.PI, 0, 0]} renderOrder={LAYER.marks}>
       <coneGeometry args={[2.2, 6, 4]} />
-      <meshBasicMaterial color="#c8302a" depthTest={false} toneMapped={false} />
+      <meshBasicMaterial color="#c8302a" depthTest={false} toneMapped={false} transparent />
     </mesh>
   )
 }
@@ -410,6 +445,11 @@ function MeasuringPoint({ at }: { at: [number, number] }) {
  * surface is, and across an open or overlapping contact a line to where the
  * key's is. Drawn in the keybed's frame, over everything, in both views: the
  * points are where the engine's contact rows put them.
+ *
+ * Their materials are transparent, though wholly opaque, as the measuring
+ * point's is: three draws every opaque material before every transparent
+ * one, whatever their render order, so marks left opaque would be drawn
+ * under a faded key.
  */
 function Contacts({ contacts }: { contacts: MarkedContact[] }) {
   return (
@@ -420,6 +460,7 @@ function Contacts({ contacts }: { contacts: MarkedContact[] }) {
           pieces={contactStrokes(contacts, state)}
           layer={LAYER.contacts}
           color={CONTACT_COLOR[state]}
+          overlay
         />
       ))}
       {contacts.map((c, i) => (
@@ -434,6 +475,7 @@ function Contacts({ contacts }: { contacts: MarkedContact[] }) {
             depthTest={false}
             depthWrite={false}
             toneMapped={false}
+            transparent
           />
         </mesh>
       ))}
@@ -463,6 +505,7 @@ function Body({
   mode,
   marker,
   marked,
+  opacity,
 }: {
   body: number
   pose: Pose
@@ -471,6 +514,8 @@ function Body({
   marker: Marker | undefined
   /** Whether its lines are marked by provenance. */
   marked: boolean
+  /** How opaque its parts are drawn. */
+  opacity: number
 }) {
   const matrix = useMemo(() => poseMatrix(pose), [pose])
   const cuts = outlines.filter((o) => o.role === 'cut')
@@ -478,74 +523,76 @@ function Body({
   const grounded = body === GROUND
   return (
     <group matrix={matrix} matrixAutoUpdate={false}>
-      {mode === 'solid' ? (
-        parts.map((o, i) =>
-          o.sweep === 'revolved' ? (
-            <Lathed
-              key={`${o.code}-${i}`}
-              profile={o.points_mm}
-              axisX={o.axis_x_mm}
-              color={colorOf(o)}
-            />
-          ) : (
-            <group key={`${o.code}-${i}`}>
-              <Extruded points={o.points_mm} width={o.width_mm} color={colorOf(o)} />
-              {/* Marked by provenance, on the face toward the camera. */}
-              {marked && (
-                <OutlineEdges
-                  outline={o}
-                  skip={new Set()}
-                  layer={LAYER.marks}
-                  marked
-                  z={o.width_mm / 2 + 0.05}
-                  depthTest
-                />
-              )}
-            </group>
-          ),
-        )
-      ) : (
-        <>
-          {cuts.map((o, i) => (
-            <Void key={`${o.code}-${i}`} points={o.points_mm} />
-          ))}
-          {cuts.map((o, i) => {
-            // A cut's mouth runs along its body's outline: no edge there.
-            const mouth = new Set<number>()
-            for (const p of parts) for (const s of sharedSegments(o, p)) mouth.add(s)
-            return (
-              <OutlineEdges
-                key={`${o.code}-edges-${i}`}
-                outline={o}
-                skip={mouth}
-                layer={LAYER.keyEdges}
-                marked={marked}
-              />
-            )
-          })}
-          {parts.map((o, i) => {
-            const open = new Set<number>()
-            for (const c of cuts) for (const s of sharedSegments(o, c)) open.add(s)
-            const turned = o.sweep === 'revolved'
-            const [layer, edgeLayer] = grounded
-              ? [LAYER.ground, LAYER.groundEdges]
-              : turned
-                ? [LAYER.turned, LAYER.turnedEdges]
-                : [LAYER.key, LAYER.keyEdges]
-            return (
-              <SectionPart
+      <Opacity.Provider value={opacity}>
+        {mode === 'solid' ? (
+          parts.map((o, i) =>
+            o.sweep === 'revolved' ? (
+              <Lathed
                 key={`${o.code}-${i}`}
-                outline={o}
-                layer={layer}
-                edgeLayer={edgeLayer}
-                masked={!grounded && cuts.length > 0}
-                open={open}
-                marked={marked}
+                profile={o.points_mm}
+                axisX={o.axis_x_mm}
+                color={colorOf(o)}
               />
-            )
-          })}
-        </>
-      )}
+            ) : (
+              <group key={`${o.code}-${i}`}>
+                <Extruded points={o.points_mm} width={o.width_mm} color={colorOf(o)} />
+                {/* Marked by provenance, on the face toward the camera. */}
+                {marked && (
+                  <OutlineEdges
+                    outline={o}
+                    skip={new Set()}
+                    layer={LAYER.marks}
+                    marked
+                    z={o.width_mm / 2 + 0.05}
+                    depthTest
+                  />
+                )}
+              </group>
+            ),
+          )
+        ) : (
+          <>
+            {cuts.map((o, i) => (
+              <Void key={`${o.code}-${i}`} points={o.points_mm} />
+            ))}
+            {cuts.map((o, i) => {
+              // A cut's mouth runs along its body's outline: no edge there.
+              const mouth = new Set<number>()
+              for (const p of parts) for (const s of sharedSegments(o, p)) mouth.add(s)
+              return (
+                <OutlineEdges
+                  key={`${o.code}-edges-${i}`}
+                  outline={o}
+                  skip={mouth}
+                  layer={LAYER.keyEdges}
+                  marked={marked}
+                />
+              )
+            })}
+            {parts.map((o, i) => {
+              const open = new Set<number>()
+              for (const c of cuts) for (const s of sharedSegments(o, c)) open.add(s)
+              const turned = o.sweep === 'revolved'
+              const [layer, edgeLayer] = grounded
+                ? [LAYER.ground, LAYER.groundEdges]
+                : turned
+                  ? [LAYER.turned, LAYER.turnedEdges]
+                  : [LAYER.key, LAYER.keyEdges]
+              return (
+                <SectionPart
+                  key={`${o.code}-${i}`}
+                  outline={o}
+                  layer={layer}
+                  edgeLayer={edgeLayer}
+                  masked={!grounded && cuts.length > 0}
+                  open={open}
+                  marked={marked}
+                />
+              )
+            })}
+          </>
+        )}
+      </Opacity.Provider>
       {marker && <MeasuringPoint at={marker.at_mm} />}
     </group>
   )
@@ -569,6 +616,7 @@ export function SagittalView({
   state,
   mode,
   marked,
+  keyOpacity,
 }: {
   /** What is drawn: every part in its own body's frame. */
   scene: Scene
@@ -577,6 +625,9 @@ export function SagittalView({
   mode: ViewMode
   /** Whether every line is marked by how its number is known. */
   marked: boolean
+  /** How opaque the key is drawn, as the reader chose: faded further where
+   * no equilibrium places it. */
+  keyOpacity: number
 }) {
   const preset = CAMERA[mode]
 
@@ -612,6 +663,11 @@ export function SagittalView({
             mode={mode}
             marker={state.measuring_point.body === body ? state.measuring_point : undefined}
             marked={marked}
+            opacity={bodyOpacity({
+              grounded: body === GROUND,
+              chosen: keyOpacity,
+              isPlaced: state.place === 'placed',
+            })}
           />
         ))}
         <Contacts contacts={state.contacts} />

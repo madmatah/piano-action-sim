@@ -436,6 +436,13 @@ export const en: Catalog = {
       assumed: 'assumed',
       set_on_the_bench: 'set on the bench',
     },
+    keyOpacity: 'key opacity',
+    notPlaced: {
+      unplaced:
+        'The key finds no equilibrium on this frame: it is drawn faded, level on its balance punching, to show its parts against the frame’s, not where it would stand.',
+      lifted_off:
+        'The weight on the measuring point lifts the key off its frame: it is drawn faded where its last equilibrium left it, which no longer holds it, and bears on nothing.',
+    },
   },
 
   profile: {
@@ -662,7 +669,7 @@ export const en: Catalog = {
         overlaps.length === 0
           ? ''
           : `, here ${overlaps.map((overlap) => `${to(overlap.overlap_mm, LENGTH_MM)} mm at the ${CONTACT[overlap.pair]}`).join(' and ')}`
-      }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. The contacts marked on the view are where the key bears, and what stands within a millimeter of it.`,
+      }. The key is free to lift off its balance punching: where its stops fight it rides on them, and a pull its punching cannot answer lifts it off. Where an equilibrium places the key, the contacts marked on the view are where it bears, and what stands within a millimeter of it.`,
     notWeighed:
       'This key is not weighed: what a weight on it does depends on the key’s own balance, which only a weighing gives, so the key is drawn where its back rests on its cloth, as key height is read, whatever weight is typed. Weigh it to try the weights.',
     noPressNote:

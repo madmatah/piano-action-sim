@@ -198,6 +198,17 @@ button:hover {
   color: var(--muted);
   font-size: 0.7rem;
 }
+/* Under the tabs, on a line of its own, whatever they wrap to. */
+.viewtabs .view-note {
+  flex-basis: 100%;
+  max-width: 40rem;
+  margin: 0.2rem 0 0;
+  padding: 0.2rem 0.4rem;
+  color: var(--alert);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  background: rgba(255, 255, 255, 0.8);
+}
 .viewtabs .legend i {
   display: inline-block;
   width: 0.55rem;
@@ -444,4 +455,16 @@ button.action {
   background: var(--ink);
   color: #fff;
   border-color: var(--ink);
+}
+
+.viewtabs .key-opacity {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.viewtabs .key-opacity input {
+  width: 6rem;
 }

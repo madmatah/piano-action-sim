@@ -258,6 +258,9 @@ export function App() {
   // Whether every drawn line is marked by how the number that places it is
   // known: a way of looking, the view's alone.
   const [marked, setMarked] = useState(false)
+  // How opaque the key is drawn, so that what stands inside it shows, as a
+  // pin in its mortise: a way of looking too.
+  const [keyOpacity, setKeyOpacity] = useState(1)
   // What the engine answered the last action, shown until anything else is
   // done: the papers a regulation laid, which the engine keeps nowhere else.
   // An edit refused it keeps itself, in its diagnostics.
@@ -361,7 +364,7 @@ export function App() {
   // An edit the engine refused is said beside the control that made it; one
   // no control on the page made, as a link's, is said here.
   const refused = d.refused_edit
-  const unplaced =
+  const refusedOffThePage =
     refused !== null &&
     !engine.registry.page.some((p) => p.controls.some((c) => madeBy(c, refused)))
 
@@ -534,9 +537,11 @@ export function App() {
                 {d.touch.verdict.code === 'held_by_friction' && (
                   <div className="gaps">{t.touch.margin(d.touch.verdict.margin_g)}</div>
                 )}
-                <div className="gaps">
-                  {t.touch.gaps(d.touch.gap_front_mm, d.touch.gap_back_mm)}
-                </div>
+                {(d.touch.gap_front_mm !== null || d.touch.gap_back_mm !== null) && (
+                  <div className="gaps">
+                    {t.touch.gaps(d.touch.gap_front_mm, d.touch.gap_back_mm)}
+                  </div>
+                )}
                 <div className="gaps">
                   {t.touch.bushings(
                     kf?.outcome === 'read' ? t.number(kf.shown, decimals(kf.resolution)) : null,
@@ -562,8 +567,15 @@ export function App() {
           className="view"
           data-touching={touching.join(' ')}
           data-marked={marked ? 'provenance' : undefined}
+          data-place={engine.state.place}
         >
-          <SagittalView scene={engine.scene} state={engine.state} mode={view} marked={marked} />
+          <SagittalView
+            scene={engine.scene}
+            state={engine.state}
+            mode={view}
+            marked={marked}
+            keyOpacity={keyOpacity}
+          />
           {shownBand && drawnBand && (
             <BandView
               band={drawnBand.band}
@@ -614,12 +626,27 @@ export function App() {
                 >
                   {t.view.provenance}
                 </button>
+                <label className="key-opacity">
+                  {t.view.keyOpacity}
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={1}
+                    step={0.05}
+                    value={keyOpacity}
+                    data-view-setting="key-opacity"
+                    onChange={(e) => setKeyOpacity(Number(e.target.value))}
+                  />
+                </label>
                 <span className="hint">{t.view.hint}</span>
                 <span className="legend">
                   <i style={{ background: CONTACT_COLOR.closed }} /> {t.view.bears}
                   <i style={{ background: CONTACT_COLOR.open }} /> {t.view.open}
                   <i style={{ background: CONTACT_COLOR.overlapping }} /> {t.view.overlapping}
                 </span>
+                {engine.state.place !== 'placed' && (
+                  <p className="view-note">{t.view.notPlaced[engine.state.place]}</p>
+                )}
               </>
             )}
           </div>
@@ -657,7 +684,7 @@ export function App() {
               </p>
             </div>
           )}
-          {unplaced && <Refused refused={refused} />}
+          {refusedOffThePage && <Refused refused={refused} />}
           {seatWhy !== null && (
             <p className="degenerate no-weighing" data-code={d.seat_refused?.code}>
               {t.noWeighing(seatWhy)}

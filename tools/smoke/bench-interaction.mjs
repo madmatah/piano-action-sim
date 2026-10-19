@@ -258,6 +258,7 @@ const WEIGHT = 'experiment.weight_g'
 const BALANCE_RAIL = 'frame.balance_rail.height_mm'
 const CAPSTAN = 'key.capstan.behind_mm'
 const FRONT_EDGE = 'key.front_edge_mm'
+const FRONT_RAIL_AT = 'frame.front_rail.at_mm'
 
 function fail(message) {
   console.error(`FAIL ${message}`)
@@ -1805,6 +1806,61 @@ if (
   fail(`the band is not drawn again after a refusal: ${JSON.stringify([again, plotted])}`)
 }
 console.log(`  ok  the band drawn again once the key has its stroke back, ${plotted} px wide`)
+
+// A key no equilibrium places bears on nothing: with the front rail moved
+// back until its pin stands under the wood of the key, which it would lift
+// off its balance pin, the key has no place on its frame. The view says so
+// and marks no contact closed; with the rail put back, the key is placed
+// again and bears on its stops.
+const FRONT_RAIL_UNDER_THE_WOOD_MM = 80
+const readPlacement = () =>
+  evaluate(`
+    (() => {
+      const view = document.querySelector('.view')
+      return {
+        place: view?.dataset.place ?? null,
+        touching: view?.dataset.touching ?? null,
+        note: document.querySelector('.view-note')?.textContent ?? null,
+      }
+    })()
+  `)
+if ((await showView('solid')) !== 'ok') fail('no solid button')
+const railAtMm = (await slider(FRONT_RAIL_AT))?.holds
+if ((await moveSlider(FRONT_RAIL_AT, FRONT_RAIL_UNDER_THE_WOOD_MM)) !== 'ok') {
+  fail('front rail slider missing')
+}
+await settle()
+const noPlace = await readPlacement()
+if (noPlace.place !== 'unplaced' || noPlace.touching !== '' || !noPlace.note) {
+  fail(`a key no equilibrium places is drawn as if it bore: ${JSON.stringify(noPlace)}`)
+}
+if ((await moveSlider(FRONT_RAIL_AT, railAtMm)) !== 'ok') fail('front rail slider missing')
+await settle()
+const placedAgain = await readPlacement()
+if (placedAgain.place !== 'placed' || placedAgain.touching === '' || placedAgain.note !== null) {
+  fail(`the key put back on its frame is not drawn placed: ${JSON.stringify(placedAgain)}`)
+}
+console.log(`  ok  a key no equilibrium places is drawn bearing on nothing: ${noPlace.note}`)
+
+// The key's opacity is the view's alone: chosen lower, the key is drawn
+// fainter in either view; chosen whole again, the view is drawn as it was.
+const chooseKeyOpacity = (opacity) => typeInto('[data-view-setting="key-opacity"]', opacity)
+for (const v of ['section', 'solid']) {
+  if ((await showView(v)) !== 'ok') fail(`no ${v} button`)
+  await settle()
+  const whole = await drawnArea()
+  const before = await drawn(whole)
+  if ((await chooseKeyOpacity(0.3)) !== 'ok') fail('no key opacity slider')
+  await settle()
+  const faint = await drawn(whole)
+  if ((await chooseKeyOpacity(1)) !== 'ok') fail('no key opacity slider')
+  await settle()
+  if (!before || faint === before) fail(`a fainter key changes nothing drawn in the ${v}`)
+  if ((await drawn(whole)) !== before) {
+    fail(`the ${v} is not drawn as it was once the key is whole again`)
+  }
+}
+console.log('  ok  the key drawn fainter as chosen, and whole again as it was, in both views')
 
 if (thrown.length > 0) fail(`the page threw: ${thrown[0].split('\n')[0]}`)
 
