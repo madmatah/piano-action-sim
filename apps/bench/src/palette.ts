@@ -75,6 +75,10 @@ export const CONTACT_COLOR: Record<ContactState, string> = {
   overlapping: '#e8590c',
 }
 
+/** The measuring point's marker, drawn over everything: a red no part is
+ * painted in, so that the smoke test finds it among the parts. */
+export const MEASURING_POINT_COLOR = '#c8302a'
+
 /**
  * The lines' colors where they are marked by provenance: how the number
  * that places each is known, in the legend's order.

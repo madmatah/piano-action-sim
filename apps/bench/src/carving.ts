@@ -223,21 +223,21 @@ export function millWalls({ minMm, maxMm }: Box, segments: number): THREE.Buffer
   return walls
 }
 
+/** The cuts a patched shader reads, as [`packCuts`] packs them. */
+export type PackedCuts = {
+  readonly cutMin: ReadonlyArray<[number, number, number]>
+  readonly cutMax: ReadonlyArray<[number, number, number]>
+  readonly cutHasRoundEnds: readonly boolean[]
+  readonly cutCount: number
+  readonly keepMin: [number, number, number]
+  readonly keepMax: [number, number, number]
+}
+
 /** The cuts a patched shader reads, padded to [`MAX_CUTS`]: their boxes as
  * flat triples, whether each has its ends rounded, how many, and the box to keep
  * within, every part kept where none is given. Refuses more cuts than the
  * shader holds, as a drawing that would paint wood over a void. */
-export function packCuts(
-  cuts: readonly Hollow[],
-  keep: Box | null,
-): {
-  cutMin: Array<[number, number, number]>
-  cutMax: Array<[number, number, number]>
-  cutHasRoundEnds: boolean[]
-  cutCount: number
-  keepMin: [number, number, number]
-  keepMax: [number, number, number]
-} {
+export function packCuts(cuts: readonly Hollow[], keep: Box | null): PackedCuts {
   if (cuts.length > MAX_CUTS) {
     throw new Error(
       `${cuts.length} cuts through one part, more than the ${MAX_CUTS} the solid carves`,
@@ -259,4 +259,40 @@ export function packCuts(
     keepMin: keep ? [...keep.minMm] : [-FAR_MM, -FAR_MM, -FAR_MM],
     keepMax: keep ? [...keep.maxMm] : [FAR_MM, FAR_MM, FAR_MM],
   }
+}
+
+/** The uniforms a patched shader reads its cuts from ([`patchShader`]): made
+ * once for a material and written in place as its cuts change, so that an
+ * edit of the key moves them without compiling anything. */
+export type CarvingUniforms = {
+  readonly cutMin: { readonly value: THREE.Vector3[] }
+  readonly cutMax: { readonly value: THREE.Vector3[] }
+  readonly cutHasRoundEnds: { readonly value: number[] }
+  readonly cutCount: { value: number }
+  readonly keepMin: { readonly value: THREE.Vector3 }
+  readonly keepMax: { readonly value: THREE.Vector3 }
+}
+
+/** Builds the uniforms of a material's cuts, none of them written yet. */
+export function buildCarvingUniforms(): CarvingUniforms {
+  return {
+    cutMin: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
+    cutMax: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
+    cutHasRoundEnds: { value: Array.from({ length: MAX_CUTS }, () => 0) },
+    cutCount: { value: 0 },
+    keepMin: { value: new THREE.Vector3() },
+    keepMax: { value: new THREE.Vector3() },
+  }
+}
+
+/** Writes `packed` into a material's cut `uniforms`, in place. */
+export function writeCarving(uniforms: CarvingUniforms, packed: PackedCuts): void {
+  for (let cutIndex = 0; cutIndex < MAX_CUTS; cutIndex += 1) {
+    uniforms.cutMin.value[cutIndex]?.set(...(packed.cutMin[cutIndex] ?? [0, 0, 0]))
+    uniforms.cutMax.value[cutIndex]?.set(...(packed.cutMax[cutIndex] ?? [0, 0, 0]))
+    uniforms.cutHasRoundEnds.value[cutIndex] = packed.cutHasRoundEnds[cutIndex] ? 1 : 0
+  }
+  uniforms.cutCount.value = packed.cutCount
+  uniforms.keepMin.value.set(...packed.keepMin)
+  uniforms.keepMax.value.set(...packed.keepMax)
 }

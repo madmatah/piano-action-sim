@@ -39,6 +39,12 @@ Numbers taken from published works, each recorded with the locator that finds it
 - **Hirschkorn's piano action model.** Martin C. Hirschkorn, *Dynamic Model of a Piano Action Mechanism*, MASc thesis, Systems Design Engineering, University of Waterloo, 2004. What is reused: the 235 values of Appendix A, with the laws and the regulation the appendix sends its reader to, in `data/params/hirschkorn-boston-gp178-note52.json`; the key's outline, as coordinates measured on Figure A.1, in `data/params/hirschkorn-key-outline.json`; both bound into an instrument by `data/profiles/hirschkorn.json`. Terms: the thesis is its author's work under copyright. The repository reproduces none of its pages or figures, only numbers with their table, row and page, short quotations cited where a value needs its wording, and points measured on a figure.
 - **Stanwood's touchweight metrology.** David C. Stanwood, *Standard Protocols of the New Touchweight Metrology*, Piano Technicians Journal, February 2000, pp. 20–23: the conventions the protocols run under, in `data/params/touchweight-protocol.json`. David C. Stanwood, *Strike Weight Curve Standards* and *Hammer Weight Curve Standards*, a handout published at stanwoodpiano.com: the curves' table, in `data/params/stanwood-weight-curves.json`. Terms: the author's work under copyright; the repository reproduces the numbers and the conventions with their locators, not the articles.
 
+## Published methods
+
+Methods taken from published works and written anew from their equations: no text, figure or code of the work is in the repository.
+
+- **Weighted blended order-independent transparency.** Morgan McGuire and Louis Bavoil, "Weighted Blended Order-Independent Transparency", *Journal of Computer Graphics Techniques* 2(2):122–141, 2013, http://jcgt.org/published/0002/02/09/. What is reused: the method only, the two images, their blending and the composite that lays them over the opaque parts, implemented from the paper's equations with an equal weight for every face, in `apps/bench/src/transparency.ts`. Terms: the article's page prints "Copyright: © 2013 Morgan McGuire and Louis Bavoil", and the article states that its authors provide it under the Creative Commons CC BY-ND 3.0 license; the repository reproduces none of its text, figures or code.
+
 ## Agent guidance
 
 - **gitmoji:** the catalog of `.claude/skills/writing-commits/gitmoji.md`, which lists every gitmoji with its meaning, from version 3.15.0 of the `gitmojis` package (https://github.com/carloscuesta/gitmoji), under the MIT License:

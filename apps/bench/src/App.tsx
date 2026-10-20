@@ -64,7 +64,8 @@ import { LanguageChoice } from './LanguageChoice'
 import { madeBy } from './layout'
 import { CONTACT_COLOR, HOW_COLOR } from './palette'
 import { Rich } from './Rich'
-import { SagittalView, type ViewMode } from './SagittalView'
+import { SagittalView } from './SagittalView'
+import type { ViewMode } from './viewpoint'
 
 /** Everything the engine said when it was last asked: the registry, read
  * once at boot since it does not change, and every document after each

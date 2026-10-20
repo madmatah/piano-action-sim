@@ -878,7 +878,20 @@ Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
 parts that overlap. A key no equilibrium places is drawn faded, a note on the
 view saying why, and the reader can draw any key as faint as wanted, to see
-the pins inside it. Colors follow each part's material: the covering and the
+the pins inside it. The solid draws its faded parts apart, by weighted blended
+order-independent transparency (McGuire and Bavoil, in [Sources](#sources)):
+three's own transparency blends each part over what is drawn in the order of
+their middles' distance from the camera, so the key button, glued on the
+keystick in another wood, would change color all at once as the camera turns
+past the angle that swaps them. Every face of a faded part stays drawn, its
+mortises' walls included, in colors that no angle changes where the browser
+draws into images of half-precision colors; where it cannot, the solid is
+drawn as three sorts it. Faded parts that overlap are drawn in the mean of
+their colors, weighted by their opacities, whatever their order, so a nearly
+opaque key shows its front face mixed with what stands behind it: the mean
+is what no order changes. The edges of the parts drawn whole are drawn with
+them, under the faded parts, so a faded key dims the frame's edges behind it
+as it dims its faces. Colors follow each part's material: the covering and the
 key front white, the capsule and the back check block in a wood other than the
 keystick's. It opens on Hirschkorn's key; its first panel chooses the
 instrument on the bench among those shipped, each offered by its whole name.
@@ -1176,9 +1189,11 @@ scene inside a dense interface of panels and readouts; `three`, its types,
 react-three-fiber and drei are pinned together through pnpm's catalog. Labels
 and values sit in HTML over the canvas, never as 3D text. Ruled out: Babylon.js,
 with a better inspector and bundled types but no equivalent of the React
-ecosystem for the interface. Planned: linings drawn compressed by the solver's
-penetration, dimensions on the section, one instanced mesh per part family for
-88 notes, and the realistic rendering of [An engine for piano applications](#an-engine-for-piano-applications): materials and detailed shapes
+ecosystem for the interface. The canvas is drawn on demand, when a prop, the
+camera or its size changes, so a still view costs nothing. Planned: linings
+drawn compressed by the solver's penetration, dimensions on the section, one
+instanced mesh per part family for 88 notes, and the realistic rendering of
+[An engine for piano applications](#an-engine-for-piano-applications): materials and detailed shapes
 as skins riding on the parametric solids without replacing them, so the
 realistic view cannot drift from the physics any more than the section can.
 
@@ -2236,6 +2251,11 @@ trade term: the trade's vocabulary belongs to the trade.
   WNG instructions; Redekop's damper guide; Reyburn's geometry sheet; Spurlock on
   touchweight; the Potter checklist; a French trade glossary; Igrec, *Pianos
   Inside Out* (sample pages).
+
+Not in the corpus, and drawn on by the bench's view: **McGuire and Bavoil**,
+"Weighted Blended Order-Independent Transparency", *Journal of Computer
+Graphics Techniques* 2(2):122–141, 2013, http://jcgt.org/published/0002/02/09/,
+the way the solid draws its faded parts ([The bench](#the-bench)).
 
 Not in the corpus, and wanted by the stages ahead: Askenfelt and Jansson on the
 grand action's timing (1990); Gillespie et al.'s key force profiles (2011);

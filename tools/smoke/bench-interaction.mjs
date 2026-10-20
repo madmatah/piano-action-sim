@@ -43,7 +43,8 @@
  * first thing that fails to change.
  */
 
-import { EDGE } from '../../apps/bench/src/palette.ts'
+import { EDGE, MEASURING_POINT_COLOR, PAGE } from '../../apps/bench/src/palette.ts'
+import { VIEWPOINT } from '../../apps/bench/src/viewpoint.ts'
 
 const [port = '9222', appPort = '5199'] = process.argv.slice(2)
 
@@ -1938,6 +1939,211 @@ for (const v of ['section', 'solid']) {
   }
 }
 console.log('  ok  the key drawn fainter as chosen, and whole again as it was, in both views')
+
+// A faded key keeps its colors whichever way the camera turns round it.
+// three's own transparency draws faded parts one after another, sorted by
+// how far their middles stand from the camera; on his key the keytop's
+// middle stands about 159 mm in front of the keystick's and 13 mm above it
+// (the key's outline in data/params/hirschkorn-key-outline.json, with its
+// front_edge, front_board, tail_end, keytop_length, keytop_overhang,
+// keytop_thickness and stick_height), so
+// that order flips about a degree from square to the key, and a camera
+// turned 5° either side of square sees the two parts in both orders.
+//
+// On a fresh load, since the camera is made once from the viewpoint the
+// page opens in, the solid's, never dragged; his key placed; and the
+// images the solid draws a faded key into available. A faded part writes no
+// depth, so two faded faces of opacity a drawn in sorted order blend to
+// a·c_last + (1−a)(a·c_first + (1−a)·B), B being what lies behind: swapping
+// them changes the pixel by a²·(c_last − c_first), which grows with a. At
+// 0.5 the white keytop over the keystick's wood leaves a few levels; 0.9
+// leaves over three times that.
+//
+// The pixels read are those straight below the measuring point's marker,
+// on the covering's top and drawn over everything: the column under the
+// marker's tip, its first run of at least two identical pixels. The view is
+// orthographic and a sideways drag keeps the elevation, so their rays at the
+// two angles mirror each other across the plane square to the key through
+// the point they look at: each enters through the keytop's top face and
+// crosses the keystick's, both faded, then reaches the page, and moves at
+// most about 3 mm along the key, short of the front mortise, 16.6 mm behind
+// the key front (front_mortise.from_front_edge in
+// data/profiles/hirschkorn.json, less half the mortise's length, its
+// front_mortise_travel and front_mortise_cutter_diameter in
+// data/params/key-section.json) with 2 mm of wood over it (stick_height in
+// data/params/hirschkorn-key-outline.json, less front_mortise_depth in
+// data/params/key-section.json), where the measuring point stands 11.5 mm
+// behind it (measuring_point_from_lip in
+// data/params/touchweight-protocol.json, less keytop_overhang in
+// data/params/hirschkorn-key-outline.json). Each image
+// rounds its blend to half precision, so the same two faces taken in either
+// order differ by at most 2⁻¹⁰ of the value, one level on the canvas.
+await send('Page.navigate', { url: `http://127.0.0.1:${appPort}/` })
+await waitFor('the engine to boot again on the solid', async () => {
+  const s = await sheet().catch(() => ({}))
+  return Object.keys(s).length > 0 ? s : undefined
+})
+await settle()
+const opened = await evaluate(`
+  (() => ({
+    place: document.querySelector('.view')?.dataset.place ?? null,
+    solid: document.querySelector('[data-view="solid"]')?.classList.contains('on') ?? false,
+  }))()
+`)
+if (opened?.place !== 'placed' || opened.solid !== true) {
+  fail(`the bench does not open on the solid with his key placed: ${JSON.stringify(opened)}`)
+}
+const drawsApart = await evaluate(`
+  (() => {
+    const offered = document.querySelector('.view canvas')?.getContext('webgl2')
+      ?.getSupportedExtensions() ?? []
+    return offered.includes('EXT_color_buffer_float') || offered.includes('EXT_color_buffer_half_float')
+  })()
+`)
+if (drawsApart !== true) {
+  fail('the browser offers no image of fractional colors, so a faded key cannot be drawn apart')
+}
+const OPAQUE_ENOUGH_TO_TELL_THE_ORDER = 0.9
+if ((await chooseKeyOpacity(OPAQUE_ENOUGH_TO_TELL_THE_ORDER)) !== 'ok') {
+  fail('no key opacity slider')
+}
+await settle()
+// three-stdlib's OrbitControls turns the camera about the vertical by
+// 2π·Δx over the height of the element it listens on, a drag to the right
+// lowering the azimuth, and leaves the elevation where it is.
+const solidViewpoint = VIEWPOINT.solid
+const fromTarget = solidViewpoint.position.map(
+  (coordinate, axis) => coordinate - solidViewpoint.target[axis],
+)
+const openingAzimuth = Math.atan2(fromTarget[0], fromTarget[2])
+const sinElevation = fromTarget[1] / Math.hypot(...fromTarget)
+const SQUARE_OFF = (5 * Math.PI) / 180
+const canvasBox = await evaluate(`
+  (() => {
+    const canvas = document.querySelector('.view canvas')
+    const box = canvas.getBoundingClientRect()
+    const middle = { x: Math.round(box.left + box.width / 2), y: Math.round(box.top + box.height / 2) }
+    return {
+      middleX: box.left + box.width / 2,
+      listenerHeight: canvas.parentElement.clientHeight,
+      dragFrom: middle,
+      isBare: document.elementFromPoint(middle.x, middle.y) === canvas,
+    }
+  })()
+`)
+if (!canvasBox?.isBare) fail(`the drag would not start on the canvas: ${JSON.stringify(canvasBox)}`)
+const pixelsToTurn = (fromAzimuth, toAzimuth) =>
+  Math.round(((fromAzimuth - toAzimuth) * canvasBox.listenerHeight) / (2 * Math.PI))
+const turnedBy = (fromAzimuth, pixels) =>
+  fromAzimuth - (2 * Math.PI * pixels) / canvasBox.listenerHeight
+const dragSideways = async (pixels) => {
+  const { x, y } = canvasBox.dragFrom
+  const left = { button: 'left', buttons: 1 }
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, ...left, clickCount: 1 })
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x + pixels, y, ...left })
+  await send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x: x + pixels,
+    y,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1,
+  })
+  await settle()
+}
+const turningArea = await drawnArea()
+if (!turningArea || turningArea.height < 50) {
+  fail(`no drawing to capture: ${JSON.stringify(turningArea)}`)
+}
+/** The measuring point's marker in a capture, its tip the middle of its
+ * lowest row, and the first run of at least two identical pixels straight
+ * below it. */
+const readBelowTheMarker = (png) =>
+  evaluate(`
+    (async () => {
+      const image = await (await fetch('data:image/png;base64,${png}')).blob()
+      const bitmap = await createImageBitmap(image)
+      const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')
+      context.drawImage(bitmap, 0, 0)
+      const { data, width, height } = context.getImageData(0, 0, bitmap.width, bitmap.height)
+      const at = (column, row) => [...data.slice((row * width + column) * 4, (row * width + column) * 4 + 3)]
+      const marker = ${JSON.stringify(rgbOf(MEASURING_POINT_COLOR))}
+      let lowest = -1
+      let columns = []
+      for (let row = 0; row < height; row += 1) {
+        for (let column = 0; column < width; column += 1) {
+          if (!at(column, row).every((channel, index) => Math.abs(channel - marker[index]) <= 1)) continue
+          if (row > lowest) {
+            lowest = row
+            columns = []
+          }
+          columns.push(column)
+        }
+      }
+      if (lowest < 0) return null
+      const column = Math.round((Math.min(...columns) + Math.max(...columns)) / 2)
+      for (let row = lowest + 1; row < height; ) {
+        const color = at(column, row)
+        let end = row + 1
+        while (end < height && at(column, end).every((channel, index) => channel === color[index])) end += 1
+        if (end - row >= 2) return { tip: { column, row: lowest }, run: { color, from: row, length: end - row } }
+        row = end
+      }
+      return { tip: { column, row: lowest }, run: null }
+    })()
+  `)
+const unturned = await drawn(turningArea)
+const firstAzimuth = turnedBy(openingAzimuth, pixelsToTurn(openingAzimuth, -SQUARE_OFF))
+await dragSideways(pixelsToTurn(openingAzimuth, -SQUARE_OFF))
+const turnedOnce = await drawn(turningArea)
+const secondAzimuth = turnedBy(firstAzimuth, pixelsToTurn(firstAzimuth, SQUARE_OFF))
+await dragSideways(pixelsToTurn(firstAzimuth, SQUARE_OFF))
+const turnedTwice = await drawn(turningArea)
+if (!unturned || turnedOnce === unturned || turnedTwice === turnedOnce) {
+  fail('a sideways drag on the solid does not turn the camera')
+}
+const [beforeTheSwap, afterTheSwap] = [
+  await readBelowTheMarker(turnedOnce),
+  await readBelowTheMarker(turnedTwice),
+]
+if (!beforeTheSwap?.run || !afterTheSwap?.run) {
+  fail(
+    `no run of pixels under the measuring point: ${JSON.stringify([beforeTheSwap, afterTheSwap])}`,
+  )
+}
+// Where the target projects, in the middle of the canvas, the tip stands x
+// pixels aside at the first azimuth θ₁, so X·zoom = x / cos θ₁ along the
+// key; turned to θ₂ at the same elevation φ, it moves down the rows by
+// X·zoom·sin φ·(sin θ₂ − sin θ₁), give or take a row for each tip located.
+const tipAside = beforeTheSwap.tip.column + 0.5 + turningArea.x - canvasBox.middleX
+const predictedRows =
+  (tipAside / Math.cos(firstAzimuth)) *
+  sinElevation *
+  (Math.sin(secondAzimuth) - Math.sin(firstAzimuth))
+const movedRows = afterTheSwap.tip.row - beforeTheSwap.tip.row
+if (!(Math.abs(movedRows - predictedRows) <= 2)) {
+  fail(
+    `the measuring point moved ${movedRows} rows as the camera turned, not the ${predictedRows.toFixed(1)} its azimuths predict`,
+  )
+}
+const formatDegrees = (azimuth) => ((azimuth * 180) / Math.PI).toFixed(2)
+console.log(
+  `  ok  the camera turned from ${formatDegrees(openingAzimuth)}° to ${formatDegrees(firstAzimuth)}° and ${formatDegrees(secondAzimuth)}°, the measuring point moving ${movedRows} rows for ${predictedRows.toFixed(1)}`,
+)
+const [colorBefore, colorAfter] = [beforeTheSwap.run.color, afterTheSwap.run.color]
+const pageColor = rgbOf(PAGE)
+if (
+  colorBefore.some((channel, index) => Math.abs(channel - colorAfter[index]) > 1) ||
+  colorBefore.every((channel, index) => Math.abs(channel - pageColor[index]) <= 1)
+) {
+  fail(
+    `the faded key under the measuring point turns from ${JSON.stringify(colorBefore)} to ${JSON.stringify(colorAfter)} as the camera turns past square`,
+  )
+}
+console.log(
+  `  ok  the faded key keeps its colors either side of square: ${JSON.stringify(colorBefore)} and ${JSON.stringify(colorAfter)}, over ${beforeTheSwap.run.length} and ${afterTheSwap.run.length} pixels`,
+)
 
 if (thrown.length > 0) fail(`the page threw: ${thrown[0].split('\n')[0]}`)
 
