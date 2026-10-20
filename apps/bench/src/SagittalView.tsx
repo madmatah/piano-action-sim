@@ -46,6 +46,14 @@
  * inside it and draws its walls from inside, in the color of the wood they
  * are cut in (`carving.ts`).
  *
+ * The faded parts, a key drawn faint as the reader chose or one no
+ * equilibrium places, are drawn apart in the solid, whatever order they
+ * come in (`transparency.ts`): every face of them stays drawn, the
+ * mortises' walls included, and no angle changes their colors. Every part
+ * of the solid compiles through one compile hook under one cache key,
+ * carved and drawn apart alike
+ * (`shading.ts`).
+ *
  * Over both views, the contacts the engine's rows find within a millimeter
  * of closing are marked where the rows put them, in the keybed's frame: a
  * dot where the key bears, a line across a gap still open, and another where
@@ -81,19 +89,18 @@
 
 import type { How, MarkedContact, Marker, Outline, Pose, Scene, State } from '@pas/wasm/types'
 import { OrbitControls } from '@react-three/drei'
-import { Canvas } from '@react-three/fiber'
-import { createContext, useCallback, useContext, useEffect, useMemo } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { type Box, measureBounds } from './bounds'
 import {
+  buildCarvingUniforms,
   type Carving,
   type Hollow,
-  MAX_CUTS,
   millWalls,
-  packCuts,
-  patchShader,
   planCarving,
   type Walls,
+  writeCarving,
 } from './carving'
 import { bodyOpacity } from './opacity'
 import {
@@ -113,11 +120,15 @@ import {
   KEYBED,
   LIGHTS,
   MATERIAL_FILL,
+  MEASURING_POINT_COLOR,
   PAGE,
   PAPER_FILL,
   UNGRADED_FILL,
 } from './palette'
 import { divideTheSection, type Section } from './section'
+import { shadeSolidPart } from './shading'
+import { EDGE_OF_A_WHOLE_PART, FadedDrawing, PASS, type PassUniform } from './transparency'
+import { VIEWPOINT, type ViewMode } from './viewpoint'
 
 /** Each segment of an outline by how the number that places it is known. */
 function howOf(o: Outline): Map<number, How> {
@@ -146,9 +157,6 @@ function colorOf(o: Outline): string {
   if (o.material === 'paper') return o.paper_color ? PAPER_FILL[o.paper_color] : UNGRADED_FILL
   return MATERIAL_FILL[o.material] ?? '#9b9b9b'
 }
-
-/** Two viewpoints: the technical section, and the solid in three-quarters. */
-export type ViewMode = 'section' | 'solid'
 
 /**
  * The order the section is painted in, back to front. The section is flat, so
@@ -192,6 +200,21 @@ function fadeKey(opacity: number): string {
   return opacity < 1 ? 'faded' : 'opaque'
 }
 
+/** The uniform the solid's parts read the pass they are drawn in from, one
+ * for the view ([`FadedDrawing`]). */
+const FadedPass = createContext<PassUniform | null>(null)
+
+/** Draws the view in place of react-three-fiber, its faded parts apart,
+ * whatever order they come in ([`FadedDrawing`]). */
+function DrawFadedApart({ pass }: { pass: PassUniform }) {
+  const renderer = useThree((state) => state.gl)
+  const drawing = useMemo(() => new FadedDrawing(renderer), [renderer])
+  useEffect(() => () => drawing.dispose(), [drawing])
+  // A positive priority takes the drawing over from react-three-fiber.
+  useFrame(({ scene, camera }) => drawing.draw(scene, camera, pass), 1)
+  return null
+}
+
 /**
  * Disposes a geometry when it is replaced or unmounted.
  *
@@ -218,48 +241,6 @@ const NO_BODY: BodyParts = {
   outlines: [],
   carving: { cutsThrough: new Map(), walls: [] },
   section: { cuts: [], inPlane: [], beyond: [] },
-}
-
-/** The program every carved part shares: the cuts are uniforms, so its
- * source is the same whatever they are. */
-const carvedProgram = () => 'carved'
-
-/**
- * The hook a Lambert material compiles through to leave unpainted what
- * stands inside `cuts`, and outside `keep` where it is given
- * ([`patchShader`]). The boxes are uniforms, written in place as they
- * change, so an edit of the key moves them without compiling anything.
- */
-function useCarvingShader(cuts: readonly Hollow[], keep: Box | null) {
-  const uniforms = useMemo(
-    () => ({
-      cutMin: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
-      cutMax: { value: Array.from({ length: MAX_CUTS }, () => new THREE.Vector3()) },
-      cutHasRoundEnds: { value: Array.from({ length: MAX_CUTS }, () => 0) },
-      cutCount: { value: 0 },
-      keepMin: { value: new THREE.Vector3() },
-      keepMax: { value: new THREE.Vector3() },
-    }),
-    [],
-  )
-  const packed = packCuts(cuts, keep)
-  for (let cutIndex = 0; cutIndex < MAX_CUTS; cutIndex += 1) {
-    uniforms.cutMin.value[cutIndex]?.set(...(packed.cutMin[cutIndex] ?? [0, 0, 0]))
-    uniforms.cutMax.value[cutIndex]?.set(...(packed.cutMax[cutIndex] ?? [0, 0, 0]))
-    uniforms.cutHasRoundEnds.value[cutIndex] = packed.cutHasRoundEnds[cutIndex] ? 1 : 0
-  }
-  uniforms.cutCount.value = packed.cutCount
-  uniforms.keepMin.value.set(...packed.keepMin)
-  uniforms.keepMax.value.set(...packed.keepMax)
-  return useCallback(
-    (shader: THREE.WebGLProgramParametersWithUniforms) => {
-      Object.assign(shader.uniforms, uniforms)
-      const patched = patchShader(shader.vertexShader, shader.fragmentShader)
-      shader.vertexShader = patched.vertex
-      shader.fragmentShader = patched.fragment
-    },
-    [uniforms],
-  )
 }
 
 /** An outline swept across the keyboard, its middle where the engine puts
@@ -296,21 +277,31 @@ function useWallsSurface({ cut, hollow }: Walls) {
   return geometry
 }
 
-/** The edges of a solid, faint, where its faces meet at an angle. */
+/** The edges of a solid, faint, where its faces meet at an angle: drawn
+ * with their part where it is drawn whole, so that a faded part in front
+ * dims them as it dims the part ([`FadedDrawing`]). */
 function SolidEdges({ geometry }: { geometry: THREE.BufferGeometry }) {
   const edges = useMemo(() => new THREE.EdgesGeometry(geometry, 25), [geometry])
   const opacity = useContext(Opacity)
+  const userData = useMemo(() => ({ [EDGE_OF_A_WHOLE_PART]: opacity === 1 }), [opacity])
   useDisposal(edges)
   return (
     <lineSegments geometry={edges}>
-      <lineBasicMaterial color="#3a342b" transparent opacity={0.4 * opacity} />
+      <lineBasicMaterial color="#3a342b" transparent opacity={0.4 * opacity} userData={userData} />
     </lineSegments>
   )
 }
 
-/** A Lambert material, faded with its body, carved by `cuts` and kept
- * within `keep` where either is given. */
-function CarvedMaterial({
+/**
+ * The Lambert material of every part of the solid, faded with its body:
+ * carved by `cuts` and kept within `keep`, where either is given, and drawn
+ * apart where it is faded, all through the one compile hook under one cache
+ * key that every part shares ([`shadeSolidPart`]), so that a material made
+ * anew as it fades or turns whole compiles as the one it replaces. Its cuts
+ * are uniforms, written as they change; the view is drawn on demand, so it
+ * then asks for a frame.
+ */
+function SolidMaterial({
   color,
   cuts,
   keep,
@@ -322,19 +313,25 @@ function CarvedMaterial({
   side: THREE.Side
 }) {
   const opacity = useContext(Opacity)
-  const onBeforeCompile = useCarvingShader(cuts, keep)
-  const carved = cuts.length > 0 || keep !== null
-  return carved ? (
+  const pass = useContext(FadedPass)
+  const invalidate = useThree((state) => state.invalidate)
+  const carving = useMemo(buildCarvingUniforms, [])
+  const { material, packed } = useMemo(
+    () => shadeSolidPart({ cuts, keep, pass }, carving),
+    [cuts, keep, pass, carving],
+  )
+  useLayoutEffect(() => {
+    writeCarving(carving, packed)
+    invalidate()
+  }, [carving, packed, invalidate])
+  return (
     <meshLambertMaterial
-      key={`${fadeKey(opacity)} carved`}
+      key={fadeKey(opacity)}
       color={color}
       side={side}
-      onBeforeCompile={onBeforeCompile}
-      customProgramCacheKey={carvedProgram}
+      {...material}
       {...fadeTo(opacity)}
     />
-  ) : (
-    <meshLambertMaterial key={fadeKey(opacity)} color={color} side={side} {...fadeTo(opacity)} />
   )
 }
 
@@ -358,7 +355,7 @@ function Extruded({
   return (
     <group>
       <mesh geometry={geometry}>
-        <CarvedMaterial color={color} cuts={cuts} keep={null} side={THREE.FrontSide} />
+        <SolidMaterial color={color} cuts={cuts} keep={null} side={THREE.FrontSide} />
       </mesh>
       <SolidEdges geometry={geometry} />
     </group>
@@ -375,14 +372,15 @@ function Extruded({
 function CutWalls({ walls }: { walls: Walls }) {
   const { through, into } = walls
   const geometry = useWallsSurface(walls)
+  const keeps = useMemo(() => through.map(measureBounds), [through])
   return (
     <group>
       {through.map((part, partIndex) => (
         <mesh key={`${part.code}-${partIndex}`} geometry={geometry}>
-          <CarvedMaterial
+          <SolidMaterial
             color={colorOf(part)}
             cuts={into}
-            keep={measureBounds(part)}
+            keep={keeps[partIndex] ?? null}
             side={THREE.BackSide}
           />
         </mesh>
@@ -400,12 +398,16 @@ function Oval({ outline }: { outline: Outline }) {
     () => turnOval(outline.points_mm, outline.width_mm, ROUND_SEGMENTS),
     [outline],
   )
-  const opacity = useContext(Opacity)
   useDisposal(geometry)
   return (
     <group>
       <mesh geometry={geometry}>
-        <meshLambertMaterial key={fadeKey(opacity)} color={colorOf(outline)} {...fadeTo(opacity)} />
+        <SolidMaterial
+          color={colorOf(outline)}
+          cuts={UNCARVED}
+          keep={null}
+          side={THREE.FrontSide}
+        />
       </mesh>
       <SolidEdges geometry={geometry} />
     </group>
@@ -433,16 +435,10 @@ function Lathed({ profile, axisX, color }: { profile: number[]; axisX: number; c
     if (first) points.push(first.clone())
     return new THREE.LatheGeometry(points, ROUND_SEGMENTS)
   }, [profile])
-  const opacity = useContext(Opacity)
   useDisposal(geometry)
   return (
     <mesh geometry={geometry} position={[axisX, 0, 0]}>
-      <meshLambertMaterial
-        key={fadeKey(opacity)}
-        color={color}
-        side={THREE.DoubleSide}
-        {...fadeTo(opacity)}
-      />
+      <SolidMaterial color={color} cuts={UNCARVED} keep={null} side={THREE.DoubleSide} />
     </mesh>
   )
 }
@@ -735,7 +731,12 @@ function MeasuringPoint({ at }: { at: [number, number] }) {
   return (
     <mesh position={[x, y + 3.5, 0]} rotation={[Math.PI, 0, 0]} renderOrder={LAYER.marks}>
       <coneGeometry args={[2.2, 6, 4]} />
-      <meshBasicMaterial color="#c8302a" depthTest={false} toneMapped={false} transparent />
+      <meshBasicMaterial
+        color={MEASURING_POINT_COLOR}
+        depthTest={false}
+        toneMapped={false}
+        transparent
+      />
     </mesh>
   )
 }
@@ -903,19 +904,6 @@ function Body({
   )
 }
 
-const CAMERA: Record<
-  ViewMode,
-  { position: [number, number, number]; target: [number, number, number]; zoom: number }
-> = {
-  // Straight on: a technical section, read for its dimensions.
-  section: { position: [-30, 24, 420], target: [-30, 24, 0], zoom: 2.0 },
-  // Three-quarters, and **low**: the solid, read for how it is stacked.
-  // Looking down from 25° shows nothing but the top of the key — the rails,
-  // the punchings and the cloth all hide under it. What a reader needs to see
-  // here is the stack, so the elevation is about 12°.
-  solid: { position: [-190, 115, 430], target: [-30, 20, 0], zoom: 1.75 },
-}
-
 export function SagittalView({
   scene,
   state,
@@ -934,7 +922,8 @@ export function SagittalView({
    * no equilibrium places it. */
   keyOpacity: number
 }) {
-  const preset = CAMERA[mode]
+  const preset = VIEWPOINT[mode]
+  const pass = useMemo((): PassUniform => ({ value: PASS.blended }), [])
   // Sorted once a scene, so that a weight on the key, which moves only the
   // poses, leaves every part's cuts as they were.
   const bodies = useMemo(
@@ -953,11 +942,15 @@ export function SagittalView({
       // depending on where they sit.
       orthographic
       camera={{ position: preset.position, zoom: preset.zoom }}
+      // Drawn when something changes, a prop, the camera or the canvas's
+      // size: a still view costs nothing.
+      frameloop="demand"
       // The stencil buffer is what lets a mortise be a void in the key's wood
       // without being painted over the pin standing in it.
       gl={{ stencil: true }}
       style={{ background: PAGE }}
     >
+      <DrawFadedApart pass={pass} />
       <ambientLight intensity={LIGHTS.ambient} />
       {LIGHTS.directional.map(({ position, intensity }) => (
         <directionalLight key={position.join()} position={position} intensity={intensity} />
@@ -968,24 +961,26 @@ export function SagittalView({
           nothing more: the engine's x still runs toward the player, and no
           number changes. */}
       <group scale={[-1, 1, 1]}>
-        <Keybed />
-        {state.poses.map((pose, body) => (
-          <Body
-            key={body}
-            body={body}
-            pose={pose}
-            parts={bodies[body] ?? NO_BODY}
-            mode={mode}
-            marker={state.measuring_point.body === body ? state.measuring_point : undefined}
-            marked={marked}
-            opacity={bodyOpacity({
-              grounded: body === GROUND,
-              chosen: keyOpacity,
-              isPlaced: state.place === 'placed',
-            })}
-          />
-        ))}
-        <Contacts contacts={state.contacts} />
+        <FadedPass.Provider value={pass}>
+          <Keybed />
+          {state.poses.map((pose, body) => (
+            <Body
+              key={body}
+              body={body}
+              pose={pose}
+              parts={bodies[body] ?? NO_BODY}
+              mode={mode}
+              marker={state.measuring_point.body === body ? state.measuring_point : undefined}
+              marked={marked}
+              opacity={bodyOpacity({
+                grounded: body === GROUND,
+                chosen: keyOpacity,
+                isPlaced: state.place === 'placed',
+              })}
+            />
+          ))}
+          <Contacts contacts={state.contacts} />
+        </FadedPass.Provider>
       </group>
 
       {/* Re-keyed on the mode so the two buttons are two viewpoints, not two

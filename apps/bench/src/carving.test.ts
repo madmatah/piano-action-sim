@@ -3,6 +3,7 @@ import { type Box3, ShaderLib } from 'three'
 import { describe, expect, it } from 'vitest'
 import type { Box } from './bounds'
 import {
+  buildCarvingUniforms,
   type Hollow,
   MAX_CUTS,
   millWalls,
@@ -10,6 +11,7 @@ import {
   packCuts,
   patchShader,
   planCarving,
+  writeCarving,
 } from './carving'
 
 // The measured section's key, millimeters (`data/profiles/measured-section.json`):
@@ -216,6 +218,10 @@ const GROOVE_BOXES: Box[] = [-SIDE_ACROSS_MM, SIDE_ACROSS_MM].map((across) => ({
   minMm: [224, 0, across - SIDE_WIDTH_MM / 2],
   maxMm: [226, GROOVE_TOP_MM, across + SIDE_WIDTH_MM / 2],
 }))
+const KEY_BUTTON_BOX: Box = {
+  minMm: [-31, STICK_TOP_MM, -KEY_WIDTH_MM / 2],
+  maxMm: [31, BUTTON_TOP_MM, KEY_WIDTH_MM / 2],
+}
 const SLOT_HOLLOW: Hollow = { box: SLOT_BOX, hasRoundEnds: true }
 const HOLE_HOLLOW: Hollow = { box: HOLE_BOX, hasRoundEnds: true }
 const FRONT_MORTISE_HOLLOW: Hollow = { box: FRONT_MORTISE_BOX, hasRoundEnds: true }
@@ -350,6 +356,16 @@ describe('the carving of the solid', () => {
     ).toThrow()
   })
 
+  it('keeps a part nothing cuts whole', () => {
+    // A meter each way, farther than any part of a key on its frame stands
+    // from its body's origin.
+    const pastEveryPartMm = 1000
+    const { cutCount, keepMin, keepMax } = packCuts([], null)
+    expect(cutCount).toBe(0)
+    expect(keepMin.every((coordinate) => coordinate < -pastEveryPartMm)).toBe(true)
+    expect(keepMax.every((coordinate) => coordinate > pastEveryPartMm)).toBe(true)
+  })
+
   it('tells the shader which cuts have their ends rounded', () => {
     const { fragmentShader } = ShaderLib.lambert
     const { fragment } = patchShader('', fragmentShader)
@@ -364,6 +380,28 @@ describe('the carving of the solid', () => {
       true,
       ...Array.from({ length: MAX_CUTS - 3 }, () => false),
     ])
+  })
+
+  it('writes a part’s packed cuts into its uniforms in place of the cuts they held', () => {
+    const uniforms = buildCarvingUniforms()
+    writeCarving(uniforms, packCuts([SLOT_HOLLOW, HOLE_HOLLOW, ...SIDE_HOLE_HOLLOWS], null))
+    writeCarving(uniforms, packCuts([SLOT_HOLLOW], KEY_BUTTON_BOX))
+    const unused = Array.from({ length: MAX_CUTS - 1 }, () => [0, 0, 0])
+    expect({
+      cutMin: uniforms.cutMin.value.map((corner) => corner.toArray()),
+      cutMax: uniforms.cutMax.value.map((corner) => corner.toArray()),
+      cutHasRoundEnds: uniforms.cutHasRoundEnds.value,
+      cutCount: uniforms.cutCount.value,
+      keepMin: uniforms.keepMin.value.toArray(),
+      keepMax: uniforms.keepMax.value.toArray(),
+    }).toEqual({
+      cutMin: [SLOT_BOX.minMm, ...unused],
+      cutMax: [SLOT_BOX.maxMm, ...unused],
+      cutHasRoundEnds: [1, ...Array.from({ length: MAX_CUTS - 1 }, () => 0)],
+      cutCount: 1,
+      keepMin: KEY_BUTTON_BOX.minMm,
+      keepMax: KEY_BUTTON_BOX.maxMm,
+    })
   })
 
   it('patches three’s Lambert shader where it reads positions and clips', () => {
