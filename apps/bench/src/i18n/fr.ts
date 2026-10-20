@@ -507,6 +507,7 @@ export const fr: Catalog = {
       set_on_the_bench: 'réglé sur le banc d’essai',
     },
     keyOpacity: 'opacité de la touche',
+    bushingsOpacity: 'opacité des garnitures',
     notPlaced: {
       unplaced:
         'La touche ne trouve aucune position d’équilibre sur ce châssis : elle est dessinée en transparence, à plat sur sa mouche de balancier, pour montrer ses pièces face à celles du châssis, pas là où elle se trouverait.',

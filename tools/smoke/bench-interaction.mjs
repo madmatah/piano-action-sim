@@ -1940,6 +1940,31 @@ for (const v of ['section', 'solid']) {
 }
 console.log('  ok  the key drawn fainter as chosen, and whole again as it was, in both views')
 
+// The bushings' opacity is the view's alone too, apart from the key's: in a
+// faded key, chosen lower, the two mortises' bushings are drawn fainter in
+// either view; chosen whole again, the view is drawn as it was.
+const chooseBushingsOpacity = (opacity) =>
+  typeInto('[data-view-setting="bushings-opacity"]', opacity)
+for (const v of ['section', 'solid']) {
+  if ((await showView(v)) !== 'ok') fail(`no ${v} button`)
+  if ((await chooseKeyOpacity(0.3)) !== 'ok') fail('no key opacity slider')
+  await settle()
+  const whole = await drawnArea()
+  const before = await drawn(whole)
+  if ((await chooseBushingsOpacity(0.3)) !== 'ok') fail('no bushings opacity slider')
+  await settle()
+  const faint = await drawn(whole)
+  if ((await chooseBushingsOpacity(1)) !== 'ok') fail('no bushings opacity slider')
+  await settle()
+  if (!before || faint === before) fail(`fainter bushings change nothing drawn in the ${v}`)
+  if ((await drawn(whole)) !== before) {
+    fail(`the ${v} is not drawn as it was once the bushings are whole again`)
+  }
+  if ((await chooseKeyOpacity(1)) !== 'ok') fail('no key opacity slider')
+  await settle()
+}
+console.log('  ok  the bushings drawn fainter as chosen, and whole again as it was, in both views')
+
 // A faded key keeps its colors whichever way the camera turns round it.
 // three's own transparency draws faded parts one after another, sorted by
 // how far their middles stand from the camera; on his key the keytop's

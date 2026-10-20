@@ -129,6 +129,9 @@ export interface Catalog {
     readonly notPlaced: Named<Exclude<KeyPlace, 'placed'>>
     /** The control that makes the key more or less transparent. */
     readonly keyOpacity: string
+    /** The control that makes the key's two mortises' bushings more or
+     * less transparent, apart from the rest of it. */
+    readonly bushingsOpacity: string
   }
 
   /** A shipped profile's name, as the page offers it: the engine sends

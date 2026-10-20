@@ -878,20 +878,22 @@ Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
 parts that overlap. A key no equilibrium places is drawn faded, a note on the
 view saying why, and the reader can draw any key as faint as wanted, to see
-the pins inside it. The solid draws its faded parts apart, by weighted blended
-order-independent transparency (McGuire and Bavoil, in [Sources](#sources)):
-three's own transparency blends each part over what is drawn in the order of
-their middles' distance from the camera, so the key button, glued on the
-keystick in another wood, would change color all at once as the camera turns
-past the angle that swaps them. Every face of a faded part stays drawn, its
-mortises' walls included, in colors that no angle changes where the browser
-draws into images of half-precision colors; where it cannot, the solid is
-drawn as three sorts it. Faded parts that overlap are drawn in the mean of
-their colors, weighted by their opacities, whatever their order, so a nearly
-opaque key shows its front face mixed with what stands behind it: the mean
-is what no order changes. The edges of the parts drawn whole are drawn with
-them, under the faded parts, so a faded key dims the frame's edges behind it
-as it dims its faces. Colors follow each part's material: the covering and the
+the pins inside it, and its two mortises' bushings apart from the rest of it,
+whole at first, so that the cloth shows inside the faded wood, or as faint as
+wanted where it stands in front of a pin. The solid draws its faded parts apart,
+by weighted blended order-independent transparency (McGuire and Bavoil, in
+[Sources](#sources)): three's own transparency blends each part over what is
+drawn in the order of their middles' distance from the camera, so the key
+button, glued on the keystick in another wood, would change color all at once as
+the camera turns past the angle that swaps them. Every face of a faded part
+stays drawn, its mortises' walls included, in colors that no angle changes where
+the browser draws into images of half-precision colors; where it cannot, the
+solid is drawn as three sorts it. Faded parts that overlap are drawn in the mean
+of their colors, weighted by their opacities, whatever their order, so a nearly
+opaque key shows its front face mixed with what stands behind it: the mean is
+what no order changes. The edges of the parts drawn whole are drawn with them,
+under the faded parts, so a faded key dims the frame's edges behind it as it
+dims its faces. Colors follow each part's material: the covering and the
 key front white, the capsule and the back check block in a wood other than the
 keystick's. It opens on Hirschkorn's key; its first panel chooses the
 instrument on the bench among those shipped, each offered by its whole name.
