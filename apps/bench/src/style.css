@@ -457,7 +457,7 @@ button.action {
   border-color: var(--ink);
 }
 
-.viewtabs .key-opacity {
+.viewtabs .opacity {
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -465,6 +465,6 @@ button.action {
   color: var(--muted);
   font-size: 0.7rem;
 }
-.viewtabs .key-opacity input {
+.viewtabs .opacity input {
   width: 6rem;
 }

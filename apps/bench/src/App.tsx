@@ -262,6 +262,10 @@ export function App() {
   // How opaque the key is drawn, so that what stands inside it shows, as a
   // pin in its mortise: a way of looking too.
   const [keyOpacity, setKeyOpacity] = useState(1)
+  // How opaque the key's two mortises' bushings are drawn, apart from the
+  // rest of it: whole at first, so that the cloth shows clearly inside a
+  // faded key.
+  const [bushingsOpacity, setBushingsOpacity] = useState(1)
   // What the engine answered the last action, shown until anything else is
   // done: the papers a regulation laid, which the engine keeps nowhere else.
   // An edit refused it keeps itself, in its diagnostics.
@@ -576,6 +580,7 @@ export function App() {
             mode={view}
             marked={marked}
             keyOpacity={keyOpacity}
+            bushingsOpacity={bushingsOpacity}
           />
           {shownBand && drawnBand && (
             <BandView
@@ -627,7 +632,7 @@ export function App() {
                 >
                   {t.view.provenance}
                 </button>
-                <label className="key-opacity">
+                <label className="opacity">
                   {t.view.keyOpacity}
                   <input
                     type="range"
@@ -637,6 +642,18 @@ export function App() {
                     value={keyOpacity}
                     data-view-setting="key-opacity"
                     onChange={(e) => setKeyOpacity(Number(e.target.value))}
+                  />
+                </label>
+                <label className="opacity">
+                  {t.view.bushingsOpacity}
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={1}
+                    step={0.05}
+                    value={bushingsOpacity}
+                    data-view-setting="bushings-opacity"
+                    onChange={(e) => setBushingsOpacity(Number(e.target.value))}
                   />
                 </label>
                 <span className="hint">{t.view.hint}</span>

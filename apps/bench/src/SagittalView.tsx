@@ -49,9 +49,10 @@
  * The faded parts, a key drawn faint as the reader chose or one no
  * equilibrium places, are drawn apart in the solid, whatever order they
  * come in (`transparency.ts`): every face of them stays drawn, the
- * mortises' walls included, and no angle changes their colors. Every part
- * of the solid compiles through one compile hook under one cache key,
- * carved and drawn apart alike
+ * mortises' walls included, and no angle changes their colors. The key's
+ * two mortises' bushings are faded apart from its wood, as the reader
+ * chose for them (`opacity.ts`). Every part of the solid compiles through
+ * one compile hook under one cache key, carved and drawn apart alike
  * (`shading.ts`).
  *
  * Over both views, the contacts the engine's rows find within a millimeter
@@ -90,7 +91,7 @@
 import type { How, MarkedContact, Marker, Outline, Pose, Scene, State } from '@pas/wasm/types'
 import { OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { type Box, measureBounds } from './bounds'
 import {
@@ -102,7 +103,7 @@ import {
   type Walls,
   writeCarving,
 } from './carving'
-import { bodyOpacity } from './opacity'
+import { type BodyOpacity, bodyOpacity, partOpacity } from './opacity'
 import {
   axisSegments,
   contactStrokes,
@@ -194,10 +195,36 @@ function fadeTo(opacity: number) {
   return { transparent: opacity < 1, opacity, depthWrite: opacity === 1 }
 }
 
-/** The key of a material at `opacity`, so that three builds it again when it
- * turns transparent or opaque, which a changed property alone does not. */
+/** What three builds a material's program from, at `opacity`: whether it is
+ * transparent or opaque. */
 function fadeKey(opacity: number): string {
   return opacity < 1 ? 'faded' : 'opaque'
+}
+
+/**
+ * A ref to a material whose program is built from `build` ([`fadeKey`]),
+ * which has three build it again when `build` changes, which a changed
+ * property alone does not. The material is kept rather than made anew,
+ * because three draws opaque parts in the order their materials were made,
+ * which decides between two faces at one depth: a key's wood made anew when
+ * it fades, and not its bushings, would be drawn after them once whole
+ * again, and the view would not be drawn as it was. Rebuilding a kept
+ * material is safe because every material of the solid compiles one way,
+ * whatever it is built from ([`shadeSolidPart`]). The view is drawn on
+ * demand, so it asks for a frame.
+ */
+function useProgramBuiltFrom<M extends THREE.Material>(build: string) {
+  const material = useRef<M>(null)
+  const builtFrom = useRef(build)
+  const invalidate = useThree((state) => state.invalidate)
+  useLayoutEffect(() => {
+    if (material.current && builtFrom.current !== build) {
+      builtFrom.current = build
+      material.current.needsUpdate = true
+      invalidate()
+    }
+  })
+  return material
 }
 
 /** The uniform the solid's parts read the pass they are drawn in from, one
@@ -296,10 +323,9 @@ function SolidEdges({ geometry }: { geometry: THREE.BufferGeometry }) {
  * The Lambert material of every part of the solid, faded with its body:
  * carved by `cuts` and kept within `keep`, where either is given, and drawn
  * apart where it is faded, all through the one compile hook under one cache
- * key that every part shares ([`shadeSolidPart`]), so that a material made
- * anew as it fades or turns whole compiles as the one it replaces. Its cuts
- * are uniforms, written as they change; the view is drawn on demand, so it
- * then asks for a frame.
+ * key that every part shares ([`shadeSolidPart`]). Its cuts are uniforms,
+ * written as they change; the view is drawn on demand, so it then asks for
+ * a frame.
  */
 function SolidMaterial({
   color,
@@ -324,14 +350,9 @@ function SolidMaterial({
     writeCarving(carving, packed)
     invalidate()
   }, [carving, packed, invalidate])
+  const kept = useProgramBuiltFrom<THREE.MeshLambertMaterial>(fadeKey(opacity))
   return (
-    <meshLambertMaterial
-      key={fadeKey(opacity)}
-      color={color}
-      side={side}
-      {...material}
-      {...fadeTo(opacity)}
-    />
+    <meshLambertMaterial ref={kept} color={color} side={side} {...material} {...fadeTo(opacity)} />
   )
 }
 
@@ -511,11 +532,12 @@ function Fill({
 }) {
   const geometry = useMemo(() => new THREE.ShapeGeometry(toShape(points)), [points])
   const opacity = useContext(Opacity)
+  const material = useProgramBuiltFrom<THREE.MeshBasicMaterial>(fadeKey(opacity))
   useDisposal(geometry)
   return (
     <mesh geometry={geometry} renderOrder={layer}>
       <meshBasicMaterial
-        key={fadeKey(opacity)}
+        ref={material}
         {...fadeTo(opacity)}
         color={color}
         side={THREE.DoubleSide}
@@ -585,11 +607,12 @@ function Edges({
     return g
   }, [pieces, z])
   const opacity = useContext(Opacity)
+  const material = useProgramBuiltFrom<THREE.LineBasicMaterial>(fadeKey(opacity))
   useDisposal(geometry)
   return (
     <lineSegments geometry={geometry} renderOrder={layer}>
       <lineBasicMaterial
-        key={fadeKey(opacity)}
+        ref={material}
         {...fadeTo(opacity)}
         transparent={overlay || opacity < 1}
         color={color}
@@ -823,8 +846,8 @@ function Body({
   marker: Marker | undefined
   /** Whether its lines are marked by provenance. */
   marked: boolean
-  /** How opaque its parts are drawn. */
-  opacity: number
+  /** How opaque its parts are drawn, its two mortises' bushings apart. */
+  opacity: BodyOpacity
 }) {
   const matrix = useMemo(() => poseMatrix(pose), [pose])
   const parts = useMemo(() => outlines.filter((outline) => outline.role !== 'cut'), [outlines])
@@ -832,16 +855,20 @@ function Body({
   const grounded = body === GROUND
   return (
     <group matrix={matrix} matrixAutoUpdate={false}>
-      <Opacity.Provider value={opacity}>
+      <Opacity.Provider value={opacity.parts}>
         {mode === 'solid' ? (
           <>
             {parts.map((part, partIndex) => (
-              <SolidPart
+              <Opacity.Provider
                 key={`${part.code}-${partIndex}`}
-                outline={part}
-                cuts={carving.cutsThrough.get(part) ?? UNCARVED}
-                marked={marked}
-              />
+                value={partOpacity(part, opacity)}
+              >
+                <SolidPart
+                  outline={part}
+                  cuts={carving.cutsThrough.get(part) ?? UNCARVED}
+                  marked={marked}
+                />
+              </Opacity.Provider>
             ))}
             {carving.walls.map((walls, cutIndex) => (
               <CutWalls key={`${walls.cut.code}-${cutIndex}`} walls={walls} />
@@ -850,10 +877,10 @@ function Body({
         ) : (
           <>
             {beyond.map((o, i) => (
-              <group key={`${o.code}-beyond-${i}`}>
+              <Opacity.Provider key={`${o.code}-beyond-${i}`} value={partOpacity(o, opacity)}>
                 <Fill points={o.points_mm} color={colorOf(o)} layer={LAYER.beyond} />
                 <OutlineEdges outline={o} skip={new Set()} layer={LAYER.beyond} marked={marked} />
-              </group>
+              </Opacity.Provider>
             ))}
             {cuts.map((o, i) => (
               <Void key={`${o.code}-${i}`} points={o.points_mm} />
@@ -885,15 +912,16 @@ function Body({
                   ? [LAYER.turned, LAYER.turnedEdges]
                   : [LAYER.key, LAYER.keyEdges]
               return (
-                <SectionPart
-                  key={`${o.code}-${i}`}
-                  outline={o}
-                  layer={layer}
-                  edgeLayer={edgeLayer}
-                  masked={!grounded && cuts.length > 0}
-                  open={open}
-                  marked={marked}
-                />
+                <Opacity.Provider key={`${o.code}-${i}`} value={partOpacity(o, opacity)}>
+                  <SectionPart
+                    outline={o}
+                    layer={layer}
+                    edgeLayer={edgeLayer}
+                    masked={!grounded && cuts.length > 0}
+                    open={open}
+                    marked={marked}
+                  />
+                </Opacity.Provider>
               )
             })}
           </>
@@ -910,6 +938,7 @@ export function SagittalView({
   mode,
   marked,
   keyOpacity,
+  bushingsOpacity,
 }: {
   /** What is drawn: every part in its own body's frame. */
   scene: Scene
@@ -921,6 +950,10 @@ export function SagittalView({
   /** How opaque the key is drawn, as the reader chose: faded further where
    * no equilibrium places it. */
   keyOpacity: number
+  /** How opaque the key's two mortises' bushings are drawn, as the reader
+   * chose apart from its wood, so that they show inside it: faded further
+   * where no equilibrium places the key. */
+  bushingsOpacity: number
 }) {
   const preset = VIEWPOINT[mode]
   const pass = useMemo((): PassUniform => ({ value: PASS.blended }), [])
@@ -975,6 +1008,7 @@ export function SagittalView({
               opacity={bodyOpacity({
                 grounded: body === GROUND,
                 chosen: keyOpacity,
+                chosenForBushings: bushingsOpacity,
                 isPlaced: state.place === 'placed',
               })}
             />

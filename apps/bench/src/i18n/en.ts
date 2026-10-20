@@ -472,6 +472,7 @@ export const en: Catalog = {
       set_on_the_bench: 'set on the bench',
     },
     keyOpacity: 'key opacity',
+    bushingsOpacity: 'bushings opacity',
     notPlaced: {
       unplaced:
         'The key finds no equilibrium on this frame: it is drawn faded, level on its balance punching, to show its parts against the frame’s, not where it would stand.',
