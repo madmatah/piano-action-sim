@@ -1797,6 +1797,7 @@ tools/dynamics-prototype  the one-note dynamics prototype, in Python, and its
                    results
 data/references    the primary corpus: ignored by git, third-party copyright
 CLAUDE.md, .claude the agents' manual, the rules files with their checks, the
+                   skills, the agents that plan, review and fix, and the
                    session settings
 ```
 
@@ -1836,6 +1837,14 @@ every domain, and only the experts it concerns have something to check. Every
 finding that would block or should be fixed is verified before it is reported,
 so the report claims nothing it has not checked, and every fix it suggests is
 held to the project's rules, since an expert reads only those of its domain.
+
+**Rounds of fixes.** A fix can bring the bug that the next round finds, so each
+round of fixes is reviewed. A defect that a fix brought into the code it fixed
+says the method is wrong: a test of the whole range, or a simpler design, ends
+the chase sooner than more rounds, and past a few rounds the owner weighs what
+remains against what the rounds cost. A new agent fixes each round, from a
+brief: an agent resumed round after round re-reads its whole, growing context
+on every turn, which costs more than the review it answers.
 
 **Plans.** A mistake in a plan costs every step built on it: the code, its
 review and the rounds of fixes. A plan is short, so the thorough reasoning of
