@@ -1,17 +1,29 @@
 ---
 name: pull-request
-description: Takes a piece of work in this repository from a new branch to a merged pull request, and reviews someone else's pull request. Use when starting a piece of work, stacking a branch on an unmerged one, preparing the commits of a branch before pushing it, opening or updating a pull request, folding review fixes, or moving a branch after its base changed or was merged.
+description: Takes a piece of work in this repository from a new branch to a merged pull request, and reviews someone else's pull request. Use when starting a piece of work, planning it, writing its code, stacking a branch on an unmerged one, preparing the commits of a branch before pushing it, opening or updating a pull request, folding review fixes, or moving a branch after its base changed or was merged.
 ---
 
 # Pull request
 
-`CLAUDE.md` > Workflow holds the rules this procedure applies. Below, `<base>` is `origin/main`, or the unmerged branch the work is stacked on.
+`CLAUDE.md` > Workflow holds the rules this procedure applies. Below, `<base>` is `origin/main`, or the unmerged branch the work is stacked on. Write each file that this procedure names, such as a plan, the findings of a round or a commit message, with the Write tool, never through a shell: in a heredoc, or in `git commit -m "…"`, the backquoted text that findings, plans and messages quote runs as commands. Give git a message from a file in a directory that `mktemp -d` creates outside the worktree, with `git commit -F <file>`.
 
 ## Start a branch
 
 1. Run `git fetch origin`, then `git worktree add --no-track -b <type>/<topic> .claude/worktrees/<name> origin/main`, with a type from `CLAUDE.md` > Workflow, "Commits".
 2. `claude --worktree <name>` names its branch `worktree-<name>`: rename it with `git branch -m <type>/<topic>`.
 3. Install the dependencies of a worktree you add during a session, as `CLAUDE.md` > Workflow, "Dependencies" says.
+
+## Plan the work
+
+Plan the work as `CLAUDE.md` > Workflow, "Plan before writing code" says, and revise the plan the same way when the code or a review shows it wrong:
+
+1. Spawn the `planner` agent with its brief: the worktree and its base, the goal and where it comes from, the constraints and the decisions you know, and the path of `private/`, as `CLAUDE.md` > Where the work stands gives it. For a revision, add the path of the plan, what showed it wrong, such as the findings of a review, and the commits of the branch with their files, from `git log --format='%h %s' --name-only <base>..HEAD`. Write each plan it returns, without its `Answers` section, to the path of the plan that `CLAUDE.md` > Where the work stands gives, and commit it as it says.
+2. Spawn the `plan-critic` agent with the worktree, its base, the goal, the constraints, the decisions and the owner's answers you know, and the path of the plan, and, for a revision, what showed the plan wrong and the commits of the branch, as the planner got them. Resume the planner with the critic's blocking and should-fix points, rather than spawning a new one that would read the code again, then resume the critic with the planner's answers. Go on until the critic says `ready`. After three rounds, ask the owner about what remains, or, when the owner does not follow the work, stop and give the plan and its open points in your final report.
+3. When the owner follows the work, show him the plan and its open questions, and wait for his approval: a change he asks for goes to the planner, then to the critic. Otherwise, take the answer that the plan recommends to each open question, and name it in the pull request. A trade term in doubt is the exception: the plan recommends no word for it, and you ask the owner for his own word, without proposing one, before the code uses it, as `.claude/rules/vocabulary.md`, "The owner is the authority on the trade's vocabulary" says; never take a word by default.
+
+## Write the code
+
+Write the code from the plan, or give it to an agent on the model and at the effort that `.claude/rules/configuration.md` > Claude Code automation, "Each agent runs on the model and at the effort its task needs" gives an implementation, with the worktree, its base and the path of the plan. When the plan proves wrong, stop, and revise it as [Plan the work](#plan-the-work) says. If an agent was writing the code, commit or drop its work in progress, as the revised plan says, then give the rest to a new agent, with the revised plan and the commits so far: the one that stopped carries a context that only grows.
 
 ## Stack on an unmerged branch
 

@@ -1837,6 +1837,24 @@ finding that would block or should be fixed is verified before it is reported,
 so the report claims nothing it has not checked, and every fix it suggests is
 held to the project's rules, since an expert reads only those of its domain.
 
+**Plans.** A mistake in a plan costs every step built on it: the code, its
+review and the rounds of fixes. A plan is short, so the thorough reasoning of
+its planner and its critic costs less there than anywhere else. A plan
+chooses the method before the code, when a test of the whole range, a simpler
+design or a library costs nothing to choose; chosen after, it costs the rounds
+of review that showed the need for it. A critic that did not write the plan
+checks it against the code and the rules, since an assumption about the code
+that no one checked is the cheapest mistake to catch there, and the code
+follows the plan or the plan changes first, since a design changed while it is
+built escapes the critic. Within one planning, the planner answers the critic
+itself, as it already holds the code the plan rests on. A change that leaves
+the design as it is, such as a bug fix inside one function, goes without a
+plan, which would cost more there than the mistakes it could catch. The plan
+lives with the project's tracking, outside this repository, since this
+repository holds only the present and a plan describes work to come, and each
+plan has one writer, the session that owns its branch, so plans written in
+parallel never collide.
+
 **The golden sheet** records every reading of the default bench, Hirschkorn's
 key as it arrives, and of six fixture benches in full bits, in
 `crates/pa-app/tests/golden/`: on his key, a frame whose stops fight, a dip
