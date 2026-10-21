@@ -111,7 +111,7 @@ Write one report, in one voice: calm, plain, no preamble, no flattery. Its parts
 
 In the terminal, paths are absolute. In a posted report, they are relative to the repository root.
 
-A finding about a secret names its file, its line and the kind of secret, never the value.
+A finding about a secret is reported as `.claude/skills/expert-review/expert-contract.md` > Evidence, "Every finding quotes its evidence" says, without its value.
 
 **With `--post`**, and only for a pull request target:
 
