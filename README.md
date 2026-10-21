@@ -136,9 +136,9 @@ In this order, each stage with its engine and its view
 ## Running it
 
 Rust 1.99.0 with the `wasm32-unknown-unknown` target (pinned in
-`rust-toolchain.toml`), Node 26 (`.nvmrc`), pnpm, and wasm-pack. The browser
-smoke test needs a Chrome or Chromium binary; without one, `pnpm verify` skips
-it and says so.
+`rust-toolchain.toml`), Node 26 (`.nvmrc`), pnpm 12 (`packageManager` in
+`package.json`), and wasm-pack. The browser smoke test needs a Chrome or
+Chromium binary; without one, `pnpm verify` skips it and says so.
 
 ```bash
 pnpm install                               # first run

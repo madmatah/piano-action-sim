@@ -34,7 +34,7 @@ or an argument that is wrong and easy to derive again.
 The project pins Rust 1.99.0 (`rust-toolchain.toml`, with rustfmt, Clippy and
 the `wasm32-unknown-unknown` target) and Node 26 (`.nvmrc`), so that tools,
 lints and formatting match between machines ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)); `package.json`
-pins pnpm 10.34.5.
+pins pnpm 12.14.0, which `pnpm-lock.yaml` holds with its integrity.
 
 On Rust 1.94.1, `rustup target list` offers `wasm32-wasip1`, `wasip1-threads`
 and `wasip2`, but not `wasm32-wasip3`, which `rustc --print target-list` knows:
@@ -242,7 +242,7 @@ planned simulation workers leave it the headroom ([FOUNDATIONS > The 88-note run
 ```
 piano-action-sim/
 ├─ pnpm-workspace.yaml        # packages: apps/*, crates/pa-wasm; the catalog below
-├─ package.json               # packageManager pnpm@10.34.5; devEngines: Node ^26
+├─ package.json               # packageManager pnpm@12.14.0; devEngines: Node ^26, pnpm 12.14.0
 ├─ turbo.json
 ├─ Cargo.toml                 # members: pa-core, pa-app, pa-wasm, pa-cli; profiles (WebAssembly features: what is usable)
 ├─ rust-toolchain.toml        # channel 1.99.0; rustfmt, clippy; wasm32-unknown-unknown
@@ -438,7 +438,7 @@ packages (`@vitest/browser-playwright`, `@vitest/browser-webdriverio`,
 
 | Axis | Built | Planned, not used, ruled out | Deciding fact |
 |---|---|---|---|
-| A. Monorepo | pnpm 10.34.5 workspace and Turborepo 2.11.7; the wasm crate a package through its own `package.json` ([The monorepo, as built](#the-monorepo-as-built)) | `experimentalCargoWorkspaces`: not used | library builds uncached under it [V, Turborepo 2.11.7 documentation, Guides, Rust] |
+| A. Monorepo | pnpm 12.14.0 workspace and Turborepo 2.11.7; the wasm crate a package through its own `package.json` ([The monorepo, as built](#the-monorepo-as-built)) | `experimentalCargoWorkspaces`: not used | library builds uncached under it [V, Turborepo 2.11.7 documentation, Guides, Rust] |
 | B. Pipeline | wasm-pack 0.15.0, `--target web`; the default target features; release at opt-level 3, fat LTO, one codegen unit, `panic = "abort"` ([WebAssembly features: what is usable](#webassembly-features-what-is-usable)) | `simd128`: permitted, not enabled. Relaxed SIMD: ruled out ([FOUNDATIONS > Determinism, stated correctly](../FOUNDATIONS.md#determinism-stated-correctly)). vite-plugin-wasm and vite-plugin-top-level-await: not needed, `--target web` emitting an ES module with an explicit `init()` | Rust 1.99.0's defaults [V, local execution] |
 | C. Execution | the bench runs its module on the main thread: one static key, no stepping loop | one module per Web Worker, notes independent; a `SharedArrayBuffer` ring where the page is cross-origin isolated, transferable buffers otherwise (planned, [FOUNDATIONS > The 88-note runtime](../FOUNDATIONS.md#the-88-note-runtime)). WebAssembly threads: ruled out ([FOUNDATIONS > Rust compiled to WebAssembly; notes on independent workers](../FOUNDATIONS.md#rust-compiled-to-webassembly-notes-on-independent-workers)) | `--shared-memory is disallowed by std…` [V, local execution, Rust 1.99.0] |
 | D. Rendering | three.js 0.186.1, react-three-fiber 9.8.1, drei 10.7.9 (`OrbitControls`), the `WebGLRenderer` of `<Canvas>`, orthographic views, labels in HTML ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)) | `WebGPURenderer`: not used. Babylon.js: ruled out ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)). Linings drawn compressed, dimensions on the section, instancing for 88 notes, skins: planned ([FOUNDATIONS > React and react-three-fiber for the bench](../FOUNDATIONS.md#react-and-react-three-fiber-for-the-bench)) | WebGPU on Linux: Chrome only on Intel Gen12+ GPUs, Firefox not at all [V, BCD 8.1.5] |
