@@ -20,6 +20,8 @@ He is the authority on the trade: vocabulary, priorities and what a part looks l
 
 `private/` is a separate, private Git repository nested at the root of the main checkout and ignored by this one: the owner's own material and the project's tracking (`.claude/rules/repository.md`). Read `private/HANDOFF.md` before touching anything; `private/README.md` lists its siblings (decision history, corrections, measurement requests, the audit record). Linked worktrees do not have it: from one, it is at `$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/private`.
 
+The plan of a branch is `plans/<branch>.md` in `private/`, at the path above even from a worktree: read it before working on the branch, and commit it there each time the `plan-critic` agent finds a version of it ready. When sessions run in parallel, each writes the plan of its own branch and names it in its final report, and the coordinating session commits it.
+
 Add a line to this file only if it would stay true when the work moves on: a rule does, a status does not.
 
 Never run `git clean` with `-ff` at the repository root: a double `-f` deletes nested repositories, `private/` among them.
@@ -27,7 +29,8 @@ Never run `git clean` with `-ff` at the repository root: a double `-f` deletes n
 ## Workflow
 
 - **Each piece of work has its own branch, `<type>/<topic>`, in its own worktree** under `.claude/worktrees/`, started from `origin/main`, or from an unmerged branch whose work it needs. The main checkout stays on `main` for the owner. A type is one of `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore` and `ci`.
-- **Parallel sessions:** each owns one worktree and its branch, and never works in another's. Only the coordinating session, the one that started the others or the one the owner names, writes to `private/`: the others put their decisions and handoff notes in their final report.
+- **Plan before writing code:** a `planner` agent writes the plan of each piece of work, kept in `private/` ([Where the work stands](#where-the-work-stands)), and a `plan-critic` agent, which did not write it, checks it against the code and the rules before any code is written. Only a change that leaves the design as it is goes without a plan: a typo, a mechanical rename, a dependency bump, a bug fix inside one function. The code follows the plan: an implementation that finds it wrong stops and says why, and the plan is revised and checked again before the work goes on.
+- **Parallel sessions:** each owns one worktree and its branch, from its plan to its review fixes, and never works in another's. Only the coordinating session, the one that started the others or the one the owner names, writes to `private/`, apart from the plan of each session's own branch: the others put their decisions and handoff notes in their final report.
 - **Dependencies:** a session that starts in a checkout without `node_modules` installs them from the lockfile (`.claude/settings.json`); in a worktree added during a session, run `pnpm install --frozen-lockfile` there first.
 - **Give searches and explorations to cheaper agents,** on the model and at the effort that `.claude/rules/configuration.md` > Claude Code automation, "Each agent runs on the model and at the effort its task needs" gives for the task, through the Agent tool's `model` and `effort`. An agent defined in `.claude/agents/` runs as its definition says, unless a procedure raises or lowers its effort.
 - **Dev servers:** the owner's `pnpm --filter @pas/app-bench dev` owns Vite's port, 5173. Start yours from your worktree on another (`--port 5174`), and stop it when you are done.
@@ -39,7 +42,7 @@ Never run `git clean` with `-ff` at the repository root: a double `-f` deletes n
 - **A commit footer holds only what tools read:** a breaking change, as `BREAKING CHANGE:` followed by what breaks and what its users must do, and the issues the commit closes, as `Closes #42`, never one that is not true. No other trailer, such as `Co-Authored-By`, `Generated with` or `Signed-off-by`: who typed a change says nothing of its reason.
 - **Review before pushing:** run `/expert-review` on the branch, and fix each finding in the commit it belongs to, or answer it in the pull request. The review itself changes no code.
 - **A branch reaches `main` only through a pull request whose CI passes.** The owner merges with "Rebase and merge", so each commit lands as written; review fixes are folded into their commits before a push with `--force-with-lease`. Never merge into `main` yourself.
-- **The `pull-request` skill holds the procedure:** starting a branch, stacking it on another, shaping its history, reviewing it, opening and updating its pull request, and reviewing someone else's.
+- **The `pull-request` skill holds the procedure:** starting a branch, planning its work and writing its code, stacking it on another, shaping its history, reviewing it, opening and updating its pull request, and reviewing someone else's.
 
 ## Commands
 
