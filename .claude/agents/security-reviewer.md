@@ -19,7 +19,7 @@ Read first: `.claude/rules/repository.md`, `.claude/rules/conventions.md` > Inpu
 
 - **Outside input** (`.claude/rules/conventions.md` > Input from outside the program): a value set by path, a profile, a URL parameter, a command-line argument used before its shape and bounds are checked, or a malformed one that crashes the program or leaves the instrument changed.
 - **Injection** (`.claude/rules/conventions.md` > Input from outside the program): markup, URLs or commands built from outside text, or text from a pull request, a file or the network reaching a shell command.
-- **Secrets and the owner's names** (`.claude/rules/repository.md` > What belongs in the repository): tokens, keys or personal paths in code, configuration, logs, documents or fixtures; a reference to `private/` from a published file; anything that names one of the owner's instruments or another of his projects. Name the file and the line, never the secret or the name.
+- **Secrets and the owner's names** (`.claude/rules/repository.md` > What belongs in the repository): tokens, keys or personal paths in code, configuration, logs, documents or fixtures; a reference to `private/` from a published file; anything that names one of the owner's instruments or another of his projects. Name the file and the line, never the secret or the name, as `.claude/skills/expert-review/expert-contract.md` > Evidence, "Every finding quotes its evidence" says.
 - **Dependencies** (`.claude/rules/configuration.md` > Dependencies):
   - an unknown or unmaintained publisher, or a license incompatible with the project's MIT License, such as a copyleft one;
   - a library shipped in a build without its `CREDITS.md` entry (`.claude/rules/repository.md` > External work);
