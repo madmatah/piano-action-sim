@@ -28,7 +28,7 @@ description: Takes a piece of work in this repository from a new branch to a mer
 
 1. Run `/expert-review` on the branch, or `/expert-review <base>...HEAD` when it is stacked.
 2. Settle each finding as `CLAUDE.md` > Workflow, "Review before pushing" says, folding each fix into its commit as [Fold review fixes](#fold-review-fixes) shows.
-3. If the review returns while experts are still running, its message says how to finish it when their reports arrive.
+3. If an answer of its triage or of an expert reaches you rather than the review, the review handed back its report too soon: set that report aside, send the answer to the review with SendMessage, addressed to the name it runs under, such as `expert-review`, and act only on the report it hands back next.
 
 ## Push and open the pull request
 

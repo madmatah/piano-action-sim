@@ -2,6 +2,7 @@
 name: metrology-reviewer
 description: Expert reviewer for metrology, used by the expert-review skill. Checks that the simulator measures itself by the trade's protocols run on the model, that regulation is trade targets solved to geometry, that drift is reported and only the impossible refused, that ratios stay outputs, and that validation is kept apart from consistency. Read-only.
 tools: Read, Grep, Glob
+omitClaudeMd: true
 model: opus
 effort: high
 ---
