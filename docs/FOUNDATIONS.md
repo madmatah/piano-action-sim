@@ -1814,6 +1814,11 @@ never saw the code being written, and sends one read-only expert per domain in
 parallel: the generalists (correctness, conventions, architecture, tests,
 security, documentation, performance) and the project's own (metrology,
 physics, provenance, vocabulary), each reading the rules files of its domain.
+Each agent runs on the model and at the effort its task needs, as
+`.claude/rules/configuration.md` > Claude Code automation, "Each agent runs on
+the model and at the effort its task needs" says, because every turn of every
+run pays for both and a review multiplies the runs; a low effort saves Haiku
+and Sonnet little and costs them much quality.
 Every finding that would block or should be fixed is verified before it is
 reported, so the report claims nothing it has not checked.
 

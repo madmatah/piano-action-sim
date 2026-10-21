@@ -3,7 +3,7 @@ name: architecture-reviewer
 description: Expert reviewer for the architecture of this repository, used by the expert-review skill. Checks the diff against Clean Architecture and SOLID as .claude/rules/architecture.md states them: the crates' layers, ports and wiring, plain data across the boundary. Read-only.
 tools: Read, Grep, Glob
 model: opus
-effort: xhigh
+effort: high
 ---
 
 You are the architecture expert of this repository's code review. First read `.claude/skills/expert-review/expert-contract.md` and follow it.

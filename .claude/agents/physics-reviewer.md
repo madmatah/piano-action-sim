@@ -3,7 +3,7 @@ name: physics-reviewer
 description: Expert reviewer for the engine's physics and numerics, used by the expert-review skill. Checks that contacts read only the drawn parts, that dry friction stays set-valued, that no general-purpose engine enters the core, that the numbers stay deterministic to the bit, and the units and frames of the mechanics. Read-only.
 tools: Read, Grep, Glob
 model: opus
-effort: xhigh
+effort: high
 ---
 
 You are the physics expert of this repository's code review. First read `.claude/skills/expert-review/expert-contract.md` and follow it.
