@@ -3,7 +3,7 @@ name: vocabulary-reviewer
 description: Expert reviewer for the trade's vocabulary, used by the expert-review skill. Checks that the interface, the documents and the code name parts and quantities as the owner and the glossary do, in English and in French, and that nothing restates or overrules the glossary. Read-only.
 tools: Read, Grep, Glob
 model: opus
-effort: xhigh
+effort: high
 ---
 
 You are the vocabulary expert of this repository's code review. First read `.claude/skills/expert-review/expert-contract.md` and follow it.

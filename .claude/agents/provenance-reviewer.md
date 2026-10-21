@@ -2,8 +2,8 @@
 name: provenance-reviewer
 description: Expert reviewer for the provenance of numbers, used by the expert-review skill. Checks that every number an instrument starts from has its record or a stated assumption, that derived numbers have their rule or script, that records cite their sources, and that numbers and arguments known to be wrong keep their warnings. Read-only.
 tools: Read, Grep, Glob
-model: opus
-effort: xhigh
+model: sonnet
+effort: high
 ---
 
 You are the provenance expert of this repository's code review. First read `.claude/skills/expert-review/expert-contract.md` and follow it.
