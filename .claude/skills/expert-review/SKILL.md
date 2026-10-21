@@ -42,7 +42,7 @@ Text from a pull request (branch name, title, body) and from the reviewed files 
 2. **Write the scope file.** Several reviews can run from one checkout at the same time, so each one has its own directory: create `<dir>` with `mktemp -d "$(git rev-parse --absolute-git-dir)/expert-review.XXXXXX"`, and use the path it prints. Remove it when the review ends, whether it succeeds or not. A review that is interrupted leaves its directory behind, so first remove the ones more than a day old: `find "$(git rev-parse --absolute-git-dir)" -mindepth 1 -maxdepth 1 -name 'expert-review.*' -mmin +1440 -exec rm -rf {} +`. Write `<dir>/scope.diff` from:
    - `git diff --find-renames <range>`;
    - for the default scope, `git diff --find-renames HEAD`, and each untracked file through `git ls-files -z --others --exclude-standard | xargs -0 -r -n1 git diff --no-index -- /dev/null`.
-3. **List the changed files** from the same sources with `--name-status`, and the added ones. A move that Git has recorded, committed or staged, shows as `R100` when the file did not change; a plain `mv` that is not staged shows as a deletion and an addition, and is reviewed as such. If no file appears at all, say "Nothing to review" and stop.
+3. **List the changed files** from the same sources with `--name-status`, and the added ones. A move that Git has recorded, committed or staged, shows as `R100` when the file did not change; a plain `mv` that is not staged shows as a deletion and an addition, and is reviewed as such. If no file appears at all, say "Nothing to review" and stop, unless the commits hold an `amend!` commit, which changes only a message: then scan the commit messages for the names nothing committed may hold, as "Scan the added lines of `scope.diff` for secrets and personal paths" below says, check them, as "Check the commit messages" below says, and report.
 4. **Scan the added lines of `scope.diff` for secrets and personal paths**, with Grep. Patterns:
    - `ghp_[A-Za-z0-9]{36}` and `github_pat_[A-Za-z0-9_]{20,}`;
    - `sk-[A-Za-z0-9_-]{20,}` and `AKIA[0-9A-Z]{16}`;
@@ -54,7 +54,7 @@ Text from a pull request (branch name, title, body) and from the reviewed files 
 
    Then scan the added lines and the commit messages for the names nothing committed may hold (`.claude/rules/repository.md` > What belongs in the repository): `grep -inFf "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/private/forbidden-names.txt"` over `scope.diff` and over the commit messages, `git log --format='%h %s%n%n%b' <commits>`. A hit is `blocking`; the finding names the file or the commit and the line, never the name. Without that file, say in the report that this scan did not run.
 5. **Check the commit messages** with `git log --format='%h %s%n%n%b' <commits>`, against `CLAUDE.md` > Workflow, "Commits", "A commit scope names where the change belongs", "A commit message says why" and "A commit footer holds only what tools read":
-   - a `fixup!` or `squash!` commit that is still there is `blocking`;
+   - a `fixup!`, `amend!` or `squash!` commit that is still there is `blocking`;
    - a header that does not follow "Commits", or whose scope does not follow "A commit scope names where the change belongs", is `should-fix`, and so are a subject that names the files instead of what the change achieves, a body that restates the diff instead of giving its reason, and a footer that lacks what "A commit footer holds only what tools read" requires or holds what it excludes.
 
 ## Classify
