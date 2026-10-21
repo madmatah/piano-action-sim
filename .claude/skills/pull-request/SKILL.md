@@ -39,9 +39,11 @@ description: Takes a piece of work in this repository from a new branch to a mer
 
 ## Fold review fixes
 
-1. Commit each fix with `git commit --fixup=<commit>`, naming the commit it belongs to.
+1. Commit each fix with `git commit --fixup=<commit>`, naming the commit it belongs to. A fix to the message of a commit goes in an `amend!` commit, since a `fixup!` commit keeps the message of its target: in a directory that `mktemp -d` creates outside the worktree, write, with the Write tool, a file whose first line is `amend! ` followed by the header of the commit, whole, as `git log -1 --format=%s <commit>` prints it, since autosquash matches that line, then a blank line and the whole new message; run `GIT_EDITOR="cp <file>" git commit --fixup=reword:<commit>`, or `--fixup=amend:<commit>` to fold the staged changes with it, and remove the directory. Neither `-m` nor `-F` combines with these forms.
 2. Run `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash <base>`. Git before 2.44 ignores `--autosquash` without `-i`, and the `-i` form works with every version.
-3. Push with `git push --force-with-lease`, then keep the body true: update every section the fixes changed.
+3. Check that `git log --format=%s <base>..HEAD` lists no `fixup!`, `amend!` or `squash!` commit. If one is left, note its hash, drop it, re-apply its change with `git cherry-pick -n <hash>`, and commit it again: a `fixup!` commit as above, and an `amend!` commit as above too, with the message file built from `git log -1 --format=%B <hash>`, whose first line must name its target's whole header. Then fold again.
+4. Check every commit again, as [Shape the history](#shape-the-history) does.
+5. Push with `git push --force-with-lease`, then keep the body true: update every section the fixes changed.
 
 ## Merge
 

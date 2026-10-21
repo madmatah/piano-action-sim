@@ -5,7 +5,7 @@ description: Writes the commit messages of this repository, so that each one say
 
 # Writing commits
 
-`CLAUDE.md` > Workflow states the rules of a commit: "Commits", "A commit scope names where the change belongs", "A commit message says why" and "A commit footer holds only what tools read". This skill applies them to each commit that will be pushed, whether you write it at once or while you rewrite the branch before pushing. A work-in-progress commit or a `fixup!` commit needs none of it, since the rewrite replaces it. Where a rule leaves a choice, the sections below say how to make it. Write from the rules, not from `git log`, whose older messages may predate them.
+`CLAUDE.md` > Workflow states the rules of a commit: "Commits", "A commit scope names where the change belongs", "A commit message says why" and "A commit footer holds only what tools read". This skill applies them to each commit that will be pushed, whether you write it at once or while you rewrite the branch before pushing. A work-in-progress commit or a `fixup!` commit needs none of it, since the rewrite replaces it, but the message that an `amend!` commit carries below its first line follows it all, since it replaces the message of its commit. Where a rule leaves a choice, the sections below say how to make it. Write from the rules, not from `git log`, whose older messages may predate them.
 
 ## Draw the commits
 
