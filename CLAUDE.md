@@ -79,5 +79,5 @@ Each file of `.claude/rules/` holds the rules of one concern, in full, each endi
 ## Skills
 
 - `pull-request`: from a new branch to a merged pull request, and reviewing someone else's.
-- `expert-review`: `/expert-review [<pr#>|<branch>|<range>] [--post] [focus]`, the review of a diff before it reaches `main`, by the generalist experts and the experts of metrology, physics, provenance and vocabulary.
+- `expert-review`: `/expert-review [<pr#>|<branch>|<range>] [--fixes <file>] [--post] [focus]`, the review of a diff before it reaches `main`, by the generalist experts and the experts of metrology, physics, provenance and vocabulary.
 - `writing-commits`: the message of a commit, from its gitmoji and its scope to its body and its footer.
