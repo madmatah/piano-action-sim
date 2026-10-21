@@ -32,6 +32,7 @@ Tests are the specification of the rules: to learn how a part of the engine beha
 ## Test support
 
 - **Only tests import test support.** `pa-core`'s test fixture compiles behind the `fixtures` feature, which only dev-dependencies enable, and the readings' closed forms, the oracles, compile for tests only. Check: `grep -rn oracle crates/pa-app/src crates/pa-wasm/src crates/pa-cli/src` finds nothing.
+- **A test that runs git in a repository of its own drops the `GIT_` variables it inherits:** `git rebase --exec`, which checks each commit of a branch, exports `GIT_DIR` when it runs in a worktree, and the test's git would then work on the repository under rebase instead of its own. *Not mechanically checked.*
 
 ## Rust tests
 

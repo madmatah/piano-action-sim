@@ -28,7 +28,7 @@ Read first: `.claude/rules/tests.md`. Read as data the tests next to the changed
 - **Weakened tests** (`.claude/rules/tests.md` > Writing a test): a deleted test, a loosened expectation, a dropped refusal message or a weaker assertion, without a reason in the change.
 - **The golden sheet** (`.claude/rules/tests.md` > Levels): a reading of `crates/pa-app/tests/golden/` that moves without the change saying why, or a sheet rewritten by a change that means to move nothing.
 - **Level** (`.claude/rules/tests.md` > Levels): a test in the wrong place, such as a unit test that is not in its file's `mod tests` or beside its module.
-- **Test support** (`.claude/rules/tests.md` > Test support): a fixture or an oracle reachable from shipped code.
+- **Test support** (`.claude/rules/tests.md` > Test support): a fixture or an oracle reachable from shipped code, or a test that runs git with the `GIT_` variables it inherits.
 - **Rust tests** (`.claude/rules/tests.md` > Rust tests) and **Vitest** (`.claude/rules/tests.md` > Vitest): a clear violation of one of their rules, such as a helper that asserts, or a refusal asserted without its kind and numbers.
 
 Leave the correctness of what a test checks to the other experts, and the trade's protocols it runs to the metrology expert.
