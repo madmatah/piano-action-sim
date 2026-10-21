@@ -24,7 +24,7 @@
 ### Quality
 
 - [ ] `pnpm verify` passes on every commit.
-- [ ] `/expert-review` ran on the completed branch, and every finding is fixed or answered here.
+- [ ] `/expert-review` ran on the completed branch and on each round of its fixes, or this pull request names the fixes no expert reviewed; every finding is fixed or answered here.
 
 ### History
 
