@@ -12,7 +12,7 @@ description: Writes the commit messages of this repository, so that each one say
 Each commit holds one reason to change ("Commits"), so that a reader can review it, revert it or find it with `git bisect` on its own.
 
 - **A subject that needs an "and"** usually holds two commits. Two unrelated fixes made the same afternoon are two commits.
-- **The test that pins a fix** goes in the commit of the fix, since every commit passes the gate on its own.
+- **The test that pins a fix** goes in the commit of the fix, since every commit passes its checks on its own ("Commits").
 - **A correction to an earlier commit of the branch** is folded into it, as `.claude/skills/pull-request/SKILL.md` > Shape the history shows. The history describes the change that ships, not the path that found it.
 
 ## Choose the type
@@ -60,19 +60,19 @@ Picture a reader scanning `git log --oneline` for the commit that changed a beha
 💩 The mechanism, or nothing at all:
 
 ```
-🐛(billing) fix payment bug
-🐛(billing) add a retry around chargeCard
-✨(billing) update invoice.ts and charge.ts
-🐛(billing) Fixed the timeout error.
+🐛(pa-core) fix key bug
+🐛(pa-core) add a bound check in the lift-off test
+✨(pa-app) update instrument.rs and registry.rs
+🐛(pa-core) Fixed the balance pin.
 ```
 
-❤️ The intent:
+❤ The intent:
 
 ```
-🐛(billing) never charge a card twice when the provider times out
-🐛(importer) say which row broke instead of rejecting the whole file
-✨(calendar) read recurring events that end on a date
-♻️(catalog) compute a price in one place instead of three
+🐛(pa-core) say a key turned up to the end of its range lifts off it
+✨(pa-app) set the front mortise's groove and bushing
+🍱(data) stand the balance pin above the key button
+♻️(bench) draw a part's outline in one place instead of three
 ```
 
 ## Write the body
@@ -87,25 +87,26 @@ Answer the questions that reader would ask:
 
 Then reread the body: a sentence that the diff could have told is one to cut.
 
-Under `🐛(billing) never charge a card twice when the provider times out`:
+Under `🐛(pa-core) say a key turned up to the end of its range lifts off it`:
 
 💩 The diff, told again:
 
 ```
-Add an idempotency key to chargeCard and retry on timeout. Update the
-billing tests accordingly.
+Treat the upper bound of the key's turn as a lift-off in the frame's
+verdict. Update the golden sheet accordingly.
 ```
 
-❤️ The context that led there:
+❤ The context that led there:
 
 ```
-Under load, the payment provider accepts a charge and times out before
-it replies. The client took the timeout for a refusal and charged again
-on its next attempt, so a customer could pay twice for one order.
-
-An idempotency key sent with each charge lets the provider recognize
-the retry and return the first result. A longer timeout would only have
-made the double charge rarer, never impossible.
+A key free to lift was said to lift off its frame only where it leaned
+on the top of its slide, where its balance hole clears the pin. On a
+balance pin standing above the key button, 33 mm above the punching, a
+key turning up about a stop near the pin meets the 15 degrees its turn
+is bounded by first: with the back rail moved 100 mm behind the pin, a
+pull of 63 g left it leaning on that bound, where nothing modeled holds
+it, and the bench gave no verdict at all. Leaning on the upper bound of
+its turn now lifts it off its frame too.
 ```
 
 ## Add the footer
@@ -113,14 +114,14 @@ made the double charge rarer, never impossible.
 Write it as `CLAUDE.md` > Workflow, "A commit footer holds only what tools read" says, and never on a guess: a breaking change only when its users will meet it, an issue only when this commit closes it.
 
 ```
-💥(api) return amounts as integer cents
+💥(pa-wasm) send each reading with its trust beside its value
 
-Clients rounded the decimal strings each in their own way, so two
-screens could show different totals for the same order. An integer
-number of cents leaves no rounding to the client.
+The page asked for a reading's value and for its trust in two calls,
+and between two solves could show a value with the trust of the pose
+before it. Sent together, they always belong to the same pose.
 
-BREAKING CHANGE: `amount` is an integer number of cents, no longer a
-decimal string. Divide it by 100 to show it.
+BREAKING CHANGE: each reading arrives as `{ value, trust }`, no longer
+as a bare number. Read `.value` where a number was read.
 Closes #42
 ```
 
@@ -129,7 +130,7 @@ Closes #42
 Before committing, read the message against the rules:
 
 1. **The header** ("Commits"): one line, in the form of the project's style, with the type of [Choose the type](#choose-the-type) and the scope of [Choose the scope](#choose-the-scope).
-2. **The subject** ("A commit message says why"): what the change achieves, not the files it touches; in the imperative, in lowercase, without a final period, in a header of around 70 characters.
-3. **The body** ("A commit message says why"): after a blank line and wrapped at 72 columns, it says why and lists nothing that the diff shows. Without one, the change really speaks for itself.
+2. **The subject** ("A commit message says why"): what the change achieves, not the files it touches, in the mood, the case, the punctuation and the length that the rule gives.
+3. **The body** ("A commit message says why"): laid out as the rule says, it says why and lists nothing that the diff shows. Without one, the change really speaks for itself.
 4. **The footer** ("A commit footer holds only what tools read"): what the rule requires, nothing that it excludes, and nothing untrue.
-5. **The gate:** `pnpm verify` passes at this commit. When you rewrite a branch, `.claude/skills/pull-request/SKILL.md` > Shape the history checks every commit at once.
+5. **The checks** ("Commits"): `pnpm verify` passes at this commit. When you rewrite a branch, `.claude/skills/pull-request/SKILL.md` > Shape the history checks every commit at once.
