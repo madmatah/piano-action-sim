@@ -33,7 +33,7 @@ Each rule ends with its check, or says it is *not mechanically checked*.
 
 - **A new dependency comes from a known, maintained publisher, under a license compatible with the project's MIT License:** a permissive one, such as MIT, Apache-2.0, BSD or ISC, never a copyleft license whose terms would bind the project's code. *Not mechanically checked.*
 - **A dependency of `pa-core` is justified in its manifest,** beside it. Check: `crates/pa-core/Cargo.toml`.
-- **Never weaken what the lockfiles guarantee.** `Cargo.lock` and `pnpm-lock.yaml` are committed, and CI and the session hook install with the frozen lockfile; no setting lets an install bypass them, such as another registry. The tools no lockfile holds are pinned where they are read: Rust in `rust-toolchain.toml`, Node in `.nvmrc`, pnpm in `packageManager`, wasm-pack in the workflow. A version that may move a last bit of a reading, `libm`'s first, is updated on purpose and its golden sheet rewritten with the reason. Check: `pnpm install --frozen-lockfile` in CI.
+- **Never weaken what the lockfiles guarantee.** `Cargo.lock` and `pnpm-lock.yaml` are committed, and CI and the session hook install with the frozen lockfile; no setting lets an install bypass them, such as another registry. pnpm is pinned in `packageManager` and `devEngines.packageManager`, and `pnpm-lock.yaml` holds it with its integrity. The tools no lockfile holds are pinned where they are read: Rust in `rust-toolchain.toml`, Node in `.nvmrc`, wasm-pack in the workflow. A version that may move a last bit of a reading, `libm`'s first, is updated on purpose and its golden sheet rewritten with the reason. Check: `pnpm install --frozen-lockfile` in CI.
 
 ## Continuous integration
 
