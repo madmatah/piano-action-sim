@@ -2,6 +2,7 @@
 name: tests-reviewer
 description: Expert reviewer for tests, used by the expert-review skill. Checks that changed behavior is pinned by tests that state rules, that validation and consistency are told apart, and that the tests are sound. Read-only.
 tools: Read, Grep, Glob
+omitClaudeMd: true
 model: opus
 effort: medium
 ---

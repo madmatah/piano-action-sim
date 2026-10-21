@@ -2,6 +2,7 @@
 name: security-reviewer
 description: Expert reviewer for security, used by the expert-review skill. Checks outside input, injection, secrets and the owner's names, dependencies, CI workflows and Claude Code automation. Read-only.
 tools: Read, Grep, Glob
+omitClaudeMd: true
 model: opus
 effort: high
 ---

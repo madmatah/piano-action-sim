@@ -2,6 +2,7 @@
 name: physics-reviewer
 description: Expert reviewer for the engine's physics and numerics, used by the expert-review skill. Checks that contacts read only the drawn parts, that dry friction stays set-valued, that no general-purpose engine enters the core, that the numbers stay deterministic to the bit, and the units and frames of the mechanics. Read-only.
 tools: Read, Grep, Glob
+omitClaudeMd: true
 model: opus
 effort: high
 ---

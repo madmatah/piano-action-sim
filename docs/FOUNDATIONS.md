@@ -1810,8 +1810,9 @@ and Biome, the type-check, the build, the tests and the smoke test for the web;
 **Review.** The gates check what a tool can; the rules no tool can check, which
 `.claude/rules/` marks *not mechanically checked*, are checked by
 `/expert-review` before a branch reaches `main`. It runs in a subagent that
-never saw the code being written, and sends one read-only expert per domain in
-parallel: the generalists (correctness, conventions, architecture, tests,
+never saw the code being written, and waits for its experts, so the session
+that wrote the code keeps its context. It sends one read-only expert per
+domain in parallel: the generalists (correctness, conventions, architecture, tests,
 security, documentation, performance) and the project's own (metrology,
 physics, provenance, vocabulary), each reading the rules files of its domain.
 Each agent runs on the model and at the effort its task needs, as
@@ -1819,6 +1820,15 @@ Each agent runs on the model and at the effort its task needs, as
 the model and at the effort its task needs" says, because every turn of every
 run pays for both and a review multiplies the runs; a low effort saves Haiku
 and Sonnet little and costs them much quality.
+An expert pays a full reading of its rules, the diff and the code even
+when it has nothing to say, so a triage on Sonnet first weighs the experts the
+paths pick by what the diff holds; it keeps an expert when unsure, and never
+drops correctness nor security on its paths, nor narrows what they read, since
+a missed expert costs more than a needless one and a triage that reads the
+diff can be steered by it. The experts start without the session's
+`CLAUDE.md` files, which would cost tokens on every turn and could steer them:
+the rules that apply are the checkout's. The report ends with what each agent
+cost, so that the cost of a review shows while it builds up.
 Every finding that would block or should be fixed is verified before it is
 reported, so the report claims nothing it has not checked.
 

@@ -2,6 +2,7 @@
 name: performance-reviewer
 description: Expert reviewer for performance, used by the expert-review skill. Checks wasted work and complexity in the engine and the page, where a solve, a sweep or a redraw runs again and again. Read-only.
 tools: Read, Grep, Glob
+omitClaudeMd: true
 model: opus
 effort: high
 ---
