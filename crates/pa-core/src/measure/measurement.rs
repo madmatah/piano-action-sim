@@ -28,6 +28,7 @@
 use crate::contact::ContactCode;
 use crate::geometry::Point;
 use crate::parts::mounts::KeyMount;
+use crate::parts::verdicts::CarriedBy;
 use crate::solve::SolveReport;
 
 /// Which reading, by which procedure.
@@ -117,6 +118,11 @@ impl ProcedureId {
     /// reads the key tilted, and that height with it; Stanwood's key friction
     /// weight too: its temporary weight cancels the level key's moment, and
     /// what is left of the key's at its rest attitude is in the reading.
+    ///
+    /// D, U, BW, F and the band read the wippen the key carries, its mass
+    /// and its center's friction, where it carries one; key height and dip,
+    /// on rigid stops, read neither, and both key friction weights are read
+    /// on the key alone.
     pub fn reads(self) -> &'static [Input] {
         match self {
             Self::FrontWeight => &[Input::KeyMass, Input::Geometry],
@@ -125,9 +131,16 @@ impl ProcedureId {
             | Self::UpWeight
             | Self::BalanceWeight
             | Self::FrictionWeight
-            | Self::KeyFrictionWeightZeroedOnTheJig
             | Self::DownWeightOnTheBand
             | Self::UpWeightOnTheBand => &[
+                Input::KeyMass,
+                Input::CenterOfMassHeight,
+                Input::KeyFriction,
+                Input::Geometry,
+                Input::WippenAssemblyMass,
+                Input::WippenFriction,
+            ],
+            Self::KeyFrictionWeightZeroedOnTheJig => &[
                 Input::KeyMass,
                 Input::CenterOfMassHeight,
                 Input::KeyFriction,
@@ -231,6 +244,11 @@ pub enum Input {
     KeyFriction,
     /// The dimensions of the key and its frame the procedure reads.
     Geometry,
+    /// The mass of the wippen assembly the key carries and its center, with
+    /// its jack and its repetition lever at rest on it.
+    WippenAssemblyMass,
+    /// The friction of the wippen's center.
+    WippenFriction,
 }
 
 impl Input {
@@ -241,6 +259,8 @@ impl Input {
             Self::CenterOfMassHeight => "center_of_mass_height",
             Self::KeyFriction => "key_friction",
             Self::Geometry => "geometry",
+            Self::WippenAssemblyMass => "wippen_assembly_mass",
+            Self::WippenFriction => "wippen_friction",
         }
     }
 }
@@ -280,16 +300,31 @@ pub struct Bases {
     pub key_friction: Basis,
     /// The dimensions of the key and its frame.
     pub geometry: Basis,
+    /// What the wippen assembly the key carries rests on, where it carries
+    /// one.
+    pub wippen_assembly: Option<WippenAssemblyBases>,
+}
+
+/// What each input of the wippen assembly a key carries rests on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WippenAssemblyBases {
+    /// Its mass and its center.
+    pub mass: Basis,
+    /// Its center's friction.
+    pub friction: Basis,
 }
 
 impl Bases {
-    /// What `input` rests on.
-    pub fn of(&self, input: Input) -> Basis {
+    /// What `input` rests on; nothing for the wippen's inputs where the key
+    /// carries no wippen, which no reading then reads.
+    pub fn of(&self, input: Input) -> Option<Basis> {
         match input {
-            Input::KeyMass => self.key_mass,
-            Input::CenterOfMassHeight => self.center_of_mass_height,
-            Input::KeyFriction => self.key_friction,
-            Input::Geometry => self.geometry,
+            Input::KeyMass => Some(self.key_mass),
+            Input::CenterOfMassHeight => Some(self.center_of_mass_height),
+            Input::KeyFriction => Some(self.key_friction),
+            Input::Geometry => Some(self.geometry),
+            Input::WippenAssemblyMass => self.wippen_assembly.map(|w| w.mass),
+            Input::WippenFriction => self.wippen_assembly.map(|w| w.friction),
         }
     }
 }
@@ -309,12 +344,13 @@ pub enum Trust {
 
 impl Trust {
     /// The trust of a reading that reads `inputs`, each on its basis in
-    /// `bases`.
+    /// `bases`; an input the bench does not have, the wippen of a key that
+    /// carries none, is not read.
     pub fn of(inputs: &[Input], bases: &Bases) -> Self {
         let because: Vec<Input> = inputs
             .iter()
             .copied()
-            .filter(|&i| bases.of(i).is_indicative())
+            .filter(|&i| bases.of(i).is_some_and(Basis::is_indicative))
             .collect();
         if because.is_empty() {
             Self::Metrological
@@ -411,6 +447,11 @@ pub struct Conditions {
     /// The contacts holding the seat the reading is taken at or starts from:
     /// the cloth at the top, whichever stop bottomed at the bottom.
     pub held_by: Vec<ContactCode>,
+    /// Where the wippen the key carries rests at that seat: the capstan on
+    /// the heel cloth or on the heel's wood, or the heel on the key's top,
+    /// each link with the parts of the heel it bears on; empty where the key
+    /// carries no wippen, or where the reading is not taken at a seat.
+    pub wippen_carried_by: Vec<CarriedBy>,
     /// The loads that seated the key, where the procedure seats it.
     pub preparation: Option<Preparation>,
     /// The breakaway walk, where the reading is one.
@@ -431,6 +472,7 @@ impl Conditions {
             mount,
             measuring_point_from_lip_m: from_lip,
             held_by: Vec::new(),
+            wippen_carried_by: Vec::new(),
             preparation: None,
             walk: None,
             sweep: None,
@@ -541,6 +583,7 @@ mod tests {
             center_of_mass_height: Basis::Published,
             key_friction: Basis::SetByHand,
             geometry: Basis::Published,
+            wippen_assembly: None,
         };
         assert_eq!(
             Trust::of(ProcedureId::DownWeight.reads(), &measured),
@@ -566,6 +609,7 @@ mod tests {
             center_of_mass_height: Basis::Estimated,
             key_friction: Basis::Assumed,
             geometry: Basis::Assumed,
+            wippen_assembly: None,
         };
         assert_eq!(
             Trust::of(
@@ -582,6 +626,50 @@ mod tests {
                 because: vec![Input::KeyMass, Input::Geometry]
             }
         );
+    }
+
+    /// Consistency: **a reading names the wippen's inputs it reads where they
+    /// are not measured, and only where the key carries a wippen.** D reads
+    /// the wippen's mass and its center's friction, key height and both key
+    /// friction weights neither: a wippen whose mass is assumed makes D an
+    /// indication and names it; with no wippen, nothing of it is named.
+    #[test]
+    fn trust_names_the_wippens_inputs_only_where_the_key_carries_one() {
+        let measured = Bases {
+            key_mass: Basis::Measured,
+            center_of_mass_height: Basis::Published,
+            key_friction: Basis::SetByHand,
+            geometry: Basis::Published,
+            wippen_assembly: None,
+        };
+        let carrying = Bases {
+            wippen_assembly: Some(WippenAssemblyBases {
+                mass: Basis::Assumed,
+                friction: Basis::Published,
+            }),
+            ..measured
+        };
+        assert_eq!(
+            Trust::of(ProcedureId::DownWeight.reads(), &measured),
+            Trust::Metrological
+        );
+        assert_eq!(
+            Trust::of(ProcedureId::DownWeight.reads(), &carrying),
+            Trust::Indicative {
+                because: vec![Input::WippenAssemblyMass]
+            }
+        );
+        for procedure in [
+            ProcedureId::KeyHeight,
+            ProcedureId::KeyFrictionWeightZeroedOnTheJig,
+            ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
+        ] {
+            assert_eq!(
+                Trust::of(procedure.reads(), &carrying),
+                Trust::Metrological,
+                "{procedure:?}"
+            );
+        }
     }
 
     /// Every reading has its own identifier.

@@ -451,6 +451,69 @@ fn every_walk_reaches_the_other_seat_and_reads_d_above_u() {
     assert_eq!(walked, 200);
 }
 
+/// C8, consistency, for the walks of a key carrying its wippen: on every
+/// key a keyboard could be built from, the test wippen on its capstan and a
+/// 6 g band of friction at its bushings, each walk reaches the other seat,
+/// within a quarter of its cap of steps, and the down weight stands above
+/// the up weight by at least twice the bushings' friction read through the
+/// longest arm the measuring point has, the wippen center's friction only
+/// adding to it. A breakaway carries the key and its wippen through the
+/// stroke in one increment, its link closed, each step a row margin of
+/// their farthest points at most, some 65 to 100 steps on these strokes:
+/// every increment stays within one cap of steps, the most of them ending
+/// on it, its first piece stopping at the cap on a converged iterate and the
+/// next taking no step; the pieces of the cap carry a deeper dip
+/// ([`crate::measure::touchweights_wippen`]).
+#[test]
+fn every_walk_of_a_key_carrying_its_wippen_reaches_the_other_seat_and_reads_d_above_u() {
+    let (wippen, wippen_mass) = crate::parts::fixtures::test_wippen();
+    let mut statics = Statics::new();
+    let mut walked = 0;
+    let mut most = 0;
+    for (class, a) in corpus() {
+        if !matches!(class, Class::Near | Class::Phy8) {
+            continue;
+        }
+        let arm = a.protocol.measuring_point(&a.key);
+        let bound = crate::mechanism::AxisFriction::of_weight_at(6.0, arm).bound_n_m;
+        let k = crate::parts::fixtures::on_frame_carrying(&a, bound, true, (&wippen, &wippen_mass));
+        let seating = k.seating();
+        let seats = seating
+            .seats(&mut statics)
+            .unwrap_or_else(|r| panic!("{class:?}: {r:?}\n{a:?}"));
+        let walk = |statics: &mut Statics, stroke| {
+            seating
+                .walk(statics, &seats, stroke)
+                .unwrap_or_else(|r| panic!("{class:?}, {stroke:?}: {r:?}\n{a:?}"))
+        };
+        let (down, up) = (
+            walk(&mut statics, Stroke::Down),
+            walk(&mut statics, Stroke::Up),
+        );
+        for w in [&down, &up] {
+            assert!(w.grams.is_finite());
+            assert!(w.steps <= CAP / 4, "{class:?}: {} steps", w.steps);
+            most = most.max(w.report.most_iterations);
+        }
+        let reach = (k.measuring_point.x * k.measuring_point.x
+            + k.measuring_point.y * k.measuring_point.y)
+            .sqrt();
+        let least = 2.0 * 1000.0 * bound / (crate::G * reach);
+        assert!(
+            down.grams - up.grams >= least,
+            "{class:?}: D {} g, U {} g, less than the {least} g its bushings make",
+            down.grams,
+            up.grams
+        );
+        walked += 1;
+    }
+    assert_eq!(walked, 200);
+    assert!(
+        most <= ITERATION_CAP,
+        "an increment took {most} steps, more than the {ITERATION_CAP} of one cap"
+    );
+}
+
 /// C12, consistency: **wherever the balance punching carries the key, the
 /// key on its punching is the key on a pivot.** On every key of the near and
 /// PHY-8 classes, a keyboard could be built from each:

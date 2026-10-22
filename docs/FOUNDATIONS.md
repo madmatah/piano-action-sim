@@ -989,10 +989,11 @@ and U, and both curves step by step.
 ## What is built: stage 1b, the wippen on the capstan
 
 The engine carries a wippen assembly (« chevalet ») on the key's capstan,
-resting on it through a real contact, in the seats and in the regulation solve:
-built. No profile binds one yet, so the bench draws none and its sheet reads the
-key alone; Hirschkorn's wippen on his key, the touchweights read through it, the
-« chevalet » panel and the wippen weight are planned ([Stages](#stages)).
+resting on it through a real contact, in the seats, in the regulation solve and
+in the touchweights, D, U, BW, F and the band read through it: built. No
+profile binds one yet, so the bench draws none and its sheet reads the key
+alone; Hirschkorn's wippen on his key, the « chevalet » panel and the wippen
+weight are planned ([Stages](#stages)).
 
 ### The assembly and its place
 
@@ -1230,11 +1231,46 @@ link rows are closed within touching, as with the capstan in the valley where
 the cloth meets the heel's bottom or the heel on the capstan and the key's top
 at once, the fold follows the motion: going down, the key's back rising, the
 row that lifts the heel most carries it, the larger `|r|`; coming up, the one
-it stays on, the smaller. The walks' frictionless balance and the verdicts read
-through the same fold (planned). The load at the capstan stays where it was,
+it stays on, the smaller. The walks' frictionless balance reads through the same
+fold, by the way each walk starts the key, and the verdicts read each edge of
+their box by the fold of the motion past it, the box itself the bushings' bound
+and the wippen center's carried through the link, `b_k + |r|·b_w`; a key lifted
+off its punching is read on its slide and its angle, the wippen folded onto
+both. Where no link is closed the key is read alone, and a wippen its own
+friction does not hold is held by nothing. The load at the capstan stays where it was,
 now standing for the hammer, which the bench does not yet carry: key height and
 dip keep their values on rigid stops, the key seating with its wippen where it
 seats alone, within the solve's tolerances.
+
+### The touchweights through the wippen
+
+D, U, BW, F and the band read the key with its wippen. Each breakaway carries
+the key and its wippen through the stroke together, its link closed, the
+wippen center's friction carried onto the key's; each step of the band holds
+the key's angle and lets the wippen follow, its friction against the motion.
+So the band is `(±(b_k + |r|·b_w) + Q_k + r·Q_w) / (g a)` at each attitude,
+the ratio `r` and the wippen's arm about its center pin changing through the
+stroke. Where the band falls all the way down the stroke, as on the test
+bench, D and U are its edges at the two seats' attitudes; where the heel
+passes from its cloth onto its wood partway down, the ratio jumps there and
+the force with it, and D is the band's greatest down force anywhere in the
+window, the walk stalling at the passing. An increment of a walk or a step of
+the band that leans the wippen on a limit of its turn is named as the sheet
+names it, at the seat it refuses it at, with the sheet's distance where the
+sheet's first refusal is at that limit
+([The assembly and its place](#the-assembly-and-its-place)); between two seats
+that both stand the wippen in range, one that pushes it past its range has
+lifted the key off its balance punching, and the key lifts off its frame. Both
+key friction weights read the key alone, the same key on the same frame the
+bench mounts beside the key with its wippen: they weigh its bushings, the same
+bits with the wippen and without. Each reading taken at a seat says where the
+wippen rests there, the capstan on the heel cloth or on the heel's wood, or the
+heel on the key's top, and the readings that read the wippen name its mass and
+its center's friction among their inputs where they are not measured. The non-confusion tests hold
+for the wippen as for the key: a gram on the wippen moves the balance weight
+and not the friction weight, its center 1.2 times as tight the friction weight
+and not the balance weight, and the wippen moves the balance weight by the
+virtual work of its weight over the stroke.
 
 ### The regulation with the wippen
 
@@ -1266,8 +1302,9 @@ reads with one more thinnest paper.
 | Reading | Mounted on |
 |---|---|
 | Key height, key dip, the regulation | the key with its wippen, each seat started from the key alone's (built) |
-| D, U, BW, F, the band, the touch weight | the key with its wippen (planned) |
-| Both key friction weights | the key alone (planned) |
+| D, U, BW, F, the band | the key with its wippen (built) |
+| The touch weight | the key with its wippen (planned) |
+| Both key friction weights | the key alone (built) |
 | FW, KR | the jig |
 | WW | the wippen on a frictionless revolute at its center pin, at the protocol's level, the scale under the capstan's mark (planned) |
 

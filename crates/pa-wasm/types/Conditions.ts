@@ -5,6 +5,7 @@ import type { Procedure } from "./Procedure";
 import type { Swept } from "./Swept";
 import type { TemporaryWeight } from "./TemporaryWeight";
 import type { Walk } from "./Walk";
+import type { WippenCarriedBy } from "./WippenCarriedBy";
 
 /**
  * What a reading needs beside its number to be a datum.
@@ -22,6 +23,11 @@ measuring_point_from_lip_mm: number,
  * The contacts holding the seat the reading is taken at or starts from.
  */
 held_by: Array<Contact>, 
+/**
+ * Where the wippen the key carries rests at that seat; empty where it
+ * carries none.
+ */
+wippen_carried_by: Array<WippenCarriedBy>, 
 /**
  * The breakaway walk, where the reading is one.
  */

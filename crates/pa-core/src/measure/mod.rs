@@ -33,6 +33,8 @@ mod seat_corpus;
 #[cfg(test)]
 mod seat_wippen;
 pub mod sweep;
+#[cfg(test)]
+mod touchweights_wippen;
 pub mod walk;
 pub mod weighing;
 

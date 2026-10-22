@@ -64,6 +64,7 @@ use pa_core::measure::weighing::{BushingsRefusal, Refused, FRICTION_SEARCH_G};
 use pa_core::parts::faults::Fault as CoreFault;
 use pa_core::parts::frame::{Drawer, PAPER};
 use pa_core::parts::mounts::KeyMount;
+use pa_core::parts::verdicts::CarriedBy;
 use pa_core::parts::{KeyMass, NotAWeighing};
 use pa_core::registry::{
     Kind as CoreKind, Layer as CoreLayer, Quantity as CoreQuantity, Step as CoreStep,
@@ -541,6 +542,7 @@ impl Refusal {
                 },
                 WalkRefusal::NoEquilibrium { on } => Self::NoEquilibrium { on: contacts(on) },
                 WalkRefusal::LiftsOffItsFrame => Self::WalkLiftsOffItsFrame,
+                WalkRefusal::Wippen(why) => Self::seat(&SeatRefusal::from(*why)),
                 WalkRefusal::NotConverged {
                     iterations,
                     residual,
@@ -550,6 +552,7 @@ impl Refusal {
                     residual_n: *residual,
                 },
                 WalkRefusal::Mechanism(_) => Self::GeometryDegenerate,
+                WalkRefusal::KeyAlone(why) => Self::seat(why),
             },
             Refused::Sweep(sweep) => match sweep {
                 SweepRefusal::NoTravel => Self::NoTravel { riding },
@@ -564,6 +567,7 @@ impl Refusal {
                     force_g: *grams,
                 },
                 SweepRefusal::LiftsOffItsFrame => Self::SweepLiftsOffItsFrame,
+                SweepRefusal::Wippen(why) => Self::seat(&SeatRefusal::from(*why)),
                 SweepRefusal::NoEquilibrium { on } => Self::NoEquilibrium { on: contacts(on) },
                 SweepRefusal::NotConverged {
                     iterations,
@@ -574,6 +578,7 @@ impl Refusal {
                     residual_n: *residual,
                 },
                 SweepRefusal::Mechanism(_) => Self::GeometryDegenerate,
+                SweepRefusal::KeyAlone(why) => Self::seat(why),
             },
             Refused::NoKeyTopAtTheStation { station_m } => Self::NoKeyTopAtTheStation {
                 station_mm: mm(*station_m),
@@ -1432,6 +1437,10 @@ pub enum Input {
     KeyFriction,
     /// The dimensions of the key and its frame.
     Geometry,
+    /// The mass of the wippen assembly the key carries, and its center.
+    WippenAssemblyMass,
+    /// The friction of the wippen's center.
+    WippenFriction,
 }
 
 impl From<CoreInput> for Input {
@@ -1441,6 +1450,8 @@ impl From<CoreInput> for Input {
             CoreInput::CenterOfMassHeight => Self::CenterOfMassHeight,
             CoreInput::KeyFriction => Self::KeyFriction,
             CoreInput::Geometry => Self::Geometry,
+            CoreInput::WippenAssemblyMass => Self::WippenAssemblyMass,
+            CoreInput::WippenFriction => Self::WippenFriction,
         }
     }
 }
@@ -1552,6 +1563,29 @@ pub struct TemporaryWeight {
     pub zeroed: Zeroing,
 }
 
+/// A link carrying the wippen the key carries, and the parts of the heel it
+/// bears on: the capstan on the heel cloth or on the heel's wood, or the
+/// heel on the key's top.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct WippenCarriedBy {
+    /// The link.
+    pub link: Contact,
+    /// The parts of the wippen it bears on, in the order of the parts.
+    pub parts: Vec<Part>,
+}
+
+/// The links carrying the wippen, in the trade's codes.
+pub(crate) fn carried_by(links: &[CarriedBy]) -> Vec<WippenCarriedBy> {
+    links
+        .iter()
+        .map(|c| WippenCarriedBy {
+            link: c.link.into(),
+            parts: c.parts.iter().map(|&p| p.into()).collect(),
+        })
+        .collect()
+}
+
 /// What a reading needs beside its number to be a datum.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[cfg_attr(test, derive(TS))]
@@ -1562,6 +1596,9 @@ pub struct Conditions {
     pub measuring_point_from_lip_mm: f64,
     /// The contacts holding the seat the reading is taken at or starts from.
     pub held_by: Vec<Contact>,
+    /// Where the wippen the key carries rests at that seat; empty where it
+    /// carries none.
+    pub wippen_carried_by: Vec<WippenCarriedBy>,
     /// The breakaway walk, where the reading is one.
     pub walk: Option<Walk>,
     /// The driven sweep, where the reading is taken on the band.
@@ -1636,6 +1673,7 @@ impl Reading {
                 mount: c.mount.into(),
                 measuring_point_from_lip_mm: mm(c.measuring_point_from_lip_m),
                 held_by: contacts(&c.held_by),
+                wippen_carried_by: carried_by(&c.wippen_carried_by),
                 walk: c.walk.map(|w| Walk {
                     from_g: w.from_g,
                     step_g: w.step_g,
@@ -3578,6 +3616,8 @@ mod tests {
             CoreInput::CenterOfMassHeight,
             CoreInput::KeyFriction,
             CoreInput::Geometry,
+            CoreInput::WippenAssemblyMass,
+            CoreInput::WippenFriction,
         ] {
             assert_eq!(written(&Input::from(i)), format!("\"{}\"", i.code()));
         }

@@ -671,6 +671,8 @@ export const fr: Catalog = {
     key_friction:
       'la friction de ses garnitures est une hypothèse du banc d’essai tant que vous ne la réglez pas',
     geometry: 'certaines de ses dimensions n’ont pas de source',
+    wippen_assembly_mass: 'la masse du chevalet est une hypothèse du banc d’essai',
+    wippen_friction: 'la friction de l’axe du chevalet est une hypothèse du banc d’essai',
   },
   unit: { g: 'g', mm: 'mm', ratio: '', gmm: UNIT.gmm },
   backBearing: {

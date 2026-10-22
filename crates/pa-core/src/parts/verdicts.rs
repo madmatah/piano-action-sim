@@ -20,6 +20,18 @@
 //! past: on its cloth, to the down weight read from there; on its punching,
 //! to the up weight.
 //!
+//! # The wippen the key carries
+//!
+//! A key carrying a wippen carries its angle with it through the link that
+//! rests it on the key: the wippen's generalized force is folded onto the
+//! key's coordinates through that link, and its center's friction onto the
+//! key's box, `b_k + |r|·b_w` ([`Mounted::wippen_follows`]). Each edge of the
+//! box is read by the fold of the motion past that edge: past the edge that
+//! takes the key's front down, its back rising, through the link that lifts
+//! the wippen most where two are closed; past the other, through the one
+//! the wippen stays on. Where no link is closed, the key is read alone, and
+//! a wippen its own friction does not hold has nothing holding it.
+//!
 //! # Off its balance punching
 //!
 //! A key free to lift may stand off its balance punching: riding on its two
@@ -42,7 +54,7 @@
 
 use crate::contact::{ContactCode, PairGeometry, PartCode, PartId, Rows, ROW_MARGIN};
 use crate::mechanism::PointLoad;
-use crate::parts::mounts::Mounted;
+use crate::parts::mounts::{Motion, Mounted};
 
 /// How near closing a contact must stand to count as touching, meters: a
 /// tenth of a micron, a thousandth of the thinnest paper, and far above the
@@ -120,7 +132,6 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
         .collect();
     let lift = mounted.lift_at(q);
     if lift > TOUCHING {
-        // The stops closed, each pair once, in the mechanism's order.
         let mut touching: Vec<ContactCode> = Vec::new();
         for &i in &stops {
             let stop = code(rows.rows()[i].pair);
@@ -148,9 +159,12 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
                     .collect();
                 let mut forces = vec![0.0; m.coords().len()];
                 m.generalized_forces(&pose, loads, &mut forces);
+                // The key lifted with its capstan raised under the heel: the
+                // fold that lifts the wippen most.
+                let folded = mounted.folded_on_the_key(q, &forces, Motion::Down, TOUCHING);
                 Holding::LiftsOffBalancePunching {
                     touching,
-                    needs_friction: !balanced_by(&rows, &closed, &forces),
+                    needs_friction: !balanced_by(&rows, &closed, &folded),
                     lift,
                 }
             }
@@ -158,9 +172,23 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
     }
     let mut forces = vec![0.0; m.coords().len()];
     m.generalized_forces(&pose, loads, &mut forces);
-    let push = forces[angle];
-    let bound = m.coords()[angle].friction;
-    if push.abs() <= bound {
+    if let Some(wippen) = &mounted.wippen {
+        let carried = (0..rows.len())
+            .any(|i| wippen.links.contains(&rows.rows()[i].pair) && rows.rows()[i].gap <= TOUCHING);
+        if !carried && forces[wippen.angle.0].abs() > m.coords()[wippen.angle.0].friction {
+            return None;
+        }
+    }
+    let edge = |motion| {
+        let follows = mounted.wippen_follows(q, motion, TOUCHING);
+        (
+            mounted.folded(&forces, follows),
+            mounted.folded_friction(follows),
+        )
+    };
+    let (rising, up_bound) = edge(Motion::Up);
+    let (falling, down_bound) = edge(Motion::Down);
+    if rising <= up_bound && -down_bound <= falling {
         let touched = stops
             .iter()
             .copied()
@@ -169,9 +197,9 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
         // generalized force must pass the box's edge on that side. Into the
         // stop, past the other edge, it moves nothing; the stop takes it.
         let margin = match touched.map(|i| rows.grad(i)[angle]) {
-            Some(opens) if opens > 0.0 => bound - push,
-            Some(opens) if opens < 0.0 => bound + push,
-            _ => bound - push.abs(),
+            Some(opens) if opens > 0.0 => up_bound - rising,
+            Some(opens) if opens < 0.0 => down_bound + falling,
+            _ => (up_bound - rising).min(down_bound + falling),
         };
         return Some(Holding::HeldByFriction {
             touching: touched.map(|i| code(rows.rows()[i].pair)),
@@ -180,6 +208,7 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
     }
     // The stop the push drives the key into: a closed contact the motion it
     // pushes would close further.
+    let push = if rising > up_bound { rising } else { falling };
     stops
         .iter()
         .find(|&&i| rows.rows()[i].gap <= TOUCHING && rows.grad(i)[angle] * push < 0.0)
@@ -240,8 +269,9 @@ pub fn wippen_carried_by(mounted: &Mounted, q: &[f64]) -> Vec<CarriedBy> {
 /// gradients with no negative weight.
 ///
 /// Read on a key free to lift, which has two coordinates, its slide and its
-/// angle: in two dimensions such a combination needs at most two of the
-/// rows, so each row is tried alone, the force along its gradient, and each
+/// angle, a wippen it carries folded onto them
+/// ([`Mounted::folded_on_the_key`]): in two dimensions such a combination
+/// needs at most two of the rows, so each row is tried alone, the force along its gradient, and each
 /// two by solving for their two forces. Two rows whose gradients are
 /// parallel to the last bit hold nothing a single one does not.
 fn balanced_by(rows: &Rows, closed: &[usize], forces: &[f64]) -> bool {
@@ -611,5 +641,43 @@ mod tests {
             balance > 0.0002 && balance < 0.0003,
             "a quarter of a millimeter: {balance}"
         );
+    }
+
+    /// Consistency: **a wippen hanging off every link is held by its own
+    /// friction or by nothing**: the key at its bottom seat, front-heavy
+    /// without its wippen and resting on its front punching, the wippen
+    /// lifted to the top of its range, clear of the key. With its center's
+    /// friction twice what its weight turns it by there, the key is held as
+    /// it stands; with half, nothing holds the wippen, nor the key with it.
+    #[test]
+    fn a_wippen_off_every_link_is_held_by_its_friction_or_by_nothing() {
+        use crate::mechanism::AxisFriction;
+        use crate::parts::fixtures::{carrying_the, test_wippen};
+        let a = regulated();
+        let (mut wippen, _) = test_wippen();
+        let k = carrying_the(&a, &wippen);
+        let hung = k.mounted.wippen.expect("a wippen");
+        let m = &k.mounted.mechanism;
+        let mut q = k
+            .seating()
+            .seats(&mut Statics::new())
+            .expect("the key seats")
+            .bottom
+            .q;
+        q[hung.angle.0] = m.coords()[hung.angle.0].limits.1;
+        let mut forces = vec![0.0; m.coords().len()];
+        m.generalized_forces(&m.pose(&q), &[], &mut forces);
+        let weight = forces[hung.angle.0].abs();
+        let mut with_friction = |bound_n_m: f64| {
+            wippen.friction = AxisFriction {
+                bound_n_m,
+                radius_m: None,
+            };
+            carrying_the(&a, &wippen)
+        };
+        let held = with_friction(2.0 * weight);
+        let hanging = with_friction(0.5 * weight);
+        assert!(holding(&held.mounted, &q, &[]).is_some());
+        assert_eq!(holding(&hanging.mounted, &q, &[]), None);
     }
 }

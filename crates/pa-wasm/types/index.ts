@@ -86,4 +86,5 @@ export type { Walk } from "./Walk";
 export type { Weighed } from "./Weighed";
 export type { WeighingRefusal } from "./WeighingRefusal";
 export type { WhichSeat } from "./WhichSeat";
+export type { WippenCarriedBy } from "./WippenCarriedBy";
 export type { Zeroing } from "./Zeroing";

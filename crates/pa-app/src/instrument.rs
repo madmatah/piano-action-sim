@@ -1984,6 +1984,7 @@ impl Instrument {
             },
             key_friction: self.friction_basis,
             geometry: Basis::Assumed,
+            wippen_assembly: None,
         }
     }
 

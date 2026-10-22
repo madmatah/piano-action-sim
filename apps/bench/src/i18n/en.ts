@@ -631,6 +631,8 @@ export const en: Catalog = {
       'the height of the key’s center of mass, which no scale gives, is estimated from its drawn section',
     key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
     geometry: 'some of its dimensions have no record',
+    wippen_assembly_mass: 'the wippen assembly’s mass is the bench’s assumption',
+    wippen_friction: 'the friction of the wippen’s center is the bench’s assumption',
   },
   unit: { g: 'g', mm: 'mm', ratio: '', gmm: UNIT.gmm },
   backBearing: {

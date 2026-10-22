@@ -486,22 +486,60 @@ struct Preparation {
     capstan_load: f64,
     /// The press at the measuring point, newtons.
     press: f64,
+    /// How many times lowering the wippen onto the key level, which the
+    /// loads are sized at, halved its degree ([`crate::parts::mounts::Lowered`]).
+    lowering_halvings: u32,
 }
 
 impl Seating<'_> {
     /// Seats the key at the top and then at the bottom, as the procedure
-    /// says, with `statics`.
+    /// says, with `statics`: a key carrying a wippen from the key alone's
+    /// own seats ([`Self::seats_from_the_key_alones`]).
     pub fn seats(&self, statics: &mut Statics) -> Result<Seats, SeatRefusal> {
-        let m = &self.mounted.mechanism;
         let prepared = self.preparation()?;
-        let (top, bottom) = match self.key_alone() {
+        let alone = self.key_alone().map(|alone| alone.seats(statics));
+        self.seats_prepared(statics, &prepared, alone.as_ref())
+    }
+
+    /// The seats of a key carrying its wippen, as [`Self::seats`] seats it,
+    /// from `alone`, the key alone's own seats there or its refusal, seated
+    /// by this procedure on the key alone ([`Mounted::key_alone`]) with the
+    /// same capstan, measuring point, margin and standing loads: what a sheet
+    /// that reads the key alone's top seat too seats the key by, without
+    /// seating the key alone twice. A key's preparation is refused first,
+    /// then the key alone's refusal is the key's own. A key that carries no
+    /// wippen has no key alone, and `alone` is not read: it is seated as
+    /// [`Self::seats`] seats it.
+    pub fn seats_from_the_key_alones(
+        &self,
+        statics: &mut Statics,
+        alone: &Result<Seats, SeatRefusal>,
+    ) -> Result<Seats, SeatRefusal> {
+        if self.mounted.key_alone.is_none() {
+            return self.seats(statics);
+        }
+        let prepared = self.preparation()?;
+        self.seats_prepared(statics, &prepared, Some(alone))
+    }
+
+    /// The seats under the loads `prepared`, from the key alone's seats
+    /// `alone` where the key carries a wippen; the preparation's lowering of
+    /// the wippen counted with the top seat's.
+    fn seats_prepared(
+        &self,
+        statics: &mut Statics,
+        prepared: &Preparation,
+        alone: Option<&Result<Seats, SeatRefusal>>,
+    ) -> Result<Seats, SeatRefusal> {
+        let m = &self.mounted.mechanism;
+        let (mut top, bottom) = match alone {
             None => {
                 let top = self.top_seat(statics, &prepared.top)?;
                 let bottom = self.seat(statics, &top.q, &prepared.bottom, false)?;
                 (top, bottom)
             }
             Some(alone) => {
-                let alone = alone.seats(statics)?;
+                let alone = alone.as_ref().map_err(Clone::clone)?;
                 (
                     self.seat_by_the_key_alone(statics, &alone.top, &prepared.top, WhichSeat::Top)?,
                     self.seat_by_the_key_alone(
@@ -528,6 +566,7 @@ impl Seating<'_> {
                 return Err(SeatRefusal::NoStopBelowTheFront);
             }
         }
+        top.report.lowering_halvings += prepared.lowering_halvings;
         Ok(Seats {
             top,
             bottom,
@@ -542,13 +581,15 @@ impl Seating<'_> {
     /// does not need.
     pub fn top(&self, statics: &mut Statics) -> Result<Seat, SeatRefusal> {
         let prepared = self.preparation()?;
-        match self.key_alone() {
+        let mut top = match self.key_alone() {
             None => self.top_seat(statics, &prepared.top),
             Some(alone) => {
                 let alone = alone.top(statics)?;
                 self.seat_by_the_key_alone(statics, &alone, &prepared.top, WhichSeat::Top)
             }
-        }
+        }?;
+        top.report.lowering_halvings += prepared.lowering_halvings;
+        Ok(top)
     }
 
     /// How the wippen the key carries refuses a solve of the key that is
@@ -912,14 +953,14 @@ impl Seating<'_> {
         // The loads are sized at the level pose; a wippen that fits nowhere
         // there is the start's to refuse, at the key alone's seat.
         let level = self.mounted.level();
-        let level = crate::parts::mounts::wippen_lowered(self.mounted, &level)
-            .map(|lowered| lowered.q)
+        let (level, lowering_halvings) = crate::parts::mounts::wippen_lowered(self.mounted, &level)
+            .map(|lowered| (lowered.q, lowered.halvings))
             .unwrap_or_else(|| {
                 let mut q = level;
                 if let Some(wippen) = &self.mounted.wippen {
                     q[wippen.angle.0] = m.coords()[wippen.angle.0].limits.1;
                 }
-                q
+                (q, 0)
             });
         let pose = m.pose(&level);
         let angle = self.mounted.angle;
@@ -960,6 +1001,7 @@ impl Seating<'_> {
             bottom,
             capstan_load,
             press,
+            lowering_halvings,
         })
     }
 

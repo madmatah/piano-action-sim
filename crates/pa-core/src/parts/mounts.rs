@@ -408,24 +408,42 @@ impl Mounted {
         let Some(wippen) = &self.wippen else {
             return 0.0;
         };
+        self.carrying_row(q, motion, within)
+            .map_or(0.0, |(rows, i)| {
+                -rows.grad(i)[self.angle.0] / rows.grad(i)[wippen.angle.0]
+            })
+    }
+
+    /// The link row that carries the wippen at `q`, among those closed
+    /// within `within`, as [`Self::wippen_follows`] picks it by `motion`,
+    /// with the rows read there; nothing where none is that close, and on a
+    /// mount that carries no wippen.
+    fn carrying_row(
+        &self,
+        q: &[f64],
+        motion: Motion,
+        within: f64,
+    ) -> Option<(crate::contact::Rows, usize)> {
+        let wippen = self.wippen.as_ref()?;
         let m = &self.mechanism;
         let mut rows = crate::contact::Rows::new();
         m.rows(&m.pose(q), within.max(0.0), &mut rows);
-        let follows = (0..rows.len())
+        let follows = |i: usize| {
+            let (by_key, by_wippen) = (rows.grad(i)[self.angle.0], rows.grad(i)[wippen.angle.0]);
+            (by_wippen != 0.0).then(|| -by_key / by_wippen)
+        };
+        let carrying = (0..rows.len())
             .filter(|&i| {
                 wippen.links.contains(&rows.rows()[i].pair) && rows.rows()[i].gap <= within
             })
-            .filter_map(|i| {
-                let (by_key, by_wippen) =
-                    (rows.grad(i)[self.angle.0], rows.grad(i)[wippen.angle.0]);
-                (by_wippen != 0.0).then(|| -by_key / by_wippen)
-            });
-        let pick = |a: f64, b: f64| match motion {
-            Motion::Down if b.abs() > a.abs() => b,
-            Motion::Up if b.abs() < a.abs() => b,
-            _ => a,
-        };
-        follows.reduce(pick).unwrap_or(0.0)
+            .filter_map(|i| follows(i).map(|r| (i, r)))
+            .reduce(|(a, ra), (b, rb)| match motion {
+                Motion::Down if rb.abs() > ra.abs() => (b, rb),
+                Motion::Up if rb.abs() < ra.abs() => (b, rb),
+                _ => (a, ra),
+            })
+            .map(|(i, _)| i);
+        carrying.map(|i| (rows, i))
     }
 
     /// The generalized force `forces` puts on the key's angle with the
@@ -436,6 +454,51 @@ impl Mounted {
         match &self.wippen {
             Some(wippen) => on_the_key + follows * forces[wippen.angle.0],
             None => on_the_key,
+        }
+    }
+
+    /// The generalized forces `forces` puts on each of the key's own
+    /// coordinates at `q`, the slide's and the angle's, with the wippen's
+    /// folded onto each through the link row that carries it
+    /// ([`Self::wippen_follows`]): `Q_c + r_c·Q_w`, `r_c = −(∂g/∂q_c)/(∂g/∂θw)`
+    /// for that row's gap `g`. The key's own forces where no link row is
+    /// closed within `within`, and on a mount that carries no wippen.
+    pub fn folded_on_the_key(
+        &self,
+        q: &[f64],
+        forces: &[f64],
+        motion: Motion,
+        within: f64,
+    ) -> Vec<f64> {
+        let Some(wippen) = &self.wippen else {
+            return forces.to_vec();
+        };
+        let w = wippen.angle.0;
+        let key = &forces[..w];
+        match self.carrying_row(q, motion, within) {
+            Some((rows, i)) => {
+                let by_wippen = rows.grad(i)[w];
+                key.iter()
+                    .enumerate()
+                    .map(|(c, &force)| force - rows.grad(i)[c] / by_wippen * forces[w])
+                    .collect()
+            }
+            None => key.to_vec(),
+        }
+    }
+
+    /// The friction the key's angle meets with the wippen folded onto it by
+    /// `follows` ([`Self::wippen_follows`]), newton-meters: the bushings'
+    /// bound and the wippen center's carried through the link,
+    /// `b_k + |r|·b_w`; the bushings' alone on a mount that carries no
+    /// wippen.
+    pub fn folded_friction(&self, follows: f64) -> f64 {
+        let bushings = self.mechanism.coords()[self.angle.0].friction;
+        match &self.wippen {
+            Some(wippen) => {
+                bushings + follows.abs() * self.mechanism.coords()[wippen.angle.0].friction
+            }
+            None => bushings,
         }
     }
 
@@ -556,7 +619,8 @@ impl Mounted {
     }
 
     /// This key with its bushings' friction bounded by `bound` newton-meters
-    /// instead, everything else kept bit for bit; or why not
+    /// instead, everything else kept bit for bit, the key alone it is
+    /// mounted with where it carries a wippen included; or why not
     /// ([`Mechanism::with_friction`]).
     pub fn with_friction(mut self, bound: f64) -> Result<Self, Problem> {
         self.mechanism = self.mechanism.with_friction(self.angle, bound)?;
@@ -564,6 +628,9 @@ impl Mounted {
             if let Some(turning) = lift.turning.take() {
                 lift.turning = Some(turning.with_friction(self.angle, bound)?);
             }
+        }
+        if let Some(alone) = self.key_alone.take() {
+            self.key_alone = Some(Box::new(alone.with_friction(bound)?));
         }
         Ok(self)
     }
@@ -2670,5 +2737,21 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Consistency: **a key carrying its wippen, its bushings' friction set
+    /// anew, carries it on the key alone it is mounted with**, which each of
+    /// its seats starts from and a key friction weight reads.
+    #[test]
+    fn a_key_carrying_its_wippen_sets_its_bushings_on_its_key_alone_too() {
+        let (wippen, _) = crate::parts::fixtures::test_wippen();
+        let k = crate::parts::fixtures::carrying_the(&regulated(), &wippen);
+        let bound = 0.05;
+        let set = k
+            .mounted
+            .with_friction(bound)
+            .expect("a bound the bushings take");
+        let alone = set.key_alone.as_deref().expect("the key alone");
+        assert_eq!(alone.mechanism.coords()[alone.angle.0].friction, bound);
     }
 }

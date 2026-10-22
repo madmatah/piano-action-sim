@@ -18,6 +18,7 @@ const extreme = (procedure: Procedure, value: number, shown: number, atMm: numbe
     mount: 'on_its_punching',
     measuring_point_from_lip_mm: 13,
     held_by: [],
+    wippen_carried_by: [],
     walk: null,
     sweep: { step_mm: 0.05, samples: 190, window_mm: 9.56, at_mm: atMm },
     temporary_weight: null,

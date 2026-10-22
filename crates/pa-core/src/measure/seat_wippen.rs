@@ -344,6 +344,70 @@ fn each_seat_starts_from_the_key_alones_seat_and_counts_its_steps() {
     assert_eq!(top, with.top);
 }
 
+/// Consistency: **the seats of a key carrying its wippen from the key
+/// alone's own seats are its seats, to the bit**: the sheet seats the key
+/// alone once, zeroes the key friction weight on the frame at its top seat,
+/// the one the procedure seats the key alone at by itself, and seats the
+/// key carrying its wippen from those seats, which are the ones
+/// [`Seating::seats`] seats it at.
+#[test]
+fn seating_from_the_key_alones_own_seats_gives_the_seats_to_the_bit() {
+    let (wippen, _) = test_wippen();
+    let a = regulated();
+    let k = carrying_the(&a, &wippen);
+    let alone = on_frame(&a, KeyKind::Natural, 0.0, true);
+    let alones = alone.seating().seats(&mut Statics::new());
+    let top = alone
+        .seating()
+        .top(&mut Statics::new())
+        .expect("the key alone seats at the top");
+    assert_eq!(alones.as_ref().map(|seats| &seats.top), Ok(&top));
+    assert_eq!(
+        k.seating()
+            .seats_from_the_key_alones(&mut Statics::new(), &alones),
+        k.seating().seats(&mut Statics::new())
+    );
+}
+
+/// Consistency: **each seat's report counts the lowerings it started
+/// from**: the top seat's, the wippen lowered onto the key level, where the
+/// preparation sizes its loads, and onto the key alone's top seat, where the
+/// seat starts; the bottom seat's, onto the key alone's bottom seat. The key
+/// alone's own seats lower nothing.
+#[test]
+fn each_seats_report_counts_the_lowerings_it_started_from() {
+    let (wippen, _) = test_wippen();
+    let k = carrying_the(&regulated(), &wippen);
+    let alone = Seating {
+        mounted: k.mounted.key_alone.as_deref().expect("the key alone"),
+        ..k.seating()
+    }
+    .seats(&mut Statics::new())
+    .expect("the key alone seats");
+    let angle = k.mounted.wippen.expect("a wippen").angle.0;
+    let halvings = |q: &[f64]| {
+        wippen_lowered(&k.mounted, q)
+            .expect("the wippen fits")
+            .halvings
+    };
+    let with_its_wippen = |seat: &crate::measure::seat::Seat| {
+        let mut q = seat.q.clone();
+        q.insert(angle, 0.0);
+        q
+    };
+    let seats = k.seating().seats(&mut Statics::new()).expect("it seats");
+    assert_eq!(
+        (
+            seats.top.report.lowering_halvings,
+            seats.bottom.report.lowering_halvings
+        ),
+        (
+            halvings(&k.mounted.level()) + halvings(&with_its_wippen(&alone.top)),
+            halvings(&with_its_wippen(&alone.bottom))
+        )
+    );
+}
+
 /// Consistency: **the wippen is lowered onto the key within the row margin
 /// of where its heel or its cloth first touches it, and never through it.**
 /// At the key alone's top seat it clears the key, and turned down by a

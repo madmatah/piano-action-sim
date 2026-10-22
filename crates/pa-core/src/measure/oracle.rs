@@ -295,3 +295,52 @@ pub fn band_at(
     }
     .branches()
 }
+
+/// A key carrying a wippen, at one attitude, by hand: the wippen's angle
+/// following the key's through the link that rests it on the key, by
+/// `follows` radians of the wippen per radian of the key, its weight folded
+/// onto the key's angle through it and its center's friction carried onto
+/// the key's.
+///
+/// A weight `W` on the measuring point at arm `a` turns the key front-down
+/// by `W g a`; the key's weight and the wippen's put `Q_k + r·Q_w` on its
+/// angle, positive nose-up; the bushings hold `±b_k` and the wippen's center
+/// `±b_w`, carried through the link as `±|r|·b_w`. So the key goes down past
+/// `D = (b_k + |r|·b_w + Q_k + r·Q_w) / (g a)` and rises below
+/// `U = (−b_k − |r|·b_w + Q_k + r·Q_w) / (g a)`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Carrying {
+    /// The generalized force of the key's weight on its angle, newton-meters,
+    /// positive nose-up.
+    pub key_force_n_m: f64,
+    /// The generalized force of the wippen's weight on its angle,
+    /// newton-meters, positive lifting its heel.
+    pub wippen_force_n_m: f64,
+    /// How the wippen's angle follows the key's, radians per radian.
+    pub follows: f64,
+    /// The bushings' friction bound, newton-meters.
+    pub bushings_n_m: f64,
+    /// The wippen center's friction bound, newton-meters.
+    pub wippen_friction_n_m: f64,
+    /// The measuring point's arm in front of the key's bearing, meters.
+    pub measuring_arm_m: f64,
+}
+
+impl Carrying {
+    /// The two branches, grams at the measuring point.
+    pub fn branches(&self) -> Branches {
+        KeyOnFrame {
+            weight_moment_n_m: -(self.key_force_n_m + self.follows * self.wippen_force_n_m),
+            measuring_arm_m: self.measuring_arm_m,
+            friction_n_m: self.bushings_n_m + self.follows.abs() * self.wippen_friction_n_m,
+        }
+        .branches()
+    }
+}
+
+/// The generalized force of a body's weight on the angle it turns by,
+/// newton-meters, positive counter-clockwise: its mass `mass`, kilograms,
+/// standing at `center` in the world, turning about `pivot`; `−m g (x_c − x_p)`.
+pub fn weight_on_its_angle(mass: f64, center: Point, pivot: Point) -> f64 {
+    -mass * G * (center.x - pivot.x)
+}
