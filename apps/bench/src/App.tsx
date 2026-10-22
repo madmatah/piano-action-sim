@@ -378,6 +378,7 @@ export function App() {
   // note follows the control it is about wherever the engine puts it.
   const around: { readonly [P in PanelCode]: Around } = {
     instrument: {},
+    wippen: {},
     sheet: {
       after: {
         measuring_point: (

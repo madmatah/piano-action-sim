@@ -87,6 +87,7 @@ papers.front.2 8e-5 0x3f14f8b588e368f1
 pose.sin_angle 0.012429978872176685 0x3f8974e385f7bf07
 pose.measuring_point.x 0.22658694114834274 0x3fcd00cd06f76647
 pose.measuring_point.y 0.05208532802082609 0x3faaaaed98e6d9ce
+pose.wippen none
 band.down_weight_on_the_band.value -21.609895228250277 0xc0359c2217fb5247
 band.down_weight_on_the_band.shown -21.0 0xc035000000000000
 band.down_weight_on_the_band.unit g

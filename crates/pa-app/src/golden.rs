@@ -21,7 +21,9 @@
 //! Then every field of [`BenchReadout`] (or that there is none, when the
 //! bench cannot seat its key), the reason it cannot, how the key rides on
 //! its stops where they fight (written only there), the faults, where the
-//! key is drawn and the papers on both punchings; last, the down and up
+//! key is drawn and the papers on both punchings, the wippen's angle and the
+//! links that carry it, or that the key carries none, and where a reading
+//! taken at a seat says where the wippen rests there; last, the down and up
 //! weights read on the band, the driven sweep's, where the sweep traveled
 //! and where each fell, or why the band cannot be drawn. Numbers are written as the
 //! shortest decimal that reads back to the same double, then as its bit
@@ -45,17 +47,21 @@
 //! under its wood and carries it. On the owner's measured section: the key
 //! as it arrives, unweighed, every reading that needs its mass refused; the
 //! same key weighed by a stated typical weighing; and weighed back-heavy.
-//! Each is built as an interface builds it, through the instrument's own
-//! calls, a path set or an action taken: the value a fixture sets is the
-//! one it computes in meters, sent in the path's millimeters, which turn
-//! back into the same meters to the bit.
+//! And his key alone, his profile's start with no wippen assembly on its
+//! capstan: the key his rounds are compared with, whatever his profile
+//! puts on it. Each is built as an interface builds it, through the
+//! instrument's own calls, a path set or an action taken, his key alone
+//! through the instrument's constructor from that start: the value a
+//! fixture sets is the one it computes in meters, sent in the path's
+//! millimeters, which turn back into the same meters to the bit.
 
 use std::fmt::Write as _;
 
 use crate::instrument::{
-    Action, BenchReadout, Fault, Instrument, Measurement, Riding, Stack, TouchVerdict, Trust,
+    Action, BenchReadout, CarriedBy, Fault, Instrument, Measurement, Riding, Stack, TouchVerdict,
+    Trust,
 };
-use crate::profile::SECTION;
+use crate::profile::{Profile, SECTION};
 use crate::registry::path;
 
 /// One bench whose readings the golden sheet records.
@@ -77,7 +83,7 @@ impl Fixture {
 }
 
 /// Every bench the golden sheet records, in the order the sheets are written.
-pub const FIXTURES: [Fixture; 7] = [
+pub const FIXTURES: [Fixture; 8] = [
     Fixture {
         name: "default",
         what: "the standard bench: Hirschkorn's key, Boston GP-178 note 52, on his printed \
@@ -122,7 +128,28 @@ pub const FIXTURES: [Fixture; 7] = [
                weight of -8.1 g read 13 mm back from its lip",
         build: back_heavy_key,
     },
+    Fixture {
+        name: "hirschkorn-key-alone",
+        what: "Hirschkorn's key, Boston GP-178 note 52, on his printed frame with real \
+               felts, as it arrives, with no wippen assembly on its capstan: the key his \
+               rounds are compared with",
+        build: hirschkorn_key_alone,
+    },
 ];
+
+/// Hirschkorn's key alone: the standard profile's start with no wippen
+/// assembly on its capstan, built as the standard bench is, and returning to
+/// it on a reset. His profile publishes no key height, and takes for its
+/// target the height his key stands at as it arrives; the key alone's is
+/// the height it stands at alone, by the same rule.
+fn hirschkorn_key_alone() -> Instrument {
+    let profile = Profile::standard();
+    let mut start = profile.start.clone();
+    start.wippen_assembly = None;
+    start.targets.key_height =
+        crate::profile::standing_key_height(&start).expect("his key alone stands on its frame");
+    Instrument::new(start, profile).expect("his key alone is built")
+}
 
 fn wedged_frame() -> Instrument {
     let mut bench = Instrument::standard();
@@ -289,6 +316,13 @@ fn write_measurement(out: &mut String, name: &str, m: &Measurement) {
         number(out, &format!("{name}.sweep.window"), sweep.window);
         number(out, &format!("{name}.sweep.at"), sweep.at);
     }
+    if !conditions.wippen_carried_by.is_empty() {
+        line(
+            out,
+            &format!("{name}.wippen_carried_by"),
+            &carried(&conditions.wippen_carried_by),
+        );
+    }
     if let Some(t) = conditions.temporary_weight {
         number(out, &format!("{name}.temporary_weight.mass_g"), t.mass_g);
         number(
@@ -445,6 +479,38 @@ fn write_pose(out: &mut String, bench: &Instrument) {
     let point = bench.key_placement().world(bench.measuring_point_on_key());
     number(out, "pose.measuring_point.x", point.x);
     number(out, "pose.measuring_point.y", point.y);
+    match bench.wippen_angle() {
+        None => line(out, "pose.wippen", "none"),
+        Some(angle) => {
+            number(out, "pose.wippen.angle", angle);
+            let by = bench.wippen_carried_by();
+            line(
+                out,
+                "pose.wippen.carried_by",
+                &if by.is_empty() {
+                    "nothing".to_owned()
+                } else {
+                    carried(&by)
+                },
+            );
+            if let Some(why) = bench.wippen_refused() {
+                line(out, "pose.wippen.refused", &format!("{why:?}"));
+            }
+        }
+    }
+}
+
+/// The links that carry a wippen, each with the parts of the heel it bears
+/// on: `CapstanOnTheHeel:WippenHeelCloth`.
+fn carried(links: &[CarriedBy]) -> String {
+    links
+        .iter()
+        .map(|c| {
+            let parts: Vec<String> = c.parts.iter().map(|p| format!("{p:?}")).collect();
+            format!("{:?}:{}", c.link, parts.join("+"))
+        })
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 #[cfg(test)]
@@ -514,6 +580,10 @@ mod tests {
                 "{p:?} reads no mass"
             );
         }
+
+        let alone = hirschkorn_key_alone();
+        assert!(!alone.carries_a_wippen(), "his key carries no wippen");
+        assert_eq!(alone.profile().name, "hirschkorn");
 
         for (bench, sign) in [(measured_section_weighed(), 1.0), (back_heavy_key(), -1.0)] {
             let front_weight = bench

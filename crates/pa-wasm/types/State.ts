@@ -10,7 +10,8 @@ import type { Pose } from "./Pose";
 export type State = { 
 /**
  * One per body, in body order: the ground, the slide the key lifts off
- * its balance punching on, the key.
+ * its balance punching on, the key, and the wippen where the key
+ * carries one.
  */
 poses: Array<Pose>, 
 /**

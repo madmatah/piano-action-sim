@@ -197,6 +197,7 @@ const panel: Catalog['panel'] = {
   weighing: 'La touche, pesée entière',
   frame: 'Le châssis',
   touch: 'Toucher',
+  wippen: 'Le chevalet',
 }
 
 /** Why a reading is refused, or why the key cannot be seated. */
@@ -369,6 +370,8 @@ const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
 
 /** What no part could be built as, or what the bench has not. */
 const problem: Worded<Problem> = {
+  no_wippen_assembly: ({ path }) =>
+    `la touche ne porte pas de chevalet : elle n’a donc pas de réglage ${path}.`,
   not_finite: () => 'une valeur qui n’est pas un nombre.',
   out_of_range: ({ param, value, min, max }) => {
     const unit = unitIn(param, UNIT)
@@ -492,6 +495,11 @@ const control: { readonly [K in Label]: Labeled } = {
   back_rail_at: { label: 'barre de repos arrière, en arrière de la pointe de balancier' },
   place: { label: 'placer le châssis sous la touche' },
   weight: { label: 'poids sur le point de mesure' },
+  wippen_center: { label: 'axe du chevalet, en arrière de la pointe de balancier' },
+  wippen_center_height: { label: 'axe du chevalet, au-dessus du plateau' },
+  heel_position: { label: 'position du talon de chevalet, depuis l’axe' },
+  heel_height: { label: 'hauteur du talon de chevalet, sous l’axe du bâton d’échappement' },
+  wippen_friction: { label: 'friction de l’axe du chevalet' },
 }
 
 /** A form's field, as a sentence names it, with its article. */
@@ -564,6 +572,8 @@ export const fr: Catalog = {
         'La touche ne trouve aucune position d’équilibre sur ce châssis : elle est dessinée en transparence, à plat sur sa mouche de balancier, pour montrer ses pièces face à celles du châssis, pas là où elle se trouverait.',
       lifted_off:
         'Le poids sur le point de mesure soulève la touche hors de son châssis : elle est dessinée en transparence là où l’a laissée sa dernière position d’équilibre, qui ne la tient plus, et ne porte sur rien.',
+      wippen_refused:
+        'Le chevalet ne peut pas se placer là où cette modification le mettrait : la touche et son chevalet sont dessinés en transparence là où les a laissés leur dernière position d’équilibre, qui ne les tient plus.',
     },
   },
 

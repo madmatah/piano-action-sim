@@ -928,9 +928,9 @@ fn where_the_capstan_bears_as_the_wippens_center_moves_along_the_key() {
 /// the millimeter from 50 to 170 mm above the keybed, the top seat first:
 /// its body in the keystick, then in the back check block; seated on the
 /// cloth, its wood under the capstan from 95 mm at the top seat and 100 mm
-/// at the bottom, over A5's 71 to 92 mm and past it; and out of the key's
-/// reach at the top seat. No run pushes it past its range, and no run
-/// stands the jack in the key.
+/// at the bottom, over the « chevalet » panel's 71 to 92 mm and past it;
+/// and out of the key's reach at the top seat. No run pushes it past its
+/// range, and no run stands the jack in the key.
 #[test]
 fn where_the_wippen_rests_as_its_center_pin_is_raised() {
     let (wippen, _) = test_wippen();
@@ -998,7 +998,7 @@ const fn slider(name: &'static str, least_mm: f64, most_mm: f64, behind: bool) -
 
 /// The sliders of the page the seats read, besides the capstan's place and
 /// height, which their own sweeps cover, each over its soft range; and the
-/// « chevalet » panel's, over A5's ranges: the wippen's center 171 to
+/// « chevalet » panel's, over its soft ranges: the wippen's center 171 to
 /// 191 mm behind the balance pin and 71 to 92 mm above the keybed, the
 /// heel's position 50.0 to 69.5 mm and its height 16.0 to 24.0 mm.
 ///

@@ -8,7 +8,11 @@ import type { Stack } from "./Stack";
  * the instrument has not: the validation layer's problems, in the trade's
  * units with the unit in each name, and the edit's own.
  */
-export type Problem = { "code": "not_finite", 
+export type Problem = { "code": "no_wippen_assembly", 
+/**
+ * The path.
+ */
+path: string, } | { "code": "not_finite", 
 /**
  * The path it was set at, or the action's argument it was typed
  * as; the domain's name of a dimension no path sets.

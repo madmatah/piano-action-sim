@@ -16,6 +16,10 @@
     "is": "as_recorded",
     "why": "On his printed frame as it is printed: the felts' tops where his rounds' tops stand, which no regulation laid. His dip of 10.0 mm is a target of his regulation, which the printed frame does not meet."
   },
+  "wippen_assembly": {
+    "is": "none",
+    "why": "His key is read alone, as a key with no action on its capstan: his wippen assembly, published in his tables and traced in his Figure A.1, is not bound to it. What would replace this: his wippen bound from those records, its heel by his Pw5 and its center pin by his Pg2."
+  },
   "values": [
     {
       "param": "front_edge",

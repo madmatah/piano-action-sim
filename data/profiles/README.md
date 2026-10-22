@@ -30,6 +30,7 @@ there as it arrives; the bench opens on Hirschkorn's.
   "key_kind": { "is": "natural", "why": "…" },
   "key_mass": { "is": "unweighed", "why": "…" },
   "arrival": { "is": "regulated", "why": "…" },
+  "wippen_assembly": { "is": "none", "why": "…" },
   "values": [ … ]
 }
 ```
@@ -56,7 +57,9 @@ inertia: `published.mass`, `published.center.x`, `published.center.y`,
 `published.inertia`); `arrival` is `regulated` (the papers are those the
 regulation solve lays to the targets) or `as_recorded` (bound by
 `balance_punching.papers` and `front_punching.papers`, each paper one the
-drawer holds).
+drawer holds); `wippen_assembly` is `none` (the key carries no wippen on
+its capstan, and is read alone) or `published` (a source's wippen assembly,
+bound below).
 
 Each entry of `values` binds one parameter, by the name the engine's
 validation layer gives it (`pa_core::validate::numbers`), in one of three ways:
@@ -110,10 +113,30 @@ built, each kept with the rule and the input that places it:
   key height the seated pose reads on the key as it arrives, so regulating it
   lays the dip and leaves the key height where it stands.
 
+A wippen assembly a source publishes is bound by the names the validation
+layer gives its numbers: its center pin, `wippen.center.x` and
+`wippen.center.y`, in the keybed's frame; its heel by the trade's two
+quantities, `wippen_heel.position` and `wippen_heel.height`, its circle's
+lowest point from the center pin and below the jack's pin, with
+`wippen_heel.radius`, its corners `wippen_heel.top`, `.back_top`,
+`.front_top`, `.back`, `.front` and its cloth `wippen_heel_cloth.back`,
+`.front`, `.thickness`; the jack and the repetition lever by their pins,
+`jack.pin.x`, `jack.pin.y`, their rest angles in `rad`, `jack.rest_angle`,
+and their widths, and the same under `repetition_lever`; `center_pin.diameter`,
+`wippen.width`, `wippen.friction.bound` with `wippen.friction.radius` or none;
+and each of its three parts' `published.mass`, `published.center.x`,
+`published.center.y` and `published.inertia`, under `wippen`, `jack` and
+`repetition_lever`, each in its own frame. Its three outlines,
+`wippen_outline`, `jack_outline` and `repetition_lever_outline`, are traced:
+each is bound to a record, never stated, the record's value its stretches in
+order, `{ "line": [x, y] }` or `{ "arc": [x, y], "center": [x, y], "radius": r }`,
+every number in the record's unit
+(`data/params/hirschkorn-wippen-outline.json`).
+
 Positions are signed from the balance pin, positive toward the player.
 Units are checked against the parameter's quantity: a length in `mm` or `m`, a
 mass in `g` or `kg`, a parameter whose name ends in `_g` in grams, a torque in
-`N·m`, a second moment of mass in `kg·m²`, a unit
+`N·m`, a second moment of mass in `kg·m²`, an angle in `rad`, a unit
 vector's component `dimensionless`. Each is converted to SI by moving the decimal point
 of the value as written and reading it once, so a value recorded in
 millimeters reads to the bits of the same length written in meters; a value

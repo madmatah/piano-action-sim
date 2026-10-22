@@ -23,7 +23,7 @@
 use pa_core::measure::measurement::ProcedureId;
 use pa_core::measure::{TouchweightProtocol, WEIGHT_ON_THE_MEASURING_POINT};
 use pa_core::mechanism::AxisFriction;
-use pa_core::parts::{FrameDesign, KeyDesign};
+use pa_core::parts::{FrameDesign, KeyDesign, WippenAssembly};
 use pa_core::registry::ParamSpec;
 use pa_core::regulation::Targets;
 use pa_core::G;
@@ -120,6 +120,22 @@ pub mod path {
     pub const FRONT_FELT: &str = "frame.front_punching.felt_mm";
     /// The papers on the front punching.
     pub const FRONT_PAPERS: &str = "frame.front_punching.papers_mm";
+    /// The wippen's center pin, behind the balance pin.
+    pub const WIPPEN_CENTER_BEHIND: &str = "wippen.center.behind_mm";
+    /// The wippen's center pin, above the keybed.
+    pub const WIPPEN_CENTER_ABOVE: &str = "wippen.center.above_mm";
+    /// The wippen heel's position: how far along the wippen, at angle zero,
+    /// its contact surface stands in front of the center pin.
+    pub const HEEL_POSITION: &str = "wippen_heel.position_mm";
+    /// The wippen heel's height: how far its contact surface stands below
+    /// the jack's pin.
+    pub const HEEL_HEIGHT: &str = "wippen_heel.height_mm";
+    /// The radius of the circle the heel's cloth lies on.
+    pub const HEEL_RADIUS: &str = "wippen_heel.radius_mm";
+    /// The heel cloth's thickness.
+    pub const HEEL_CLOTH_THICKNESS: &str = "wippen_heel_cloth.thickness_mm";
+    /// The torque the wippen's center holds.
+    pub const WIPPEN_FRICTION_TORQUE: &str = "wippen.friction.torque_gmm";
 }
 
 /// The trade unit a path's value is in, as its name says.
@@ -159,6 +175,9 @@ pub enum Field {
     Friction(ParamSpec<AxisFriction>),
     /// The weight on the measuring point, grams.
     Weight(ParamSpec<f64>),
+    /// A setting of the wippen assembly the key carries: refused where it
+    /// carries none.
+    Wippen(ParamSpec<WippenAssembly>),
     /// A regulation target: aimed at through [`ActionCode::Regulate`].
     Target(ParamSpec<Targets>),
     /// A reading of the key's weighing: typed through
@@ -220,6 +239,7 @@ impl Entry {
             Field::Friction(s) => s.name,
             Field::Weight(s) => s.name,
             Field::Target(s) => s.name,
+            Field::Wippen(s) => s.name,
             Field::Weighing(Weighing::Mass) => WEIGHED_MASS,
             Field::Weighing(Weighing::FrontWeight) => WEIGHED_FRONT_WEIGHT,
             Field::Weighing(Weighing::FromLip) => WEIGHED_FROM_LIP,
@@ -265,6 +285,15 @@ const fn frame(path: &'static str, spec: ParamSpec<FrameDesign>, behind: bool) -
     }
 }
 
+const fn wippen(path: &'static str, spec: ParamSpec<WippenAssembly>, behind: bool) -> Entry {
+    Entry {
+        path,
+        unit: Unit::Millimeter,
+        behind,
+        field: Field::Wippen(spec),
+    }
+}
+
 const fn millimeters(path: &'static str, field: Field) -> Entry {
     Entry {
         path,
@@ -275,8 +304,9 @@ const fn millimeters(path: &'static str, field: Field) -> Entry {
 }
 
 /// Every path of the instrument, in a fixed order: the protocol, the
-/// experiment, the regulation's targets, the key, the frame.
-pub const ENTRIES: [Entry; 40] = [
+/// experiment, the regulation's targets, the key, the frame, the wippen
+/// assembly the key carries.
+pub const ENTRIES: [Entry; 47] = [
     millimeters(
         path::MEASURING_POINT,
         Field::Protocol(TouchweightProtocol::PARAMS[0]),
@@ -364,6 +394,18 @@ pub const ENTRIES: [Entry; 40] = [
     millimeters(path::BALANCE_PAPERS, Field::Papers(Stack::Balance)),
     frame(path::FRONT_FELT, FrameDesign::PARAMS[8], false),
     millimeters(path::FRONT_PAPERS, Field::Papers(Stack::Front)),
+    wippen(path::WIPPEN_CENTER_BEHIND, WippenAssembly::PARAMS[0], true),
+    wippen(path::WIPPEN_CENTER_ABOVE, WippenAssembly::PARAMS[1], false),
+    wippen(path::HEEL_POSITION, WippenAssembly::PARAMS[2], false),
+    wippen(path::HEEL_HEIGHT, WippenAssembly::PARAMS[3], false),
+    wippen(path::HEEL_RADIUS, WippenAssembly::PARAMS[4], false),
+    wippen(path::HEEL_CLOTH_THICKNESS, WippenAssembly::PARAMS[5], false),
+    Entry {
+        path: path::WIPPEN_FRICTION_TORQUE,
+        unit: Unit::GramMillimeter,
+        behind: false,
+        field: Field::Wippen(WippenAssembly::PARAMS[6]),
+    },
 ];
 
 /// The entry of `path`, if the instrument has one.
@@ -399,6 +441,8 @@ pub enum Panel {
     Frame,
     /// The weight on the measuring point.
     Touch,
+    /// The wippen assembly the key carries: shown only where it carries one.
+    Wippen,
 }
 
 /// What a control is worded by: a code the page's catalog words.
@@ -451,6 +495,11 @@ pub enum Label {
     BackRailAt,
     Place,
     Weight,
+    WippenCenter,
+    WippenCenterHeight,
+    HeelPosition,
+    HeelHeight,
+    WippenFriction,
 }
 
 /// The range a control offers, in its unit: a page's choice inside the
@@ -638,7 +687,7 @@ const WEIGHING: [FormField; 3] = [
 ];
 
 /// The bench's page: its panels in order, each its controls in order.
-pub const PAGE: [(Panel, &[Control]); 8] = [
+pub const PAGE: [(Panel, &[Control]); 9] = [
     (
         Panel::Instrument,
         &[Control::Profile {
@@ -868,6 +917,48 @@ pub const PAGE: [(Panel, &[Control]); 8] = [
             soft: soft(-60.0, 60.0, 0.5),
         }],
     ),
+    (
+        Panel::Wippen,
+        &[
+            // Hirschkorn's center pin, 181.0 mm behind the balance pin and
+            // 81.6 mm above the keybed, 10 mm either way, rounded out to the
+            // millimeter: the test wippen's, 185 mm behind and 78.5 mm above,
+            // stands inside.
+            Control::Slider {
+                path: path::WIPPEN_CENTER_BEHIND,
+                label: Label::WippenCenter,
+                soft: soft(171.0, 191.0, 0.5),
+            },
+            Control::Slider {
+                path: path::WIPPEN_CENTER_ABOVE,
+                label: Label::WippenCenterHeight,
+                soft: soft(71.0, 92.0, 0.5),
+            },
+            // WNG's heels: their contact surface 50.0 to 69.5 mm from the
+            // center pin, and 16 to 24 mm below the jack's center. Read
+            // here at the heel circle's lowest point at angle zero, which on
+            // Hirschkorn's heel stands 1.7 mm behind where his capstan bears:
+            // WNG's positions, taken at the capstan's mark, stand that much
+            // further forward.
+            Control::Slider {
+                path: path::HEEL_POSITION,
+                label: Label::HeelPosition,
+                soft: soft(50.0, 69.5, 0.5),
+            },
+            Control::Slider {
+                path: path::HEEL_HEIGHT,
+                label: Label::HeelHeight,
+                soft: soft(16.0, 24.0, 0.5),
+            },
+            // Up to some five times Hirschkorn's 40.5 g·mm, his Table A.9's
+            // 3.97e-4 N·m.
+            Control::Slider {
+                path: path::WIPPEN_FRICTION_TORQUE,
+                label: Label::WippenFriction,
+                soft: soft(0.0, 200.0, 1.0),
+            },
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -906,6 +997,7 @@ mod tests {
             .chain(TouchweightProtocol::PARAMS.iter().map(|s| s.name))
             .chain(AxisFriction::PARAMS.iter().map(|s| s.name))
             .chain(Targets::PARAMS.iter().map(|s| s.name))
+            .chain(WippenAssembly::PARAMS.iter().map(|s| s.name))
             .chain([WEIGHT_ON_THE_MEASURING_POINT.name]);
         for name in declared {
             assert!(by_param(name).is_some(), "no path sets {name}");
@@ -933,6 +1025,7 @@ mod tests {
                             Field::Protocol(s) => hard(s.hard),
                             Field::Friction(s) => hard(s.hard),
                             Field::Weight(s) => hard(s.hard),
+                            Field::Wippen(s) => hard(s.hard),
                             _ => unreachable!("{path}"),
                         };
                         let (min, max) = (soft.min.expect(path), soft.max.expect(path));
@@ -974,7 +1067,10 @@ mod tests {
                 assert_eq!(e.path, named);
                 continue;
             }
-            let (_, rest) = e.path.split_once('.').expect(e.path);
+            let rest = match e.field {
+                Field::Wippen(_) => e.path,
+                _ => e.path.split_once('.').expect(e.path).1,
+            };
             let name = match e.unit {
                 Unit::Millimeter => rest.strip_suffix("_mm"),
                 Unit::GramMillimeter => rest.strip_suffix("_gmm"),
@@ -983,7 +1079,8 @@ mod tests {
             .expect(e.path);
             let name = match name.rsplit_once('.') {
                 Some((part, "behind" | "at")) => format!("{part}.x"),
-                Some(("friction", "torque")) => "friction.bound".to_owned(),
+                Some((part, "above")) => format!("{part}.y"),
+                Some((part, "torque")) if part.ends_with("friction") => format!("{part}.bound"),
                 _ => name.to_owned(),
             };
             assert_eq!(name, e.param(), "{}", e.path);

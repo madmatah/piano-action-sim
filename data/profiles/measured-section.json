@@ -17,6 +17,10 @@
     "is": "regulated",
     "why": "Built as a technician hands over a frame: regulated before it is weighed. The papers on both punchings are those the regulation solve lays from the drawer to the targets below, so no paper is a starting value of its own."
   },
+  "wippen_assembly": {
+    "is": "none",
+    "why": "Nobody has measured the wippen of this key section: none is drawn on it, and none is borrowed from another instrument. What would replace this: his wippen's measurements, its center pin's place, its heel's position and height, its mass and its weight, bound as a wippen assembly of its own."
+  },
   "values": [
     {
       "param": "front_edge",

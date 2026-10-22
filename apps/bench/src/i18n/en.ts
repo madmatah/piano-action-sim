@@ -173,6 +173,7 @@ const panel: Catalog['panel'] = {
   weighing: 'The key, weighed whole',
   frame: 'The frame',
   touch: 'Touch',
+  wippen: 'The wippen assembly',
 }
 
 /** Why a reading is refused, or why the key cannot be seated. */
@@ -340,6 +341,8 @@ const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
 
 /** What no part could be built as, or what the bench has not. */
 const problem: Worded<Problem> = {
+  no_wippen_assembly: ({ path }) =>
+    `the key carries no wippen assembly, so it has no setting ${path}.`,
   not_finite: () => 'a value that is not a number.',
   out_of_range: ({ param, value, min, max }) => {
     const unit = unitIn(param, UNIT)
@@ -456,6 +459,11 @@ const control: { readonly [K in Label]: Labeled } = {
   back_rail_at: { label: 'back rail, behind the balance pin' },
   place: { label: 'place the frame under the key' },
   weight: { label: 'weight on the measuring point' },
+  wippen_center: { label: 'wippen center pin, behind the balance pin' },
+  wippen_center_height: { label: 'wippen center pin, above the keybed' },
+  heel_position: { label: 'wippen heel position, from the center pin' },
+  heel_height: { label: 'wippen heel height, below the jack center' },
+  wippen_friction: { label: 'wippen center friction' },
 }
 
 /** A weighing's field, as a sentence names it. */
@@ -522,6 +530,8 @@ export const en: Catalog = {
         'The key finds no equilibrium on this frame: it is drawn faded, level on its balance punching, to show its parts against the frame’s, not where it would stand.',
       lifted_off:
         'The weight on the measuring point lifts the key off its frame: it is drawn faded where its last equilibrium left it, which no longer holds it, and bears on nothing.',
+      wippen_refused:
+        'The wippen assembly cannot stand where this edit would put it: the key and its wippen assembly are drawn faded where their last equilibrium left them, which no longer holds them.',
     },
   },
 

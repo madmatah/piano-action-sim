@@ -512,10 +512,34 @@ none as bearing. An edit that leaves the key sunk deeper than the row margin
 in its frame, read as the nominal pose reads it, its rails and the keybed
 included, or from which no increment can be solved, puts it back by the loading
 rule instead; the bench's application layer reports that it did, and the page
-does not show it. Where the loading rule finds no pose on the key's pin within
-the row margin of clearing its frame, as the seats do, the key is off its
-frame, and the bench says so. What holds the key is read from determinate
-quantities only, never from how the solve split a load: with every stop removed,
+does not show it. A key carrying a wippen starts each loading and each
+increment by the start rule ([Where a solve starts](#where-a-solve-starts)):
+an increment whose wippen fits nowhere where the key stands, its heel in the
+key at every turn of the wippen, is sent to the loading rule, reported as
+above, and the key is restarted for its wippen there and nowhere else; a state
+refused by its start, by the wippen's limits or by a wippen part standing in a
+key part is not taken: the key and its wippen are drawn faded where the last
+state left them, or level on the balance punching where none was, and the
+refusal is said, naming for a part in a key part both parts and how deep, and
+for a limit its seat and how far past it the heel stands there, the sheet's
+own where the sheet's first refusal is at that limit
+([The assembly and its place](#the-assembly-and-its-place)). A weight that
+carries the wippen to the top of its range with both seats in range lifts the
+key off its frame, and the bench says so. Friction off, the test bench's key
+carrying its wippen has two rests under the same loads where its center pin is
+set just below the lowest at which both its seats fit, at the top of the band
+of settings over which only the contacts stand the heel's cloth in the key:
+started at its top seat it stays there; started level it sinks until its
+capstan carries the wippen onto the top of its range, short of its bottom
+seat, where the heel's cloth would stand in the key, and the solve leans the
+wippen on that limit, which holds the key there. The loading starts it level,
+from its nominal pose, which picks the second: it tries from above only where
+the key lifts off its frame or finds no state, not where the wippen's limits
+refuse it, so the bench refuses the wippen there, naming it at the sheet's
+bottom seat. Where the loading rule finds no pose on the key's pin within the
+row margin of clearing its frame, as the seats do, the key is off its frame,
+and the bench says so. What holds the key is read from determinate quantities
+only, never from how the solve split a load: with every stop removed,
 the bearing kept, the loads' generalized force either pushes the key into a
 closed stop past its friction, which it is then *resting on*, or lies inside the
 friction's band, *held by friction*, touching a stop or not, with the margin in
@@ -953,7 +977,11 @@ lifted off its punching otherwise and its friction where they need it, or
 nothing, a key off its pin and its frame; the gaps at the front punching and the
 back rail cloth; the bushings' friction, named once, as the key friction weight
 Stanwood's protocol reads; how far the punchings' drawn edges overlap the key;
-and, on a key nobody has weighed, why a weight on it does nothing). The panels
+and, on a key nobody has weighed, why a weight on it does nothing); and the
+« chevalet », shown only where the key carries a wippen: its center pin behind
+the balance pin and above the keybed, its heel's position from the center pin
+and its height below the jack's center, the trade's two quantities, read at the
+heel circle's lowest point, and its center's friction in g·mm. The panels
 and their controls are the ones the engine's registry
 describes, in its order, each control's range, step and unit the engine's
 ([The WebAssembly boundary](#the-webassembly-boundary)); the page adds the readings and the notes around them. Every slider
@@ -989,11 +1017,12 @@ and U, and both curves step by step.
 ## What is built: stage 1b, the wippen on the capstan
 
 The engine carries a wippen assembly (« chevalet ») on the key's capstan,
-resting on it through a real contact, in the seats, in the regulation solve and
-in the touchweights, D, U, BW, F and the band read through it: built. No
-profile binds one yet, so the bench draws none and its sheet reads the key
-alone; Hirschkorn's wippen on his key, the « chevalet » panel and the wippen
-weight are planned ([Stages](#stages)).
+resting on it through a real contact, in the seats, in the regulation solve,
+in the touchweights, D, U, BW, F and the band read through it, and on the
+bench, where a profile binds one, with its « chevalet » panel: built. No
+shipped profile binds one yet, so the bench draws none and its sheet reads the
+key alone; Hirschkorn's wippen on his key and the wippen weight are planned
+([Stages](#stages)).
 
 ### The assembly and its place
 
@@ -1303,7 +1332,7 @@ reads with one more thinnest paper.
 |---|---|
 | Key height, key dip, the regulation | the key with its wippen, each seat started from the key alone's (built) |
 | D, U, BW, F, the band | the key with its wippen (built) |
-| The touch weight | the key with its wippen (planned) |
+| The touch weight | the key with its wippen (built) |
 | Both key friction weights | the key alone (built) |
 | FW, KR | the jig |
 | WW | the wippen on a frictionless revolute at its center pin, at the protocol's level, the scale under the capstan's mark (planned) |
@@ -2240,15 +2269,18 @@ plan has one writer, the session that owns its branch, so plans written in
 parallel never collide.
 
 **The golden sheet** records every reading of the default bench, Hirschkorn's
-key as it arrives, and of six fixture benches in full bits, in
+key as it arrives, and of seven fixture benches in full bits, in
 `crates/pa-app/tests/golden/`: on his key, a frame whose stops fight, a dip
 stopped by the front pin in its mortise and a key shortened under its frame;
 the owner's measured section as it arrives, every reading that needs the
 key's mass refused, the same weighed by a stated typical weighing, and weighed
-back-heavy. For each, each reading of the weighing sheet, its value in
+back-heavy; and his key alone, with no wippen on its capstan whatever his
+profile binds. For each, each reading of the weighing sheet, its value in
 full and as the trade reads it, its trust, the walk's start and the temporary
-weight, or why it is refused; then what holds the key, how it rides where its
-stops fight, the faults, the papers and the pose; last, D and U read on the
+weight, or why it is refused, and where the wippen rests at the reading's
+seat; then what holds the key, how it rides where its stops fight, the
+faults, the papers and the pose, with the wippen's angle and what carries it,
+or that the key carries none; last, D and U read on the
 band, with the sweep's window and where each fell, or why the band cannot be
 drawn. `pa-cli golden` writes it and
 `cargo test` compares the engine with it, so a change shows every number it
@@ -2404,7 +2436,10 @@ measuring point, as Stanwood's protocol reads it, through the action that
 inverts the protocol; what the registry stores is the torque. The papers are
 a list on each punching, held once in the frame and changed only by laying or
 lifting a paper; ratios have no path, being outputs
-(`.claude/rules/metrology.md` > Ratios are outputs).
+(`.claude/rules/metrology.md` > Ratios are outputs). A wippen assembly's
+settings have paths of their own, its center pin's place, its heel's position,
+height and radius, its cloth's thickness and its center's friction; on a key
+that carries none, a path of the wippen's is refused, naming it.
 
 `validate` (`pa_core::validate`) runs on every edit and on every design an
 instrument is built from, before any solve, and refuses what no part could be

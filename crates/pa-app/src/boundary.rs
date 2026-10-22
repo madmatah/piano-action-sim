@@ -76,7 +76,7 @@ use pa_core::G;
 use crate::instrument::{
     Action, ActionCode, ContactState as CoreContactState, Edit as CoreEdit,
     EditRefusal as CoreEditRefusal, Instrument, KeyPlace as CoreKeyPlace, NotRegulated, Outcome,
-    Riding as CoreRiding, SeatReport, Stack, TouchVerdict, KEY,
+    Riding as CoreRiding, SeatReport, Stack, TouchVerdict, WippenRefusal, KEY,
 };
 use crate::profile::{Known, PaperColor, Profile};
 use crate::registry::{self, path, Control, Entry, Field, Label, Panel, Weighing as WeighingField};
@@ -612,6 +612,54 @@ pub struct Settings {
     pub key: KeySettings,
     /// The frame it sits on.
     pub frame: FrameSettings,
+    /// The wippen assembly the key carries; `null` where it carries none.
+    pub wippen: Option<WippenSettings>,
+    /// The wippen's heel; `null` where the key carries no wippen.
+    pub wippen_heel: Option<HeelSettings>,
+    /// The heel's cloth; `null` where the key carries no wippen.
+    pub wippen_heel_cloth: Option<HeelClothSettings>,
+}
+
+/// The wippen assembly the key carries.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct WippenSettings {
+    /// Its center pin.
+    pub center: WippenCenterSettings,
+    /// Its center's friction.
+    pub friction: FrictionSettings,
+}
+
+/// Where the wippen's center pin stands.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct WippenCenterSettings {
+    /// Behind the balance pin, millimeters.
+    pub behind_mm: f64,
+    /// Above the keybed, millimeters.
+    pub above_mm: f64,
+}
+
+/// The wippen's heel, by the trade's two quantities and its circle.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct HeelSettings {
+    /// How far along the wippen, at angle zero, its contact surface stands
+    /// in front of the center pin, millimeters.
+    pub position_mm: f64,
+    /// How far its contact surface stands below the jack's pin,
+    /// millimeters.
+    pub height_mm: f64,
+    /// The radius of the circle its cloth lies on, millimeters.
+    pub radius_mm: f64,
+}
+
+/// The heel's cloth.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct HeelClothSettings {
+    /// Its thickness, millimeters.
+    pub thickness_mm: f64,
 }
 
 /// The protocol's setting.
@@ -925,6 +973,23 @@ impl Settings {
                 balance_punching: punching(Stack::Balance, path::BALANCE_FELT),
                 front_punching: punching(Stack::Front, path::FRONT_FELT),
             },
+            wippen: instrument.carries_a_wippen().then(|| WippenSettings {
+                center: WippenCenterSettings {
+                    behind_mm: at(path::WIPPEN_CENTER_BEHIND),
+                    above_mm: at(path::WIPPEN_CENTER_ABOVE),
+                },
+                friction: FrictionSettings {
+                    torque_gmm: at(path::WIPPEN_FRICTION_TORQUE),
+                },
+            }),
+            wippen_heel: instrument.carries_a_wippen().then(|| HeelSettings {
+                position_mm: at(path::HEEL_POSITION),
+                height_mm: at(path::HEEL_HEIGHT),
+                radius_mm: at(path::HEEL_RADIUS),
+            }),
+            wippen_heel_cloth: instrument.carries_a_wippen().then(|| HeelClothSettings {
+                thickness_mm: at(path::HEEL_CLOTH_THICKNESS),
+            }),
         }
     }
 }
@@ -1196,6 +1261,7 @@ impl Registry {
                 .collect(),
             page: registry::PAGE
                 .iter()
+                .filter(|(panel, _)| *panel != Panel::Wippen || instrument.carries_a_wippen())
                 .map(|(panel, controls)| PanelLayout {
                     panel: *panel,
                     controls: controls.iter().map(ControlLayout::of).collect(),
@@ -1231,6 +1297,7 @@ impl Param {
             Field::Friction(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
             Field::Weight(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
             Field::Target(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
+            Field::Wippen(s) => declared(s.hard, s.quantity, s.layer, s.kind, s.step),
             Field::Papers(_) => declared(
                 PAPER.hard,
                 PAPER.quantity,
@@ -2063,6 +2130,72 @@ pub struct Diagnostics {
     /// The last edit refused since one was taken, and why; `null` where
     /// none was.
     pub refused_edit: Option<RefusedEdit>,
+    /// What carries the wippen the key carries where it is drawn, each link
+    /// with the parts of the heel it bears on; empty where it carries none,
+    /// or where no equilibrium places the key.
+    pub wippen_carried_by: Vec<WippenCarriedBy>,
+    /// Why the wippen refused the last loading or increment; `null` where
+    /// it did not.
+    pub wippen_refused: Option<WippenRefused>,
+}
+
+/// Why the wippen the key carries refused the last loading or increment,
+/// named at the seat the sheet refuses it at.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "code", rename_all = "snake_case")]
+pub enum WippenRefused {
+    /// The key pushes the wippen past its range at this seat.
+    PushedPastItsRange {
+        /// The seat the sheet refuses it at.
+        at: WhichSeat,
+        /// How deep its heel stands in the key at the top of its range,
+        /// the key alone at that seat, millimeters.
+        heel_depth_mm: f64,
+    },
+    /// The wippen does not reach the key at this seat.
+    OutOfReach {
+        /// The seat the sheet refuses it at.
+        at: WhichSeat,
+        /// How near its heel comes to the capstan or the key's top, degree
+        /// by degree through its range, the key alone at that seat,
+        /// millimeters.
+        heel_clearance_mm: f64,
+    },
+    /// A part of the wippen stands in a part of the key: a pose no action
+    /// takes, only the heel meeting the key.
+    InTheKey {
+        /// The wippen's part.
+        part: Part,
+        /// The key's part it stands in.
+        key_part: Part,
+        /// How deep, millimeters.
+        depth_mm: f64,
+    },
+}
+
+impl From<WippenRefusal> for WippenRefused {
+    fn from(why: WippenRefusal) -> Self {
+        match why {
+            WippenRefusal::PushedPastItsRange { at, heel_depth } => Self::PushedPastItsRange {
+                at: at.into(),
+                heel_depth_mm: mm(heel_depth),
+            },
+            WippenRefusal::OutOfReach { at, heel_clearance } => Self::OutOfReach {
+                at: at.into(),
+                heel_clearance_mm: mm(heel_clearance),
+            },
+            WippenRefusal::InTheKey {
+                part,
+                key_part,
+                depth,
+            } => Self::InTheKey {
+                part: part.into(),
+                key_part: key_part.into(),
+                depth_mm: mm(depth),
+            },
+        }
+    }
 }
 
 impl Diagnostics {
@@ -2096,6 +2229,8 @@ impl Diagnostics {
                 edit: (&r.edit).into(),
                 why: EditRefusal::of(instrument, &r.edit, &r.why),
             }),
+            wippen_carried_by: carried_by(&instrument.wippen_carried_by()),
+            wippen_refused: instrument.wippen_refused().map(WippenRefused::from),
         }
     }
 }
@@ -2151,6 +2286,10 @@ pub enum KeyPlace {
     /// The weight on its measuring point lifts it off its frame: it is
     /// drawn where its last equilibrium left it, which no longer holds it.
     LiftedOff,
+    /// The wippen the key carries is refused where the last edit would
+    /// stand it: the key and its wippen are drawn where their last
+    /// equilibrium left them, which no longer holds them.
+    WippenRefused,
 }
 
 /// A contact the view marks, in the keybed's frame: one active row, where
@@ -2184,7 +2323,8 @@ pub struct MarkedContact {
 #[cfg_attr(test, derive(TS))]
 pub struct State {
     /// One per body, in body order: the ground, the slide the key lifts off
-    /// its balance punching on, the key.
+    /// its balance punching on, the key, and the wippen where the key
+    /// carries one.
     pub poses: Vec<Pose>,
     /// Where the key stands on its frame, as it is drawn: placed by an
     /// equilibrium, or not and why not.
@@ -2215,6 +2355,7 @@ impl State {
                 CoreKeyPlace::Placed => KeyPlace::Placed,
                 CoreKeyPlace::Unplaced => KeyPlace::Unplaced,
                 CoreKeyPlace::LiftedOff => KeyPlace::LiftedOff,
+                CoreKeyPlace::WippenRefused => KeyPlace::WippenRefused,
             },
             measuring_point: Marker {
                 body: body_index(KEY.0),
@@ -2746,6 +2887,11 @@ impl FrictionRefusal {
 #[cfg_attr(test, derive(TS))]
 #[serde(tag = "code", rename_all = "snake_case")]
 pub enum Problem {
+    /// A path that sets the wippen assembly, on a key that carries none.
+    NoWippenAssembly {
+        /// The path.
+        path: String,
+    },
     /// A value that is not a number, or an infinity.
     NotFinite {
         /// The path it was set at, or the action's argument it was typed
@@ -3070,6 +3216,11 @@ impl EditRefusal {
             CoreEditRefusal::UnknownProfile { profile } => Self::Problem(Problem::UnknownProfile {
                 profile: profile.clone(),
             }),
+            CoreEditRefusal::NoWippenAssembly { path } => {
+                Self::Problem(Problem::NoWippenAssembly {
+                    path: (*path).to_owned(),
+                })
+            }
             CoreEditRefusal::SetByAction { path, action } => Self::Problem(Problem::SetByAction {
                 path: (*path).to_owned(),
                 action: *action,
@@ -3635,6 +3786,58 @@ mod tests {
         }
     }
 
+    /// Consistency: **a heel's distance past a wippen limit crosses in
+    /// millimeters**, from the seat, a walk, the band and the instrument
+    /// alike, the walk's and the band's as the seat's own code, at the seat
+    /// it names: 2⁻⁹ m, which a binary number holds exactly, crosses as
+    /// 1.953125 mm.
+    #[test]
+    fn a_heels_distance_past_a_wippen_limit_crosses_in_millimeters() {
+        const PAST_M: f64 = 1.0 / 512.0;
+        let pushed = WippenRefusal::PushedPastItsRange {
+            at: CoreWhichSeat::Bottom,
+            heel_depth: PAST_M,
+        };
+        let out = WippenRefusal::OutOfReach {
+            at: CoreWhichSeat::Top,
+            heel_clearance: PAST_M,
+        };
+        for (why, crossed) in [
+            (
+                pushed,
+                r#"{"code":"wippen_pushed_past_its_range","at":"bottom","heel_depth_mm":1.953125}"#,
+            ),
+            (
+                out,
+                r#"{"code":"wippen_out_of_reach","at":"top","heel_clearance_mm":1.953125}"#,
+            ),
+        ] {
+            assert_eq!(written(&Refusal::seat(&SeatRefusal::from(why))), crossed);
+            assert_eq!(
+                written(&Refusal::reading(
+                    &Refused::Walk(WalkRefusal::Wippen(why)),
+                    None
+                )),
+                crossed
+            );
+            assert_eq!(
+                written(&Refusal::reading(
+                    &Refused::Sweep(SweepRefusal::Wippen(why)),
+                    None
+                )),
+                crossed
+            );
+        }
+        assert_eq!(
+            written(&WippenRefused::from(pushed)),
+            r#"{"code":"pushed_past_its_range","at":"bottom","heel_depth_mm":1.953125}"#
+        );
+        assert_eq!(
+            written(&WippenRefused::from(out)),
+            r#"{"code":"out_of_reach","at":"top","heel_clearance_mm":1.953125}"#
+        );
+    }
+
     /// Consistency: **a code crosses with its parameters, in the trade's
     /// units with the unit in their names**: a fault in millimeters, a
     /// regulation refused with its target as it was asked, what keeps it
@@ -4017,7 +4220,10 @@ mod tests {
                 })
         };
         for entry in &registry::ENTRIES {
-            let mut bench = Instrument::weighed_section();
+            let mut bench = match entry.field {
+                registry::Field::Wippen(_) => Instrument::carrying_the_test_wippen(),
+                _ => Instrument::weighed_section(),
+            };
             if let Some(action) = entry.set_by() {
                 assert_eq!(
                     bench.set(entry.path, 1.0),
@@ -4029,8 +4235,13 @@ mod tests {
                 continue;
             }
             // Within what the page offers, a little off its middle so that
-            // no default sits there; a torque the page shows as a reading.
-            let value = slider(entry.path).map_or(1500.25, |soft| {
+            // no default sits there; a torque the page shows as a reading; a
+            // part of the wippen no slider sets, a twentieth more than it is.
+            let unslid = match entry.field {
+                registry::Field::Wippen(_) => 1.05 * bench.value(entry.path).expect("a value"),
+                _ => 1500.25,
+            };
+            let value = slider(entry.path).map_or(unslid, |soft| {
                 let (min, max) = (soft.min.expect("bounded"), soft.max.expect("bounded"));
                 min + 0.4 * (max - min)
             });
