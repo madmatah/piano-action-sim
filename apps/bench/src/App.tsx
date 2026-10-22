@@ -49,6 +49,7 @@ import {
   start,
   state,
 } from './bench'
+import { WIPPEN } from './bodies'
 import { type Answer, type Around, type Edits, Panel, type Read, Refused, shown } from './Control'
 import { ANGLE_DEG, decimals, LENGTH_MM, MASS_G } from './format'
 import {
@@ -372,13 +373,25 @@ export function App() {
   const refusedOffThePage =
     refused !== null &&
     !engine.registry.page.some((p) => p.controls.some((c) => madeBy(c, refused)))
+  // On the view's element, where the smoke test reads them.
+  const wippenParts = engine.scene.outlines.filter((o) => o.body === WIPPEN).map((o) => o.code)
+  const carried = d.wippen_carried_by
 
   // What each panel says around its controls, by the panel's code and,
   // after a control, by its label's: the engine places the controls, and a
   // note follows the control it is about wherever the engine puts it.
   const around: { readonly [P in PanelCode]: Around } = {
     instrument: {},
-    wippen: {},
+    wippen: {
+      before: carried.length > 0 && (
+        <p
+          className="note wippen-carried"
+          data-wippen-carried-by={carried.map((c) => [c.link, ...c.parts].join(':')).join(' ')}
+        >
+          {t.wippenCarriedBy(carried)}
+        </p>
+      ),
+    },
     sheet: {
       after: {
         measuring_point: (
@@ -574,6 +587,7 @@ export function App() {
           data-touching={touching.join(' ')}
           data-marked={marked ? 'provenance' : undefined}
           data-place={engine.state.place}
+          data-wippen-parts={wippenParts.join(' ')}
         >
           <SagittalView
             scene={engine.scene}
@@ -716,6 +730,11 @@ export function App() {
               data-lift-mm={d.riding.lift_mm}
             >
               {t.stopsFight(t.riding(d.riding))}
+            </p>
+          )}
+          {d.wippen_refused && (
+            <p className="degenerate wippen-refused" data-code={d.wippen_refused.code}>
+              {word(t.wippenRefused, d.wippen_refused.code, d.wippen_refused)}
             </p>
           )}
 

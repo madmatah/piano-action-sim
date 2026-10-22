@@ -407,3 +407,55 @@ describe('what holds the key', () => {
     )
   })
 })
+
+describe('the wippen', () => {
+  it('says what carries it, link by link, in the glossary’s words', () => {
+    expect([
+      t.wippenCarriedBy([{ link: 'capstan_on_the_heel', parts: ['wippen_heel_cloth'] }]),
+      t.wippenCarriedBy([{ link: 'capstan_on_the_heel', parts: ['wippen_heel'] }]),
+      t.wippenCarriedBy([
+        { link: 'capstan_on_the_heel', parts: ['wippen_heel', 'wippen_heel_cloth'] },
+      ]),
+      t.wippenCarriedBy([{ link: 'heel_on_the_key', parts: ['wippen_heel'] }]),
+    ]).toEqual([
+      'Le pilote porte sur le feutre de talon.',
+      'Le pilote porte sur le talon de chevalet, hors du feutre de talon.',
+      'Le pilote porte sur le feutre de talon et sur le talon de chevalet à côté.',
+      'Le talon de chevalet repose sur le dessus de la touche.',
+    ])
+  })
+
+  it('says why it cannot stand where the key is, naming both parts and the depth where one stands in the key', () => {
+    expect(
+      word(t.wippenRefused, 'in_the_key', {
+        code: 'in_the_key',
+        part: 'jack',
+        key_part: 'keystick',
+        depth_mm: 1.5,
+      }),
+    ).toBe(
+      `Le chevalet ne peut pas se placer là. Le bâton d’échappement pénètre de 1,5 mm dans le corps de la touche${NO_BREAK_SPACE}: aucune mécanique ne prend cette position, seul le talon de chevalet porte sur la touche.`,
+    )
+  })
+
+  it('says at which seat, and how far past a limit of its turn its heel stands, where it cannot stand', () => {
+    expect(
+      word(t.wippenRefused, 'pushed_past_its_range', {
+        code: 'pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 2.34,
+      }),
+    ).toBe(
+      'Le chevalet ne peut pas se placer là. En fond de course, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de 2,3 mm dans la touche, comme le ferait un axe placé trop bas pour son pilote.',
+    )
+    expect(
+      word(t.wippenRefused, 'out_of_reach', {
+        code: 'out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 4.06,
+      }),
+    ).toBe(
+      `Le chevalet ne peut pas se placer là. À la position de repos, le chevalet n’atteint pas la touche${NO_BREAK_SPACE}: il pend jusqu’à la limite de ce que le modèle représente, et, degré par degré jusque-là, son talon passe au plus près à 4,1 mm du pilote ou du dessus de la touche, comme le ferait un axe placé trop haut.`,
+    )
+  })
+})

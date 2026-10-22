@@ -22,6 +22,7 @@ import type {
   TemporaryWeight,
   Verdict,
   WeighingRefusal,
+  WippenCarriedBy,
 } from '@pas/wasm/types'
 import {
   decimals,
@@ -38,7 +39,15 @@ import {
   TEMPORARY_WEIGHT_G,
   WEIGHT_G,
 } from '../format'
-import { type Catalog, type Labeled, type Named, unitIn, type Worded, word } from './catalog'
+import {
+  type Catalog,
+  capitalized,
+  type Labeled,
+  type Named,
+  unitIn,
+  type Worded,
+  word,
+} from './catalog'
 
 /** `x` to the decimals `resolution` is shown to. */
 const to = (quantity: number, resolution: number): string => fixed(quantity, decimals(resolution))
@@ -136,6 +145,24 @@ const PART: Named<Part> = {
 /** How the key rides on its stops, naming them and the lift. */
 function riding(how: Riding): string {
   return `the key rides on ${stopsNamed([how.front, 'back_rail_cloth'])}, ${to(how.lift_mm, LENGTH_MM)} mm above its balance punching: its stops hold it higher than its punching does, so it has no stroke, and no weight takes it from one seat to the other.`
+}
+
+/** What one link carrying the wippen bears on, as a sentence: the capstan
+ * on the heel cloth, on the wippen heel off its cloth, or on both; or the
+ * wippen heel down on the key's top. */
+function carrying({ link, parts }: WippenCarriedBy): string {
+  const onTheCloth = parts.includes('wippen_heel_cloth')
+  const onTheWood = parts.includes('wippen_heel')
+  if (link === 'heel_on_the_key') {
+    return onTheCloth && !onTheWood
+      ? 'The wippen heel rests on the key’s top by its heel cloth.'
+      : 'The wippen heel rests on the key’s top.'
+  }
+  if (onTheCloth && onTheWood)
+    return 'The capstan bears on the heel cloth and on the wippen heel beside it.'
+  return onTheCloth
+    ? 'The capstan bears on the heel cloth.'
+    : 'The capstan bears on the wippen heel, off its heel cloth.'
 }
 
 /** How far past a target, in millimeters: to the hundredth, a shortfall
@@ -561,6 +588,15 @@ export const en: Catalog = {
   stopsFight: (riding) =>
     `The stops fight: ${riding} The key is drawn riding on them; what needs no stroke is read below, and the weights that need one are refused.`,
   riding,
+  wippenCarriedBy: (links) => links.map(carrying).join(' '),
+  wippenRefused: {
+    pushed_past_its_range: (p) =>
+      `The wippen assembly cannot stand there. ${capitalized(refusal.wippen_pushed_past_its_range({ ...p, code: 'wippen_pushed_past_its_range' }))}`,
+    out_of_reach: (p) =>
+      `The wippen assembly cannot stand there. ${capitalized(refusal.wippen_out_of_reach({ ...p, code: 'wippen_out_of_reach' }))}`,
+    in_the_key: (p) =>
+      `The wippen assembly cannot stand there. ${capitalized(refusal.wippen_in_the_key({ ...p, code: 'wippen_in_the_key' }))}`,
+  },
   problem,
   editRefusal,
   refused: {

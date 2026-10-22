@@ -77,8 +77,10 @@ wippen pushed past its range or out of the key's reach is named. Hirschkorn's
 key carries his wippen, from his tables and his traced figure: it reads a down
 weight of −12 g, an up weight of −25 g, a balance weight of −18.5 g and a
 friction weight of 6.5 g, against −21, −33, −27.0 and 6.0 g for his key alone.
-The « chevalet » panel sets where the center pin stands, the heel's position
-and height, and the center's friction.
+The wippen is drawn in section and in solid, faded with a key no
+equilibrium places, and the « chevalet » panel says what carries it and sets
+where the center pin stands, the heel's position and height, and the center's
+friction.
 
 The bench is an instrument an application drives by two calls. Every setting
 has a path with its trade unit in its name (`frame.front_rail.pin_height_mm`)
@@ -113,7 +115,8 @@ the section, and the outlines of the extruded parts in the solid but the
 carved cuts' walls, can be marked by how the number that draws it is known: measured, published, traced,
 derived by a rule, borrowed from another instrument, assumed, or set on the
 bench. The key can be drawn as transparent as the reader wants, to see the
-pins inside it, and its two mortises' bushings apart from the rest of it.
+pins inside it, and its two mortises' bushings apart from the rest of it, its
+wippen left whole.
 
 Every reading on the weighing sheet is a procedure run on the model; their
 closed forms are the tests' oracles. What the stage simplifies is listed in

@@ -26,6 +26,7 @@ import type {
   TemporaryWeight,
   Verdict,
   WeighingRefusal,
+  WippenCarriedBy,
 } from '@pas/wasm/types'
 import {
   decimals,
@@ -42,7 +43,15 @@ import {
   TEMPORARY_WEIGHT_G,
   WEIGHT_G,
 } from '../format'
-import { type Catalog, type Labeled, type Named, unitIn, type Worded, word } from './catalog'
+import {
+  type Catalog,
+  capitalized,
+  type Labeled,
+  type Named,
+  unitIn,
+  type Worded,
+  word,
+} from './catalog'
 
 /** `x` to `digits` places, with a decimal comma, never -0. */
 function number(quantity: number, digits: number): string {
@@ -152,6 +161,24 @@ function ofThe(part: Part): string {
 /** How the key rides on its stops, naming them and the lift. */
 function riding(how: Riding): string {
   return `la touche est portée par ${stopsNamed([how.front, 'back_rail_cloth'])}, ${to(how.lift_mm, LENGTH_MM)} mm au-dessus de sa mouche de balancier : ses butées la tiennent plus haut que sa mouche, elle n’a donc pas de course, et aucun poids ne la fait passer d’une position à l’autre.`
+}
+
+/** What one link carrying the wippen bears on, as a sentence: the capstan
+ * on the heel cloth, on the wippen heel off its cloth, or on both; or the
+ * wippen heel down on the key's top. */
+function carrying({ link, parts }: WippenCarriedBy): string {
+  const onTheCloth = parts.includes('wippen_heel_cloth')
+  const onTheWood = parts.includes('wippen_heel')
+  if (link === 'heel_on_the_key') {
+    return onTheCloth && !onTheWood
+      ? 'Le talon de chevalet repose sur le dessus de la touche par son feutre de talon.'
+      : 'Le talon de chevalet repose sur le dessus de la touche.'
+  }
+  if (onTheCloth && onTheWood)
+    return 'Le pilote porte sur le feutre de talon et sur le talon de chevalet à côté.'
+  return onTheCloth
+    ? 'Le pilote porte sur le feutre de talon.'
+    : 'Le pilote porte sur le talon de chevalet, hors du feutre de talon.'
 }
 
 /** How far past a target, in millimeters: to the hundredth, a shortfall
@@ -602,6 +629,15 @@ export const fr: Catalog = {
   stopsFight: (riding) =>
     `Les butées s’opposent : ${riding} La touche est dessinée portée par elles ; ce qui ne demande pas de course est mesuré ci-dessous, et les poids qui en demandent une sont refusés.`,
   riding,
+  wippenCarriedBy: (links) => links.map(carrying).join(' '),
+  wippenRefused: {
+    pushed_past_its_range: (p) =>
+      `Le chevalet ne peut pas se placer là. ${capitalized(refusal.wippen_pushed_past_its_range({ ...p, code: 'wippen_pushed_past_its_range' }))}`,
+    out_of_reach: (p) =>
+      `Le chevalet ne peut pas se placer là. ${capitalized(refusal.wippen_out_of_reach({ ...p, code: 'wippen_out_of_reach' }))}`,
+    in_the_key: (p) =>
+      `Le chevalet ne peut pas se placer là. ${capitalized(refusal.wippen_in_the_key({ ...p, code: 'wippen_in_the_key' }))}`,
+  },
   problem,
   editRefusal,
   refused: {

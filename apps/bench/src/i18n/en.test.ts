@@ -531,3 +531,58 @@ describe('a number', () => {
     expect(t.list(['a', 'b', 'c'])).toBe('a, b and c')
   })
 })
+
+describe('the wippen', () => {
+  it('says what carries it, link by link: the capstan on the heel cloth, on the wippen heel off it or on both, or the heel on the key’s top', () => {
+    expect([
+      t.wippenCarriedBy([{ link: 'capstan_on_the_heel', parts: ['wippen_heel_cloth'] }]),
+      t.wippenCarriedBy([{ link: 'capstan_on_the_heel', parts: ['wippen_heel'] }]),
+      t.wippenCarriedBy([
+        { link: 'capstan_on_the_heel', parts: ['wippen_heel', 'wippen_heel_cloth'] },
+      ]),
+      t.wippenCarriedBy([
+        { link: 'capstan_on_the_heel', parts: ['wippen_heel_cloth'] },
+        { link: 'heel_on_the_key', parts: ['wippen_heel'] },
+      ]),
+    ]).toEqual([
+      'The capstan bears on the heel cloth.',
+      'The capstan bears on the wippen heel, off its heel cloth.',
+      'The capstan bears on the heel cloth and on the wippen heel beside it.',
+      'The capstan bears on the heel cloth. The wippen heel rests on the key’s top.',
+    ])
+  })
+
+  it('says why it cannot stand where the key is, naming both parts and the depth where one stands in the key', () => {
+    expect(
+      word(t.wippenRefused, 'in_the_key', {
+        code: 'in_the_key',
+        part: 'jack',
+        key_part: 'capstan',
+        depth_mm: 0.123,
+      }),
+    ).toBe(
+      'The wippen assembly cannot stand there. The jack stands 0.1 mm in the capstan: a pose no action takes, where only the wippen heel meets the key.',
+    )
+  })
+
+  it('says at which seat, and how far past a limit of its turn its heel stands, where it cannot stand', () => {
+    expect(
+      word(t.wippenRefused, 'pushed_past_its_range', {
+        code: 'pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 2.34,
+      }),
+    ).toBe(
+      'The wippen assembly cannot stand there. At the bottom seat the key pushes the wippen assembly past its range, its heel lifted to the edge of what the model holds and still 2.3 mm in the key there, as a center pin set too low for its capstan would.',
+    )
+    expect(
+      word(t.wippenRefused, 'out_of_reach', {
+        code: 'out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 4.06,
+      }),
+    ).toBe(
+      "The wippen assembly cannot stand there. At the top seat the wippen assembly does not reach the key: it hangs to the edge of its range, and degree by degree through that range its heel passes at its nearest 4.1 mm from the capstan or the key's top, as a center pin set too high would.",
+    )
+  })
+})

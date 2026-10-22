@@ -57,7 +57,8 @@ The applications in view, others to follow:
    carries built; dynamics planned.
 3. **Discover the action**: parts in section and in solid, contacts visible,
    motion slowed until escapement can be watched. Section and solid of the key
-   and frame, with the key's contacts marked on them, built; motion planned.
+   and frame and of the wippen the key carries, with the key's contacts marked
+   on them, built; motion planned.
 4. **Design an action.** Parts and frame are edited freely. What no part could
    be built as is refused with its reason, the limiting dimension and the
    shortfall in millimeters; what can be handled is handled, so a frame that
@@ -918,7 +919,7 @@ Their closed forms are test oracles, compiled for the domain's tests only.
 ### The bench
 
 **Built.** A browser page in React and react-three-fiber draws the key on its
-frame in section and in solid from parts computed in Rust, each in its own
+frame, and the wippen it carries, in section and in solid from parts computed in Rust, each in its own
 body's frame and placed by the pose the static solve gives that body. The
 section is the sagittal plane itself: a washer shows the hole its pin stands in,
 the front pin stands in its mortise, a void open at the key's underside, and
@@ -934,8 +935,9 @@ mortise opens under the key around its pin, in the groove across the key,
 its cloth turned flat on the groove's floor.
 Both views mark the key's contacts with its frame where the contact rows find
 them: where the key bears, a gap of under a millimeter still open, and drawn
-parts that overlap. A key no equilibrium places is drawn faded, a note on the
-view saying why, and the reader can draw any key as faint as wanted, to see
+parts that overlap. A key no equilibrium places is drawn faded, its wippen
+with it, a note on the view saying why, and the reader can draw any key as
+faint as wanted, its wippen left whole, to see
 the pins inside it, and its two mortises' bushings apart from the rest of it,
 whole at first, so that the cloth shows inside the faded wood, or as faint as
 wanted where it stands in front of a pin. The solid draws its faded parts apart,
@@ -987,7 +989,13 @@ and, on a key nobody has weighed, why a weight on it does nothing); and the
 « chevalet », shown only where the key carries a wippen: its center pin behind
 the balance pin and above the keybed, its heel's position from the center pin
 and its height below the jack's center, the trade's two quantities, read at the
-heel circle's lowest point, and its center's friction in g·mm. The panels
+heel circle's lowest point, and its center's friction in g·mm, under a note
+saying what carries the wippen: the capstan on the heel cloth, on the heel's
+wood off its cloth, or on both, or the heel on the key's top. Why the wippen
+refused the last edit or loading is said beside the other refusals: pushed
+past its range or out of the key's reach, at the seat the sheet refuses it at
+and how far past that limit the heel stands there, or one of its parts in one
+of the key's, naming both parts and how deep. The panels
 and their controls are the ones the engine's registry
 describes, in its order, each control's range, step and unit the engine's
 ([The WebAssembly boundary](#the-webassembly-boundary)); the page adds the readings and the notes around them. Every slider

@@ -33,6 +33,8 @@ import type {
   Unit,
   Verdict,
   WeighingRefusal,
+  WippenCarriedBy,
+  WippenRefused,
 } from '@pas/wasm/types'
 
 /** Each member of a family of codes, by its code. */
@@ -54,6 +56,11 @@ export function word<M, K extends keyof M>(
   item: M[K],
 ): string {
   return table[code](item)
+}
+
+/** `sentence` begun with a capital letter. */
+export function capitalized(sentence: string): string {
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1)
 }
 
 /** A name for every member of a union of codes. */
@@ -150,6 +157,12 @@ export interface Catalog {
   stopsFight(riding: string): string
   /** How the key rides on its stops, as a sentence. */
   riding(riding: Riding): string
+  /** What carries the wippen the key carries where it is drawn, each link
+   * with the parts of the heel it bears on, a sentence each. */
+  wippenCarriedBy(links: readonly WippenCarriedBy[]): string
+  /** Why the wippen the key carries refused the last loading or increment,
+   * as a sentence. */
+  readonly wippenRefused: Worded<WippenRefused>
   /** What no part could be built as, or what the bench has not. */
   readonly problem: Worded<Problem>
   /** Why any edit was refused: a problem, or the refusal of the
