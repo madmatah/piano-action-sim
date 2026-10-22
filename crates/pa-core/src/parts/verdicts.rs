@@ -40,7 +40,7 @@
 //! balance punching. [`edge_overlaps`] says how much, so that the
 //! idealization does not pass for a drawing error.
 
-use crate::contact::{ContactCode, PairGeometry, Rows, ROW_MARGIN};
+use crate::contact::{ContactCode, PairGeometry, PartCode, PartId, Rows, ROW_MARGIN};
 use crate::mechanism::PointLoad;
 use crate::parts::mounts::Mounted;
 
@@ -109,10 +109,14 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
     m.rows(&pose, ROW_MARGIN, &mut rows);
     let code = |pair: u16| m.pairs()[usize::from(pair)].code;
     // The balance punching is the key's bearing, kept with every stop
-    // removed: none of its rows is a stop.
+    // removed: none of its rows is a stop. Nor is a link's: it carries the
+    // wippen the key carries.
     let bearing = mounted.lift.as_ref().map(|lift| lift.pair);
     let stops: Vec<usize> = (0..rows.len())
-        .filter(|&i| Some(rows.rows()[i].pair) != bearing)
+        .filter(|&i| {
+            let pair = rows.rows()[i].pair;
+            Some(pair) != bearing && !code(pair).is_link()
+        })
         .collect();
     let lift = mounted.lift_at(q);
     if lift > TOUCHING {
@@ -182,6 +186,52 @@ pub fn holding(mounted: &Mounted, q: &[f64], loads: &[PointLoad]) -> Option<Hold
         .map(|&i| Holding::RestingOn {
             stop: code(rows.rows()[i].pair),
         })
+}
+
+/// A link carrying the wippen, and which parts of the wippen it bears on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CarriedBy {
+    /// The link: the capstan on the heel, or the heel on the key's top.
+    pub link: ContactCode,
+    /// The wippen's parts its closed rows bear on, in the order of the
+    /// parts: the heel's wood, the heel cloth, or both where it bears in the
+    /// valley where the cloth meets the heel's bottom.
+    pub parts: Vec<PartCode>,
+}
+
+/// The links that carry the wippen the key carries at `q`: each with a row
+/// closed within [`TOUCHING`], in the mechanism's order of pairs, the
+/// capstan's before the key's top's, with the parts of the wippen its
+/// closed rows bear on, side B's pieces of them. A capstan on the heel cloth
+/// names the cloth, and one off it the heel's wood: the trade wants it on
+/// the cloth, and the bench names the fault without refusing it. Both links
+/// where the heel bears on the capstan and on the key's top at once, none
+/// where the wippen stands off the key, and none on a mount that carries no
+/// wippen.
+pub fn wippen_carried_by(mounted: &Mounted, q: &[f64]) -> Vec<CarriedBy> {
+    let Some(wippen) = &mounted.wippen else {
+        return Vec::new();
+    };
+    let m = &mounted.mechanism;
+    let mut rows = Rows::new();
+    m.rows(&m.pose(q), ROW_MARGIN, &mut rows);
+    wippen
+        .links
+        .iter()
+        .filter_map(|&link| {
+            let mut parts: Vec<PartId> = rows
+                .of_pair(link)
+                .filter(|(_, row)| row.gap <= TOUCHING)
+                .map(|(_, row)| row.feature.b.part())
+                .collect();
+            parts.sort_unstable();
+            parts.dedup();
+            (!parts.is_empty()).then(|| CarriedBy {
+                link: m.pairs()[usize::from(link)].code,
+                parts: parts.iter().map(|id| m.parts()[id.index()].code).collect(),
+            })
+        })
+        .collect()
 }
 
 /// Whether contacts along the rows `closed` of `rows`, each pushing with a

@@ -32,6 +32,7 @@ import {
   FROM_LIP_MM,
   fixed,
   GAP_MM,
+  isTooSmallToShow,
   LENGTH_MM,
   MASS_G,
   OUT_OF_RANGE,
@@ -51,6 +52,12 @@ function number(quantity: number, digits: number): string {
 /** `x` to the decimals `resolution` is shown to. */
 const to = (quantity: number, resolution: number): string => number(quantity, decimals(resolution))
 
+/** A distance a refusal of the wippen assembly names, so that one the engine
+ * reads as more than nothing never reads as 0 mm, which would say the part
+ * stands where it may. */
+const showPartDistance = (mm: number): string =>
+  isTooSmallToShow(mm, PART_MM) ? `moins de ${to(PART_MM, PART_MM)} mm` : `${to(mm, PART_MM)} mm`
+
 /** Reasons as a note or a tooltip lists them, each a clause of its own. */
 const reasons = (clauses: readonly string[]): string => clauses.join(' ; ')
 
@@ -69,6 +76,8 @@ const ITS_STOP: Named<Contact> = {
   back_rail_cloth: 'son drap de repos arrière',
   front_pin_in_the_mortise: 'sa pointe d’enfoncement en haut de sa mortaise',
   front_pin_on_the_wood: 'sa pointe d’enfoncement contre le bois à côté de sa mortaise',
+  capstan_on_the_heel: 'son pilote sous le talon de chevalet',
+  heel_on_the_key: 'son dessus sous le talon de chevalet',
 }
 
 /** The stops, as a sentence lists them: « sa mouche d’enfoncement et son
@@ -84,6 +93,8 @@ const ON_THE: Named<Contact> = {
   front_pin_in_the_mortise: 'sur la pointe d’enfoncement, en haut de sa mortaise',
   front_pin_on_the_wood: 'sur la pointe d’enfoncement, contre le bois autour de sa mortaise',
   back_rail_cloth: 'sur le drap de repos arrière',
+  capstan_on_the_heel: 'sous le talon de chevalet, par son pilote',
+  heel_on_the_key: 'sous le talon de chevalet, par son dessus',
 }
 
 /** A contact as a note names it in passing, where something is measured at
@@ -94,6 +105,8 @@ const AT_THE: Named<Contact> = {
   back_rail_cloth: 'au drap de repos arrière',
   front_pin_in_the_mortise: 'à la pointe d’enfoncement dans sa mortaise',
   front_pin_on_the_wood: 'à la pointe d’enfoncement sur le bois',
+  capstan_on_the_heel: 'au pilote sous le talon de chevalet',
+  heel_on_the_key: 'au talon de chevalet sur la touche',
 }
 
 /** A part as a fault names it, with its article. */
@@ -161,6 +174,13 @@ const NOT_CONVERGED: Named<Solve> = {
     'le calcul statique a atteint son nombre maximal d’itérations sur un pas du tracé de la courbe d’enfoncement et de remontée.',
 }
 
+/** At which seat: a seat the engine gains and this does not word fails the
+ * type-check where it is indexed. */
+const AT_THE_SEAT = {
+  top: 'à la position de repos',
+  bottom: 'en fond de course',
+} as const
+
 /** Which way the key was going. */
 const STROKE: Named<Stroke> = {
   down: 'à la descente',
@@ -220,6 +240,12 @@ const refusal: Catalog['refusal'] = {
     `aucun dessus de touche ne se trouve à ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'en arrière' : 'en avant'} de la pointe de balancier, où va le poids provisoire.`,
   from_a_refused_reading: ({ reading }) =>
     `cette mesure se calcule à partir ${reading === 'down_weight' ? 'du poids d’enfoncement, refusé' : reading === 'up_weight' ? 'du poids de remontée, refusé' : 'd’une mesure refusée'}.`,
+  wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
+    `${AT_THE_SEAT[at]}, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de ${showPartDistance(heel_depth_mm)} dans la touche, comme le ferait un axe placé trop bas pour son pilote.`,
+  wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
+    `${AT_THE_SEAT[at]}, le chevalet n’atteint pas la touche : il pend jusqu’à la limite de ce que le modèle représente, et, degré par degré jusque-là, son talon passe au plus près à ${showPartDistance(heel_clearance_mm)} du pilote ou du dessus de la touche, comme le ferait un axe placé trop haut.`,
+  wippen_in_the_key: ({ part, key_part, depth_mm }) =>
+    `${THE_PART[part]} pénètre de ${showPartDistance(depth_mm)} dans ${THE_PART[key_part]} : aucune mécanique ne prend cette position, seul le talon de chevalet porte sur la touche.`,
 }
 
 /** The temporary weight a key friction weight stood on the key. */
@@ -281,6 +307,17 @@ const LIMIT_WHY: {
       'la touche quitterait d’abord sa pointe de balancier, les mouches en papier montant sa mouche de balancier au-dessus du sommet de la pointe',
     key_dip: () =>
       'la touche sortirait de sa pointe de balancier avant un enfoncement aussi faible',
+  },
+  wippen_past_its_range: {
+    key_height: () =>
+      'le chevalet que porte la touche serait d’abord poussé au-delà de ce que le modèle représente, les mouches en papier montant le pilote sous son talon',
+    key_dip: () =>
+      'le chevalet que porte la touche serait d’abord poussé au-delà de ce que le modèle représente en fond de course, l’arrière de la touche montant sous son talon',
+  },
+  wippen_out_of_reach: {
+    key_height: () =>
+      'le chevalet que porte la touche n’atteindrait pas la touche, le pilote restant trop bas pour son talon',
+    key_dip: () => 'le chevalet que porte la touche n’atteindrait pas la touche',
   },
 }
 

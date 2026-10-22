@@ -57,7 +57,7 @@ use pa_core::measure::measurement::{
     Input as CoreInput, Measurement, Mount as CoreMount, ProcedureId, Rounding as CoreRounding,
     Trust as CoreTrust, Unit as CoreUnit, Zeroed,
 };
-use pa_core::measure::seat::SeatRefusal;
+use pa_core::measure::seat::{SeatRefusal, WhichSeat as CoreWhichSeat};
 use pa_core::measure::sweep::{Sample, SweepRefusal};
 use pa_core::measure::walk::{Stroke as CoreStroke, WalkRefusal, CAP, STEP_G};
 use pa_core::measure::weighing::{BushingsRefusal, Refused, FRICTION_SEARCH_G};
@@ -119,6 +119,12 @@ pub enum Contact {
     /// The front rail pin's top against the wood of the key round its front
     /// mortise.
     FrontPinOnTheWood,
+    /// The capstan against the wippen's heel, its cloth or its wood: where
+    /// the key lifts the wippen it carries.
+    CapstanOnTheHeel,
+    /// The key's top against the wippen's heel: where the heel comes down
+    /// on the key, the capstan standing out from under it.
+    HeelOnTheKey,
 }
 
 impl From<ContactCode> for Contact {
@@ -129,6 +135,8 @@ impl From<ContactCode> for Contact {
             ContactCode::BackRailCloth => Self::BackRailCloth,
             ContactCode::FrontPinInTheMortise => Self::FrontPinInTheMortise,
             ContactCode::FrontPinOnTheWood => Self::FrontPinOnTheWood,
+            ContactCode::CapstanOnTheHeel => Self::CapstanOnTheHeel,
+            ContactCode::HeelOnTheKey => Self::HeelOnTheKey,
         }
     }
 }
@@ -136,6 +144,26 @@ impl From<ContactCode> for Contact {
 /// The contacts `codes`, in their order.
 fn contacts(codes: &[ContactCode]) -> Vec<Contact> {
     codes.iter().map(|&c| c.into()).collect()
+}
+
+/// Which of the key's two seats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(rename_all = "snake_case")]
+pub enum WhichSeat {
+    /// At the top of its stroke.
+    Top,
+    /// At the bottom.
+    Bottom,
+}
+
+impl From<CoreWhichSeat> for WhichSeat {
+    fn from(at: CoreWhichSeat) -> Self {
+        match at {
+            CoreWhichSeat::Top => Self::Top,
+            CoreWhichSeat::Bottom => Self::Bottom,
+        }
+    }
 }
 
 /// A part of the key, of its frame or of the wippen assembly, as the trade
@@ -361,6 +389,32 @@ pub enum Refusal {
     CapstanNotBehindTheBearing,
     /// The measuring point stands at or behind the balance bearing.
     MeasuringPointNotInFront,
+    /// The key pushes the wippen it carries past its range at this seat.
+    WippenPushedPastItsRange {
+        /// The seat that met it.
+        at: WhichSeat,
+        /// How deep its heel stands in the key at the top of its range,
+        /// millimeters.
+        heel_depth_mm: f64,
+    },
+    /// The wippen the key carries does not reach the key at this seat.
+    WippenOutOfReach {
+        /// The seat that met it.
+        at: WhichSeat,
+        /// How near its heel comes to the capstan or the key's top, degree
+        /// by degree through its range, millimeters.
+        heel_clearance_mm: f64,
+    },
+    /// A part of the wippen stands in a part of the key: a pose no action
+    /// takes, only the heel meeting the key.
+    WippenInTheKey {
+        /// The wippen's part.
+        part: Part,
+        /// The key's part it stands in.
+        key_part: Part,
+        /// How deep, millimeters.
+        depth_mm: f64,
+    },
     /// A static solve reached its cap of steps.
     NotConverged {
         /// Which.
@@ -444,6 +498,25 @@ impl Refusal {
                 solve: Solve::Seat,
                 iterations: *iterations,
                 residual_n: *residual,
+            },
+            SeatRefusal::WippenPushedPastItsRange { at, heel_depth } => {
+                Self::WippenPushedPastItsRange {
+                    at: (*at).into(),
+                    heel_depth_mm: mm(*heel_depth),
+                }
+            }
+            SeatRefusal::WippenOutOfReach { at, heel_clearance } => Self::WippenOutOfReach {
+                at: (*at).into(),
+                heel_clearance_mm: mm(*heel_clearance),
+            },
+            SeatRefusal::WippenInTheKey {
+                part,
+                key_part,
+                depth,
+            } => Self::WippenInTheKey {
+                part: (*part).into(),
+                key_part: (*key_part).into(),
+                depth_mm: mm(*depth),
             },
         }
     }
@@ -2449,6 +2522,10 @@ pub enum Limit {
     RailTooLow,
     /// The key would leave its balance pin first.
     OffItsBalancePin,
+    /// The wippen the key carries would be pushed past its range first.
+    WippenPastItsRange,
+    /// The wippen the key carries would not reach the key first.
+    WippenOutOfReach,
 }
 
 impl From<CoreLimit> for Limit {
@@ -2461,6 +2538,8 @@ impl From<CoreLimit> for Limit {
             CoreLimit::NoStopBelowTheFront => Self::NoStopBelowTheFront,
             CoreLimit::RailTooLow => Self::RailTooLow,
             CoreLimit::OffItsBalancePin => Self::OffItsBalancePin,
+            CoreLimit::WippenPastItsRange => Self::WippenPastItsRange,
+            CoreLimit::WippenOutOfReach => Self::WippenOutOfReach,
         }
     }
 }
@@ -3452,6 +3531,8 @@ mod tests {
             ContactCode::BackRailCloth,
             ContactCode::FrontPinInTheMortise,
             ContactCode::FrontPinOnTheWood,
+            ContactCode::CapstanOnTheHeel,
+            ContactCode::HeelOnTheKey,
         ] {
             assert_eq!(written(&Contact::from(c)), format!("\"{}\"", c.code()));
         }

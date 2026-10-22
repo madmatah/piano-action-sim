@@ -3,4 +3,4 @@
 /**
  * What keeps a target out of reach.
  */
-export type Limit = "front_pin_in_mortise" | "front_pin_on_the_wood" | "felt_thicker_than_the_stack" | "stops_fight" | "no_stop_below_the_front" | "rail_too_low" | "off_its_balance_pin";
+export type Limit = "front_pin_in_mortise" | "front_pin_on_the_wood" | "felt_thicker_than_the_stack" | "stops_fight" | "no_stop_below_the_front" | "rail_too_low" | "off_its_balance_pin" | "wippen_past_its_range" | "wippen_out_of_reach";

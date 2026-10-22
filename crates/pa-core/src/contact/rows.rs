@@ -237,16 +237,114 @@ fn is_sampled(part: &Part) -> bool {
     part.role != Role::Cut && is_read(part)
 }
 
-/// A side's drawn material, as polygons: its parts, less its cuts.
+/// How far past its corners a polygon's box, or a material's, reaches,
+/// meters: a nanometer, millions of times the rounding of a crossing a
+/// polygon test or a distance computes on parts a meter across, so that a
+/// point outside the box is outside every polygon in it to the bit, and
+/// stands no nearer to their edges than to the box: the box only skips a
+/// test or a distance.
+const BOX_SLACK: f64 = 1e-9;
+
+/// The box a set of corners stands in, [`BOX_SLACK`] wider each way: a
+/// point outside it stands no nearer to any edge between those corners than
+/// to the box, to the bit.
+#[derive(Debug, Clone, Copy)]
+struct CornerBox {
+    low: Point,
+    high: Point,
+}
+
+impl CornerBox {
+    /// The box of `corners`; one that holds no point where there are none.
+    fn around<'a>(corners: impl IntoIterator<Item = &'a Point>) -> Self {
+        let (mut low, mut high) = (
+            Point::new(f64::INFINITY, f64::INFINITY),
+            Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY),
+        );
+        for corner in corners {
+            low = Point::new(low.x.min(corner.x), low.y.min(corner.y));
+            high = Point::new(high.x.max(corner.x), high.y.max(corner.y));
+        }
+        Self {
+            low: Point::new(low.x - BOX_SLACK, low.y - BOX_SLACK),
+            high: Point::new(high.x + BOX_SLACK, high.y + BOX_SLACK),
+        }
+    }
+
+    /// Whether `p` stands in the box, its edges included.
+    fn holds(&self, p: Point) -> bool {
+        p.x >= self.low.x && p.x <= self.high.x && p.y >= self.low.y && p.y <= self.high.y
+    }
+
+    /// How far `p` stands outside the box, meters: zero inside it.
+    fn distance(&self, p: Point) -> f64 {
+        let dx = (self.low.x - p.x).max(p.x - self.high.x).max(0.0);
+        let dy = (self.low.y - p.y).max(p.y - self.high.y).max(0.0);
+        (dx * dx + dy * dy).sqrt()
+    }
+
+    /// How far this box and `other` stand apart, meters: zero where they
+    /// meet.
+    fn apart(&self, other: &Self) -> f64 {
+        let dx = (self.low.x - other.high.x)
+            .max(other.low.x - self.high.x)
+            .max(0.0);
+        let dy = (self.low.y - other.high.y)
+            .max(other.low.y - self.high.y)
+            .max(0.0);
+        (dx * dx + dy * dy).sqrt()
+    }
+}
+
+/// A side's drawn material, as polygons: its parts, less its cuts, the box
+/// its parts stand in, and each polygon's own box, the parts' then the
+/// cuts'.
+#[derive(Debug, Clone)]
 struct Material {
     solids: Vec<Vec<Point>>,
     cuts: Vec<Vec<Point>>,
+    outer_box: CornerBox,
+    solid_boxes: Vec<CornerBox>,
+    cut_boxes: Vec<CornerBox>,
 }
 
 impl Material {
+    /// The material of these parts less these cuts.
+    fn new(solids: Vec<Vec<Point>>, cuts: Vec<Vec<Point>>) -> Self {
+        let outer_box = CornerBox::around(solids.iter().flatten());
+        let solid_boxes = solids.iter().map(CornerBox::around).collect();
+        let cut_boxes = cuts.iter().map(CornerBox::around).collect();
+        Self {
+            solids,
+            cuts,
+            outer_box,
+            solid_boxes,
+            cut_boxes,
+        }
+    }
+
     /// Whether `p` is inside a part and outside every cut.
     fn holds(&self, p: Point) -> bool {
-        self.solids.iter().any(|s| encloses(s, p)) && !self.cuts.iter().any(|c| encloses(c, p))
+        self.outer_box.holds(p) && self.in_a_part(p) && !self.in_a_cut(p)
+    }
+
+    /// Whether `p` is inside a part. A point outside a polygon's box is
+    /// outside the polygon, to the bit: a ray from it crosses the polygon's
+    /// edges an even number of times, or none, so the box only skips the
+    /// test.
+    fn in_a_part(&self, p: Point) -> bool {
+        self.solids
+            .iter()
+            .zip(&self.solid_boxes)
+            .any(|(s, polygon_box)| polygon_box.holds(p) && encloses(s, p))
+    }
+
+    /// Whether `p` is inside a cut, its box read first as a part's is.
+    fn in_a_cut(&self, p: Point) -> bool {
+        self.cuts
+            .iter()
+            .zip(&self.cut_boxes)
+            .any(|(c, polygon_box)| polygon_box.holds(p) && encloses(c, p))
     }
 
     /// How deep `p` stands inside the material: its distance to the nearest
@@ -261,6 +359,106 @@ impl Material {
             .map(|polygon| distance_to_edges(polygon, p))
             .fold(f64::INFINITY, f64::min)
     }
+
+    /// The lesser of `least` and how far `p` stands outside the material,
+    /// meters: zero inside; in a cut through a part, its distance to the
+    /// nearest edge of a cut, every edge of the cut's drawn outline read,
+    /// those standing outside the part where the cut opens out of it
+    /// included, though no material stands along them, so that it reads no
+    /// more than the distance to the material there; elsewhere, to the
+    /// nearest edge of a part. A part or a cut whose box stands no nearer to
+    /// `p` than `least` is not read: none of its edges stands nearer than its
+    /// box, so the lesser is the same bits.
+    fn distance_below(&self, p: Point, least: f64) -> f64 {
+        if self.holds(p) {
+            return least.min(0.0);
+        }
+        let (edges, boxes) = if self.in_a_part(p) {
+            (&self.cuts, &self.cut_boxes)
+        } else {
+            (&self.solids, &self.solid_boxes)
+        };
+        edges
+            .iter()
+            .zip(boxes)
+            .fold(least, |least, (polygon, polygon_box)| {
+                if polygon_box.distance(p) >= least {
+                    least
+                } else {
+                    least.min(distance_to_edges(polygon, p))
+                }
+            })
+    }
+}
+
+/// Parts' drawn outlines at one pose, in the world, as the overlap readings
+/// read them ([`Mechanism::outlines`]): their material, less the cuts of the
+/// bodies that carry them, and the points sampled along their outlines.
+/// Built once, read against several others: a part that stays where it is
+/// while another moves is not drawn again for each place the other takes.
+#[derive(Debug, Clone)]
+pub struct Outlines {
+    material: Material,
+    samples: Vec<Point>,
+}
+
+impl Outlines {
+    /// How deep these parts and `other` stand in one another, meters: the
+    /// deepest that a point sampled along one stands inside the other's
+    /// material; zero where nothing overlaps. What
+    /// [`Mechanism::parts_overlap`] reads.
+    pub fn overlap(&self, other: &Self) -> f64 {
+        let into_other = deepest(&self.samples, &other.material);
+        let into_self = deepest(&other.samples, &self.material);
+        into_other.max(into_self)
+    }
+
+    /// How far these parts and `other` stand apart, meters: the least
+    /// distance from a point sampled along one to the other's material,
+    /// read off the drawn outlines; zero where they overlap.
+    pub fn clearance(&self, other: &Self) -> f64 {
+        self.clearance_below(other, f64::INFINITY)
+    }
+
+    /// The lesser of `least` and how far these parts and `other` stand
+    /// apart ([`Self::clearance`]), meters, to the same bits: what a least
+    /// carried across several readings takes from one more, without reading
+    /// what cannot stand nearer than it. Every sample stands in its own
+    /// side's box, and no point outside a box stands nearer to the material
+    /// in it than to the box, so a side whose box stands no nearer to the
+    /// other's than `least`, a sample whose distance to the other side's box
+    /// is no less, and a part or a cut whose own box is no nearer to the
+    /// sample, are skipped: each would give no less than `least`, and the
+    /// least of distances does not depend on the order they are read in.
+    /// Nothing more is read once it reaches nothing.
+    pub(crate) fn clearance_below(&self, other: &Self, least: f64) -> f64 {
+        let mut least = least;
+        if self.material.outer_box.apart(&other.material.outer_box) >= least {
+            return least;
+        }
+        for (samples, material) in [
+            (&self.samples, &other.material),
+            (&other.samples, &self.material),
+        ] {
+            let material_box = material.outer_box;
+            for &p in samples {
+                if least <= 0.0 {
+                    return least;
+                }
+                if material_box.distance(p) < least {
+                    least = material.distance_below(p, least);
+                }
+            }
+        }
+        least
+    }
+}
+
+/// The deepest that one of `samples` stands inside `material`, meters.
+fn deepest(samples: &[Point], material: &Material) -> f64 {
+    samples
+        .iter()
+        .fold(0.0_f64, |deepest, &p| deepest.max(material.depth(p)))
 }
 
 /// What one row is being built from: its pair, its feature, the two bodies
@@ -295,6 +493,24 @@ impl Mechanism {
         for (p, (pair, features)) in self.pairs().iter().zip(&self.features).enumerate() {
             let pair_index = u16::try_from(p).expect("fewer than 65 536 pairs");
             self.read_pair(pose, pair_index, pair.geometry, features, margin, out);
+        }
+    }
+
+    /// Reads the declared pairs `pairs` only, in that order, at `pose` into
+    /// `out`, as [`Self::rows`] reads each: the same rows of each pair, to
+    /// the bit, for a reading that needs a few pairs and not the whole
+    /// mechanism's.
+    ///
+    /// # Panics
+    ///
+    /// When `pose` was not placed by this mechanism, or a pair is not
+    /// declared.
+    pub(crate) fn read_the_rows_of(&self, pose: &Pose, pairs: &[u16], margin: f64, out: &mut Rows) {
+        out.clear(self.coords().len());
+        for &pair in pairs {
+            let p = usize::from(pair);
+            let geometry = self.pairs()[p].geometry;
+            self.read_pair(pose, pair, geometry, &self.features[p], margin, out);
         }
     }
 
@@ -498,24 +714,37 @@ impl Mechanism {
     /// it reads the sagittal section: a part beside the plane is in none of
     /// it.
     pub fn parts_overlap(&self, pose: &Pose, a: &[PartId], b: &[PartId]) -> f64 {
-        let index = |ids: &[PartId]| -> Vec<usize> {
-            ids.iter()
-                .map(|id| id.index())
-                .filter(|&i| is_sampled(&self.parts()[i]))
-                .collect()
-        };
-        let (a, b) = (index(a), index(b));
-        let into_b = self.sunk(pose, &a, &self.material_of(pose, &b));
-        let into_a = self.sunk(pose, &b, &self.material_of(pose, &a));
-        into_b.max(into_a)
+        self.outlines(pose, a).overlap(&self.outlines(pose, b))
+    }
+
+    /// The drawn outlines of the parts `parts` at `pose`, as
+    /// [`Self::parts_overlap`] reads them, to read against others: their
+    /// material less the cuts of the bodies that carry them, and the points
+    /// sampled along them.
+    pub fn outlines(&self, pose: &Pose, parts: &[PartId]) -> Outlines {
+        let owners: Vec<usize> = parts
+            .iter()
+            .map(|id| id.index())
+            .filter(|&i| is_sampled(&self.parts()[i]))
+            .collect();
+        Outlines {
+            material: self.material_of(pose, &owners),
+            samples: self.samples(pose, &owners),
+        }
     }
 
     /// The deepest that a point sampled along the outline of one of the
-    /// parts `owners` stands inside `material` at `pose`, meters: seventeen
-    /// points along each line, an arc as it is drawn, and none along a
-    /// segment that is a cut's mouth, the underside running on straight
-    /// across a mortise, which bounds no material.
+    /// parts `owners` stands inside `material` at `pose`, meters.
     fn sunk(&self, pose: &Pose, owners: &[usize], material: &Material) -> f64 {
+        deepest(&self.samples(pose, owners), material)
+    }
+
+    /// The points sampled along the outlines of the parts `owners` at
+    /// `pose`, in the world: seventeen points along each line, an arc as it
+    /// is drawn, and none along a segment that is a cut's mouth, the
+    /// underside running on straight across a mortise, which bounds no
+    /// material.
+    fn samples(&self, pose: &Pose, owners: &[usize]) -> Vec<Point> {
         let parts = self.parts();
         let mut owners = owners.to_vec();
         owners.sort_unstable();
@@ -527,7 +756,7 @@ impl Mechanism {
             .filter(|c| c.role == Role::Cut && is_read(c))
             .flat_map(|c| c.silhouette().into_iter().map(|g| (g.start(), g.end())))
             .collect();
-        let mut deepest = 0.0_f64;
+        let mut samples = Vec::new();
         for i in owners {
             let placement = pose.placement(parts[i].body);
             for seg in parts[i].silhouette() {
@@ -547,12 +776,10 @@ impl Mechanism {
                         .collect(),
                     Seg::Arc { .. } => seg.drawn(crate::geometry::DRAWN_HALVINGS),
                 };
-                for q in points {
-                    deepest = deepest.max(material.depth(placement.world(q)));
-                }
+                samples.extend(points.into_iter().map(|q| placement.world(q)));
             }
         }
-        deepest
+        samples
     }
 
     /// The drawn material of the parts `owners` at `pose`: their outlines,
@@ -569,9 +796,9 @@ impl Mechanism {
                 .collect()
         };
         let bodies: Vec<BodyId> = owners.iter().map(|&i| parts[i].body).collect();
-        Material {
-            solids: owners.iter().map(|&i| polygon(i)).collect(),
-            cuts: (0..parts.len())
+        Material::new(
+            owners.iter().map(|&i| polygon(i)).collect(),
+            (0..parts.len())
                 .filter(|&i| {
                     parts[i].role == Role::Cut
                         && is_read(&parts[i])
@@ -579,7 +806,7 @@ impl Mechanism {
                 })
                 .map(polygon)
                 .collect(),
-        }
+        )
     }
 
     /// The drawn material of side `side` of pair `pair` at `pose`: the parts
@@ -610,10 +837,7 @@ impl Mechanism {
                 .collect()
         };
         let centered = declared.geometry == PairGeometry::CenterBearing;
-        let mut material = Material {
-            solids: Vec::new(),
-            cuts: Vec::new(),
-        };
+        let (mut solids, mut cuts) = (Vec::new(), Vec::new());
         for (i, part) in parts.iter().enumerate() {
             if part.body != body || !is_read(part) {
                 continue;
@@ -621,17 +845,17 @@ impl Mechanism {
             match part.role {
                 Role::Cut => {
                     if !centered {
-                        material.cuts.push(polygon(i));
+                        cuts.push(polygon(i));
                     }
                 }
                 _ => {
                     if own.is_empty() || own.contains(&i) {
-                        material.solids.push(polygon(i));
+                        solids.push(polygon(i));
                     }
                 }
             }
         }
-        material
+        Material::new(solids, cuts)
     }
 
     /// Adds the row, with its gradient and slip gradient, if its gap is
@@ -1178,6 +1402,191 @@ mod tests {
                 "{q:?}"
             );
         }
+    }
+
+    /// How far `p` stands outside `material`, read as the pruned reading
+    /// reads it but every polygon read, no box consulted, with whether `p`
+    /// stood in a cut through a part.
+    fn unpruned_distance(material: &Material, p: Point) -> (f64, bool) {
+        let in_a_part = material.solids.iter().any(|s| encloses(s, p));
+        if in_a_part && !material.cuts.iter().any(|c| encloses(c, p)) {
+            return (0.0, false);
+        }
+        let edges = if in_a_part {
+            &material.cuts
+        } else {
+            &material.solids
+        };
+        let distance = edges
+            .iter()
+            .map(|polygon| distance_to_edges(polygon, p))
+            .fold(f64::INFINITY, f64::min);
+        (distance, in_a_part)
+    }
+
+    /// How far `a` and `b` stand apart, every sample read against every
+    /// polygon, with how many samples stood in a cut through a part.
+    fn unpruned_clearance(a: &Outlines, b: &Outlines) -> (f64, usize) {
+        let mut least = f64::INFINITY;
+        let mut in_a_cut = 0;
+        for (samples, material) in [(&a.samples, &b.material), (&b.samples, &a.material)] {
+            for &p in samples {
+                let (distance, in_the_cut) = unpruned_distance(material, p);
+                least = least.min(distance);
+                in_a_cut += usize::from(in_the_cut);
+            }
+        }
+        (least, in_a_cut)
+    }
+
+    /// Consistency: **pruning the clearance changes no bit.** The test
+    /// wippen's heel and its cloth against the key's parts, on the test key
+    /// and on the key with every feature, its domed capstan and its wippen
+    /// rail clearance, the center pin swept along the key from behind the
+    /// capstan to over the balance pin, where the heel sinks into the
+    /// balance mortise, a cut through the key, and from below the key's
+    /// reach to above it, at every whole degree and every half degree of
+    /// the wippen's range: the clearance, which skips what its boxes show
+    /// cannot stand nearer, is the least read with every polygon, to the
+    /// bit, and so is the heel's nearest approach out of reach, the least
+    /// carried across the whole degrees
+    /// ([`crate::parts::mounts::Mounted::measure_the_heel_past`]). Some
+    /// samples stand in the cut, so its edges are read too.
+    #[test]
+    fn pruning_the_clearance_changes_no_bit() {
+        use crate::contact::PartCode;
+        use crate::parts::fixtures::{carrying_the, regulated, test_wippen};
+        use crate::parts::mounts::{nominal_pose, step_down_a_whole_degree, WippenLimit};
+        const CENTER_ALONG: [f64; 6] = [-0.035, -0.025, -0.015, 0.0, 0.010, 0.1255];
+        const CENTER_ABOVE: [f64; 6] = [0.060, 0.070, 0.080, 0.090, 0.100, 0.120];
+        let mut every_feature = regulated();
+        every_feature.key = crate::test_fixture::key_with_every_feature();
+        let mut in_a_cut = 0;
+        for setup in [regulated(), every_feature] {
+            for along in CENTER_ALONG {
+                for above in CENTER_ABOVE {
+                    let (mut wippen, _) = test_wippen();
+                    wippen.center = Point::new(wippen.center.x + along, above);
+                    let k = carrying_the(&setup, &wippen);
+                    let mounted = &k.mounted;
+                    let m = &mounted.mechanism;
+                    let on = mounted.wippen.expect("a wippen");
+                    let picked = |keep: &dyn Fn(&Part) -> bool| -> Vec<PartId> {
+                        (0..m.parts().len())
+                            .filter(|&i| keep(&m.parts()[i]))
+                            .map(|i| PartId(u16::try_from(i).expect("few parts")))
+                            .collect()
+                    };
+                    let heel = picked(&|p| {
+                        p.body == on.body
+                            && matches!(p.code, PartCode::WippenHeel | PartCode::WippenHeelCloth)
+                    });
+                    let key = picked(&|p| p.body == mounted.key);
+                    let q = nominal_pose(mounted);
+                    let key = m.outlines(&m.pose(&q), &key);
+                    let (low, high) = m.coords()[on.angle.0].limits;
+                    let heel_at = |angle: f64| {
+                        let mut at = q.clone();
+                        at[on.angle.0] = angle;
+                        m.outlines(&m.pose(&at), &heel)
+                    };
+                    let (mut angle, mut nearest) = (high, f64::INFINITY);
+                    loop {
+                        for read in [
+                            angle,
+                            angle - 0.5 * (angle - step_down_a_whole_degree(angle, low)),
+                        ] {
+                            let heel = heel_at(read);
+                            let (unpruned, cut) = unpruned_clearance(&heel, &key);
+                            in_a_cut += cut;
+                            assert_eq!(
+                                heel.clearance(&key).to_bits(),
+                                unpruned.to_bits(),
+                                "{along} m along, {above} m above, at {read} rad"
+                            );
+                        }
+                        nearest = nearest.min(unpruned_clearance(&heel_at(angle), &key).0);
+                        if angle <= low {
+                            break;
+                        }
+                        angle = step_down_a_whole_degree(angle, low);
+                    }
+                    assert_eq!(
+                        mounted
+                            .measure_the_heel_past(&q, WippenLimit::OutOfReach)
+                            .to_bits(),
+                        nearest.to_bits(),
+                        "{along} m along, {above} m above"
+                    );
+                }
+            }
+        }
+        assert!(in_a_cut > 0, "no sample stood in a cut");
+    }
+
+    /// Consistency: **the rows of a few pairs read alone are each pair's
+    /// rows of the whole mechanism, to the bit.** The test key carrying the
+    /// test wippen, at its nominal pose, the wippen turned down from the top
+    /// of its range a whole degree at a time, through angles where its heel
+    /// stands in the key, touches it and clears it: the rows of its two
+    /// links, read together in either order and each alone, within the row
+    /// margin and at any distance, are the rows of those pairs among every
+    /// pair's, in the order asked, with the same gradients and slip
+    /// gradients, bit for bit. Some of those angles close a link.
+    #[test]
+    fn the_rows_of_a_few_pairs_read_alone_are_each_pairs_rows_of_the_whole_mechanism() {
+        use crate::parts::fixtures::{carrying_the, regulated, test_wippen};
+        use crate::parts::mounts::{nominal_pose, step_down_a_whole_degree};
+        let bits = |values: &[f64]| {
+            values
+                .iter()
+                .map(|number| number.to_bits())
+                .collect::<Vec<u64>>()
+        };
+        let (wippen, _) = test_wippen();
+        let on_frame = carrying_the(&regulated(), &wippen);
+        let mechanism = &on_frame.mounted.mechanism;
+        let on = on_frame.mounted.wippen.expect("a wippen");
+        let [heel, cloth] = on.links;
+        let (low, high) = mechanism.coords()[on.angle.0].limits;
+        let (mut whole, mut alone) = (Rows::new(), Rows::new());
+        let (mut angle, mut closed) = (high, 0);
+        loop {
+            let mut q = nominal_pose(&on_frame.mounted);
+            q[on.angle.0] = angle;
+            let pose = mechanism.pose(&q);
+            for margin in [ROW_MARGIN, f64::INFINITY] {
+                mechanism.rows(&pose, margin, &mut whole);
+                for pairs in [&[heel, cloth][..], &[cloth, heel], &[heel], &[cloth]] {
+                    mechanism.read_the_rows_of(&pose, pairs, margin, &mut alone);
+                    let expected: Vec<usize> = pairs
+                        .iter()
+                        .flat_map(|&pair| whole.of_pair(pair).map(|(row_index, _)| row_index))
+                        .collect();
+                    assert_eq!(alone.len(), expected.len(), "at {angle} rad, {pairs:?}");
+                    for (read, &row_index) in expected.iter().enumerate() {
+                        // Debug writes each f64 in its shortest exact form,
+                        // its sign included: equal strings, equal bits.
+                        assert_eq!(
+                            format!("{:?}", alone.rows()[read]),
+                            format!("{:?}", whole.rows()[row_index])
+                        );
+                        assert_eq!(bits(alone.grad(read)), bits(whole.grad(row_index)));
+                        assert_eq!(bits(alone.slip(read)), bits(whole.slip(row_index)));
+                    }
+                }
+                closed += whole
+                    .rows()
+                    .iter()
+                    .filter(|row| on.links.contains(&row.pair) && row.gap <= 0.0)
+                    .count();
+            }
+            if angle <= low {
+                break;
+            }
+            angle = step_down_a_whole_degree(angle, low);
+        }
+        assert!(closed > 0, "no angle closed a link");
     }
 }
 

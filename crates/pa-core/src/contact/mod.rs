@@ -47,9 +47,11 @@
 //! (`every_contact_lies_on_its_drawn_outline`). Built too: the wippen
 //! assembly's parts ([`crate::parts::WippenAssembly::parts`]), the heel's
 //! outline below the wippen's body, its sides, its bottom and its cloth's
-//! outer face, declared as one chain of ranges (`heel_below_the_body`).
-//! Planned: the wippen carried on its key through those ranges, and a
-//! compliant felt law through the same rows ([`ContactLaw`]).
+//! outer face, declared as one chain of ranges (`heel_below_the_body`),
+//! which the key's capstan and the key's top read: the two links that carry
+//! the wippen on its key ([`ContactCode::CapstanOnTheHeel`],
+//! [`ContactCode::HeelOnTheKey`]). Planned: a compliant felt law through the
+//! same rows ([`ContactLaw`]).
 
 mod bearing;
 mod features;
@@ -64,7 +66,7 @@ pub use bearing::{Bearing, HowItBears, FLAT_WITHIN};
 pub(crate) use features::PairFeatures;
 pub use features::{Feature, Piece};
 pub use pair::{ContactCode, ContactLaw, ContactPair, PairGeometry, Surface};
-pub use rows::{Row, Rows, ROW_MARGIN};
+pub use rows::{Outlines, Row, Rows, ROW_MARGIN};
 
 use core::ops::Range;
 

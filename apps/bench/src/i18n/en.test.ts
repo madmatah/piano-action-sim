@@ -17,6 +17,8 @@ const LIMITS = Object.keys({
   no_stop_below_the_front: true,
   rail_too_low: true,
   off_its_balance_pin: true,
+  wippen_past_its_range: true,
+  wippen_out_of_reach: true,
 } satisfies Record<Limit, true>) as Limit[]
 
 describe('a refused regulation', () => {
@@ -72,6 +74,83 @@ describe('a refused regulation', () => {
     expect(sentence).toBe(
       '65.00 mm of key height is out of reach, by under 0.01 mm: it would take more than 20 mm of paper under the balance punching, the balance rail standing too low.',
     )
+  })
+})
+
+describe('the wippen assembly at a limit of its turn', () => {
+  it('says at which seat, and how far past the limit its heel stands', () => {
+    expect(
+      t.refusal.wippen_pushed_past_its_range({
+        code: 'wippen_pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 2.34,
+      }),
+    ).toContain(
+      'at the bottom seat the key pushes the wippen assembly past its range, its heel lifted to the edge of what the model holds and still 2.3 mm in the key there',
+    )
+    expect(
+      t.refusal.wippen_out_of_reach({
+        code: 'wippen_out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 4.06,
+      }),
+    ).toContain(
+      "at the top seat the wippen assembly does not reach the key: it hangs to the edge of its range, and degree by degree through that range its heel passes at its nearest 4.1 mm from the capstan or the key's top",
+    )
+  })
+
+  it('says less than 0.1 mm where the distance is more than nothing and rounds to nothing at the tenth', () => {
+    expect(
+      t.refusal.wippen_pushed_past_its_range({
+        code: 'wippen_pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 0.02,
+      }),
+    ).toContain(
+      'its heel lifted to the edge of what the model holds and still less than 0.1 mm in the key there',
+    )
+    expect(
+      t.refusal.wippen_out_of_reach({
+        code: 'wippen_out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 0.02,
+      }),
+    ).toContain("its heel passes at its nearest less than 0.1 mm from the capstan or the key's top")
+    expect(
+      t.refusal.wippen_in_the_key({
+        code: 'wippen_in_the_key',
+        part: 'jack',
+        key_part: 'capstan',
+        depth_mm: 0.02,
+      }),
+    ).toContain('the jack stands less than 0.1 mm in the capstan')
+  })
+
+  it('says the tenth a distance rounds to where it rounds to more than nothing', () => {
+    expect(
+      t.refusal.wippen_pushed_past_its_range({
+        code: 'wippen_pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 0.06,
+      }),
+    ).toContain(
+      'its heel lifted to the edge of what the model holds and still 0.1 mm in the key there',
+    )
+    expect(
+      t.refusal.wippen_out_of_reach({
+        code: 'wippen_out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 0.06,
+      }),
+    ).toContain("its heel passes at its nearest 0.1 mm from the capstan or the key's top")
+    expect(
+      t.refusal.wippen_in_the_key({
+        code: 'wippen_in_the_key',
+        part: 'jack',
+        key_part: 'capstan',
+        depth_mm: 0.06,
+      }),
+    ).toContain('the jack stands 0.1 mm in the capstan')
   })
 })
 

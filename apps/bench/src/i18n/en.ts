@@ -28,6 +28,7 @@ import {
   FROM_LIP_MM,
   fixed,
   GAP_MM,
+  isTooSmallToShow,
   LENGTH_MM,
   MASS_G,
   OUT_OF_RANGE,
@@ -41,6 +42,12 @@ import { type Catalog, type Labeled, type Named, unitIn, type Worded, word } fro
 
 /** `x` to the decimals `resolution` is shown to. */
 const to = (quantity: number, resolution: number): string => fixed(quantity, decimals(resolution))
+
+/** A distance a refusal of the wippen assembly names, so that one the engine
+ * reads as more than nothing never reads as 0 mm, which would say the part
+ * stands where it may. */
+const showPartDistance = (mm: number): string =>
+  isTooSmallToShow(mm, PART_MM) ? `less than ${to(PART_MM, PART_MM)} mm` : `${to(mm, PART_MM)} mm`
 
 /** Reasons as a note or a tooltip lists them, each a clause of its own. */
 const reasons = (clauses: readonly string[]): string => clauses.join('; ')
@@ -60,6 +67,8 @@ const STOP: Named<Contact> = {
   back_rail_cloth: 'back rail cloth',
   front_pin_in_the_mortise: 'front rail pin at the top of its mortise',
   front_pin_on_the_wood: 'front rail pin against the wood beside its mortise',
+  capstan_on_the_heel: 'capstan under the wippen heel',
+  heel_on_the_key: 'top under the wippen heel',
 }
 
 /** The stops, as a sentence lists them: "its front punching and its back
@@ -75,6 +84,8 @@ const ON_THE: Named<Contact> = {
   front_pin_in_the_mortise: 'on the front rail pin, at the top of its mortise',
   front_pin_on_the_wood: 'on the front rail pin, against the wood round its mortise',
   back_rail_cloth: 'on the back rail cloth',
+  capstan_on_the_heel: 'under the wippen heel, by its capstan',
+  heel_on_the_key: 'under the wippen heel, by its top',
 }
 
 /** A contact as a note names it in passing. */
@@ -84,6 +95,8 @@ const CONTACT: Named<Contact> = {
   back_rail_cloth: 'back rail cloth',
   front_pin_in_the_mortise: 'front pin in the mortise',
   front_pin_on_the_wood: 'front pin on the wood',
+  capstan_on_the_heel: 'capstan on the heel',
+  heel_on_the_key: 'heel on the key',
 }
 
 /** A part as a fault names it. */
@@ -202,6 +215,12 @@ const refusal: Catalog['refusal'] = {
     `no top of the key stands ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'behind' : 'in front of'} the balance pin, where the temporary weight goes.`,
   from_a_refused_reading: ({ reading }) =>
     `the ${reading === 'down_weight' ? 'down weight' : reading === 'up_weight' ? 'up weight' : 'reading'} it is computed from is refused.`,
+  wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
+    `at the ${at} seat the key pushes the wippen assembly past its range, its heel lifted to the edge of what the model holds and still ${showPartDistance(heel_depth_mm)} in the key there, as a center pin set too low for its capstan would.`,
+  wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
+    `at the ${at} seat the wippen assembly does not reach the key: it hangs to the edge of its range, and degree by degree through that range its heel passes at its nearest ${showPartDistance(heel_clearance_mm)} from the capstan or the key's top, as a center pin set too high would.`,
+  wippen_in_the_key: ({ part, key_part, depth_mm }) =>
+    `the ${PART[part]} stands ${showPartDistance(depth_mm)} in the ${PART[key_part]}: a pose no action takes, where only the wippen heel meets the key.`,
 }
 
 /** The temporary weight a key friction weight stood on the key. */
@@ -259,6 +278,17 @@ const LIMIT_WHY: {
     key_height: () =>
       "the key would leave its balance pin first, the paper raising its balance punching past the pin's top",
     key_dip: () => 'the key would ride off its balance pin before the dip is that shallow',
+  },
+  wippen_past_its_range: {
+    key_height: () =>
+      'the wippen assembly the key carries would be pushed past its range first, the paper raising the capstan under its heel',
+    key_dip: () =>
+      "the wippen assembly the key carries would be pushed past its range at the bottom seat first, the key's back rising under its heel",
+  },
+  wippen_out_of_reach: {
+    key_height: () =>
+      'the wippen assembly the key carries would not reach the key, the capstan standing short of its heel',
+    key_dip: () => 'the wippen assembly the key carries would not reach the key',
   },
 }
 

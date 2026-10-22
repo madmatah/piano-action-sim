@@ -7,22 +7,22 @@ sheet.front_weight.value 29.63372383330132 0x403da23bb9a2b995
 sheet.front_weight.shown 29.6 0x403d99999999999a
 sheet.front_weight.unit g
 sheet.front_weight.trust indicative geometry
-sheet.front_weight.fingerprint statics/3
+sheet.front_weight.fingerprint statics/4
 sheet.key_weight_ratio.value 0.5646245438832338 0x3fe211677dcfeac0
 sheet.key_weight_ratio.shown 0.56 0x3fe1eb851eb851ec
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
-sheet.key_weight_ratio.fingerprint statics/3
+sheet.key_weight_ratio.fingerprint statics/4
 sheet.key_height.value 0.07340959487800769 0x3fb2caf8a136b1e8
 sheet.key_height.shown 0.07340959487800769 0x3fb2caf8a136b1e8
 sheet.key_height.unit m
 sheet.key_height.trust indicative geometry
-sheet.key_height.fingerprint statics/3
+sheet.key_height.fingerprint statics/4
 sheet.key_dip.value 0.0 0x0000000000000000
 sheet.key_dip.shown 0.0 0x0000000000000000
 sheet.key_dip.unit m
 sheet.key_dip.trust indicative geometry
-sheet.key_dip.fingerprint statics/3
+sheet.key_dip.fingerprint statics/4
 sheet.down_weight refused Walk(NoTravel)
 sheet.up_weight refused Walk(NoTravel)
 sheet.balance_weight refused From { reading: DownWeight }

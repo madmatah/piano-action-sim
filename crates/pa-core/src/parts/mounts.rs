@@ -35,9 +35,11 @@
 
 use super::frame::{FrameDesign, FrameRanges, KeyKind};
 use super::key::KeyRanges;
+use super::wippen_assembly::{WippenAssembly, WippenAssemblyMass, WippenAssemblyRanges};
 use super::KeyDesign;
 use crate::contact::{
-    ContactCode, ContactLaw, ContactPair, PairGeometry, Part, PartCode, PartId, Surface, ROW_MARGIN,
+    ContactCode, ContactLaw, ContactPair, PairGeometry, Part, PartCode, PartId, Rows, Surface,
+    ROW_MARGIN,
 };
 use crate::geometry::{Dir, Point};
 use crate::mechanism::{
@@ -59,6 +61,117 @@ pub struct Mounted {
     /// The key's freedom to lift off its balance punching, on a key free to
     /// ([`KeyMount::OnPunching`]); `None` on the jig and on a pivot.
     pub lift: Option<Lift>,
+    /// The wippen the key carries on its capstan, where it carries one.
+    pub wippen: Option<WippenOn>,
+    /// The same key on the same frame without its wippen, where it carries
+    /// one: what each seat of the key with its wippen starts from, and a
+    /// loading where the wippen fits nowhere
+    /// ([`crate::measure::seat::Seating::start`]). Its coordinates are the
+    /// key's, the first of this mount's, which carries the wippen's angle
+    /// after them.
+    pub key_alone: Option<Box<Mounted>>,
+}
+
+/// Which way the key moves through its stroke.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Motion {
+    /// Its front going down, its back and its capstan rising.
+    Down,
+    /// Its front coming up, its back and its capstan falling.
+    Up,
+}
+
+/// The wippen in a mount: the last body, turning on its center pin on the
+/// ground, and the two links that carry it on the key.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WippenOn {
+    /// Its body. Its frame is the wippen's own: origin at its center pin,
+    /// `x` toward the player at angle zero.
+    pub body: BodyId,
+    /// Its angle, positive lifting its heel.
+    pub angle: CoordId,
+    /// The two links' pairs, in the mechanism's order: the capstan on the
+    /// heel ([`ContactCode::CapstanOnTheHeel`]), then the heel on the key
+    /// ([`ContactCode::HeelOnTheKey`]). Both are declared before the balance
+    /// punching, which stays the last pair, so that they keep their places
+    /// in the key held on its punching.
+    pub links: [u16; 2],
+    /// How far its farthest drawn point stands from its center pin, meters:
+    /// how far a turn of a radian moves it at most.
+    pub reach: f64,
+}
+
+/// Which limit of its turn the wippen leans on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WippenLimit {
+    /// The upper: pushed past its range, its heel lifted to the edge of its
+    /// modeled world.
+    PushedPastItsRange,
+    /// The lower: out of the key's reach, its heel hanging to the other
+    /// edge.
+    OutOfReach,
+}
+
+/// A wippen to hang in a mount: where its center pin stands in the keybed's
+/// frame, its mass with the jack and the repetition lever at rest on it, the
+/// bound of its center's friction, newton-meters, and the places of its two
+/// links among the pairs the mount is given.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WippenHung {
+    /// Its center pin, in the keybed's frame.
+    pub center: Point,
+    /// Its mass and center of mass, in its frame.
+    pub mass: MassProps,
+    /// Its center's dry friction, newton-meters.
+    pub friction: f64,
+    /// The two links' places among the pairs: the capstan's, then the
+    /// key's top's.
+    pub links: [u16; 2],
+}
+
+/// The wippen's body and coordinate hung after `bodies` and `coords`, on its
+/// center pin on the ground, within [`WIPPEN_ANGLE_LIMIT`] either way; its
+/// reach measured off the parts of `parts` it carries
+/// ([`measure_the_reach`]).
+fn hang(
+    bodies: &mut Vec<Body>,
+    coords: &mut Vec<Coord>,
+    hung: WippenHung,
+    parts: &[Part],
+) -> WippenOn {
+    let (body, angle) = (BodyId(bodies.len()), CoordId(coords.len()));
+    bodies.push(Body {
+        parent: BodyId::GROUND,
+        joint: Joint::Revolute {
+            pivot: hung.center,
+            coord: angle,
+        },
+        mass: Some(hung.mass),
+    });
+    coords.push(
+        Coord::ANGLE
+            .limited(-WIPPEN_ANGLE_LIMIT, WIPPEN_ANGLE_LIMIT)
+            .with_friction(hung.friction),
+    );
+    WippenOn {
+        body,
+        angle,
+        links: hung.links,
+        reach: measure_the_reach(parts, body),
+    }
+}
+
+/// How far the farthest drawn point of the parts of `parts` on `body` stands
+/// from that body's origin, meters: a wippen's reach from its center pin.
+/// Read off the parts as given, which the mechanism keeps as they are.
+fn measure_the_reach(parts: &[Part], body: BodyId) -> f64 {
+    parts
+        .iter()
+        .filter(|part| part.body == body)
+        .flat_map(|part| part.silhouette())
+        .flat_map(|segment| segment.drawn(crate::geometry::DRAWN_HALVINGS))
+        .map(|point| (point.x * point.x + point.y * point.y).sqrt())
+        .fold(0.0, f64::max)
 }
 
 /// A key's freedom to lift off its balance punching.
@@ -102,6 +215,8 @@ pub fn jig(mass: Option<MassProps>) -> Result<Mounted, Problem> {
         key: BodyId(1),
         angle: CoordId(0),
         lift: None,
+        wippen: None,
+        key_alone: None,
     })
 }
 
@@ -136,7 +251,35 @@ impl KeyMount {
             Self::OnPunching => BodyId(2),
         }
     }
+
+    /// The body a wippen the key carries hangs as in this mount: the one
+    /// after the key's.
+    pub fn wippen_body(self) -> BodyId {
+        BodyId(self.key_body().0 + 1)
+    }
 }
+
+/// How far the wippen may turn either way from its frame, radians: 30°, the
+/// edge of its modeled world, as [`KEY_ANGLE_LIMIT`]'s 15° is the key's.
+///
+/// The key's limit carried through the capstan to the heel: the wippen
+/// turns by the key's turn times the capstan's arm from the balance pin
+/// over the heel's arm from the center pin, 117.6 mm over 61.2 mm on
+/// Hirschkorn's action, 1.92, and 138.5 mm over 65.9 mm on Reyburn's
+/// measurements 1, 2 and 6
+/// (`docs/research/A3-nomenclature-and-regulation.md` > Reyburn's ten
+/// measurements) [V, Reyburn, pp. 3, 5], 138.5 = 398 − 259.5, 2.10: about
+/// twice. Far past any wippen's stroke, as the key's
+/// limit is past its dip: Hirschkorn's turns from 1.5° (0.0267 rad) at the
+/// top seat to 6.0° at the bottom, and the limit stands more than five of
+/// those strokes past it. A wippen allowed further hangs nearly upright, its
+/// contact all but radial to its center pin, where it holds no torque. Past it, a
+/// center pin set too low for its capstan or too high to reach it, the
+/// static solve leans the wippen on its limit and refuses it, named by the
+/// side it leans on ([`Mounted::wippen_limit`]), at the seat the sheet
+/// refuses it at, and by how far past it the heel stands there
+/// ([`crate::measure::seat::WippenRefusal`]).
+pub const WIPPEN_ANGLE_LIMIT: f64 = core::f64::consts::FRAC_PI_6;
 
 /// How far the key may turn either way on its frame, radians: 15°, the edge
 /// of the modeled world. Far past any stroke (a key's dip turns it about
@@ -158,13 +301,26 @@ pub(crate) const NOMINAL_STEP: f64 = core::f64::consts::PI / 180.0;
 /// a degree times their arm from the pin, is a millimeter or two.
 pub(crate) const ATTITUDE_REFINEMENTS: u32 = 22;
 
+/// How many times at most [`wippen_lowered`] halves the degree in which the
+/// wippen's heel first touches the key: 52, a double's mantissa, past which
+/// the halving stands still. It halves until what is left of the degree
+/// moves the wippen's farthest drawn point less than the row margin: two
+/// halvings for the test wippen, reaching 0.126 m from its center pin, a
+/// degree there moving it 2.2 mm. The validation layer bounds no
+/// wippen's reach, its outlines being traced from a record; the cap ends the
+/// halving for any, and the start it leaves still clears the key, only
+/// further above where it first touches. The count is reported with the
+/// start ([`Lowered`]), and with the seat or the solve it starts.
+pub(crate) const LOWERING_HALVINGS: u32 = 52;
+
 /// The ratio of the golden section, `(√5 − 1) / 2`: the part of its bracket
 /// each step of [`ATTITUDE_REFINEMENTS`] keeps.
 const GOLDEN: f64 = 0.618_033_988_749_894_9;
 
-/// In how many pieces of the static solve's cap of steps the problem of a
-/// key free to lift may be solved, each going on from where the last
-/// stopped ([`Mounted::solve`]): four.
+/// In how many pieces of the static solve's cap of steps a key's problem may
+/// be solved, each going on from where the last stopped ([`Mounted::solve`]):
+/// four, for the key held on its balance punching as for the key free to
+/// lift.
 ///
 /// A key turning on a closed stop moves its farthest point a row margin a
 /// step at most, every step bounded by the stop's margin, and a key lifting
@@ -174,9 +330,14 @@ const GOLDEN: f64 = 0.618_033_988_749_894_9;
 /// punching, its front pin's tip against the wall of its slot, solved from
 /// where it is lowered onto its frame, takes three quarters of a cap to come
 /// to rest with every row that carries it closed
-/// (`a_load_on_a_row_standing_open_is_no_rest`). Four caps hold either
-/// with room; a seat of the corpus takes a few steps.
-pub const FREE_PIECES: u32 = 4;
+/// (`a_load_on_a_row_standing_open_is_no_rest`). A key carrying a wippen
+/// keeps the link to its heel within the row margin through any turn, so
+/// every step moves the key and the wippen together by a margin of their
+/// farthest points at most, about 1.7 mrad of the key's turn on the test
+/// bench: a turn of 0.13 to 0.16 rad held on its punching, a loading from
+/// the level pose or an increment across the stroke, outruns one cap. Four
+/// caps hold each with room; a seat of the corpus takes a few steps.
+pub const SOLVE_PIECES: u32 = 4;
 
 impl Mounted {
     /// The key level, and on its balance punching where it is free to lift:
@@ -230,6 +391,170 @@ impl Mounted {
         }
     }
 
+    /// How the wippen's angle follows the key's at `q` through the link that
+    /// carries it, radians of the wippen per radian of the key: through a
+    /// link row closed within `within`, the wippen kept on it,
+    /// `r = −(∂g/∂θk)/(∂g/∂θw)`, `g` the row's gap. Where several link rows
+    /// are that close, `motion` picks the one that carries the wippen:
+    /// going down, the key's back rising, the one that lifts it most, the
+    /// largest `|r|`; coming up, the one it stays on, that drops least, the
+    /// smallest. Nothing where no link row is that close, the key read
+    /// alone, and on a mount that carries no wippen.
+    ///
+    /// What the closed forms and the preparation of a seat read the wippen
+    /// by: its generalized force folded onto the key's angle, `Q_k + r·Q_w`
+    /// ([`Self::folded`]).
+    pub fn wippen_follows(&self, q: &[f64], motion: Motion, within: f64) -> f64 {
+        let Some(wippen) = &self.wippen else {
+            return 0.0;
+        };
+        let m = &self.mechanism;
+        let mut rows = crate::contact::Rows::new();
+        m.rows(&m.pose(q), within.max(0.0), &mut rows);
+        let follows = (0..rows.len())
+            .filter(|&i| {
+                wippen.links.contains(&rows.rows()[i].pair) && rows.rows()[i].gap <= within
+            })
+            .filter_map(|i| {
+                let (by_key, by_wippen) =
+                    (rows.grad(i)[self.angle.0], rows.grad(i)[wippen.angle.0]);
+                (by_wippen != 0.0).then(|| -by_key / by_wippen)
+            });
+        let pick = |a: f64, b: f64| match motion {
+            Motion::Down if b.abs() > a.abs() => b,
+            Motion::Up if b.abs() < a.abs() => b,
+            _ => a,
+        };
+        follows.reduce(pick).unwrap_or(0.0)
+    }
+
+    /// The generalized force `forces` puts on the key's angle with the
+    /// wippen's folded onto it by `follows` ([`Self::wippen_follows`]):
+    /// `Q_k + r·Q_w`; the key's alone on a mount that carries no wippen.
+    pub fn folded(&self, forces: &[f64], follows: f64) -> f64 {
+        let on_the_key = forces[self.angle.0];
+        match &self.wippen {
+            Some(wippen) => on_the_key + follows * forces[wippen.angle.0],
+            None => on_the_key,
+        }
+    }
+
+    /// Whether `refusal` leans the wippen on a limit of its turn, and on
+    /// which: `None` for any other refusal, and on a mount that carries no
+    /// wippen.
+    pub fn wippen_limit(&self, refusal: &Refusal) -> Option<WippenLimit> {
+        let wippen = self.wippen.as_ref()?;
+        let Refusal::NoEquilibrium { on } = refusal else {
+            return None;
+        };
+        on.iter().find_map(|holder| match *holder {
+            Holder::Limit { coord, upper } if coord == wippen.angle => Some(if upper {
+                WippenLimit::PushedPastItsRange
+            } else {
+                WippenLimit::OutOfReach
+            }),
+            _ => None,
+        })
+    }
+
+    /// How far past `limit` the wippen's heel stands with the key at `q`,
+    /// meters: a least distance between the drawn outlines of its heel and
+    /// its heel cloth and those of the key's parts, not a reading along the
+    /// capstan's axis, and no correction of the capstan or of the center pin.
+    /// Nothing on a mount that carries no wippen.
+    ///
+    /// Pushed past its range, how deep they stand in the key's parts with
+    /// the wippen turned to the top of its range: by the drawn outlines
+    /// where they read more than nothing; else by the links' rows, which
+    /// read the arcs themselves ([`Self::measure_the_links_overlap`]). The
+    /// drawn outlines take an arc as eight chords, which stand inside a
+    /// convex arc of material by its sag, R(1 − cos(θ/16)) for an arc of
+    /// radius R spanning θ: 21.8 µm on the test heel's cloth. Over a band of
+    /// settings the drawn outlines then clear the key while the links stand
+    /// the heel's cloth in it; [`wippen_lowered`] refuses the wippen there
+    /// by the links, and this reads how deep they stand it: more than
+    /// nothing, and no more than the sags of the convex arcs of material
+    /// that meet there added together, the heel cloth's and, on a domed
+    /// capstan, the dome's, which the tests pin on a flat capstan, the heel
+    /// cloth's sag alone. Everywhere else the reading is the drawn one, bit
+    /// for bit. Where the drawn outlines first stand in the key, the reading
+    /// falls from the links' to the drawn one, which can be less: it does
+    /// not grow monotonically as a setting moves further past.
+    ///
+    /// Out of reach, how near they come to the key's parts, the capstan and
+    /// the key's top, degree by degree through the wippen's range: the least
+    /// clearance at the angles the bench decides reach at, from the top of
+    /// its range down ([`step_down_a_whole_degree`], [`wippen_lowered`]),
+    /// carried across them ([`crate::contact::Outlines::clearance`]).
+    /// Where the bench finds the wippen reaching, some one of those angles
+    /// stands the heel in the key, and its clearance is nothing; moving the
+    /// center pin, the heel or the capstan by a length moves the heel against
+    /// the key's parts by no more than that length, so the reading is no more
+    /// than how far a setting moved from one at which the wippen reached, and
+    /// falls to nothing as the setting comes back there. Between two of those
+    /// angles the heel turns from the nearer by at most the wippen's reach,
+    /// its farthest drawn point from the center pin ([`WippenOn::reach`]),
+    /// times half a degree, so the reading stands above the nearest the heel
+    /// comes over the whole turn by no more than that. Both bounds hold away from a
+    /// cut through a key part opening toward the heel, across whose mouth the
+    /// distance outside the key is read to the part's own edge; no key the
+    /// bench ships has one there. The angles and their count are the
+    /// decision's, and the least is computed exactly at each, so nothing
+    /// converges and nothing is approximated.
+    pub fn measure_the_heel_past(&self, q: &[f64], limit: WippenLimit) -> f64 {
+        let Some(wippen) = &self.wippen else {
+            return 0.0;
+        };
+        let m = &self.mechanism;
+        let (low, high) = m.coords()[wippen.angle.0].limits;
+        let at = |angle: f64| {
+            let mut at = q.to_vec();
+            at[wippen.angle.0] = angle;
+            at
+        };
+        let (heel, key) = find_the_heel_and_the_key(self, wippen);
+        let key = m.outlines(&m.pose(q), &key);
+        let heel_at = |angle: f64| m.outlines(&m.pose(&at(angle)), &heel);
+        match limit {
+            WippenLimit::PushedPastItsRange => {
+                let drawn = heel_at(high).overlap(&key);
+                if drawn > 0.0 {
+                    drawn
+                } else {
+                    self.measure_the_links_overlap(&at(high))
+                }
+            }
+            WippenLimit::OutOfReach => {
+                let (mut angle, mut least) = (high, f64::INFINITY);
+                loop {
+                    least = heel_at(angle).clearance_below(&key, least);
+                    if angle <= low || least <= 0.0 {
+                        return least;
+                    }
+                    angle = step_down_a_whole_degree(angle, low);
+                }
+            }
+        }
+    }
+
+    /// How deep the wippen's heel and its cloth stand in the key at `q` by
+    /// the contacts the static solve reads, meters: the deepest overlap
+    /// among the rows of its two links within the row margin, read alone
+    /// as the whole mechanism's rows read them, which read the heel's arcs
+    /// themselves and not their drawn chords. Nothing where none overlaps,
+    /// and on a mount that carries no wippen.
+    pub fn measure_the_links_overlap(&self, q: &[f64]) -> f64 {
+        let Some(wippen) = &self.wippen else {
+            return 0.0;
+        };
+        let m = &self.mechanism;
+        let mut rows = Rows::new();
+        m.read_the_rows_of(&m.pose(q), &wippen.links, ROW_MARGIN, &mut rows);
+        rows.rows()
+            .iter()
+            .fold(0.0_f64, |deepest, row| deepest.max(-row.gap))
+    }
+
     /// This key with its bushings' friction bounded by `bound` newton-meters
     /// instead, everything else kept bit for bit; or why not
     /// ([`Mechanism::with_friction`]).
@@ -271,8 +596,9 @@ impl Mounted {
     /// of its frame, a punching's felt and papers whole, so that a key sunk
     /// right through a felt thicker than itself, which leaves the punching's
     /// center clear, is not one. There the refusal of the key on its punching
-    /// stands. It is solved in up to [`FREE_PIECES`] pieces of the static
-    /// solve's cap of steps, each going on from where the last stopped.
+    /// stands. The key held on its punching and the key free to lift are each
+    /// solved in up to [`SOLVE_PIECES`] pieces of the static solve's cap of
+    /// steps, each going on from where the last stopped.
     ///
     /// A key whose balance punching stands above its balance pin's top has
     /// no pose on its pin that clears the punching: it is refused as leaning
@@ -299,6 +625,12 @@ impl Mounted {
     /// equilibrium's; its friction, which no solve can set while it is held,
     /// is the caller's. `held` does not hold the slide: the slide is what
     /// tells a key on its punching from one lifted off it.
+    ///
+    /// A key carrying a wippen starts from a pose the start of a solve gives
+    /// ([`crate::measure::seat::Seating::start`]), or from a state one has
+    /// reached, its heel no deeper in the key than the row margin: a debug
+    /// build says so loudly where a caller skipped the rule, rather than
+    /// solve with the wippen wherever the pose left it.
     pub fn solve_held(
         &self,
         statics: &mut Statics,
@@ -307,6 +639,12 @@ impl Mounted {
         held: &[Prescribed],
         friction: Friction,
     ) -> Result<Equilibrium, Refusal> {
+        debug_assert!(
+            heel_in_the_key(self, from) <= ROW_MARGIN,
+            "a solve started with the wippen's heel {} m in the key, past the row margin: \
+             every start of a key carrying its wippen goes by the start rule",
+            heel_in_the_key(self, from)
+        );
         if let Some(lift) = &self.lift {
             if self.leaves_its_pin().is_some_and(|room| room < 0.0) {
                 return Err(Refusal::NoEquilibrium {
@@ -324,7 +662,7 @@ impl Mounted {
                         value: lift.on_punching,
                     }];
                     on_it.extend_from_slice(held);
-                    match statics.solve(turning, from, loads, &on_it, friction) {
+                    match in_pieces(statics, turning, from, loads, &on_it, friction) {
                         Ok(eq) if eq.reactions[c] >= 0.0 => return Ok(eq),
                         Ok(_) => {}
                         Err(Refusal::NoEquilibrium { on })
@@ -342,10 +680,9 @@ impl Mounted {
         self.solve_free(statics, from, loads, held, friction)
     }
 
-    /// The full problem, the key free to lift, from `from`, `held` prescribed:
-    /// [`Statics::solve`] on the mechanism, going on from where it stopped at
-    /// its cap, up to [`FREE_PIECES`] pieces in all, as one increment along
-    /// its path; its report one increment's, its steps all the pieces'.
+    /// The full problem, the key free to lift, from `from`, `held`
+    /// prescribed: [`Statics::solve`] on the mechanism, in pieces
+    /// ([`in_pieces`]).
     fn solve_free(
         &self,
         statics: &mut Statics,
@@ -354,33 +691,47 @@ impl Mounted {
         held: &[Prescribed],
         friction: Friction,
     ) -> Result<Equilibrium, Refusal> {
-        let mut start = from.to_vec();
-        let mut before = SolveReport::NOTHING;
-        for piece in 1..=FREE_PIECES {
-            match statics.solve(&self.mechanism, &start, loads, held, friction) {
-                Err(Refusal::NotConverged { .. }) if piece < FREE_PIECES => {
-                    let (at, report) = statics.stopped();
-                    start = at.to_vec();
-                    before = before.continued(report);
-                }
-                Ok(mut eq) => {
-                    eq.report = before.continued(eq.report);
-                    return Ok(eq);
-                }
-                Err(Refusal::NotConverged {
-                    iterations,
-                    residual,
-                }) => {
-                    return Err(Refusal::NotConverged {
-                        iterations: before.iterations + iterations,
-                        residual,
-                    });
-                }
-                Err(refusal) => return Err(refusal),
-            }
-        }
-        unreachable!("the last piece returns")
+        in_pieces(statics, &self.mechanism, from, loads, held, friction)
     }
+}
+
+/// [`Statics::solve`] on `m` from `from`, going on from where it stopped at
+/// its cap, up to [`SOLVE_PIECES`] pieces in all, as one increment along its
+/// path; its report one increment's, its steps all the pieces'.
+fn in_pieces(
+    statics: &mut Statics,
+    m: &Mechanism,
+    from: &[f64],
+    loads: &[PointLoad],
+    held: &[Prescribed],
+    friction: Friction,
+) -> Result<Equilibrium, Refusal> {
+    let mut start = from.to_vec();
+    let mut before = SolveReport::NOTHING;
+    for piece in 1..=SOLVE_PIECES {
+        match statics.solve(m, &start, loads, held, friction) {
+            Err(Refusal::NotConverged { .. }) if piece < SOLVE_PIECES => {
+                let (at, report) = statics.stopped();
+                start = at.to_vec();
+                before = before.continued(report);
+            }
+            Ok(mut eq) => {
+                eq.report = before.continued(eq.report);
+                return Ok(eq);
+            }
+            Err(Refusal::NotConverged {
+                iterations,
+                residual,
+            }) => {
+                return Err(Refusal::NotConverged {
+                    iterations: before.iterations + iterations,
+                    residual,
+                });
+            }
+            Err(refusal) => return Err(refusal),
+        }
+    }
+    unreachable!("the last piece returns")
 }
 
 /// What each contact row carries in one equilibrium of a mounted key: the
@@ -459,7 +810,10 @@ impl Mounted {
 }
 
 /// The key's nominal pose on its frame, where a static solve that seats it
-/// by rule starts.
+/// by rule starts. It places the key only: a wippen the key carries stays
+/// at its frame's angle, for the start of the solve to place
+/// ([`crate::measure::seat::Seating::start`]), and the key's coordinates
+/// are the same bits with it and without it.
 ///
 /// On its balance punching, level, wherever its drawn parts overlap its
 /// frame there by no more than the row margin; otherwise the nearest
@@ -506,6 +860,187 @@ pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
     }
 }
 
+/// The wippen the key carries lowered onto the key ([`wippen_lowered`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Lowered {
+    /// The coordinates: the key's as given, the wippen's angle where it
+    /// was lowered to.
+    pub q: Vec<f64>,
+    /// How many times the degree it first touches in was halved, at most
+    /// `LOWERING_HALVINGS`: nothing where it clears the key all the way
+    /// down, and on a mount that carries no wippen.
+    pub halvings: u32,
+}
+
+/// `q` with the wippen the key carries lowered onto the key where the key
+/// stands, with the halvings it took: from the top of its range down, the
+/// angle at which its heel or its heel cloth first touches the key's parts,
+/// found a degree at a time (`NOMINAL_STEP`) and then by halving the degree
+/// it first touches in until what is left of it moves the wippen's farthest
+/// drawn point less than the row margin, so that it starts clear, within a
+/// margin of where it first touches; at the bottom of its range where they
+/// clear the key all the way down, out of the key's reach. `q` as it is on
+/// a mount that carries no wippen. `None` where the heel or its cloth
+/// stands in the key even at the top of the wippen's range: where the
+/// wippen fits nowhere with the key standing there.
+///
+/// At the top of its range the heel is read twice: by its drawn outlines,
+/// as every other angle is, and, where they clear the key, by the links'
+/// rows ([`Mounted::measure_the_links_overlap`]). The drawn outlines take
+/// a convex arc as eight chords standing inside it by its sag, 21.8 µm on
+/// the test heel's cloth, and the static solve leans on the contacts,
+/// which read the arc itself: a wippen the drawn outlines alone let start
+/// at the top of its range, its cloth standing in the key, would be pushed
+/// past its range by the solve, with nothing drawn to say how far.
+///
+/// A degree at a time, and not by halving the whole range: a heel lowered
+/// far enough passes through a key part and out below it, clear again, and
+/// only a heel that clears at every degree above clears the key all the way
+/// down. A degree moves the heel by no more than the wippen's reach, its
+/// farthest drawn point from the center pin ([`WippenOn::reach`]), times
+/// that degree: about 2.2 mm on the test wippen's 126 mm, less than the
+/// heel's own height, so no key part slips between two degrees unread.
+///
+/// That is the decision's resolution: a heel that grazes a key part
+/// between two whole degrees, by less than the wippen's reach times half a
+/// degree, reads clear, and the wippen out of the key's reach; so does one
+/// whose cloth's arc grazes a key part at a whole degree by less than the
+/// drawn chords stand inside the arcs that meet there, its own sag and a
+/// domed capstan's added to it, below the top of its range, where only the
+/// drawn outlines are read. Its nearest approach is read at the same angles
+/// on the same outlines ([`Mounted::measure_the_heel_past`]), so the reading
+/// and the decision agree.
+///
+/// Only the heel and its cloth are read, the parts the links carry the
+/// wippen by: any other part of the wippen standing in the key is the
+/// seat's to name ([`wippen_part_in_the_key`]). The key is never moved for
+/// its wippen: a technician puts the action on a key that stands where it
+/// stands.
+pub fn wippen_lowered(mounted: &Mounted, q: &[f64]) -> Option<Lowered> {
+    let Some(wippen) = &mounted.wippen else {
+        return Some(Lowered {
+            q: q.to_vec(),
+            halvings: 0,
+        });
+    };
+    let m = &mounted.mechanism;
+    let (low, high) = m.coords()[wippen.angle.0].limits;
+    let at = |angle: f64| {
+        let mut at = q.to_vec();
+        at[wippen.angle.0] = angle;
+        at
+    };
+    let (heel, key) = find_the_heel_and_the_key(mounted, wippen);
+    let key = m.outlines(&m.pose(q), &key);
+    let clear = |angle: f64| m.outlines(&m.pose(&at(angle)), &heel).overlap(&key) <= 0.0;
+    if !clear(high) || mounted.measure_the_links_overlap(&at(high)) > 0.0 {
+        return None;
+    }
+    let (mut above, mut below) = (high, high);
+    while clear(below) {
+        if below <= low {
+            return Some(Lowered {
+                q: at(low),
+                halvings: 0,
+            });
+        }
+        above = below;
+        below = step_down_a_whole_degree(below, low);
+    }
+    let mut halvings = 0;
+    while (above - below) * wippen.reach > ROW_MARGIN && halvings < LOWERING_HALVINGS {
+        let middle = 0.5 * (above + below);
+        if clear(middle) {
+            above = middle;
+        } else {
+            below = middle;
+        }
+        halvings += 1;
+    }
+    Some(Lowered {
+        q: at(above),
+        halvings,
+    })
+}
+
+/// The angle a whole degree (`NOMINAL_STEP`) below `angle`, or `low`, the
+/// bottom of the wippen's range, where that would pass it: the angles at
+/// which the bench decides whether the wippen reaches the key, from the top
+/// of its range down ([`wippen_lowered`]), and at which its heel's nearest
+/// approach to the key is read out of reach
+/// ([`Mounted::measure_the_heel_past`]), one step for both so that the
+/// reading and the decision read the same angles to the bit.
+pub fn step_down_a_whole_degree(angle: f64, low: f64) -> f64 {
+    (angle - NOMINAL_STEP).max(low)
+}
+
+/// The wippen's heel and its heel cloth, the parts the links carry it by,
+/// and the key's parts.
+fn find_the_heel_and_the_key(mounted: &Mounted, wippen: &WippenOn) -> (Vec<PartId>, Vec<PartId>) {
+    let heel = parts_where(mounted, &|p| {
+        p.body == wippen.body && matches!(p.code, PartCode::WippenHeel | PartCode::WippenHeelCloth)
+    });
+    let key = parts_where(mounted, &|p| p.body == mounted.key);
+    (heel, key)
+}
+
+/// How deep the wippen's heel and its heel cloth stand in the key's parts
+/// at `q`, meters, read off their outlines: the parts the links carry the
+/// wippen by, read whole, through the links and outside their ranges.
+/// Nothing on a mount that carries no wippen.
+pub fn heel_in_the_key(mounted: &Mounted, q: &[f64]) -> f64 {
+    let Some(wippen) = &mounted.wippen else {
+        return 0.0;
+    };
+    let (heel, key) = find_the_heel_and_the_key(mounted, wippen);
+    let m = &mounted.mechanism;
+    m.parts_overlap(&m.pose(q), &heel, &key)
+}
+
+/// A part of the wippen standing in a part of the key.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PartInTheKey {
+    /// The wippen's part.
+    pub part: PartCode,
+    /// The key's part it stands in.
+    pub key_part: PartCode,
+    /// How deep, meters.
+    pub depth: f64,
+}
+
+/// The deepest that one part of the wippen stands in one part of the key at
+/// `q`, which two, and how deep, read off their outlines, every part of the
+/// wippen against every part of the key, through the links and outside
+/// their ranges; the first pair in the parts' order among equals. `None`
+/// where none stands in any, and on a mount that carries no wippen. Each
+/// part's outline is drawn once, and read against every part of the other
+/// side.
+pub fn wippen_part_in_the_key(mounted: &Mounted, q: &[f64]) -> Option<PartInTheKey> {
+    let wippen = mounted.wippen.as_ref()?;
+    let m = &mounted.mechanism;
+    let pose = m.pose(q);
+    let drawn = |ids: Vec<PartId>| -> Vec<(PartCode, crate::contact::Outlines)> {
+        ids.into_iter()
+            .map(|id| (m.parts()[id.index()].code, m.outlines(&pose, &[id])))
+            .collect()
+    };
+    let key = drawn(parts_where(mounted, &|p| p.body == mounted.key));
+    let mut deepest: Option<PartInTheKey> = None;
+    for (part, outlines) in drawn(parts_where(mounted, &|p| p.body == wippen.body)) {
+        for (key_part, key_outlines) in &key {
+            let depth = outlines.overlap(key_outlines);
+            if depth > 0.0 && deepest.is_none_or(|d| depth > d.depth) {
+                deepest = Some(PartInTheKey {
+                    part,
+                    key_part: *key_part,
+                    depth,
+                });
+            }
+        }
+    }
+    deepest
+}
+
 /// The key lowered onto its frame from above, where it is free to lift: of
 /// the attitudes [`nominal_pose`] scans, or narrowed between two of them by
 /// golden-section steps where none clears, the one at which it stands clear
@@ -535,7 +1070,7 @@ pub fn nominal_pose(mounted: &Mounted) -> Vec<f64> {
 /// onto its frame at the top of the slide's range, a whole degree from
 /// where the key rides below it, from which the solve carries the key off
 /// its pin. A technician lowers such a key onto its frame, and it lands on
-/// what stands highest.
+/// what stands highest. It places the key only, as [`nominal_pose`] does.
 pub fn lowered_onto_its_frame(mounted: &Mounted) -> Option<Vec<f64>> {
     let lift = mounted.lift.as_ref()?;
     let (key, frame) = key_and_frame(mounted);
@@ -548,7 +1083,7 @@ pub fn lowered_onto_its_frame(mounted: &Mounted) -> Option<Vec<f64>> {
 /// keybed.
 fn sunk_in_its_frame(mounted: &Mounted, q: &[f64]) -> f64 {
     let (key, frame) = key_and_frame(mounted);
-    overlap_at(&mounted.mechanism, &key, &frame, q)
+    overlap_at(mounted, &mounted.mechanism, &key, &frame, q)
 }
 
 /// How deep the key's drawn parts stand in its frame's at `q`, meters, read
@@ -561,7 +1096,7 @@ fn sunk_in_its_frame(mounted: &Mounted, q: &[f64]) -> f64 {
 /// row.
 pub fn overlap_on_its_frame(mounted: &Mounted, q: &[f64]) -> f64 {
     let (key, rails) = key_and_rails(mounted);
-    overlap_at(&mounted.mechanism, &key, &rails, q)
+    overlap_at(mounted, &mounted.mechanism, &key, &rails, q)
 }
 
 /// The parts of `mounted` that `keep` keeps, in their order.
@@ -585,20 +1120,36 @@ fn key_and_rails(mounted: &Mounted) -> (Vec<PartId>, Vec<PartId>) {
 
 /// The parts of `mounted`'s key, and every part of its frame but the balance
 /// rail pin, which stands in its balance hole and its slot, where no contact
-/// reads it.
+/// reads it: the parts on the ground, the center pin a wippen turns on
+/// apart, which is the action's.
 fn key_and_frame(mounted: &Mounted) -> (Vec<PartId>, Vec<PartId>) {
     let key = parts_where(mounted, &|p| p.body == mounted.key);
     let frame = parts_where(mounted, &|p| {
-        p.body != mounted.key && p.code != PartCode::BalanceRailPin
+        p.body == BodyId::GROUND
+            && !matches!(p.code, PartCode::BalanceRailPin | PartCode::CenterPin)
     });
     (key, frame)
 }
 
-/// How deep the drawn parts stand in one another at `q`, read on `m`: what
-/// its pairs read, the key in its rails, and how far the key's outline
-/// reaches below the keybed, the ground's level zero.
-fn overlap_at(m: &Mechanism, key: &[PartId], rails: &[PartId], q: &[f64]) -> f64 {
+/// How deep the drawn parts of the key and its frame stand in one another at
+/// `q`, read on `m`, `mounted`'s mechanism or the key held on its punching:
+/// what its pairs read, the links to a wippen apart, the key in its rails,
+/// and how far the key's outline reaches below the keybed, the ground's
+/// level zero.
+fn overlap_at(
+    mounted: &Mounted,
+    m: &Mechanism,
+    key: &[PartId],
+    rails: &[PartId],
+    q: &[f64],
+) -> f64 {
     let pose = m.pose(q);
+    let links = mounted.wippen.as_ref().map_or(&[][..], |w| &w.links[..]);
+    let pairs = (0..m.pairs().len())
+        .map(|p| u16::try_from(p).expect("fewer than 65 536 pairs"))
+        .filter(|p| !links.contains(p))
+        .map(|p| m.pair_overlap(&pose, p))
+        .fold(0.0, f64::max);
     let below = key
         .iter()
         .flat_map(|id| {
@@ -609,9 +1160,7 @@ fn overlap_at(m: &Mechanism, key: &[PartId], rails: &[PartId], q: &[f64]) -> f64
                 .map(move |seg| -placement.world(seg.start()).y)
         })
         .fold(0.0, f64::max);
-    m.overlap(&pose)
-        .max(m.parts_overlap(&pose, key, rails))
-        .max(below)
+    pairs.max(m.parts_overlap(&pose, key, rails)).max(below)
 }
 
 /// The attitude nearest `level` at which the drawn parts overlap by no more
@@ -625,7 +1174,7 @@ fn attitude_of_least_overlap(mounted: &Mounted, m: &Mechanism, level: &[f64]) ->
         q[mounted.angle.0] = angle;
         q
     };
-    let overlap = |angle: f64| overlap_at(m, &key, &rails, &at(angle));
+    let overlap = |angle: f64| overlap_at(mounted, m, &key, &rails, &at(angle));
     let mut least = (0.0, overlap(0.0));
     let steps = (hi.min(-lo) / NOMINAL_STEP) as i32;
     'scan: for k in 1..=steps {
@@ -686,7 +1235,7 @@ fn lowered(
         q[lift.coord.0] = h;
         q
     };
-    let overlap = |q: &[f64]| overlap_at(m, key, frame, q);
+    let overlap = |q: &[f64]| overlap_at(mounted, m, key, frame, q);
     let clear = |q: &[f64]| overlap(q) <= within;
     // The least lift that clears at `angle`, to within the row margin, the
     // key clearing its frame at the slide's upper limit.
@@ -771,16 +1320,18 @@ fn lowered(
 /// bound `friction` in newton-meters, acting on it.
 ///
 /// `parts` are the frame's on the ground and the key's on body 1, as
-/// [`super::FrameDesign::parts`] and [`super::KeyDesign::parts`] build them;
-/// `pairs` the contacts between them ([`key_on_frame`]). The key bears at its
-/// balance pin, on the underside, which is where every key the bench builds
-/// bears.
+/// [`super::FrameDesign::parts`] and [`super::KeyDesign::parts`] build them,
+/// and a wippen's on body 2 where `wippen` hangs one there; `pairs` the
+/// contacts between them ([`key_on_frame`]), and the wippen's links where
+/// it has one. The key bears at its balance pin, on the underside, which is
+/// where every key the bench builds bears.
 pub fn pivot(
     mass: Option<MassProps>,
     bearing: Point,
     friction: f64,
     parts: Vec<Part>,
     pairs: Vec<ContactPair>,
+    wippen: Option<WippenHung>,
 ) -> Result<Mounted, Problem> {
     let key = Body {
         parent: BodyId::GROUND,
@@ -793,12 +1344,16 @@ pub fn pivot(
     let angle = Coord::ANGLE
         .limited(-KEY_ANGLE_LIMIT, KEY_ANGLE_LIMIT)
         .with_friction(friction);
+    let (mut bodies, mut coords) = (vec![Body::GROUND, key], vec![angle]);
+    let wippen = wippen.map(|hung| hang(&mut bodies, &mut coords, hung, &parts));
+    let mechanism = Mechanism::new(bodies, coords)?.with_contacts(parts, pairs)?;
     Ok(Mounted {
-        mechanism: Mechanism::new(vec![Body::GROUND, key], vec![angle])?
-            .with_contacts(parts, pairs)?,
+        mechanism,
         key: BodyId(1),
         angle: CoordId(0),
         lift: None,
+        wippen,
+        key_alone: None,
     })
 }
 
@@ -811,10 +1366,11 @@ pub fn pivot(
 /// angle bounded by [`KEY_ANGLE_LIMIT`] either way, its bushings' dry
 /// friction, a torque bound `friction` in newton-meters, acting on it.
 ///
-/// `parts` are the frame's on the ground and the key's on body 2; `pairs`
-/// the key's contacts with its frame but the punching's ([`key_on_frame`]),
-/// and `punching` the balance punching's ([`balance_punching`]), declared
-/// last. `bearing` is the punching's drawn top: the key stands on its
+/// `parts` are the frame's on the ground and the key's on body 2, and a
+/// wippen's on body 3 where `wippen` hangs one there; `pairs` the key's
+/// contacts with its frame but the punching's ([`key_on_frame`]), and the
+/// wippen's links where it has one, and `punching` the balance punching's
+/// ([`balance_punching`]), declared last. `bearing` is the punching's drawn top: the key stands on its
 /// punching with the slide there. `pin_top` is where the key leaves its
 /// balance pin: the slide's height at which the key's balance hole, on the
 /// pin's axis at the key frame's origin, clears the pin's drawn top
@@ -836,6 +1392,7 @@ pub fn on_punching(
     parts: Vec<Part>,
     pairs: Vec<ContactPair>,
     punching: ContactPair,
+    wippen: Option<WippenHung>,
 ) -> Result<Mounted, Problem> {
     let slide = Body {
         parent: BodyId::GROUND,
@@ -854,13 +1411,14 @@ pub fn on_punching(
         },
         mass,
     };
-    let bodies = vec![Body::GROUND, slide, key];
-    let coords = vec![
+    let mut bodies = vec![Body::GROUND, slide, key];
+    let mut coords = vec![
         Coord::LENGTH.limited(0.0, pin_top),
         Coord::ANGLE
             .limited(-KEY_ANGLE_LIMIT, KEY_ANGLE_LIMIT)
             .with_friction(friction),
     ];
+    let wippen = wippen.map(|hung| hang(&mut bodies, &mut coords, hung, &parts));
     let others = pairs.clone();
     let mut all = pairs;
     all.push(punching);
@@ -886,6 +1444,8 @@ pub fn on_punching(
             pair,
             turning,
         }),
+        wippen,
+        key_alone: None,
     })
 }
 
@@ -908,20 +1468,27 @@ pub struct OnItsFrame {
     /// The key front's top, in the key's frame: where key height and dip are
     /// read.
     pub front_top: Point,
+    /// What the wippen's parts declare, where the key carries one.
+    pub wippen: Option<WippenAssemblyRanges>,
 }
 
 /// `key` on `frame` in `mount`, its key standing on the row of pins of
 /// `kind`, the papers its punchings hold drawn on them; the key's mass
 /// `mass`, `None` for a key nobody has weighed; its bushings' friction a
-/// torque bound of `friction` newton-meters.
+/// torque bound of `friction` newton-meters; carrying `wippen` on its
+/// capstan, with what is known of its mass, where it carries one.
 ///
 /// The one place a key is put on its frame for a procedure to read, so that
 /// the bench's readings and the regulation solve that lays its papers read
 /// the same mechanism, part for part and bit for bit. The frame's parts come
-/// first, on the ground, then the key's, on its mount's body. The key turns
-/// about its own balance pin, on its row: the natural's at the origin of the
-/// keybed's frame, the sharp's the row's offset behind it, where the frame
-/// draws that pin and its punching.
+/// first, on the ground, then the key's, on its mount's body, then the
+/// wippen's, on the body after the key's, and its center pin on the ground.
+/// The key turns about its own balance pin, on its row: the natural's at the
+/// origin of the keybed's frame, the sharp's the row's offset behind it,
+/// where the frame draws that pin and its punching. The wippen turns on its
+/// center pin, and rests on the key through its two links, the key on side
+/// A of both, declared after the key's contacts with its frame and before
+/// its balance punching ([`wippen_links`]).
 pub fn on_its_frame(
     mount: KeyMount,
     key: &KeyDesign,
@@ -929,17 +1496,39 @@ pub fn on_its_frame(
     kind: KeyKind,
     mass: Option<MassProps>,
     friction: f64,
+    wippen: Option<(&WippenAssembly, &WippenAssemblyMass)>,
 ) -> Result<OnItsFrame, Problem> {
     let mut parts = Vec::new();
     let frame_ranges = frame.parts(key, kind, &mut parts);
     let key_ranges = key.parts(mount.key_body(), &mut parts);
     let capstan = key_ranges.capstan_contact.point(&parts);
     let front_top = key_ranges.key_front_top.point(&parts);
-    let pairs = key_on_frame(&key_ranges, &frame_ranges);
+    let mut pairs = key_on_frame(&key_ranges, &frame_ranges);
+    let (wippen_ranges, hung) = match wippen {
+        Some((assembly, wippen_mass)) => {
+            let ranges = assembly.parts(mount.wippen_body(), BodyId::GROUND, &mut parts);
+            let first = u16::try_from(pairs.len()).expect("fewer than 65 536 pairs");
+            pairs.extend(wippen_links(&key_ranges, &ranges));
+            let hung = WippenHung {
+                center: assembly.center,
+                mass: wippen_mass.props(assembly),
+                friction: assembly.friction.bound_n_m,
+                links: [first, first + 1],
+            };
+            (Some(ranges), Some(hung))
+        }
+        None => (None, None),
+    };
     let bearing = frame.balance_bearing_height();
     let pin = frame.sections.balance.pin_x(0.0, kind);
-    let mounted = match mount {
-        KeyMount::Pivot => pivot(mass, Point::new(pin, bearing), friction, parts, pairs)?,
+    let key_alone = match wippen {
+        Some(_) => Some(Box::new(
+            on_its_frame(mount, key, frame, kind, mass, friction, None)?.mounted,
+        )),
+        None => None,
+    };
+    let mut mounted = match mount {
+        KeyMount::Pivot => pivot(mass, Point::new(pin, bearing), friction, parts, pairs, hung)?,
         KeyMount::OnPunching => {
             let punching = balance_punching(&key_ranges, &frame_ranges);
             // Where the key leaves its balance pin: the pin's drawn top,
@@ -951,10 +1540,11 @@ pub fn on_its_frame(
                 .balance_rail_pin
                 .map_or(bearing, |id| drawn_top(&parts[id.index()]));
             on_punching(
-                mass, pin, bearing, pin_top, friction, parts, pairs, punching,
+                mass, pin, bearing, pin_top, friction, parts, pairs, punching, hung,
             )?
         }
     };
+    mounted.key_alone = key_alone;
     Ok(OnItsFrame {
         mount,
         mounted,
@@ -962,7 +1552,49 @@ pub fn on_its_frame(
         frame: frame_ranges,
         capstan,
         front_top,
+        wippen: wippen_ranges,
     })
+}
+
+/// The two links between a key and the wippen it carries, the key on side
+/// A of both, each a pair of the ranges the two sets of parts declare, read
+/// as two drawn outlines ([`PairGeometry::Features`]):
+///
+/// - **The capstan on the heel**: the capstan's whole drawn outline above
+///   the wood, its top, flat or domed, its rims and the sides of its head,
+///   against the heel's outline below the wippen's body, cloth and wood: its
+///   back side, its bottom behind the cloth, the cloth's outer face, its
+///   bottom in front of the cloth and its front side, one chain. The trade
+///   wants the capstan on the cloth; a capstan off it bears on the heel's
+///   wood, a fault of its place or of the action, which the contact names
+///   from the part it bears on and does not refuse.
+/// - **The heel on the key**: the key's top the heel can reach, the
+///   keystick's top, its step down to the thinned tail and the tail's, and
+///   the back check block, against the same outline of the heel: where the
+///   heel comes down when the capstan stands out from under it.
+///
+/// Both read the heel's sides as well as its bottom: a range read up to a
+/// corner and no further leaves the face beyond it unread, and a corner
+/// gives a row only within its sector, so a capstan pressing on that face
+/// would have no row and the heel would sink where nothing reads it.
+///
+/// Neither is a stop: what holds the key, where its stroke ends and which
+/// of its stops fight never name a link ([`ContactCode::is_link`]).
+pub fn wippen_links(key: &KeyRanges, wippen: &WippenAssemblyRanges) -> [ContactPair; 2] {
+    [
+        pair(
+            ContactCode::CapstanOnTheHeel,
+            Surface::one(key.capstan_above_the_wood.clone()),
+            Surface::of(&wippen.heel_below_the_body),
+            PairGeometry::Features,
+        ),
+        pair(
+            ContactCode::HeelOnTheKey,
+            Surface::of(&key.top_under_the_heel),
+            Surface::of(&wippen.heel_below_the_body),
+            PairGeometry::Features,
+        ),
+    ]
 }
 
 /// The height of a part's drawn top, in its body's frame: the highest point
@@ -1131,6 +1763,7 @@ mod tests {
             KeyKind::Natural,
             None,
             0.0,
+            None,
         )
         .expect("the key's contacts are drawn");
         (k.mounted, k.key, k.frame)
@@ -1184,6 +1817,242 @@ mod tests {
         let section = a.frame.sections.back;
         let center = section.center_x(a.frame.back_rail);
         (center - section.half_length, center + section.half_length)
+    }
+
+    /// The test wippen and the settings the contact tests read it at, each
+    /// a millimeter's run of the sweeps that measure where the capstan bears
+    /// (`crate::measure::seat_wippen`): on the regulated bench, on its
+    /// cloth; the capstan moved back along the key to where its contact
+    /// passes from the cloth onto the heel's bottom behind it at the bottom
+    /// seat; the wippen's center moved back to where it passes onto the
+    /// heel's bottom in front of the cloth at the top seat, and forward to
+    /// where it passes off the cloth's front end; and moved so far back that
+    /// the capstan stands out from under the heel, which comes down on the
+    /// key's top.
+    fn wippen_settings() -> Vec<(&'static str, Setup, WippenAssembly)> {
+        let (wippen, _) = crate::parts::fixtures::test_wippen();
+        let at = |behind_mm: f64| {
+            let mut moved = wippen.clone();
+            moved.center.x = -behind_mm * 1e-3;
+            moved
+        };
+        let mut back = regulated();
+        back.key.capstan = -0.1275;
+        vec![
+            (
+                "the test wippen on the regulated bench",
+                regulated(),
+                wippen.clone(),
+            ),
+            (
+                "the capstan 127.5 mm behind the balance pin",
+                back,
+                wippen.clone(),
+            ),
+            (
+                "the wippen's center 178 mm behind the balance pin",
+                regulated(),
+                at(178.0),
+            ),
+            (
+                "the wippen's center 195.5 mm behind the balance pin",
+                regulated(),
+                at(195.5),
+            ),
+            (
+                "the wippen's center 162 mm behind the balance pin",
+                regulated(),
+                at(162.0),
+            ),
+        ]
+    }
+
+    /// The key carrying the test wippen at each of [`wippen_settings`], at
+    /// its two seats and mid-stroke between them.
+    fn wippen_poses() -> Vec<(String, Mounted, Vec<f64>)> {
+        let mut poses = Vec::new();
+        for (name, a, wippen) in wippen_settings() {
+            let k = crate::parts::fixtures::carrying_the(&a, &wippen);
+            let seats = k
+                .seating()
+                .seats(&mut Statics::new())
+                .unwrap_or_else(|why| panic!("{name}: the key seats with its wippen: {why:?}"));
+            let middle: Vec<f64> = seats
+                .top
+                .q
+                .iter()
+                .zip(&seats.bottom.q)
+                .map(|(t, b)| 0.5 * (t + b))
+                .collect();
+            for (at, q) in [
+                ("at rest", seats.top.q),
+                ("mid-stroke", middle),
+                ("at the bottom", seats.bottom.q),
+            ] {
+                poses.push((format!("{name}, {at}"), k.mounted.clone(), q));
+            }
+        }
+        poses
+    }
+
+    /// Consistency: **a wippen is carried by two links, each a pair of
+    /// ranges its parts declare**: the capstan's outline above the wood,
+    /// then the key's top the heel can reach, each against the heel's
+    /// outline below the wippen's body, cloth and wood, the key on side A
+    /// of both. They come after the key's own pairs, which are those of the
+    /// key alone, and before the balance punching, which stays the last;
+    /// the key alone is mounted beside it with the same parts but the
+    /// wippen's, and its own pairs.
+    #[test]
+    fn a_wippen_is_carried_by_two_links_of_ranges_its_parts_declare() {
+        let a = regulated();
+        let (wippen, mass) = crate::parts::fixtures::test_wippen();
+        let k = on_its_frame(
+            KeyMount::OnPunching,
+            &a.key,
+            &a.frame,
+            KeyKind::Natural,
+            None,
+            0.0,
+            Some((&wippen, &mass)),
+        )
+        .expect("the key mounts with its wippen");
+        let heel = k
+            .wippen
+            .as_ref()
+            .expect("the wippen's ranges")
+            .heel_below_the_body
+            .clone();
+        let m = &k.mounted;
+        let alone = m.key_alone.as_deref().expect("the key alone is mounted");
+        let codes = |m: &Mounted| {
+            m.mechanism
+                .pairs()
+                .iter()
+                .map(|p| p.code)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            codes(m),
+            [
+                ContactCode::FrontRailPunching,
+                ContactCode::BackRailCloth,
+                ContactCode::FrontPinInTheMortise,
+                ContactCode::FrontPinOnTheWood,
+                ContactCode::CapstanOnTheHeel,
+                ContactCode::HeelOnTheKey,
+                ContactCode::BalanceRailPunching,
+            ]
+        );
+        assert_eq!(codes(alone), codes(&mounted(&a).0));
+        let pairs = m.mechanism.pairs();
+        for (key_pair, alone_pair) in pairs.iter().zip(alone.mechanism.pairs()).take(4) {
+            assert_eq!(key_pair, alone_pair, "{:?}", key_pair.code);
+        }
+        let links = m.wippen.as_ref().expect("the wippen is hung").links;
+        assert_eq!(links, [4, 5]);
+        let capstan = &pairs[usize::from(links[0])];
+        assert_eq!(
+            capstan.a,
+            Surface::one(k.key.capstan_above_the_wood.clone())
+        );
+        assert_eq!(capstan.b, Surface::of(&heel));
+        let top = &pairs[usize::from(links[1])];
+        assert_eq!(top.a, Surface::of(&k.key.top_under_the_heel));
+        assert_eq!(top.b, Surface::of(&heel));
+        for pair in pairs {
+            for side in [&pair.a, &pair.b] {
+                for range in &side.ranges {
+                    let drawn = m.mechanism.parts()[range.part.index()].silhouette().len();
+                    assert!(usize::from(range.segs.end) <= drawn, "{:?}", pair.code);
+                }
+            }
+        }
+        let lift = m.lift.as_ref().expect("the key is free to lift");
+        assert_eq!(usize::from(lift.pair), pairs.len() - 1);
+        assert_eq!(
+            &m.mechanism.parts()[..alone.mechanism.parts().len()],
+            alone.mechanism.parts()
+        );
+    }
+
+    /// Consistency: **the links' gradients against central differences**,
+    /// over the slide, the key's angle and the wippen's angle, for every
+    /// row of either link within the row margin, at each of the test
+    /// wippen's poses ([`wippen_poses`]), the capstan's contact at each end
+    /// of the cloth among them, where it passes between the cloth and the
+    /// heel's bottom.
+    ///
+    /// The bound is derived as the rows' own test derives it
+    /// (`crate::contact::rows`, `every_row_gradient_and_slip_match_central_differences`):
+    /// a coordinate turning one side swings its point on a sinusoid of
+    /// amplitude at most `L`, the point's reach from the joints that move
+    /// it, the gap and the largest radius added, so a central difference
+    /// over `±h` is off by `h²L/6`; between two discs, by `h²/6` of
+    /// `6ρ³/f² + 6ρ²/f + ρ`, `ρ ≤ L` and `f` the least distance between
+    /// their centers, at least their radii less the row margin; on the
+    /// slide, by nothing. The gaps' rounding adds `256 ε L / h`, the
+    /// gradient's `128 ε L`.
+    #[test]
+    fn the_links_gradients_match_central_differences() {
+        let h = 1e-6;
+        let eps = f64::EPSILON;
+        let mut checked = 0;
+        for (name, m, q) in wippen_poses() {
+            let wippen = m.wippen.expect("a wippen is hung");
+            let (pose, rows) = rows_at(&m, &q);
+            let radius = |piece: Piece| match piece {
+                Piece::Arc { part, seg } => {
+                    match m.mechanism.parts()[part.index()].silhouette()[usize::from(seg)] {
+                        crate::geometry::Seg::Arc { r, .. } => r,
+                        crate::geometry::Seg::Line { .. } => 0.0,
+                    }
+                }
+                _ => 0.0,
+            };
+            let joint = |body: BodyId| pose.placement(body).world(Point::new(0.0, 0.0));
+            let distance =
+                |p: Point, o: Point| ((p.x - o.x) * (p.x - o.x) + (p.y - o.y) * (p.y - o.y)).sqrt();
+            for (i, row) in rows.rows().iter().enumerate() {
+                if !wippen.links.contains(&row.pair) || row.gap > ROW_MARGIN {
+                    continue;
+                }
+                let (r_a, r_b) = (radius(row.feature.a), radius(row.feature.b));
+                let reach = distance(row.point, joint(m.key))
+                    + distance(row.point, joint(wippen.body))
+                    + row.gap.abs()
+                    + r_a.max(r_b);
+                let third = if row.feature.a.is_disc() && row.feature.b.is_disc() {
+                    let f = (r_a + r_b - ROW_MARGIN).max(1e-3);
+                    6.0 * reach * reach * reach / (f * f) + 6.0 * reach * reach / f + reach
+                } else {
+                    reach
+                };
+                let bound = h * h / 6.0 * third + 256.0 * eps * reach / h + 128.0 * eps * reach;
+                let gap = |at: &[f64]| {
+                    let (_, rows) = rows_at(&m, at);
+                    rows.rows()
+                        .iter()
+                        .find(|r| r.pair == row.pair && r.feature == row.feature)
+                        .map(|r| r.gap)
+                        .unwrap_or_else(|| panic!("{name}: {row:?} vanishes within {h} of {at:?}"))
+                };
+                for c in 0..q.len() {
+                    let (mut up, mut down) = (q.clone(), q.clone());
+                    up[c] += h;
+                    down[c] -= h;
+                    let difference = (gap(&up) - gap(&down)) / (up[c] - down[c]);
+                    let gradient = rows.grad(i)[c];
+                    assert!(
+                        (gradient - difference).abs() <= bound,
+                        "{name}, {row:?}, coordinate {c}: the gradient is {gradient}, the \
+                         central difference {difference}, off by more than {bound:e}"
+                    );
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked > 60, "only {checked} entries checked");
     }
 
     /// Consistency: **every contact surface of the key on its frame is a
@@ -1261,7 +2130,7 @@ mod tests {
     /// shares no code with the rows: it samples what is drawn.
     #[test]
     fn every_contact_lies_on_its_drawn_outline() {
-        let mut cases: Vec<(String, Setup, Vec<f64>)> = Vec::new();
+        let mut cases: Vec<(String, Mounted, Vec<f64>)> = wippen_poses();
         let mut benches = assemblies();
         benches.push(("a frame whose stops fight", wedged()));
         benches.push((
@@ -1279,25 +2148,24 @@ mod tests {
                     .zip(&bottom)
                     .map(|(t, b)| 0.5 * (t + b))
                     .collect();
-                cases.push((format!("{name}, at rest"), a.clone(), top.clone()));
-                cases.push((format!("{name}, at the bottom"), a.clone(), bottom));
-                cases.push((format!("{name}, mid-stroke"), a.clone(), middle));
+                cases.push((format!("{name}, at rest"), m.clone(), top.clone()));
+                cases.push((format!("{name}, at the bottom"), m.clone(), bottom));
+                cases.push((format!("{name}, mid-stroke"), m.clone(), middle));
                 let mut lifted = top;
                 lifted[0] += 0.0004;
-                cases.push((format!("{name}, lifted"), a.clone(), lifted));
+                cases.push((format!("{name}, lifted"), m.clone(), lifted));
             }
             for theta in [-0.05, 0.0, 0.05] {
                 cases.push((
                     format!("{name}, at {theta} rad"),
-                    a.clone(),
+                    m.clone(),
                     on_it(&m, theta),
                 ));
             }
         }
         let on = 0.5 * SPACING + 1e-12;
         let mut read = 0;
-        for (name, a, q) in cases {
-            let (m, ..) = mounted(&a);
+        for (name, m, q) in cases {
             let (pose, rows) = rows_at(&m, &q);
             for (p, pair) in m.mechanism.pairs().iter().enumerate() {
                 let o = oracle::Pair::read(&m.mechanism, &pose, pair);
@@ -1354,9 +2222,10 @@ mod tests {
     ///   least as deep.
     #[test]
     fn the_rows_agree_with_the_brute_force_oracle() {
-        let mut cases: Vec<(String, Setup, Vec<f64>)> = Vec::new();
+        let mut cases: Vec<(String, Mounted, Vec<f64>)> = wippen_poses();
         let regulated_seats = seated(&regulated()).expect("the regulated key seats");
         for (name, a) in assemblies() {
+            let m = mounted(&a).0;
             let (top, bottom) = seated(&a).unwrap_or_else(|| regulated_seats.clone());
             let middle: Vec<f64> = top
                 .iter()
@@ -1368,23 +2237,26 @@ mod tests {
                 ("mid-stroke", middle),
                 ("at the bottom", bottom),
             ] {
-                cases.push((format!("{name}, {at}"), a.clone(), q));
+                cases.push((format!("{name}, {at}"), m.clone(), q));
             }
         }
         let (riding, _) = seated(&wedged()).expect("the key rides on its stops");
-        cases.push(("a frame whose stops fight".to_owned(), wedged(), riding));
+        cases.push((
+            "a frame whose stops fight".to_owned(),
+            mounted(&wedged()).0,
+            riding,
+        ));
         let mut short = regulated();
         short.key.front_edge -= 0.018;
         cases.push((
             "a key shortened under its frame, where the regulated key rests".to_owned(),
-            short,
+            mounted(&short).0,
             regulated_seats.0.clone(),
         ));
 
         let on = 0.5 * SPACING + 1e-12;
         let (mut apart, mut deep) = (0, 0);
-        for (name, a, q) in cases {
-            let (m, ..) = mounted(&a);
+        for (name, m, q) in cases {
             let (pose, rows) = rows_at(&m, &q);
             for (p, pair) in m.mechanism.pairs().iter().enumerate() {
                 let p = u16::try_from(p).unwrap();
@@ -1731,11 +2603,11 @@ mod tests {
         let lift = m.lift_at(&q);
         assert!(lift > ROW_MARGIN, "raised off its punching: {q:?}");
         let (key, rails) = key_and_rails(&m);
-        assert!(overlap_at(&m.mechanism, &key, &rails, &q) <= ROW_MARGIN);
+        assert!(overlap_at(&m, &m.mechanism, &key, &rails, &q) <= ROW_MARGIN);
         let mut lower = q.clone();
         lower[0] -= ROW_MARGIN;
         assert!(
-            overlap_at(&m.mechanism, &key, &rails, &lower) > ROW_MARGIN,
+            overlap_at(&m, &m.mechanism, &key, &rails, &lower) > ROW_MARGIN,
             "and no higher than it must"
         );
         let through = (1..=15)
@@ -1760,7 +2632,7 @@ mod tests {
     fn held_on_its_punching_the_key_is_the_key_on_a_pivot() {
         let a = regulated();
         let build = |mount| {
-            on_its_frame(mount, &a.key, &a.frame, KeyKind::Natural, None, 0.0)
+            on_its_frame(mount, &a.key, &a.frame, KeyKind::Natural, None, 0.0, None)
                 .unwrap()
                 .mounted
         };

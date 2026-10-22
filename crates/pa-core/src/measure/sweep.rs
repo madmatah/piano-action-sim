@@ -443,9 +443,16 @@ mod tests {
         /// measuring point with the key level, of mass `mass`.
         fn new(a: &Setup, mount: KeyMount, kf_g: f64, mass: MassProps) -> Self {
             let bound = AxisFriction::of_weight_at(kf_g, a.measuring_point()).bound_n_m;
-            let on_frame =
-                on_its_frame(mount, &a.key, &a.frame, KeyKind::Natural, Some(mass), bound)
-                    .expect("the key mounts on its frame");
+            let on_frame = on_its_frame(
+                mount,
+                &a.key,
+                &a.frame,
+                KeyKind::Natural,
+                Some(mass),
+                bound,
+                None,
+            )
+            .expect("the key mounts on its frame");
             Self {
                 a: a.clone(),
                 on_frame,

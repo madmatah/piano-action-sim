@@ -131,6 +131,17 @@ pub struct KeyRanges {
     pub lip: Anchor,
     /// The top of the capstan on its axis.
     pub capstan_contact: Anchor,
+    /// The capstan above the wood, as the sagittal plane sees it: the
+    /// underside of its head or the cove that flares into it, the head's
+    /// sides and its rims, and its top, flat or domed. What a wippen's heel
+    /// reads, its cloth and its wood.
+    pub capstan_above_the_wood: SurfaceRef,
+    /// The key's top a wippen's heel can reach, front to back: the
+    /// keystick's top from its front back to the key's end, its
+    /// clearance and its step down to the thinned tail among it, the back
+    /// check block, and the felt on the tail where it has one. What a
+    /// wippen's heel reads where it comes down on the key.
+    pub top_under_the_heel: Vec<SurfaceRef>,
 }
 
 impl KeyDesign {
@@ -280,6 +291,7 @@ impl KeyDesign {
         for (k, name) in (u + 1..).zip(top_stretches) {
             placed_by.push((k..k + 1, name));
         }
+        let stick_segments = u16::try_from(stick.len()).expect("a short outline");
         let keystick = push(solid(
             PartCode::Keystick,
             polygon(&stick),
@@ -532,6 +544,28 @@ impl KeyDesign {
                 at: 0.0,
                 code: AnchorCode::CapstanContact,
             },
+            // Past the shaft, which the wood holds.
+            capstan_above_the_wood: SurfaceRef {
+                part: capstan,
+                segs: 2..2 * (capstan_segments - 1) - 2,
+            },
+            top_under_the_heel: [
+                Some(SurfaceRef {
+                    part: keystick,
+                    segs: u + 1..stick_segments - 1,
+                }),
+                Some(SurfaceRef {
+                    part: back_check_block,
+                    segs: 1..4,
+                }),
+                key_tail_felt.map(|felt| SurfaceRef {
+                    part: felt,
+                    segs: 1..4,
+                }),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
         }
     }
 

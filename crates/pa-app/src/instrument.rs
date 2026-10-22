@@ -1352,6 +1352,7 @@ impl Instrument {
             kind: self.kind,
             mass: self.mass_props(),
             protocol: &self.protocol,
+            wippen_assembly: None,
         }
         .solve(targets)
         .map_err(NotRegulated::Unsolvable)?;
@@ -1789,6 +1790,7 @@ impl Instrument {
             self.kind,
             self.mass_props(),
             self.friction.bound_n_m,
+            None,
         )
     }
 

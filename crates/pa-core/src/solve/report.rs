@@ -22,6 +22,11 @@ pub struct SolveReport {
     pub sweeps: u32,
     /// Exact passes tried, in all.
     pub exact_passes: u32,
+    /// Halvings the starts of the solves took to lower the wippen the key
+    /// carries onto the key, in all
+    /// ([`crate::parts::mounts::wippen_lowered`]): nothing where it carries
+    /// none.
+    pub lowering_halvings: u32,
     /// Whether every increment converged.
     pub converged: bool,
     /// Whether every box problem was solved by its exact pass.
@@ -47,6 +52,7 @@ impl SolveReport {
         anchors: 0,
         sweeps: 0,
         exact_passes: 0,
+        lowering_halvings: 0,
         converged: true,
         exact: true,
         residual: 0.0,
@@ -65,6 +71,7 @@ impl SolveReport {
             anchors: self.anchors + then.anchors,
             sweeps: self.sweeps + then.sweeps,
             exact_passes: self.exact_passes + then.exact_passes,
+            lowering_halvings: self.lowering_halvings + then.lowering_halvings,
             converged: then.converged,
             exact: self.exact && then.exact,
             residual: then.residual,
@@ -81,6 +88,7 @@ impl SolveReport {
             anchors: self.anchors + other.anchors,
             sweeps: self.sweeps + other.sweeps,
             exact_passes: self.exact_passes + other.exact_passes,
+            lowering_halvings: self.lowering_halvings + other.lowering_halvings,
             converged: self.converged && other.converged,
             exact: self.exact && other.exact,
             residual: self.residual.max(other.residual),

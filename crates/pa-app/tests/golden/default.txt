@@ -7,49 +7,49 @@ sheet.front_weight.value 27.276436273643277 0x403b46c48712b9da
 sheet.front_weight.shown 27.3 0x403b4ccccccccccd
 sheet.front_weight.unit g
 sheet.front_weight.trust indicative geometry
-sheet.front_weight.fingerprint statics/3
+sheet.front_weight.fingerprint statics/4
 sheet.key_weight_ratio.value 0.5197100936892347 0x3fe0a1770ff97bc6
 sheet.key_weight_ratio.shown 0.52 0x3fe0a3d70a3d70a4
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
-sheet.key_weight_ratio.fingerprint statics/3
+sheet.key_weight_ratio.fingerprint statics/4
 sheet.key_height.value 0.06165915375694688 0x3faf91c9e1c52ec3
 sheet.key_height.shown 0.06165915375694688 0x3faf91c9e1c52ec3
 sheet.key_height.unit m
 sheet.key_height.trust indicative geometry
-sheet.key_height.fingerprint statics/3
+sheet.key_height.fingerprint statics/4
 sheet.key_dip.value 0.00971701909272827 0x3f83e68439be3584
 sheet.key_dip.shown 0.00971701909272827 0x3f83e68439be3584
 sheet.key_dip.unit m
 sheet.key_dip.trust indicative geometry
-sheet.key_dip.fingerprint statics/3
+sheet.key_dip.fingerprint statics/4
 sheet.down_weight.value -21.608544573142726 0xc0359bc993bfce69
 sheet.down_weight.shown -21.0 0xc035000000000000
 sheet.down_weight.unit g
 sheet.down_weight.trust indicative geometry
-sheet.down_weight.fingerprint statics/3
+sheet.down_weight.fingerprint statics/4
 sheet.down_weight.walk.from_g -27.12675593788882 0xc03b207313bfce69
 sheet.up_weight.value -32.83187133365619 0xc0406a7ac2864441
 sheet.up_weight.shown -33.0 0xc040800000000000
 sheet.up_weight.unit g
 sheet.up_weight.trust indicative geometry
-sheet.up_weight.fingerprint statics/3
+sheet.up_weight.fingerprint statics/4
 sheet.up_weight.walk.from_g -27.34146148258197 0xc03b576a050c8882
 sheet.balance_weight.value -27.22020795339946 0xc03b385f8c662b76
 sheet.balance_weight.shown -27.0 0xc03b000000000000
 sheet.balance_weight.unit g
 sheet.balance_weight.trust indicative geometry
-sheet.balance_weight.fingerprint statics/3
+sheet.balance_weight.fingerprint statics/4
 sheet.friction_weight.value 5.611663380256731 0x40167257e2997432
 sheet.friction_weight.shown 6.0 0x4018000000000000
 sheet.friction_weight.unit g
 sheet.friction_weight.trust indicative geometry
-sheet.friction_weight.fingerprint statics/3
+sheet.friction_weight.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_jig.value 5.944997388768931 0x4017c7ad653e4596
 sheet.key_friction_weight_zeroed_on_the_jig.shown 6.0 0x4018000000000000
 sheet.key_friction_weight_zeroed_on_the_jig.unit g
 sheet.key_friction_weight_zeroed_on_the_jig.trust indicative geometry
-sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/3
+sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_jig.walk.from_g 0.4267860240228367 0x3fdb507653e4595c
 sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.mass_g 61.72111999999963 0x404edc4da9003eb6
 sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.station_x -0.1 0xbfb999999999999a
@@ -58,7 +58,7 @@ sheet.key_friction_weight_zeroed_on_the_frame.value 5.5182113647461 0x401612a600
 sheet.key_friction_weight_zeroed_on_the_frame.shown 6.0 0x4018000000000000
 sheet.key_friction_weight_zeroed_on_the_frame.unit g
 sheet.key_friction_weight_zeroed_on_the_frame.trust indicative geometry
-sheet.key_friction_weight_zeroed_on_the_frame.fingerprint statics/3
+sheet.key_friction_weight_zeroed_on_the_frame.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 6.277091233040912e-15 0x3cfc44fe53fb3255
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 60.765100935755584 0x404e61eed3d49ac8
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x -0.1 0xbfb999999999999a
@@ -91,7 +91,7 @@ band.down_weight_on_the_band.value -21.609895228250277 0xc0359c2217fb5247
 band.down_weight_on_the_band.shown -21.0 0xc035000000000000
 band.down_weight_on_the_band.unit g
 band.down_weight_on_the_band.trust indicative geometry
-band.down_weight_on_the_band.fingerprint statics/3
+band.down_weight_on_the_band.fingerprint statics/4
 band.down_weight_on_the_band.sweep.samples 184
 band.down_weight_on_the_band.sweep.window 0.009245872355827668 0x3f82ef7ffb215254
 band.down_weight_on_the_band.sweep.at 5.000000000000143e-5 0x3f0a36e2eb1c4400
@@ -99,7 +99,7 @@ band.up_weight_on_the_band.value -32.83092184911217 0xc0406a5ba5abbbfc
 band.up_weight_on_the_band.shown -33.0 0xc040800000000000
 band.up_weight_on_the_band.unit g
 band.up_weight_on_the_band.trust indicative geometry
-band.up_weight_on_the_band.fingerprint statics/3
+band.up_weight_on_the_band.fingerprint statics/4
 band.up_weight_on_the_band.sweep.samples 184
 band.up_weight_on_the_band.sweep.window 0.009245872355827668 0x3f82ef7ffb215254
 band.up_weight_on_the_band.sweep.at 0.0092 0x3f82d77318fc5048

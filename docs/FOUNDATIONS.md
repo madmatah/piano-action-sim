@@ -393,16 +393,22 @@ balance pin, 33 mm above the punching and some 70 mm at its front on the
 measured section's frame; a key riding on its front punching, its front pin's
 tip against the wall of its slot, solved from where it is lowered onto its
 frame, takes three quarters of a cap to come to rest with every row that carries
-it closed. So the key free to
-lift is solved in up to four pieces of the cap, each going on from where the
-last stopped, and reported as one increment.
+it closed; a key carrying its wippen keeps its link to the heel within the row
+margin through any turn, so every step moves the key and the wippen together by
+a margin of their farthest points at most, about 1.7 mrad of the key on the
+test bench, and a turn of a tenth of a radian or more, held on its punching,
+outruns one cap. So the key held on its punching and the key free to lift are
+each solved in up to four pieces of the cap, each going on from where the last
+stopped, and reported as one increment; a bare key's seat takes one.
 
 **The seated pose**, from which key height and dip are read, seats the key by
 the trade's gestures, friction off: a load on the capstan's contact point
 standing for the action, which holds the back of the key down on its cloth, and
 for the bottom a press on the measuring point besides. Each load seats the key
 with a margin of 0.01 N·m over what holds it the other way, and with rigid stops
-the pose depends on neither. The top seat starts from the key's nominal pose: on
+the pose depends on neither. A key carrying its wippen is seated from the key
+alone's own seats ([Where a solve starts](#where-a-solve-starts)), the load at the capstan then standing
+for the hammer. The top seat starts from the key's nominal pose: on
 its balance punching, the attitude nearest level, level itself first and then a
 degree at a time, at which its drawn parts overlap the frame's, rails and keybed
 included, by no more than the row margin, an overlap the solve then resolves
@@ -856,6 +862,28 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   radius, by leaving the wood unpainted inside each cut and drawing the
   cut's walls from inside rather than by solid geometry operations, which
   would bring a library for a few boxes with rounded ends.
+- **The jack and the repetition lever are rigid on the wippen** in stage 1b,
+  each resting on its stop, since nothing presses on either before the hammer
+  and the let-off button come; the springs inside the assembly then put no
+  force on the wippen's angle ([Springs inside the wippen assembly](#springs-inside-the-wippen-assembly)). They become bodies with the action in motion, stage 2 of [Stages](#stages), planned.
+- **Only the heel meets the key.** The wippen's body, its jack and its lever
+  carry no contact with the key; a seat that puts one in a key part is
+  refused, naming both parts ([Two links, and only the heel meets the key](#two-links-and-only-the-heel-meets-the-key)).
+  It costs a share of the frame's settings on a key carrying its wippen: on
+  the test key with the test wippen, each of the frame's sliders swept alone
+  over its range in 50 steps, the wippen's body stands in the back check block
+  or the keystick, and the seat is refused, at 12 of the balance rail's
+  heights, 21 of the back rail's and 5 of the front rail's
+  (`each_slider_the_seats_read_seats_the_key_with_its_wippen_or_refuses_it_by_name`).
+- **The heel cloth and the heel's wood are rigid alike.** The readings do not
+  tell them apart; the contact does, by the part it bears on.
+- **No friction between the capstan and the heel.** Its bound depends on the
+  contact's load, while the static solve's box bounds each coordinate by a
+  fixed amount; it is planned with the sliding contacts, about a tenth of a
+  gram on the friction weight.
+- **The fold follows the motion where two link rows are closed**: going down
+  the row that lifts the heel most carries it, coming up the one it stays on
+  ([The fold, and the seat's load](#the-fold-and-the-seats-load)).
 
 ### The bench
 
@@ -957,6 +985,291 @@ English or French, composed from the codes the engine sends
 profile named, with its procedure, its trust and the static solves it took;
 `pa-cli band` prints the band, its two extremes in full beside the walk's D
 and U, and both curves step by step.
+
+## What is built: stage 1b, the wippen on the capstan
+
+The engine carries a wippen assembly (« chevalet ») on the key's capstan,
+resting on it through a real contact, in the seats and in the regulation solve:
+built. No profile binds one yet, so the bench draws none and its sheet reads the
+key alone; Hirschkorn's wippen on his key, the touchweights read through it, the
+« chevalet » panel and the wippen weight are planned ([Stages](#stages)).
+
+### The assembly and its place
+
+The wippen's body, its heel and its heel cloth, the jack and the repetition
+lever are drawn in the wippen's frame, its origin at the center pin and `x`
+toward the player at angle zero; the center pin stands on the ground, placed
+once in the keybed's frame as the frame's rails are. The heel is placed by the
+trade's two quantities: its position, how far along the wippen, at angle zero,
+its circle's lowest point stands in front of the center pin, and its height,
+how far that point stands below the jack's pin. Its circle's center follows, so
+moving the jack's pin moves the heel with it. The cloth's outer face lies on
+that circle, and the heel's bottom runs on bare beyond each end of the cloth,
+along the line through the cloth's two ends, as Hirschkorn's figure draws it:
+on the test wippen about 4 mm of wood at each end, the back corner only
+0.17 mm above the circle's lowest point at angle zero, each corner 1.6 mm
+outside the circle. The jack and the repetition lever rest on their stops and
+turn with the wippen as one body ([Named simplifications](#named-simplifications)), and the assembly turns on its
+center pin within 30° either way.
+
+**The wippen's range, 30° either way**, is the edge of its modeled world, as
+the key's 15° is the key's: the key's limit carried through the capstan to the
+heel. The wippen turns by the key's turn times the capstan's arm from the
+balance pin over the heel's arm from the center pin, 117.6 mm over 61.2 mm on
+Hirschkorn's action, 1.92, and 138.5 mm over 65.9 mm on Reyburn's measurements
+1, 2 and 6
+([A3 > Reyburn's ten measurements](research/A3-nomenclature-and-regulation.md#reyburns-ten-measurements))
+[V, Reyburn, pp. 3, 5], 138.5 = 398 − 259.5, 2.10: about twice. Hirschkorn's
+wippen turns from 1.5° (0.0267 rad) at the top seat to 6.0° at the bottom, so
+the limit stands more than five of those strokes past it. A wippen allowed to
+turn further hangs nearly upright, its contact all but radial to its center
+pin, where it holds no torque. A wippen leaning on its upper limit is **pushed
+past its range**, as a center pin set too low for its capstan, or a capstan set
+too tall, leaves it; on its lower limit it **does not reach the key**, as a
+center pin set too high leaves it.
+
+Each refusal at a limit names a seat, and how far past that limit the heel
+stands there with the key alone at that seat: the least distance between the
+drawn outlines of the heel and its cloth and those of the key's parts. Pushed
+past its range, it is how deep they stand in them with the wippen turned to the
+top of its range, 30° up, at that seat. The drawn outlines take each arc as
+eight chords, which stand inside a convex arc of material by its sag,
+R(1 − cos(θ/16)) for an arc of radius R spanning θ, and outside a concave one,
+where the drawn material only grows: 21.8 µm on the test heel's cloth, 25.3 mm
+in radius. Over a band of settings, the drawn outlines clear the key there
+while the contacts, which read the arcs themselves, stand the heel's cloth in
+it, and the depth is then how deep the links' contacts stand it: more than
+nothing, and no more than the sags of the convex arcs of material that meet
+there added together, the heel cloth's and, on a domed capstan, the dome's.
+The tests pin that bound on a flat capstan, where it is the heel cloth's sag
+alone. The band is a range of a setting and the sags a depth: across the
+band, a setting that moves the heel or a key part bodily, such as the center
+pin's height or the capstan's, changes the depth by no more than it moves the
+heel or the part. Where the drawn
+outlines first stand in the key, the depth falls from the links' reading to
+the drawn one, which can be less, so it does not grow monotonically as a
+setting moves further past. Out of reach, it is how near they come
+to them at the top seat, degree by degree through the wippen's range: the least
+distance at the whole degrees at which the bench decides whether the wippen
+reaches the key ([Where a solve starts](#where-a-solve-starts)). It falls to
+nothing where the setting comes back to reaching, and is no more than how far
+the setting moved from one at which the wippen reached, moving the center pin,
+the heel or the capstan moving the heel against the key's parts by no more than
+its own move. It is no correction of the capstan or of the center pin, though a
+setting must move the heel at least that far toward the key for the wippen to
+reach it. Both bounds hold away from a cut through a key part opening toward
+the heel, which no shipped key has there. It is more than nothing, short of a
+tie on a key part's edge, wherever the bench refuses the wippen out of reach:
+every wippen angle a solve starts from was lowered onto the key clear of it from
+the top of its range, at the key alone's top seat or where the key stood, or
+kept where a state left it; a solve that leans the wippen on the bottom of its
+range carries the heel down from there without meeting the key, each of its
+steps reading every pair before it closes; and at the top seat every key part
+behind the balance pin stands lowest, so a path cleared at any pose of the key
+stays clear there. A wippen kept where a state left it, below a key part an
+edit brought over its heel's path, falls free below that part and would read
+nothing, where the sheet, lowering it from the top of its range, finds it on
+that part: the bench starts it again lowered from the top of its range, as the
+sheet does, and names what the sheet names. A seat's own refusal names that
+seat. Any other
+solve that leans the wippen on a limit, a loading, an increment, a step of a
+walk or of the band's sweep, is named at the seat the sheet refuses it at, with
+the sheet's distance where the sheet's first refusal is at that limit: out of
+reach at the top seat, where every part of the key behind its balance pin stands
+lowest; pushed past its range at the top seat where the heel turned to the top
+of its range stands in the key there, else at the bottom seat, where those parts
+stand highest. Pushed past its range with both seats in range, a key free to
+lift stood off its balance punching, which only a pull takes it off, and the key
+lifts off its frame, as the key alone would; a key its bushings hold off its
+punching, whose wippen an edit then brings to the top of its range, is said to
+lift off its frame too, though it stays where it is, and a key on a pivot, which
+cannot lift, is named at its bottom seat, by more than nothing short of a tie
+within the static solve's picometer of gap. The depth pushed past its range is no
+correction of the capstan or of the center pin either: it is read at the edge of
+the modeled world, a pose no action takes, and turning the capstan by it would
+leave the wippen at that edge, not regulated.
+
+### Two links, and only the heel meets the key
+
+Contact 1, **the capstan on the heel** ([Seventeen contacts per note](#seventeen-contacts-per-note)), reads the
+capstan's whole drawn outline above the wood, its top, flat or domed, its rims
+and the sides of its head, against the heel's outline below the wippen's body,
+back to front, as one chain: its back side, its bottom behind the cloth, the
+cloth's face, its bottom in front of the cloth and its front side. The joints
+where the cloth meets the heel's bottom are concave, since the cloth bulges
+below the line of the bottom, and give no feature; the heel's lower corners are
+convex and do. A second link, **the heel on the key**, reads the same outline
+against the key's top it can reach, the keystick's top, its step down to the
+thinned tail and the tail's felt, and the back check block: where the heel
+comes down when the capstan stands out from under it, in front of the heel or
+behind it. The sides are read as well as the bottom because a range read up to
+a corner and no further leaves the face beyond it unread, and a corner gives a
+row only within its sector: a capstan pressing on that face would have no row,
+and the heel would sink where nothing reads it.
+
+Neither link is a stop: no seat lists one, and they stay in the vertical
+balance the bearing carries, their push on the key what the wippen weighs on
+it. The bench names what carries the wippen from the closed rows, side B's
+pieces of them: the capstan on the heel cloth, the capstan on the heel's wood,
+or the heel on the key's top, and both where the heel bears on two at once. The
+trade wants the capstan on the cloth. It bears on the heel's wood once it stands
+under the heel but off its cloth, as the capstan or the wippen's center is
+moved along the key or the heel's position is moved; its contact also rolls
+back along the heel as the wippen rises, by about the heel's radius times the
+wippen's turn, some 3 mm over the stroke on the test wippen's flat capstan. A
+capstan off the cloth is a fault of its place or of the action, which the
+bench shows and names and does not refuse.
+
+The wippen's body, its jack and its lever carry no contact with the key. A
+seat that puts one of them in a key part deeper than a micron
+is refused, naming the wippen's part, the key's part it stands in and how deep:
+no action takes such a pose, and contacts on outlines traced for drawing, their
+coves taken as chords, would read numbers off a jammed action as if it were
+one. On the test bench that is the jack or the body in a capstan moved under
+them, and the body in the keystick or the back check block with the center pin
+set low. The heel or its cloth found there would be a contact that failed to
+read them: a defect, never a refusal the bench gives.
+
+**A heel can hang below a capstan that bears on it**, in three ways, each from
+the drawn parts, and come down on the key's top beside it:
+
+- the bearing's offset: where the capstan bears an angle α off straight under
+  the heel circle's center, the cloth hangs below the capstan's top by
+  R(1 − cos α) where a flat top bears by its rim, and by (R + ρ)(1 − cos α) on a
+  dome of radius ρ. A rim bearing about 9.8 mm in front of the test heel's
+  center bears some 23° off, the cloth 2.0 mm under it; on Hirschkorn's 9.7 mm
+  dome, his center moved 10 mm along the key, some 19.5° off, about 2.0 mm;
+- a corner: a lower corner of Hirschkorn's heel hangs up to 1.6 mm below the
+  cloth's lowest point, its 26.9 mm from the circle's center less the 25.3 mm
+  radius;
+- a bearing on the bare bottom just in front of the cloth: for one about
+  12.5 mm in front of the test heel's center, the cloth behind it hangs below
+  it by about 25.3 + 12.5 sin φ − 22.68 cos φ mm, φ the wippen's turn over the
+  key's top: 2.6 mm at φ = 0, 4.3 mm at 7°.
+
+What the tests pin, and nothing more: at the test wippen's own settings a
+capstan lowered to the page's least 4 mm carries the heel alone at both seats;
+and at one setting found by halving, the center pin 71 mm high and 189 mm
+behind the balance pin, the capstan 4 mm tall, the heel's position between 52
+and 53 mm, the heel bears on the capstan and on the key's top at once at the
+bottom seat, both links read it, the bench names both, and nothing is refused.
+For other settings no claim is made, and the state is read the same way.
+Hirschkorn's heel is checked on his key when his wippen is put on it (planned).
+
+### Where a solve starts
+
+Every solve of a key carrying its wippen starts from a pose one rule gives
+(`Seating::start`), and from no other:
+
+- **Each seat starts from the key alone's own seat**: the same key on the same
+  frame, mounted beside it without the wippen, its coordinates the key's,
+  first in both mounts, seated by the seated pose's own rule, at the top and
+  then at the bottom, once for both seats. The wippen is lowered onto the key
+  standing there, from the top of its range a degree at a time and then by
+  halving within the degree where its heel or its cloth first touches the key,
+  to within the row margin: a bisection alone tests only its bracket's ends,
+  and let a heel pass through the key and out beneath it. Where they clear the
+  key all the way down, the wippen hangs at the bottom of its range. Where the
+  heel or its cloth stands in the key even at the top of the wippen's range,
+  the seat is refused, the wippen pushed past its range at that seat: at the
+  top no pose of the key on its frame stands its capstan lower, the load at
+  the capstan holding its back down on its cloth, and at the bottom the key's
+  stops hold it there. Where the key alone has no seat, its refusal is the
+  key's own. The key alone's steps count with the seat's.
+- **A loading or an increment starts where the key stands**: the wippen where
+  a state left it, its heel and its cloth no deeper in the key than the row
+  margin, or else lowered onto the key there. Where it fits nowhere, a loading
+  goes by the key alone's top seat, and an increment, friction on, which a
+  start from the key alone's seat would move where friction holds it, is sent
+  back to the loading rule. The rule is built; the bench's loadings and
+  increments by it are planned.
+
+On rigid stops the key seats alone where it seats with its wippen, within the
+static solve's tolerances, a picometer of step and of gap carried by the lever
+to the key's coordinates: so a decision taken at the key alone's seat differs
+from one taken at the seat with its wippen only where the heel clears the key
+at the top of the wippen's range by less than that, which nothing reads. That
+holds because the start decides the top of the range both on the drawn outlines
+and on the contacts the solve reads: decided on the drawn outlines alone, whose
+chords stand inside the heel cloth's arc, and a domed capstan's, by their sags,
+it would let a seat start where the solve then pushes the wippen past its range
+over a band of settings, with nothing drawn to say how far. With its wippen,
+the link to the heel stays within the row margin through any turn of the key,
+so a seat started from the level pose would crawl a margin a step,
+some 76 steps for the 0.13 rad from level to the top seat on 20 mm of balance
+paper; from the key alone's seat a few are left. The start takes no decision of
+the wippen's at a pose that is not a seat, and every distance a wippen's
+refusal carries is read at a seat: the key's nominal pose, which places the key
+alone and is the same to the bit with its wippen and without, stands it level,
+its capstan higher than at its top seat, and would refuse wippens that are in
+range at the seat.
+
+The bench decides whether the wippen reaches the key at whole degrees, and reads
+how near the heel comes to the key out of reach at the same angles, so the
+reading and the decision agree. A heel that grazes a key part between two whole
+degrees reads clear, and so does one whose cloth's arc grazes a key part at a
+whole degree by less than the drawn outlines' chords stand inside the arcs that
+meet there, its own sag, 21.8 µm on the test heel's cloth, and a domed capstan's
+added to it, since the decision and the reading both read the drawn outlines;
+and the reading stands above the nearest the heel comes over its whole turn
+by at most the wippen's reach, its farthest drawn point from
+the center pin, times half a degree: 1.1 mm on the test wippen's 126 mm reach.
+Measured against that nearest resolved to a
+micron, the center pin raised by the millimeter through the out-of-reach range,
+the reading stands above it by at most 0.14 mm on the test bench, at 107 mm, its
+first whole millimeter out of reach.
+
+### The fold, and the seat's load
+
+Through a closed link row the wippen's angle follows the key's,
+`r = −(∂g/∂θk)/(∂g/∂θw)`, `g` the row's gap, and the wippen's generalized force
+folds onto the key's angle as `Q_k + r·Q_w`. The seated pose sizes its loads on
+the fold, at the key level on its punching with the wippen lowered onto it:
+the up fold for the load at the capstan, the down fold for the press. Where two
+link rows are closed within touching, as with the capstan in the valley where
+the cloth meets the heel's bottom or the heel on the capstan and the key's top
+at once, the fold follows the motion: going down, the key's back rising, the
+row that lifts the heel most carries it, the larger `|r|`; coming up, the one
+it stays on, the smaller. The walks' frictionless balance and the verdicts read
+through the same fold (planned). The load at the capstan stays where it was,
+now standing for the hammer, which the bench does not yet carry: key height and
+dip keep their values on rigid stops, the key seating with its wippen where it
+seats alone, within the solve's tolerances.
+
+### The regulation with the wippen
+
+The regulation solve mounts the key with its wippen, and its trials classify
+the wippen's refusals by their direction instead of ending on them. On the
+height search, a stack pushing the wippen past its range counts as past the
+target, more paper only raising the capstan further under its heel, and one
+leaving it out of the key's reach as short of it. On the dip search, the
+wippen pushed past its range at the bottom seat counts as a dip deeper than the
+target, more front paper lowering the capstan there; at the top seat, which
+happens only where the key rides on its stops, its front paper turning it up
+on its cloth, it counts as the stops fighting, and the refusal names the stops
+the last fighting or riding trial named, or the fight itself where none did. A
+target only such a stack would give is refused naming the wippen, short by the
+target less the reading of the nearest seated trial, or the whole target where
+none seated. A wippen part standing in a key part tells no direction: the key
+and the wippen turn about different points and rise alike only where the heel
+bears, so an overlap grows with the paper or the dip on one side of that point
+and shrinks on the other, and the regulation is refused, naming both parts and
+the depth. The stacks as laid, from below, can cross a wippen limit within one
+paper of the answer, so each is checked: a balance stack as laid that leaves
+the wippen out of reach refuses the key height before any dip is searched, and
+a front stack as laid that pushes it past its range at the bottom seat refuses
+the dip, each short by the distance from the target to what the stack as laid
+reads with one more thinnest paper.
+
+### What each reading mounts
+
+| Reading | Mounted on |
+|---|---|
+| Key height, key dip, the regulation | the key with its wippen, each seat started from the key alone's (built) |
+| D, U, BW, F, the band, the touch weight | the key with its wippen (planned) |
+| Both key friction weights | the key alone (planned) |
+| FW, KR | the jig |
+| WW | the wippen on a frictionless revolute at its center pin, at the protocol's level, the scale under the capstan's mark (planned) |
 
 ## Decisions that stand
 
@@ -1384,17 +1697,20 @@ of paper, the breakaway walk's 16 halvings of its last gram and the 32 halvings
 of the bushings up to 100 g at the measuring point that turn a typed key
 friction weight into a torque, resolve far below anything read, and a walk's
 threshold within its last bracket of a whole gram reads as that gram; the static
-solve converges under its caps and reports its counts, a key free to lift in up
-to four pieces of the step cap, each going on from where the last stopped,
-counted as one increment ([Parts and statics](#parts-and-statics)); and a test holds the seats of every key of its
+solve converges under its caps and reports its counts, a key held on its
+punching or free to lift in up to four pieces of the step cap, each going on
+from where the last stopped, counted as one increment ([Parts and statics](#parts-and-statics)); and a test holds the seats of every key of its
 property corpus a keyboard could be built from, and of every frame whose stops
-fight, to a quarter of the step cap, and the walks' increments to half of it: a
+fight, to a quarter of the step cap, each carrying the test wippen to half of
+it, a quarter for the key alone's seat and a quarter from there, and the walks'
+increments to half of it: a
 trial a hair past breakaway starts the key with a step of a femtometer, each
 accepted step three times the last. A fingerprint names the solver with its
 frozen numbers and travels with every reading, one name for one hash, never
-given back to other numbers (`statics/3`); a test hashes the caps,
-tolerances, margins and counts, the free key's pieces, the temporary weight's
-stations and the searches' reaches, and fails when one changes and the
+given back to other numbers (`statics/4`); a test hashes the caps,
+tolerances, margins and counts, the key's and the wippen's angle limits,
+the key's pieces, the temporary weight's stations and the searches' reaches,
+and fails when one changes and the
 fingerprint does not; where the key leaves its balance pin is read off the
 drawn pin, a dimension and not a frozen number, and the key weight ratio's
 load is the protocol's, bound by the instrument's profile to its record. The golden
@@ -1759,6 +2075,11 @@ Hirschkorn's thirteen, and four for the damper (planned):
 | 15 | lift tray, damper under-lever | collective lift, pedal travel |
 | 16 | damper felt, string | damper seating |
 | 17 | damper under-lever, stop rail | damper stop clearance |
+
+Contact 1 is read as the capstan against the heel's whole outline below the
+wippen's body, cloth and wood, beside the heel on the key's top, which no source
+lists: where the heel comes down when the capstan stands out from under it
+([Two links, and only the heel meets the key](#two-links-and-only-the-heel-meets-the-key)); both built.
 
 Three primitives cover Hirschkorn's thirteen: a circle against a line (ten), a
 circle against a circle (the capstan on the heel), and a hybrid, an arc joined
@@ -2187,7 +2508,7 @@ on a number the owner can judge by the trade's protocol.
 | 1a | the key on its frame: rails, punchings, papers | key height, key dip, front weight, key weight ratio, key friction weight | a key the owner measures ([Validation instruments](#validation-instruments), "One real key, measured by the owner") agrees with the bench by the protocol | built; its validation planned |
 | dynamics prototype | one note of Hirschkorn's action in motion, thrown away afterwards | the step, the solver, the felt law, the cost per step ([What the dynamics prototype settles, and what it leaves open](#what-the-dynamics-prototype-settles-and-what-it-leaves-open)) | each hypothesis of [What the dynamics prototype settles, and what it leaves open](#what-the-dynamics-prototype-settles-and-what-it-leaves-open) is settled by its test | built: step, solver and cost settled; the felt law ([The felt law](#the-felt-law)) and the flexible hammer ([Rigid bodies](#rigid-bodies)) open |
 | quasi-static core | bodies in a tree, contacts over all coordinates, set-valued axis friction, solved to convergence under a cap, the key as first client and Hirschkorn's key as the default ([What is built: stage 1a, the key on its frame](#what-is-built-stage-1a-the-key-on-its-frame)); the registry, the validation layer, the boundary in codes and numbers, the bilingual interface ([Architecture](#architecture)) | every weighing quantity by procedure ([The protocols, as they are](#the-protocols-as-they-are)) | the key's readings come from procedures run on the model, the closed forms passing as oracles | the tree, the jig, the contacts over all coordinates, the static solve, the key free to lift off its balance punching, the seated pose that reads key height and dip, the regulation solve on it, the touch weight as an increment, every weighing quantity by procedure, as measurements with their trust ([Parts and statics](#parts-and-statics), [The protocols, as they are](#the-protocols-as-they-are)), the boundary in codes and numbers, registry, settings, sheet and diagnostics apart, with its generated types and its catalogs in English and French ([The WebAssembly boundary](#the-webassembly-boundary), [A bilingual interface](#a-bilingual-interface)), and the instrument set by path and by action, its registry and validation layer, its log and state hash ([The WebAssembly boundary](#the-webassembly-boundary), [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)), and the profiles that bind every number it starts from to a record or a stated assumption ([Every number has its provenance](#every-number-has-its-provenance)), Hirschkorn's key on his printed frame the default and the owner's measured section beside it, unweighed until he weighs one of its keys, chosen on the bench, every drawn line marked by how its number is known ([What is built: stage 1a, the key on its frame](#what-is-built-stage-1a-the-key-on-its-frame), [Validation instruments](#validation-instruments), "Hirschkorn's Boston GP-178, note 52", [The parameter registry and the validation layer](#the-parameter-registry-and-the-validation-layer)), a key's mass weighed or published and never derived from its outline ([Named simplifications](#named-simplifications)), and the band, drawn by the driven sweep that reads D and U a second way ([The protocols, as they are](#the-protocols-as-they-are), [The bench](#the-bench)), built; the rest planned |
-| 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | the wippen assembly as parts, refused where no part could be built as, and Hirschkorn's traced from his figure, built; the rest planned |
+| 1b | the wippen on its rail, the capstan contact, the support spring where fitted | wippen weight, support spring balance weight | a weighed wippen agrees with its model by the protocol | the wippen assembly as parts, refused where no part could be built as, and Hirschkorn's traced from his figure, built; the wippen resting on the capstan in the seats and the regulation solve ([What is built: stage 1b, the wippen on the capstan](#what-is-built-stage-1b-the-wippen-on-the-capstan)), built; the rest planned |
 | 1c | the hammer and its shank | strike weight, strike ratio | a weighed hammer agrees with its model by the protocol | planned |
 | 1d | nothing new | the equation of balance, closed | D, U, BW and FW of an assembled key, wippen and hammer agree with the same parts weighed | planned |
 | 2 | the jack, the repetition lever, let-off, drop, checking: the action in motion | let-off, drop, checking, the slow-release test, the key force under position drive | Thorin's key force and Hirschkorn's trajectories are reproduced within their measured scatter ([Validation instruments](#validation-instruments)) | planned |

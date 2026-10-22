@@ -1256,6 +1256,7 @@ fn standing_key_height(start: &Start) -> Result<f64, LoadError> {
         start.kind,
         mass,
         0.0,
+        None,
     )
     .map_err(|p| not_read(SeatRefusal::Mechanism(p)))?;
     let seats = Seating {

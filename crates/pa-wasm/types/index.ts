@@ -85,4 +85,5 @@ export type { Verdict } from "./Verdict";
 export type { Walk } from "./Walk";
 export type { Weighed } from "./Weighed";
 export type { WeighingRefusal } from "./WeighingRefusal";
+export type { WhichSeat } from "./WhichSeat";
 export type { Zeroing } from "./Zeroing";

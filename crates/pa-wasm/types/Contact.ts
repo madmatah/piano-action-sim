@@ -3,4 +3,4 @@
 /**
  * A contact between the key and its frame, named by its two parts.
  */
-export type Contact = "balance_rail_punching" | "front_rail_punching" | "back_rail_cloth" | "front_pin_in_the_mortise" | "front_pin_on_the_wood";
+export type Contact = "balance_rail_punching" | "front_rail_punching" | "back_rail_cloth" | "front_pin_in_the_mortise" | "front_pin_on_the_wood" | "capstan_on_the_heel" | "heel_on_the_key";

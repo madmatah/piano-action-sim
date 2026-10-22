@@ -890,6 +890,7 @@ mod tests {
                 KeyKind::Natural,
                 mass,
                 friction.bound_n_m,
+                None,
             )
             .expect("the key mounts on its frame"),
             jig: KeyJig::new(&a.key, &a.protocol, mass).expect("the key mounts on the jig"),
