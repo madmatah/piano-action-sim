@@ -138,7 +138,8 @@ fn contacts(codes: &[ContactCode]) -> Vec<Contact> {
     codes.iter().map(|&c| c.into()).collect()
 }
 
-/// A part of the key or of its frame, as the trade names it.
+/// A part of the key, of its frame or of the wippen assembly, as the trade
+/// names it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
@@ -168,6 +169,12 @@ pub enum Part {
     PaperPunching,
     BackRail,
     BackRailCloth,
+    Wippen,
+    WippenHeel,
+    WippenHeelCloth,
+    Jack,
+    RepetitionLever,
+    CenterPin,
 }
 
 impl From<PartCode> for Part {
@@ -197,6 +204,12 @@ impl From<PartCode> for Part {
             PartCode::PaperPunching => Self::PaperPunching,
             PartCode::BackRail => Self::BackRail,
             PartCode::BackRailCloth => Self::BackRailCloth,
+            PartCode::Wippen => Self::Wippen,
+            PartCode::WippenHeel => Self::WippenHeel,
+            PartCode::WippenHeelCloth => Self::WippenHeelCloth,
+            PartCode::Jack => Self::Jack,
+            PartCode::RepetitionLever => Self::RepetitionLever,
+            PartCode::CenterPin => Self::CenterPin,
         }
     }
 }
@@ -2153,6 +2166,8 @@ pub enum Material {
     HardFelt,
     Cloth,
     BushingCloth,
+    ActionWood,
+    HeelCloth,
     Paper,
 }
 
@@ -2355,6 +2370,8 @@ impl Scene {
                             CoreMaterial::HardFelt => Material::HardFelt,
                             CoreMaterial::Cloth => Material::Cloth,
                             CoreMaterial::BushingCloth => Material::BushingCloth,
+                            CoreMaterial::ActionWood => Material::ActionWood,
+                            CoreMaterial::HeelCloth => Material::HeelCloth,
                             CoreMaterial::Paper { .. } => Material::Paper,
                         },
                         paper_mm: match o.material {
@@ -2751,6 +2768,28 @@ pub enum Problem {
         /// How far the covering runs back from its lip, millimeters.
         covering_mm: f64,
     },
+    /// A part of the wippen assembly weighed at no mass, or less.
+    PartMassNotPositive {
+        /// The part.
+        part: Part,
+        /// Its mass, grams.
+        mass_g: f64,
+    },
+    /// A lining of no thickness: the heel cloth.
+    NoThickness {
+        /// The lining.
+        part: Part,
+    },
+    /// A circle of no radius: the heel's, or the center pin's.
+    NoRadius {
+        /// The part drawn on it.
+        part: Part,
+    },
+    /// A part of the wippen assembly whose outline crosses itself.
+    PartOutlineCrossesItself {
+        /// The part.
+        part: Part,
+    },
     /// The instrument has no such path.
     UnknownPath {
         /// The path asked for.
@@ -2869,6 +2908,15 @@ impl Problem {
                     from_lip_mm: mm(from_lip),
                     covering_mm: mm(covering),
                 }
+            }
+            CoreProblem::PartMassNotPositive { part, mass } => Self::PartMassNotPositive {
+                part: part.into(),
+                mass_g: mass * 1000.0,
+            },
+            CoreProblem::NoThickness { part } => Self::NoThickness { part: part.into() },
+            CoreProblem::NoRadius { part } => Self::NoRadius { part: part.into() },
+            CoreProblem::PartOutlineCrossesItself { part } => {
+                Self::PartOutlineCrossesItself { part: part.into() }
             }
         }
     }
@@ -3435,6 +3483,12 @@ mod tests {
             PartCode::PaperPunching,
             PartCode::BackRail,
             PartCode::BackRailCloth,
+            PartCode::Wippen,
+            PartCode::WippenHeel,
+            PartCode::WippenHeelCloth,
+            PartCode::Jack,
+            PartCode::RepetitionLever,
+            PartCode::CenterPin,
         ] {
             assert_eq!(written(&Part::from(p)), format!("\"{}\"", p.code()));
         }
@@ -3520,6 +3574,27 @@ mod tests {
                 &pa_core::test_fixture::drawer()
             ))),
             r#"{"code":"outline_crosses_itself","back":"key_tail_felt","front":"back_check_block","by_mm":12.5}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::PartMassNotPositive {
+                    part: PartCode::Jack,
+                    mass: -0.000_5,
+                },
+                &pa_core::test_fixture::drawer()
+            ))),
+            r#"{"code":"part_mass_not_positive","part":"jack","mass_g":-0.5}"#
+        );
+        assert_eq!(
+            written(&EditRefusal::Problem(Problem::of(
+                &CoreProblem::DoesNotFit {
+                    part: PartCode::WippenHeelCloth,
+                    within: PartCode::WippenHeel,
+                    by: 0.000_25,
+                },
+                &pa_core::test_fixture::drawer()
+            ))),
+            r#"{"code":"does_not_fit","part":"wippen_heel_cloth","within":"wippen_heel","by_mm":0.25}"#
         );
         assert_eq!(
             written(&EditRefusal::Problem(Problem::of(

@@ -112,6 +112,12 @@ const PART: Named<Part> = {
   paper_punching: 'paper punching',
   back_rail: 'back rail',
   back_rail_cloth: 'back rail cloth',
+  wippen: 'wippen',
+  wippen_heel: 'wippen heel',
+  wippen_heel_cloth: 'heel cloth',
+  jack: 'jack',
+  repetition_lever: 'repetition lever',
+  center_pin: 'center pin',
 }
 
 /** How the key rides on its stops, naming them and the lift. */
@@ -342,6 +348,14 @@ const problem: Worded<Problem> = {
     `a front mortise ${to(depth_mm, PART_MM)} mm deep goes through the ${to(wood_mm, PART_MM)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
     `the measuring point stands on the covering, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
+  part_mass_not_positive: ({ part }) => `a ${PART[part]} weighs more than nothing.`,
+  no_thickness: ({ part }) => `a ${PART[part]} has some thickness.`,
+  no_radius: ({ part }) =>
+    part === 'center_pin'
+      ? 'a center pin has some diameter.'
+      : `the ${PART[part]}'s circle, which its cloth's face is an arc of, has some radius.`,
+  part_outline_crosses_itself: ({ part }) =>
+    `the ${PART[part]}'s outline would cross itself: no ${PART[part]} is cut like that.`,
   unknown_path: ({ path }) => `the bench has no setting ${path}.`,
   unknown_profile: ({ profile }) => `the bench ships no instrument ${profile}.`,
   set_by_action: ({ path }) => `${path} is not set directly: it is laid, regulated or weighed.`,

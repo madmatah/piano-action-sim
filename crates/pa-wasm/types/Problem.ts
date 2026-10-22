@@ -155,7 +155,27 @@ from_lip_mm: number,
 /**
  * How far the covering runs back from its lip, millimeters.
  */
-covering_mm: number, } | { "code": "unknown_path", 
+covering_mm: number, } | { "code": "part_mass_not_positive", 
+/**
+ * The part.
+ */
+part: Part, 
+/**
+ * Its mass, grams.
+ */
+mass_g: number, } | { "code": "no_thickness", 
+/**
+ * The lining.
+ */
+part: Part, } | { "code": "no_radius", 
+/**
+ * The part drawn on it.
+ */
+part: Part, } | { "code": "part_outline_crosses_itself", 
+/**
+ * The part.
+ */
+part: Part, } | { "code": "unknown_path", 
 /**
  * The path asked for.
  */

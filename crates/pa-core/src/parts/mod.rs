@@ -1,5 +1,5 @@
 //! Parametric part definitions, the parts they build, and what is known of
-//! a key's mass.
+//! a key's mass and of a wippen assembly's.
 //!
 //! # One key, drawn and touched
 //!
@@ -20,6 +20,15 @@
 //! area centroid ([`KeyDesign::section_centroid`]), and every reading it
 //! reaches names it (`docs/FOUNDATIONS.md` > Named simplifications).
 //!
+//! # The wippen assembly
+//!
+//! [`WippenAssembly`] holds what places the wippen's pivot and the heel the
+//! capstan bears on as numbers, and the rest of its body's, its jack's and
+//! its repetition lever's outlines as traces of a source's drawing; its
+//! parts are built from them in the wippen's frame ([`wippen_assembly`]).
+//! Its mass is published part by part, as Hirschkorn's Table A.1 gives it
+//! ([`WippenAssemblyMass`]).
+//!
 //! # The key's local frame
 //!
 //! Origin at the **balance rail pin**, `x` positive toward the player, `y`
@@ -36,11 +45,13 @@ pub mod key;
 pub mod key_mass;
 pub mod mounts;
 pub mod verdicts;
+pub mod wippen_assembly;
 
 pub use faults::Fault;
 pub use frame::{FrameDesign, FrameRanges, PunchingStack};
 pub use key::KeyRanges;
 pub use key_mass::{FrontWeightReading, KeyMass, NotAWeighing};
+pub use wippen_assembly::{WippenAssembly, WippenAssemblyMass, WippenAssemblyRanges};
 
 use crate::contact::{Part, PartId};
 use crate::geometry::{Dir, Point, Seg, DRAWN_HALVINGS};

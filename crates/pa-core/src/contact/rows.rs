@@ -42,6 +42,7 @@
 
 use super::features::{Feature, PairFeatures, Piece};
 use super::{PairGeometry, Part, PartId, Role};
+use crate::geometry::polygon::{distance_to_edges, encloses};
 use crate::geometry::{
     center_on_face, disc_on_disc, disc_on_face, Dir, Disc, Face, Point, Proximity, Seg,
 };
@@ -245,7 +246,7 @@ struct Material {
 impl Material {
     /// Whether `p` is inside a part and outside every cut.
     fn holds(&self, p: Point) -> bool {
-        self.solids.iter().any(|s| inside(s, p)) && !self.cuts.iter().any(|c| inside(c, p))
+        self.solids.iter().any(|s| encloses(s, p)) && !self.cuts.iter().any(|c| encloses(c, p))
     }
 
     /// How deep `p` stands inside the material: its distance to the nearest
@@ -254,44 +255,12 @@ impl Material {
         if !self.holds(p) {
             return 0.0;
         }
-        let edge = |a: Point, b: Point| {
-            let (ex, ey) = (b.x - a.x, b.y - a.y);
-            let e2 = ex * ex + ey * ey;
-            let t = if e2 > 0.0 {
-                (((p.x - a.x) * ex + (p.y - a.y) * ey) / e2).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-            let (dx, dy) = (p.x - a.x - t * ex, p.y - a.y - t * ey);
-            (dx * dx + dy * dy).sqrt()
-        };
         self.solids
             .iter()
             .chain(&self.cuts)
-            .flat_map(|poly| {
-                let n = poly.len();
-                (0..n).map(move |i| (poly[i], poly[(i + 1) % n]))
-            })
-            .map(|(a, b)| edge(a, b))
+            .map(|polygon| distance_to_edges(polygon, p))
             .fold(f64::INFINITY, f64::min)
     }
-}
-
-/// Whether `p` is inside a closed polygon, by the parity of a ray's
-/// crossings.
-fn inside(polygon: &[Point], p: Point) -> bool {
-    let mut odd = false;
-    let n = polygon.len();
-    for i in 0..n {
-        let (a, b) = (polygon[i], polygon[(i + 1) % n]);
-        if (a.y > p.y) != (b.y > p.y) {
-            let x = a.x + (p.y - a.y) * (b.x - a.x) / (b.y - a.y);
-            if p.x < x {
-                odd = !odd;
-            }
-        }
-    }
-    odd
 }
 
 /// What one row is being built from: its pair, its feature, the two bodies

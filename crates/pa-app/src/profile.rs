@@ -1826,6 +1826,7 @@ mod tests {
             frame: &start.frame,
             protocol: &start.protocol,
             friction: &friction,
+            wippen_assembly: None,
         })
     }
 

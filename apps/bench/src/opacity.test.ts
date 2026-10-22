@@ -88,6 +88,12 @@ describe('a part of a body', () => {
     paper_punching: 'parts',
     back_rail: 'parts',
     back_rail_cloth: 'parts',
+    wippen: 'parts',
+    wippen_heel: 'parts',
+    wippen_heel_cloth: 'parts',
+    jack: 'parts',
+    repetition_lever: 'parts',
+    center_pin: 'parts',
   }
 
   it('is a mortise’s bushing drawn as the body’s bushings, and any other part as its parts', () => {

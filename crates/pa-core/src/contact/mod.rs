@@ -44,8 +44,12 @@
 //! a key riding on a frame whose stops fight included: it rides on the same
 //! pairs, lifted off its balance punching. The brute-force oracle holds every
 //! row's points on the drawn outlines
-//! (`every_contact_lies_on_its_drawn_outline`). Planned: a compliant felt law
-//! through the same rows ([`ContactLaw`]).
+//! (`every_contact_lies_on_its_drawn_outline`). Built too: the wippen
+//! assembly's parts ([`crate::parts::WippenAssembly::parts`]), the heel's
+//! outline below the wippen's body, its sides, its bottom and its cloth's
+//! outer face, declared as one chain of ranges (`heel_below_the_body`).
+//! Planned: the wippen carried on its key through those ranges, and a
+//! compliant felt law through the same rows ([`ContactLaw`]).
 
 mod bearing;
 mod features;
@@ -152,6 +156,20 @@ pub enum PartCode {
     BackRail,
     /// The cloth strip on the back rail.
     BackRailCloth,
+    /// The wippen's body: the one rigid body of the wippen assembly that
+    /// carries its coordinate, turning on its center pin.
+    Wippen,
+    /// The heel hanging under the wippen's body, over the capstan, its
+    /// cloth set in its underside.
+    WippenHeel,
+    /// The cloth on the heel's underside, the face the capstan bears on.
+    WippenHeelCloth,
+    /// The jack, pinned on the wippen.
+    Jack,
+    /// The repetition lever, pinned on the wippen.
+    RepetitionLever,
+    /// The pin the wippen turns on.
+    CenterPin,
 }
 
 impl PartCode {
@@ -182,6 +200,12 @@ impl PartCode {
             Self::PaperPunching => "paper_punching",
             Self::BackRail => "back_rail",
             Self::BackRailCloth => "back_rail_cloth",
+            Self::Wippen => "wippen",
+            Self::WippenHeel => "wippen_heel",
+            Self::WippenHeelCloth => "wippen_heel_cloth",
+            Self::Jack => "jack",
+            Self::RepetitionLever => "repetition_lever",
+            Self::CenterPin => "center_pin",
         }
     }
 }
@@ -227,6 +251,11 @@ pub enum Material {
     Cloth,
     /// The cloth a mortise is bushed with.
     BushingCloth,
+    /// The wood of the action: the wippen's body and its heel, the jack and
+    /// the repetition lever.
+    ActionWood,
+    /// The cloth on the wippen's heel.
+    HeelCloth,
     /// A punching paper. The trade identifies a paper by its color, and the
     /// color is its thickness, so the stock is named by the thickness.
     Paper {

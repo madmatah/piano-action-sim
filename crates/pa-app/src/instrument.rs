@@ -1113,6 +1113,7 @@ impl Instrument {
             frame: &self.frame,
             protocol: &self.protocol,
             friction: &self.friction,
+            wippen_assembly: None,
         }
     }
 

@@ -710,7 +710,7 @@ empty rather than filled from a dictionary.
 | FR | EN | DE | `identifier` |
 |---|---|---|---|
 | Talon de chevalet | wippen heel | Hebegliedsattel | `wippen_heel` |
-| Feutre / drap de talon | heel cloth | — | `wippen_heel_cloth` |
+| Feutre de talon / *drap de talon* | heel cloth | — | `wippen_heel_cloth` |
 | Fourche de chevalet | wippen flange | Hebegliedkapsel | `wippen_flange` |
 | Coussin de chevalet | wippen cushion | — | `wippen_cushion` |
 | **Bâton (doigt) d'échappement** | **jack** (Steinway: *fly*) | Stoßzunge | `jack` |
@@ -740,7 +740,7 @@ empty rather than filled from a dictionary.
 | Âme du rouleau | knuckle core / spline | — | `knuckle_core` |
 | Queue de marteau | hammer tail | — | `hammer_tail` |
 | Noix (de marteau) *(piano droit)* | hammer butt | — | `hammer_butt` *(upright)* |
-| Axe / center / pivot | center pin | — | `center_pin` |
+| Axe / *pivot* | center pin | — | `center_pin` |
 | Bascule / levier d'étouffoir | damper (under)lever | Dämpferarm | `damper_underlever` |
 | Fourche de bascule (d'étouffoir) | underlever flange | Dämpferkapsel | `underlever_flange` |
 | Noix d'étouffoir | damper block (clamps the wire) | Dämpferklotz | `damper_block`: the small wooden block at the top of the under-lever's upright, drilled for the damper wire and clamping it with a screw; on some under-levers fused with the upright, on others a separate block on an axle, `form: Fixed` or `form: Articulated`. The interface says **noix d'étouffoir**; **taquet d'étouffoir** names the same block. « Bloc d'étouffoir » is said loosely for the whole damper assembly, not for this block |

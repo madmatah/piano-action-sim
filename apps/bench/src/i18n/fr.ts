@@ -122,6 +122,12 @@ const THE_PART: Named<Part> = {
   paper_punching: 'la mouche en papier',
   back_rail: 'la barre de repos arrière',
   back_rail_cloth: 'le drap de repos arrière',
+  wippen: 'le corps du chevalet',
+  wippen_heel: 'le talon de chevalet',
+  wippen_heel_cloth: 'le feutre de talon',
+  jack: 'le bâton d’échappement',
+  repetition_lever: 'le levier de répétition',
+  center_pin: 'l’axe',
 }
 
 /** A part after « de »: « du pilote », « de la capsule de touche ». */
@@ -364,6 +370,14 @@ const problem: Worded<Problem> = {
     `une mortaise d’enfoncement de ${to(depth_mm, PART_MM)} mm de profondeur traverse les ${to(wood_mm, PART_MM)} mm du corps de la touche.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
     `le point de mesure se place sur le revêtement, de son bord jusqu’à ${to(covering_mm, FROM_LIP_MM)} mm en arrière : à ${to(from_lip_mm, FROM_LIP_MM)} mm du bord, on est hors du revêtement.`,
+  part_mass_not_positive: ({ part }) => `${THE_PART[part]} pèse plus que rien.`,
+  no_thickness: ({ part }) => `${THE_PART[part]} a une épaisseur.`,
+  no_radius: ({ part }) =>
+    part === 'center_pin'
+      ? 'l’axe a un diamètre.'
+      : `le cercle ${ofThe(part)}, dont la face du feutre est un arc, a un rayon.`,
+  part_outline_crosses_itself: ({ part }) =>
+    `le contour ${ofThe(part)} se croiserait lui-même : aucune pièce n’est taillée ainsi.`,
   unknown_path: ({ path }) => `le banc d’essai n’a pas de réglage ${path}.`,
   unknown_profile: ({ profile }) => `le banc d’essai ne propose pas d’instrument ${profile}.`,
   set_by_action: ({ path }) =>

@@ -4,8 +4,10 @@
 //! An outline is a closed chain of [`Seg`]s, lines and arcs. The parts built
 //! from outlines, and the ranges into them that a contact may read, are in
 //! [`crate::contact`]. The three signed primitives every contact row is made
-//! of, disc on face, disc on disc and center on face, are in [`signed`].
+//! of, disc on face, disc on disc and center on face, are in [`signed`]; an
+//! outline read as the polygon it is drawn as, in [`polygon`].
 
+pub mod polygon;
 pub mod signed;
 
 pub use signed::{center_on_face, disc_on_disc, disc_on_face, Disc, Face, Proximity};
