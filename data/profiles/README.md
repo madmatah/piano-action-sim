@@ -114,7 +114,7 @@ built, each kept with the rule and the input that places it:
   lays the dip and leaves the key height where it stands.
 
 A wippen assembly a source publishes is bound by the names the validation
-layer gives its numbers: its center pin, `wippen.center.x` and
+layer gives its numbers, as Hirschkorn's profile binds his: its center pin, `wippen.center.x` and
 `wippen.center.y`, in the keybed's frame; its heel by the trade's two
 quantities, `wippen_heel.position` and `wippen_heel.height`, its circle's
 lowest point from the center pin and below the jack's pin, with

@@ -19,11 +19,11 @@
 //! weighing and not a measurement, which the same test holds to the bits
 //! the bench takes it in.
 //!
-//! Neither profile carries a wippen assembly yet. The tests of the wippen
-//! carry a test wippen ([`wippen_assembly`]) over the measured section's
-//! capstan: Hirschkorn's numbers where they place a pivot, a contact or a
-//! mass, its outlines simplified from the trace of his, each number a named
-//! constant.
+//! The measured section's profile carries no wippen assembly. The tests of
+//! the wippen carry a test wippen ([`wippen_assembly`]) over the measured
+//! section's capstan: Hirschkorn's numbers where they place a pivot, a
+//! contact or a mass, its outlines simplified from the trace of his, each
+//! number a named constant.
 
 use crate::geometry::Point;
 use crate::measure::TouchweightProtocol;

@@ -1,6 +1,6 @@
 {
   "profile": "hirschkorn",
-  "what": "Hirschkorn's key, note 52 of a Boston GP-178 grand, on his printed frame (Hirschkorn 2004, Appendix A): his key's printed points and lines, its outline traced from his Figure A.1 where his tables give no number, its mass, center of mass and inertia from Table A.1, its bushings from Table A.9, and his dip target. His frame bears on the key where his model does, at Pg4 and Pg5, but on real felts: a flat front punching washer over Pg4, and a flat back rail cloth strip lying wholly under the tail's chamfer, its rounded front edge over Pg5, each with its top where his round of 5 mm has its, since what is drawn is what is touched. The key, nose-up at rest, bears on the cloth's front edge, 0.06 mm from where it bears on his round. His printed frame on his rounds lets the key fall 9.306 mm at Pk2, where his finger presses; on the real felts 9.308 mm, 1.7 µm more, from the curvature of his rounds and the printed length of Pk5's normal (tools/derivations/11-hirschkorn-key-outline.py). His keybed, rails, papers, pins and the key's width are not published: they are those of the owner's measured section (data/profiles/measured-section.json), so his key height is an indication. It arrives as his frame is printed, not regulated: his dip of 10.0 mm is one regulation away.",
+  "what": "Hirschkorn's key, note 52 of a Boston GP-178 grand, carrying his wippen assembly on its capstan, on his printed frame (Hirschkorn 2004, Appendix A): his key's and his wippen's printed points and lines, their outlines traced from his Figure A.1 where his tables give no number, their masses, centers of mass and inertias from Table A.1, the key's bushings and the wippen center's friction from Table A.9, and his dip target. His frame bears on the key where his model does, at Pg4 and Pg5, but on real felts: a flat front punching washer over Pg4, and a flat back rail cloth strip lying wholly under the tail's chamfer, its rounded front edge over Pg5, each with its top where his round of 5 mm has its, since what is drawn is what is touched. The key, nose-up at rest, bears on the cloth's front edge, 0.06 mm from where it bears on his round. His printed frame on his rounds lets the key fall 9.306 mm at Pk2, where his finger presses; on the real felts 9.308 mm, 1.7 µm more, from the curvature of his rounds and the printed length of Pk5's normal (tools/derivations/11-hirschkorn-key-outline.py). His keybed, rails, papers, pins and the key's width are not published: they are those of the owner's measured section (data/profiles/measured-section.json), so his key height is an indication. It arrives as his frame is printed, not regulated: his dip of 10.0 mm is one regulation away.",
   "instruments": [
     "Boston GP-178 grand piano, note 52"
   ],
@@ -17,8 +17,8 @@
     "why": "On his printed frame as it is printed: the felts' tops where his rounds' tops stand, which no regulation laid. His dip of 10.0 mm is a target of his regulation, which the printed frame does not meet."
   },
   "wippen_assembly": {
-    "is": "none",
-    "why": "His key is read alone, as a key with no action on its capstan: his wippen assembly, published in his tables and traced in his Figure A.1, is not bound to it. What would replace this: his wippen bound from those records, its heel by his Pw5 and its center pin by his Pg2."
+    "is": "published",
+    "why": "His key carries his wippen assembly on its capstan, as he publishes it: its center pin at Pg2 (Table A.2) and its heel at Pw5, its jack's and its repetition lever's pins at Pw2 and Pw3 (Table A.4), its three parts' masses, centers of mass and inertias (Table A.1), its center's friction (Table A.9), and the outlines his tables do not give, traced from his Figure A.1 with the jack and the lever at the rest angles that close his contacts 5 and 6 (hirschkorn-wippen-outline.json). It rests on the capstan by his contact 1, so the touchweights are read with it, as a key is weighed with its wippen. It turns on its center pin alone: his tables give no rail and no flange."
   },
   "values": [
     {
@@ -584,6 +584,212 @@
       "reliability": "E",
       "rule": "Nothing stands on the measuring point.",
       "why": "The bench starts with the key at rest under no weight; a weight is what an experiment puts on it."
+    },
+    {
+      "param": "wippen.center.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/ground/points/Pg2/x"
+    },
+    {
+      "param": "wippen.center.y",
+      "value": 81.6,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Pg2's y, 52.8 mm above his balance bearing (Table A.2), raised by the balance bearing the profile borrows, 28.8 mm above the keybed: 52.8 + 28.8 = 81.6 mm.",
+      "why": "His center pin is printed in his frame, whose origin is the balance bearing, Pg1; his keybed is not published, so the pin stands over the keybed the profile borrows by the same height above the bearing."
+    },
+    {
+      "param": "wippen_outline",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/wippen_outline"
+    },
+    {
+      "param": "wippen_heel.position",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/wippen/points/Pw5/x"
+    },
+    {
+      "param": "wippen_heel.height",
+      "value": 18.8,
+      "unit": "mm",
+      "reliability": "E",
+      "rule": "Pw2's y less Pw5's y plus Pw5's radius (Table A.4): -3.5 - 3.0 + 25.3 = 18.8 mm.",
+      "why": "The heel's height is the trade's: how far its contact surface, read at the heel circle's lowest point, stands below the jack's pin. His table prints the circle's center and radius, Pw5, and the jack's pin, Pw2, from which it follows."
+    },
+    {
+      "param": "wippen_heel.radius",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/wippen/points/Pw5/radius"
+    },
+    {
+      "param": "wippen_heel.top",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_top"
+    },
+    {
+      "param": "wippen_heel.back_top",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_back_top"
+    },
+    {
+      "param": "wippen_heel.front_top",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_front_top"
+    },
+    {
+      "param": "wippen_heel.back",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_back"
+    },
+    {
+      "param": "wippen_heel.front",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_front"
+    },
+    {
+      "param": "wippen_heel_cloth.back",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_cloth_back"
+    },
+    {
+      "param": "wippen_heel_cloth.front",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_cloth_front"
+    },
+    {
+      "param": "wippen_heel_cloth.thickness",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/heel_cloth_thickness"
+    },
+    {
+      "param": "jack.pin.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/wippen/points/Pw2/x"
+    },
+    {
+      "param": "jack.pin.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/wippen/points/Pw2/y"
+    },
+    {
+      "param": "jack.rest_angle",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/jack_rest_angle"
+    },
+    {
+      "param": "jack_outline",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/jack_outline"
+    },
+    {
+      "param": "jack.width",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/jack_width"
+    },
+    {
+      "param": "repetition_lever.pin.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/wippen/points/Pw3/x"
+    },
+    {
+      "param": "repetition_lever.pin.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/geometry/wippen/points/Pw3/y"
+    },
+    {
+      "param": "repetition_lever.rest_angle",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/repetition_lever_rest_angle"
+    },
+    {
+      "param": "repetition_lever_outline",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/repetition_lever_outline"
+    },
+    {
+      "param": "repetition_lever.width",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/repetition_lever_width"
+    },
+    {
+      "param": "center_pin.diameter",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/center_pin_diameter"
+    },
+    {
+      "param": "wippen.width",
+      "record": "hirschkorn-wippen-outline.json",
+      "pointer": "/records/wippen_width"
+    },
+    {
+      "param": "wippen.friction.bound",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/joint_friction/rows/wippen/A"
+    },
+    {
+      "param": "wippen.friction.radius",
+      "none": true,
+      "why": "Table A.9 prints the wippen center's kinetic torque and not the radius it was read at, as for the key's."
+    },
+    {
+      "param": "wippen.published.mass",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/wippen/mass"
+    },
+    {
+      "param": "wippen.published.center.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/wippen/center_of_mass/x"
+    },
+    {
+      "param": "wippen.published.center.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/wippen/center_of_mass/y"
+    },
+    {
+      "param": "wippen.published.inertia",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/wippen/moment_of_inertia"
+    },
+    {
+      "param": "jack.published.mass",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/jack/mass"
+    },
+    {
+      "param": "jack.published.center.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/jack/center_of_mass/x"
+    },
+    {
+      "param": "jack.published.center.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/jack/center_of_mass/y"
+    },
+    {
+      "param": "jack.published.inertia",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/jack/moment_of_inertia"
+    },
+    {
+      "param": "repetition_lever.published.mass",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/repetition_lever/mass"
+    },
+    {
+      "param": "repetition_lever.published.center.x",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/repetition_lever/center_of_mass/x"
+    },
+    {
+      "param": "repetition_lever.published.center.y",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/repetition_lever/center_of_mass/y"
+    },
+    {
+      "param": "repetition_lever.published.inertia",
+      "record": "hirschkorn-boston-gp178-note52.json",
+      "pointer": "/mass_properties/bodies/repetition_lever/moment_of_inertia"
     }
   ]
 }

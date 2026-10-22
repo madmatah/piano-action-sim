@@ -905,8 +905,8 @@ impl Instrument {
     }
 
     /// The standard instrument: the standard profile's
-    /// ([`crate::profile::STANDARD`]), Hirschkorn's key on his printed frame,
-    /// as it arrives.
+    /// ([`crate::profile::STANDARD`]), Hirschkorn's key carrying his wippen
+    /// assembly on his printed frame, as it arrives.
     pub fn standard() -> Self {
         Self::of(Profile::standard()).expect("the standard instrument is built")
     }
@@ -2482,8 +2482,13 @@ pub(crate) mod read {
         Stack, Start, Targets,
     };
     use crate::registry::path;
+    use pa_core::contact::{PartCode, PartId};
+    use pa_core::measure::seat::Seating;
     use pa_core::measure::walk::{HALVINGS, STEP_G};
+    use pa_core::mechanism::BodyId;
+    use pa_core::parts::mounts::{step_down_a_whole_degree, Mounted};
     use pa_core::solve::statics::RESIDUAL_TOLERANCE;
+    use pa_core::solve::Statics;
     use pa_core::G;
 
     /// Bushings that hold `grams` at the measuring point with the key
@@ -2597,6 +2602,89 @@ pub(crate) mod read {
             }
         }
         (refused, seated)
+    }
+
+    /// The key of `b` carrying its wippen, and the key alone's top seat,
+    /// the wippen's angle in its place at nothing: where the sheet reads a
+    /// wippen out of the key's reach
+    /// ([`pa_core::parts::mounts::Mounted::measure_the_heel_past`]).
+    pub(crate) fn at_the_key_alones_top_seat(b: &Instrument) -> (Mounted, Vec<f64>) {
+        let k = b.on_frame().expect("the key on its frame");
+        let alone = Seating {
+            mounted: k.mounted.key_alone.as_deref().expect("the key alone"),
+            ..b.seating_on(&k)
+        }
+        .top(&mut Statics::new())
+        .expect("the key alone seats");
+        let mut q = alone.q;
+        q.insert(k.mounted.wippen.expect("a wippen").angle.0, 0.0);
+        (k.mounted, q)
+    }
+
+    /// How finely [`nearest_over_its_whole_turn`] resolves the heel's
+    /// nearest approach, meters: a micron, finer than any tolerance the
+    /// bench reads a distance to.
+    pub(crate) const RESOLVED_TO: f64 = 1e-6;
+
+    /// How near the heel and its cloth come to the key's parts over the
+    /// whole turn of the wippen, the key at `q`, meters, to within
+    /// [`RESOLVED_TO`] above it, with the widest step between two of the
+    /// angles the bench decides reach at
+    /// ([`pa_core::parts::mounts::step_down_a_whole_degree`]). The clearance at
+    /// an angle moves by no more than the wippen's reach times the turn,
+    /// every sample and every edge of the heel turning about the center pin
+    /// within its reach, so no angle between two read at `a` and `b`,
+    /// reading `ca` and `cb`, reads less than their mean less the reach
+    /// times half the turn between them: each step is halved until that
+    /// bound stands within [`RESOLVED_TO`] of the least read so far. Started
+    /// from the whole degrees, so the least read is no more than the
+    /// bench's reading.
+    pub(crate) fn nearest_over_its_whole_turn(mounted: &Mounted, q: &[f64]) -> (f64, f64) {
+        let m = &mounted.mechanism;
+        let wippen = mounted.wippen.expect("a wippen");
+        let (low, high) = m.coords()[wippen.angle.0].limits;
+        let picked = |keep: &dyn Fn(PartCode, BodyId) -> bool| -> Vec<PartId> {
+            (0..m.parts().len())
+                .filter(|&i| keep(m.parts()[i].code, m.parts()[i].body))
+                .map(|i| PartId(u16::try_from(i).expect("few parts")))
+                .collect()
+        };
+        let heel = picked(&|code, body| {
+            body == wippen.body && matches!(code, PartCode::WippenHeel | PartCode::WippenHeelCloth)
+        });
+        let key = m.outlines(&m.pose(q), &picked(&|_, body| body == mounted.key));
+        let clearance = |angle: f64| {
+            let mut at = q.to_vec();
+            at[wippen.angle.0] = angle;
+            m.outlines(&m.pose(&at), &heel).clearance(&key)
+        };
+        let mut whole = vec![(high, clearance(high))];
+        let mut widest = 0.0_f64;
+        let mut angle = high;
+        while angle > low {
+            let below = step_down_a_whole_degree(angle, low);
+            widest = widest.max(angle - below);
+            whole.push((below, clearance(below)));
+            angle = below;
+        }
+        let mut least = whole
+            .iter()
+            .map(|&(_, read)| read)
+            .fold(f64::INFINITY, f64::min);
+        let mut steps: Vec<[(f64, f64); 2]> =
+            whole.windows(2).map(|pair| [pair[0], pair[1]]).collect();
+        while let Some([(above, at_above), (below, at_below)]) = steps.pop() {
+            let bound = 0.5 * (at_above + at_below) - wippen.reach * 0.5 * (above - below);
+            if bound >= least - RESOLVED_TO {
+                continue;
+            }
+            let middle = 0.5 * (above + below);
+            let at_middle = clearance(middle);
+            least = least.min(at_middle);
+            steps.push([(above, at_above), (middle, at_middle)]);
+            steps.push([(middle, at_middle), (below, at_below)]);
+        }
+        (least, widest)
     }
 }
 
@@ -4033,8 +4121,9 @@ mod contact_readout_tests {
     /// By type, a contact pair holds nothing but ranges of parts. Here, on
     /// every bench of the golden sheet and on every shipped profile's: the
     /// mechanism the contacts are read on carries exactly the parts the view
-    /// draws, and every range of every pair names one of them and segments
-    /// its drawn silhouette has.
+    /// draws, five pairs between the key and its frame and the two links
+    /// where it carries a wippen, and every range of every pair names one of
+    /// them and segments its drawn silhouette has.
     #[test]
     fn every_contact_surface_is_a_range_of_a_drawn_part() {
         let fixtures = crate::golden::FIXTURES
@@ -4052,7 +4141,8 @@ mod contact_readout_tests {
                 &drawn[..],
                 "{name}: the contacts read the parts the view draws"
             );
-            assert_eq!(mounted.mechanism.pairs().len(), 5, "{name}");
+            let links = 2 * usize::from(b.carries_a_wippen());
+            assert_eq!(mounted.mechanism.pairs().len(), 5 + links, "{name}");
             for pair in mounted.mechanism.pairs() {
                 for range in pair.a.ranges.iter().chain(&pair.b.ranges) {
                     let part = &drawn[range.part.index()];
@@ -6210,12 +6300,15 @@ mod band_tests {
     /// Level 0, consistency, the second non-confusion test through the band,
     /// on both shipped keys: **bushings 1.2 times as tight widen the band and
     /// leave its middle.** The bushings' torque set a fifth higher, the
-    /// curves stand that bound over the measuring point's arm either side of
-    /// the key's balance at every travel: the width grows by a fifth, the
-    /// middle moves by rounding alone. At the extremes the width grows by
-    /// the extra bound read at the two attitudes' arms, the middle by half
-    /// their difference, under a hundredth of a gram. Friction does not
-    /// seat the key, so every step holds the same angle, to the bit.
+    /// curves stand that extra bound over the measuring point's arm either
+    /// side of the key's balance at every travel: the width grows by a fifth
+    /// of what the bushings hold, which is the key alone's band, since the
+    /// friction of a wippen's center, which the bushings leave, widens the
+    /// band of a key carrying it too; the middle moves by rounding alone. At
+    /// the extremes the width grows by the extra bound read at the two
+    /// attitudes' arms, the middle by half their difference, under a
+    /// hundredth of a gram. Friction does not seat the key, so every step
+    /// holds the same angle, to the bit.
     #[test]
     fn bushings_a_fifth_tighter_widen_the_band_and_leave_its_middle() {
         for (name, base) in shipped() {
@@ -6269,10 +6362,13 @@ mod band_tests {
                 "{name}: the middle moved by {middle} g, the extremes' arms account for {tilt} g"
             );
             assert!(tilt.abs() < 0.01, "{name}: under a hundredth of a gram");
-            let was = b0.down_weight.grams - b0.up_weight.grams;
+            let mut start = base.profile().start.clone();
+            start.wippen_assembly = None;
+            let alone = band(&Instrument::new(start, base.profile()).expect("the key alone"));
+            let was = alone.down_weight.grams - alone.up_weight.grams;
             assert!(
                 (width / was - 0.2).abs() < 0.01,
-                "{name}: about a fifth wider"
+                "{name}: about a fifth wider than its bushings alone hold it"
             );
         }
     }

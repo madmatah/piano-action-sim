@@ -13,16 +13,18 @@ sheet.key_weight_ratio.shown 0.52 0x3fe0a3d70a3d70a4
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
 sheet.key_weight_ratio.fingerprint statics/4
-sheet.key_height.value 0.051834381766357386 0x3faa8a093cfd6165
-sheet.key_height.shown 0.051834381766357386 0x3faa8a093cfd6165
+sheet.key_height.value 0.05183438176635738 0x3faa8a093cfd6164
+sheet.key_height.shown 0.05183438176635738 0x3faa8a093cfd6164
 sheet.key_height.unit m
 sheet.key_height.trust indicative geometry
 sheet.key_height.fingerprint statics/4
+sheet.key_height.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
 sheet.key_dip.value 0.0 0x0000000000000000
 sheet.key_dip.shown 0.0 0x0000000000000000
 sheet.key_dip.unit m
 sheet.key_dip.trust indicative geometry
 sheet.key_dip.fingerprint statics/4
+sheet.key_dip.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
 sheet.down_weight refused Walk(NoTravel)
 sheet.up_weight refused Walk(NoTravel)
 sheet.balance_weight refused From { reading: DownWeight }
@@ -30,21 +32,21 @@ sheet.friction_weight refused From { reading: DownWeight }
 sheet.key_friction_weight_zeroed_on_the_jig refused Walk(NoTravel)
 sheet.key_friction_weight_zeroed_on_the_frame refused Walk(NoTravel)
 readout.key_mass_g 120.08000000000001 0x405e051eb851eb86
-readout.gap_front_mm -2.8324781756183803e-15 0xbce9834000000000
-readout.gap_back_mm 5.421010862427522e-15 0x3cf86a0000000000
+readout.gap_front_mm 4.797594613248357e-15 0x3cf59b4000000000
+readout.gap_back_mm -8.456776945386935e-15 0xbd030b0000000000
 readout.key_friction_weight_g 5.497851245505889 0x4015fdccb786e1f5
-readout.key_height_target_mm 61.65915375694688 0x404ed45f267a8faa
+readout.key_height_target_mm 61.65915375694637 0x404ed45f267a8f62
 readout.key_dip_target_mm 10.0 0x4024000000000000
 readout.finger RidesOnBothStops FrontRailPunching
-readout.finger.lift_mm 1.1192452932452974 0x3ff1e86dc0ab0c37
-readout.out_of_level_deg 1.0073852987489378 0x3ff01e400c0990e8
+readout.finger.lift_mm 1.119245293245294 0x3ff1e86dc0ab0c28
+readout.out_of_level_deg 1.0073852987489398 0x3ff01e400c0990f1
 readout.bedding_at_the_back.slope -0.05866738155239656 0xbfae09a6aa380ffb
 readout.bears_at_the_back_mm 203.6707166605371 0x4069757682c93c74
 readout.back_bearing StopEdge
 readout.stopped_by_the_mortise false
 frame_fault none
 riding.front FrontRailPunching
-riding.lift 0.001119245293245294 0x3f5256747b906ec0
+riding.lift 0.0011192452932452905 0x3f5256747b906eb0
 faults 0
 papers.balance 2
 papers.balance.0 0.0005 0x3f40624dd2f1a9fc
@@ -53,8 +55,9 @@ papers.front 3
 papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
 papers.front.2 8e-5 0x3f14f8b588e368f1
-pose.sin_angle 0.017581284439600192 0x3f9200d406c24f88
-pose.measuring_point.x 0.22670389707021363 0x3fcd04a21fe56aab
-pose.measuring_point.y 0.05203691816310158 0x3faaa4953b63eaa9
-pose.wippen none
+pose.sin_angle 0.017581284439600144 0x3f9200d406c24f7a
+pose.measuring_point.x 0.22670389707021366 0x3fcd04a21fe56aac
+pose.measuring_point.y 0.05203691816310159 0x3faaa4953b63eaaa
+pose.wippen.angle 0.1332652382029523 0x3fc10ed5d7e33e03
+pose.wippen.carried_by CapstanOnTheHeel:WippenHeelCloth
 band refused Sweep(NoTravel)

@@ -2187,101 +2187,9 @@ mod tests {
         }
     }
 
-    /// Hirschkorn's key with his wippen assembly bound from his records, as
-    /// a profile on his: the reader of a published wippen exercised on the
-    /// records it reads.
-    fn his_key_carrying_his_wippen() -> Profile {
-        const GP178: &str = "hirschkorn-boston-gp178-note52.json";
-        const TRACE: &str = "hirschkorn-wippen-outline.json";
-        let record = |param: &str, file: &str, pointer: &str| {
-            format!(r#"{{ "param": "{param}", "record": "{file}", "pointer": "{pointer}" }}"#)
-        };
-        let mut values =
-            vec![
-            record("wippen.center.x", GP178, "/geometry/ground/points/Pg2/x"),
-            r#"{ "param": "wippen.center.y", "value": 81.6, "unit": "mm", "reliability": "E",
-                 "rule": "Pg2's y, 52.8 mm, raised by the bearing his key borrows, 28.8 mm",
-                 "why": "his center pin over the keybed the profile borrows" }"#
-                .to_owned(),
-            record("wippen_outline", TRACE, "/records/wippen_outline"),
-            record("wippen_heel.position", GP178, "/geometry/wippen/points/Pw5/x"),
-            r#"{ "param": "wippen_heel.height", "value": 18.8, "unit": "mm", "reliability": "E",
-                 "rule": "Pw2's y less Pw5's y plus Pw5's radius, -3.5 - 3.0 + 25.3",
-                 "why": "the heel's lowest point below the jack's pin" }"#
-                .to_owned(),
-            record("wippen_heel.radius", GP178, "/geometry/wippen/points/Pw5/radius"),
-            record("wippen_heel.top", TRACE, "/records/heel_top"),
-            record("wippen_heel.back_top", TRACE, "/records/heel_back_top"),
-            record("wippen_heel.front_top", TRACE, "/records/heel_front_top"),
-            record("wippen_heel.back", TRACE, "/records/heel_back"),
-            record("wippen_heel.front", TRACE, "/records/heel_front"),
-            record("wippen_heel_cloth.back", TRACE, "/records/heel_cloth_back"),
-            record("wippen_heel_cloth.front", TRACE, "/records/heel_cloth_front"),
-            record(
-                "wippen_heel_cloth.thickness",
-                TRACE,
-                "/records/heel_cloth_thickness",
-            ),
-            record("jack.pin.x", GP178, "/geometry/wippen/points/Pw2/x"),
-            record("jack.pin.y", GP178, "/geometry/wippen/points/Pw2/y"),
-            record("jack.rest_angle", TRACE, "/records/jack_rest_angle"),
-            record("jack_outline", TRACE, "/records/jack_outline"),
-            record("jack.width", TRACE, "/records/jack_width"),
-            record("repetition_lever.pin.x", GP178, "/geometry/wippen/points/Pw3/x"),
-            record("repetition_lever.pin.y", GP178, "/geometry/wippen/points/Pw3/y"),
-            record(
-                "repetition_lever.rest_angle",
-                TRACE,
-                "/records/repetition_lever_rest_angle",
-            ),
-            record(
-                "repetition_lever_outline",
-                TRACE,
-                "/records/repetition_lever_outline",
-            ),
-            record(
-                "repetition_lever.width",
-                TRACE,
-                "/records/repetition_lever_width",
-            ),
-            record("center_pin.diameter", TRACE, "/records/center_pin_diameter"),
-            record("wippen.width", TRACE, "/records/wippen_width"),
-            record("wippen.friction.bound", GP178, "/joint_friction/rows/wippen/A"),
-            r#"{ "param": "wippen.friction.radius", "none": true,
-                 "why": "his Table A.9 prints the torque alone" }"#
-                .to_owned(),
-        ];
-        for part in ["wippen", "jack", "repetition_lever"] {
-            let at = format!("/mass_properties/bodies/{part}");
-            for (name, pointer) in [
-                ("mass", "mass"),
-                ("center.x", "center_of_mass/x"),
-                ("center.y", "center_of_mass/y"),
-                ("inertia", "moment_of_inertia"),
-            ] {
-                values.push(record(
-                    &format!("{part}.published.{name}"),
-                    GP178,
-                    &format!("{at}/{pointer}"),
-                ));
-            }
-        }
-        let text = format!(
-            r#"{{
-                "profile": "his-key-carrying-his-wippen",
-                "what": "his key carrying his wippen assembly, bound from his records",
-                "base": "{STANDARD}",
-                "wippen_assembly": {{ "is": "published", "why": "his tables and his figure" }},
-                "values": [{}]
-            }}"#,
-            values.join(",")
-        );
-        Profile::load("his-key-carrying-his-wippen", &text)
-            .unwrap_or_else(|e| panic!("his wippen does not load: {e:?}"))
-    }
-
     /// Consistency: **a profile binds a published wippen assembly from its
-    /// records**, every number of it with its provenance: his heel by Pw5's
+    /// records**, as his binds his wippen as printed, every number of it
+    /// with its provenance: his heel by Pw5's
     /// position and radius and its height by its rule, 18.8 mm, its circle's
     /// lowest point standing at Pw5's height less its radius in the wippen's
     /// frame; his outlines read whole off their trace, every stretch of
@@ -2290,8 +2198,8 @@ mod tests {
     /// validation layer takes.
     #[test]
     fn a_profile_binds_a_published_wippen_assembly_from_its_records() {
-        let profile = his_key_carrying_his_wippen();
-        every_number_has_its_provenance(&profile);
+        let profile = Profile::named(STANDARD).expect("shipped");
+        every_number_has_its_provenance(profile);
         let wippen = profile
             .start
             .wippen_assembly
@@ -2965,7 +2873,9 @@ mod tests {
     /// loads, and nothing on his sheet need read the number back: his key
     /// button's height bound to its length, or his front pin's length to its
     /// thickness, moves no reading a test pins. So a number traced from his
-    /// Figure A.1 is bound to the trace's record of its own name; one read
+    /// Figure A.1, of his key or of his wippen assembly, is bound to the
+    /// trace's record of its own name, the heel's records named without the
+    /// wippen they belong to; one read
     /// from the owner's records or Stanwood's is bound to the very record
     /// the measured section binds it to, with the same bits. What his
     /// profile states as borrowed from the section, his balance rail and
@@ -2995,6 +2905,22 @@ mod tests {
                     assert_eq!(
                         *pointer,
                         format!("/records/{}", p.param.replace('.', "_")),
+                        "{} is bound to another number's trace",
+                        p.param
+                    );
+                }
+                Source::Record {
+                    file: "hirschkorn-wippen-outline.json",
+                    pointer,
+                    ..
+                } => {
+                    traced += 1;
+                    assert_eq!(
+                        *pointer,
+                        format!(
+                            "/records/{}",
+                            p.param.replace('.', "_").replace("wippen_heel", "heel")
+                        ),
                         "{} is bound to another number's trace",
                         p.param
                     );

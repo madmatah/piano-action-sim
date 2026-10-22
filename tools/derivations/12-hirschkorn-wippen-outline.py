@@ -41,7 +41,10 @@ Prints:
      fitted frame's x axis;
   7. the assembly's mass and center at rest, Table A.1's three parts with the
      jack and the lever at the record's rest angles; the center pin's height
-     above the keybed on the borrowed balance bearing; and the wippen weight,
+     above the keybed on the borrowed balance bearing, and the heel's height
+     below the jack's pin, each against the value his profile states by its
+     rule, exit status 1 where they differ at the 0.1 mm it states them to;
+     and the wippen weight,
      the assembly's static moment over the arm of the capstan's mark, under
      each candidate level: (a) the body's long top edge horizontal, and (b)
      the center pin and the capstan's mark at one height.
@@ -570,6 +573,15 @@ def main():
     pg2 = printed("ground", "Pg2")
     print(f"  the center pin: Pg2, {pg2[0]:.1f} mm from the balance pin and {pg2[1]:.1f} mm above its bearing,"
           f" on the borrowed balance bearing at {bearing:.1f} mm: {pg2[1] + bearing:.1f} mm above the keybed")
+    heel_height = PW2[1] - PW5[1] + R5
+    print(f"  the heel's height, its circle's lowest point below the jack's pin: Pw2's y {PW2[1]:.1f} less Pw5's"
+          f" {PW5[1]:.1f}, plus its radius {R5:.1f}: {heel_height:.1f} mm")
+    print("  as his profile states them by their rules, mm:")
+    for param, x in (("wippen.center.y", pg2[1] + bearing), ("wippen_heel.height", heel_height)):
+        recorded = stated[param]
+        agree = recorded["unit"] == "mm" and same(x, recorded["value"], 1)
+        ok &= agree
+        print(f"    {param:20s} {x:6.1f}   profile {recorded['value']}{'' if agree else '   DIFFERS'}")
     wippen = wippen_on_capstan(rest_felt)
     mark = capstans_mark(rest_felt, wippen)
     print(f"  the capstan's mark, where its dome bears on the heel cloth with the key on its back rail cloth:"
@@ -581,7 +593,7 @@ def main():
         print(f"  {label:46s} the wippen turned {math.degrees(level):+7.3f} deg:"
               f" WW = {mass:.2f} x {arm_cm:.2f} / {arm_mark:.2f} = {mass * arm_cm / arm_mark:.2f} g")
     if not ok:
-        print("\nthe outline record's values differ from what they derive from", file=sys.stderr)
+        print("\nthe outline record's values, or his profile's, differ from what they derive from", file=sys.stderr)
         sys.exit(1)
 
 

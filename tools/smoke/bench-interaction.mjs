@@ -311,7 +311,7 @@ console.log("  ok  the page opens in the browser's language, French")
 
 // What is on the bench is one of the profiles the engine ships, chosen by the
 // action that puts it there, as it arrives. The page opens on Hirschkorn's
-// key on his printed frame. His key comes with its mass published whole, so
+// key carrying his wippen on his printed frame. His key comes with its mass published whole, so
 // its front weight is Table A.1's static moment over the measuring arm,
 // 120.08 g at 51.4 mm over the traced lip's 239.28 mm less 13 mm, 27.28 g,
 // read to the tenth as 27.3 g; his key mass is Table A.1's; and his frame
@@ -1297,7 +1297,8 @@ console.log("  ok  Hirschkorn's key chosen again reads the sheet the page booted
 // Then each slider moved holds the value it was moved to; his key has its
 // mass and its center published, and nothing the key bears on is any of these
 // parts, the front mortise widened clear of its pin, so no reading of the
-// sheet moves with them. His key chosen again is the one the page booted on.
+// sheet moves with them, but for the solve's closure of the seats. His key
+// chosen again is the one the page booted on.
 const SLOT_CUTTER = 'key.balance_mortise.cutter_diameter_mm'
 const cutterBefore = await slider(SLOT_CUTTER)
 if (cutterBefore === null) fail('slot cutter slider missing')
@@ -1344,17 +1345,35 @@ for (const [path, value] of KEY_BUTTON_AND_MORTISE_SLIDERS) {
     fail(`${path} moved to ${value} holds ${JSON.stringify(await slider(path))}`)
   }
 }
-if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
+// His key carries his wippen, and a seat with a wippen is the static solve's
+// closure from the key alone's seat, to its tolerance, a picometer, and not
+// to the bit: an edit of a part no seat bears on can still move key height
+// and dip within that, as the front mortise widened and lengthened does by a
+// few units in their last place. Every other reading keeps its bits.
+const CLOSURE_MM = 1e-9
+const SEATED = ['key_height', 'key_dip']
+const readsAsBooted = (read) =>
+  Object.keys(read).length === Object.keys(bootRead).length &&
+  Object.entries(bootRead).every(([procedure, booted]) => {
+    const now = read[procedure]
+    if (!now) return false
+    if (!SEATED.includes(procedure)) return now.shown === booted.shown && now.exact === booted.exact
+    return (
+      Math.abs(now.shown - booted.shown) <= CLOSURE_MM &&
+      Math.abs(now.exact - booted.exact) <= CLOSURE_MM
+    )
+  })
+if (!readsAsBooted(await measured())) {
   fail(
     `the key button or a mortise moved a published key's sheet: ${JSON.stringify(await measured())}`,
   )
 }
 console.log(
-  `  ok  the key button's, the two mortises' and the balance pin's ${KEY_BUTTON_AND_MORTISE_SLIDERS.length} sliders reach the engine, and move no reading of his published key`,
+  `  ok  the key button's, the two mortises' and the balance pin's ${KEY_BUTTON_AND_MORTISE_SLIDERS.length} sliders reach the engine, and move no reading of his published key beyond the seats' closure`,
 )
 if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
 await settle()
-if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
+if (!readsAsBooted(await measured())) {
   fail(
     `his key chosen again is not the one the page booted on: ${JSON.stringify(await measured())}`,
   )

@@ -4344,7 +4344,8 @@ mod tests {
                 Panel::Key,
                 Panel::Weighing,
                 Panel::Frame,
-                Panel::Touch
+                Panel::Touch,
+                Panel::Wippen
             ]
         );
         // Every address a control reads in the settings is there, a number

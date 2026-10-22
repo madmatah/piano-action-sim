@@ -39,9 +39,10 @@
 //!
 //! # The fixtures
 //!
-//! The default bench, Hirschkorn's key on his printed frame as it arrives,
-//! and benches that each exercise a part of the statics the default does
-//! not. On his key: a frame whose stops fight, its key riding on them off
+//! The default bench, Hirschkorn's key carrying his wippen assembly on his
+//! printed frame as it arrives, and benches that each exercise a part of the
+//! statics the default does not. On his key with his wippen: a frame whose
+//! stops fight, its key riding on them off
 //! its balance punching; a dip stopped by the pin in its mortise; and a key
 //! shortened under a frame left where it was, whose front pin then stands
 //! under its wood and carries it. On the owner's measured section: the key
@@ -49,7 +50,9 @@
 //! same key weighed by a stated typical weighing; and weighed back-heavy.
 //! And his key alone, his profile's start with no wippen assembly on its
 //! capstan: the key his rounds are compared with, whatever his profile
-//! puts on it. Each is built as an interface builds it, through the
+//! puts on it. The riding key, the pin-limited dip and the shortened key
+//! carry his wippen, so no fixture holds those paths of a key carrying none
+//! to the bit. Each is built as an interface builds it, through the
 //! instrument's own calls, a path set or an action taken, his key alone
 //! through the instrument's constructor from that start: the value a
 //! fixture sets is the one it computes in meters, sent in the path's
@@ -86,8 +89,8 @@ impl Fixture {
 pub const FIXTURES: [Fixture; 8] = [
     Fixture {
         name: "default",
-        what: "the standard bench: Hirschkorn's key, Boston GP-178 note 52, on his printed \
-               frame with real felts, as it arrives",
+        what: "the standard bench: Hirschkorn's key, Boston GP-178 note 52, carrying his wippen \
+               assembly, on his printed frame with real felts, as it arrives",
         build: Instrument::standard,
     },
     Fixture {

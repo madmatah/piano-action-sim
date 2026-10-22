@@ -41,8 +41,8 @@ pub struct Bench {
 
 #[wasm_bindgen]
 impl Bench {
-    /// The standard instrument: Hirschkorn's key on his printed frame, as it
-    /// arrives.
+    /// The standard instrument: Hirschkorn's key carrying his wippen assembly
+    /// on his printed frame, as it arrives.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {

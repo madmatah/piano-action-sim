@@ -62,6 +62,24 @@ draw yet. A key that no equilibrium has held since it was put on its frame,
 or that the weight on its measuring point lifts off it, is drawn faded,
 bearing on nothing.
 
+**Stage 1b, the wippen on the capstan.** A wippen assembly (« chevalet »),
+its body, its heel and heel cloth, and its jack and repetition lever resting on
+their stops, turns on its center pin and rests on the capstan through a contact
+read off the drawn heel; where the capstan stands out from under the heel, the
+heel comes down on the key's top, and the bench says what carries it: the
+capstan on the heel cloth or on the heel's wood, or the heel on the key's top.
+A key carrying its wippen is seated, regulated and weighed with it: key height
+and dip, down and up weight, balance and friction weight and the band read it,
+its weight and its center's friction carried onto the key, while both key
+friction weights read the key alone. A pose that would put the wippen's body,
+jack or lever in the key is refused, naming both parts and how deep, and a
+wippen pushed past its range or out of the key's reach is named. Hirschkorn's
+key carries his wippen, from his tables and his traced figure: it reads a down
+weight of −12 g, an up weight of −25 g, a balance weight of −18.5 g and a
+friction weight of 6.5 g, against −21, −33, −27.0 and 6.0 g for his key alone.
+The « chevalet » panel sets where the center pin stands, the heel's position
+and height, and the center's friction.
+
 The bench is an instrument an application drives by two calls. Every setting
 has a path with its trade unit in its name (`frame.front_rail.pin_height_mm`)
 and is set by it; every operation (laying or lifting a paper, regulating,
@@ -83,9 +101,10 @@ replayed gives the same state, which a hash names. The bench starts from no
 number of its own: an instrument is built from a profile (`data/profiles/`),
 which binds every number it starts from to a record in `data/params/` or to an
 assumption stated with its reason, and a test fails on one that is neither.
-The bench opens on Hirschkorn's published Boston GP-178 key, note 52, on his
-printed frame with real felts, its outline traced from his drawing where his
-tables give no number, its mass, center of mass and bushings his; resetting
+The bench opens on Hirschkorn's published Boston GP-178 key, note 52, carrying
+his wippen, on his printed frame with real felts, its outline and his wippen's
+traced from his drawing where his tables give no number, their masses, centers
+of mass and frictions his; resetting
 returns an instrument to its own profile. The page chooses between the two
 profiles shipped: his key, and the owner's measured key section on the key
 frame he measured, its key front assumed and its key unweighed until one is
@@ -126,8 +145,8 @@ In this order, each stage with its engine and its view
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;
-- the wippen, then the hammer, until Stanwood's equation of balance closes
-  (stages 1b to 1d);
+- the wippen weight, then the hammer, until Stanwood's equation of balance
+  closes (stages 1b to 1d);
 - the jack, the repetition lever, let-off, drop and checking: the action in
   motion (stage 2);
 - regulation training (stage 3);
