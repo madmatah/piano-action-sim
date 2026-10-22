@@ -372,6 +372,73 @@ console.log(
   `  ok  the page opens on Hirschkorn's key: FW ${bootRead.front_weight.exact} g, ${hisMass} g, no fault, resting on the cloth's edge ${hisBack.at} mm behind the pin`,
 )
 
+// His key carries his wippen, and a seat with a wippen is the static solve's
+// closure from the key alone's seat, to its step tolerance, a picometer
+// (`STEP_TOLERANCE` in `crates/pa-core/src/solve/statics.rs`), and not to the
+// bit: an edit of a part no seat bears on can still move key height and dip
+// within that, as the front mortise widened and lengthened does by a few
+// units in their last place. Every other reading keeps its bits.
+const CLOSURE_MM = 1e-9
+const SEATED = ['key_height', 'key_dip']
+const readsAsBooted = (read) =>
+  Object.keys(read).length === Object.keys(bootRead).length &&
+  Object.entries(bootRead).every(([procedure, booted]) => {
+    const now = read[procedure]
+    if (!now) return false
+    if (!SEATED.includes(procedure)) return now.shown === booted.shown && now.exact === booted.exact
+    return (
+      Math.abs(now.shown - booted.shown) <= CLOSURE_MM &&
+      Math.abs(now.exact - booted.exact) <= CLOSURE_MM
+    )
+  })
+
+// His key carries his wippen, which the view draws, his capstan bearing on
+// its heel cloth. A slider of the « chevalet » panel reaches the engine:
+// his wippen's center pin moved 4 mm along the key moves his down weight,
+// the heel's arm and the ratio through the capstan changing with it, and
+// put back, the sheet reads as the page booted.
+const wippenParts = () => evaluate(`document.querySelector('.view')?.dataset.wippenParts ?? null`)
+const wippenCarriedBy = () =>
+  evaluate(`document.querySelector('[data-wippen-carried-by]')?.dataset.wippenCarriedBy ?? null`)
+const hisWippen = (await wippenParts())?.split(' ') ?? []
+if (!['wippen', 'wippen_heel', 'wippen_heel_cloth'].every((part) => hisWippen.includes(part))) {
+  fail(`his wippen is not drawn: ${JSON.stringify(hisWippen)}`)
+}
+const hisCarriedBy = await wippenCarriedBy()
+if (hisCarriedBy !== 'capstan_on_the_heel:wippen_heel_cloth') {
+  fail(`his capstan does not bear on his heel cloth: ${hisCarriedBy}`)
+}
+const WIPPEN_CENTER = 'wippen.center.behind_mm'
+const MOVED_CENTER_MM = 185
+const hisCenter = (await slider(WIPPEN_CENTER))?.holds
+if ((await moveSlider(WIPPEN_CENTER, MOVED_CENTER_MM)) !== 'ok') {
+  fail('no slider over the wippen center pin')
+}
+await settle()
+const centerMoved = await measured()
+if (!(Math.abs(Number((await slider(WIPPEN_CENTER))?.holds) - MOVED_CENTER_MM) < 1e-9)) {
+  fail(
+    `the wippen center pin moved to ${MOVED_CENTER_MM} mm holds ${JSON.stringify(await slider(WIPPEN_CENTER))}`,
+  )
+}
+if (centerMoved.down_weight?.exact === bootRead.down_weight?.exact) {
+  fail(
+    `his down weight does not move with his wippen's center pin: ${JSON.stringify(centerMoved.down_weight)}`,
+  )
+}
+if ((await moveSlider(WIPPEN_CENTER, Number(hisCenter))) !== 'ok') {
+  fail('no slider over the wippen center pin')
+}
+await settle()
+if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
+  fail(
+    `his wippen's center pin put back does not read as booted: ${JSON.stringify(await measured())}`,
+  )
+}
+console.log(
+  `  ok  his wippen drawn on his capstan's heel cloth; its center pin moved to ${MOVED_CENTER_MM} mm moves D from ${bootRead.down_weight.exact} to ${centerMoved.down_weight.exact} g, and put back reads as booted`,
+)
+
 /** What the page says, by the identifiers it says it about, and what it
  * shows: every panel's heading and every reading's label, each reading's
  * value as written, and the values themselves, the readings' and the
@@ -533,6 +600,10 @@ const NO_MASS_READ = [
 ]
 if ((await choose('measured-section')) !== 'ok') fail('no measured section to choose')
 await settle()
+if ((await wippenParts()) !== '' || (await wippenCarriedBy()) !== null) {
+  fail(`a wippen is drawn on the measured section: ${await wippenParts()}`)
+}
+console.log('  ok  no wippen drawn on the measured section, which carries none')
 const unweighed = await evaluate(`
   JSON.stringify(Object.fromEntries([...document.querySelectorAll('.row[data-procedure]')].map(
     (r) => [r.dataset.procedure, r.classList.contains('refused') ? (r.dataset.refusal ?? 'refused') : 'read'])))
@@ -1345,24 +1416,6 @@ for (const [path, value] of KEY_BUTTON_AND_MORTISE_SLIDERS) {
     fail(`${path} moved to ${value} holds ${JSON.stringify(await slider(path))}`)
   }
 }
-// His key carries his wippen, and a seat with a wippen is the static solve's
-// closure from the key alone's seat, to its tolerance, a picometer, and not
-// to the bit: an edit of a part no seat bears on can still move key height
-// and dip within that, as the front mortise widened and lengthened does by a
-// few units in their last place. Every other reading keeps its bits.
-const CLOSURE_MM = 1e-9
-const SEATED = ['key_height', 'key_dip']
-const readsAsBooted = (read) =>
-  Object.keys(read).length === Object.keys(bootRead).length &&
-  Object.entries(bootRead).every(([procedure, booted]) => {
-    const now = read[procedure]
-    if (!now) return false
-    if (!SEATED.includes(procedure)) return now.shown === booted.shown && now.exact === booted.exact
-    return (
-      Math.abs(now.shown - booted.shown) <= CLOSURE_MM &&
-      Math.abs(now.exact - booted.exact) <= CLOSURE_MM
-    )
-  })
 if (!readsAsBooted(await measured())) {
   fail(
     `the key button or a mortise moved a published key's sheet: ${JSON.stringify(await measured())}`,
@@ -1371,9 +1424,11 @@ if (!readsAsBooted(await measured())) {
 console.log(
   `  ok  the key button's, the two mortises' and the balance pin's ${KEY_BUTTON_AND_MORTISE_SLIDERS.length} sliders reach the engine, and move no reading of his published key beyond the seats' closure`,
 )
+if ((await choose('measured-section')) !== 'ok') fail('no measured section to choose')
+await settle()
 if ((await choose('hirschkorn')) !== 'ok') fail('no profile choice')
 await settle()
-if (!readsAsBooted(await measured())) {
+if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
   fail(
     `his key chosen again is not the one the page booted on: ${JSON.stringify(await measured())}`,
   )
