@@ -191,6 +191,11 @@ const STROKE: Named<Stroke> = {
   up: 'on the way up',
 }
 
+/** How far from a pin a load stood, millimeters, behind or in front of it. */
+function fromThePin(atMm: number, pin: string): string {
+  return `${to(Math.abs(atMm), LENGTH_MM)} mm ${atMm < 0 ? 'behind' : 'in front of'} the ${pin}`
+}
+
 /** The readings another is computed from, as a refusal names them. */
 const FROM_A_READING: { readonly [P in Procedure]?: string } = {
   down_weight: 'down weight',
@@ -668,6 +673,29 @@ export const en: Catalog = {
       'A keyboard is set up so the key is **level when it is fully down**, and so slightly nose-up when released — and the chamfer under the tail is cut at that same angle so the tail beds **flat** on its cloth. Both are design goals, not laws: rail heights, punchings and cloth are what reach them, and most keys rest on an **edge** instead, sometimes the cloth’s, sometimes the key’s own. For regulating that hardly matters: the papers under the balance punching set the key’s height, and the cloth’s work is to damp the key’s return and give it the same rest every time; bedded flat, the tail only wears its cloth more slowly. So the bench reports all three rather than refusing the frame. Nose-down is positive, and so is a rear end digging in.',
     balanceNote:
       'With no action on the capstan, **BW = −FW**: the equation of balance with its right-hand side removed, but for what the key’s rest attitude adds, read here at its two seats rather than level. A bare front-heavy key falls on its own, which is why these branches are negative.',
+    balanceNoteCarrying:
+      'With the wippen assembly on the capstan and no hammer, **BW + FW = WW × KR**: the equation of balance without its strike weight term, but for what the attitudes of the key and of the wippen assembly add, read here at the top seat and at the bottom seat rather than level, and for the friction of the wippen center, which does not cancel between the two.',
+    keyRatioCentered: {
+      where_the_capstan_touches_the_heel: (atMm) =>
+        `The key weight ratio’s 10 g stood over where the capstan touches the wippen heel with the key at its top seat, ${fromThePin(atMm, 'balance pin')}: the capstan/heel contact point.`,
+      no_wippen_assembly: (atMm) =>
+        `The key weight ratio’s 10 g stood on the top of the capstan head, ${fromThePin(atMm, 'balance pin')}: the key carries no wippen assembly.`,
+      no_top_seat: (atMm) =>
+        `The key weight ratio’s 10 g stood on the top of the capstan head, ${fromThePin(atMm, 'balance pin')}: the key carrying its wippen assembly has no top seat at which to read where the capstan touches the wippen heel.`,
+      capstan_off_the_heel: (atMm) =>
+        `The key weight ratio’s 10 g stood on the top of the capstan head, ${fromThePin(atMm, 'balance pin')}: at the top seat the capstan does not touch the wippen heel, which rests on the key’s top.`,
+    },
+    wippenWeightCentered: {
+      where_the_capstan_touches_the_heel: (atMm) =>
+        `The wippen weight is read with the wippen assembly on the jig, turning without friction on its center pin, the wippen’s body level, the jig’s roller under where the capstan touches the wippen heel with the key at its top seat, ${fromThePin(atMm, 'center pin')}.`,
+      no_wippen_assembly: () => 'The key carries no wippen assembly to weigh.',
+      no_top_seat: (atMm) =>
+        `The wippen weight is read with the wippen assembly on the jig, turning without friction on its center pin, the wippen’s body level, the jig’s roller under the wippen heel at its position, ${fromThePin(atMm, 'center pin')}: the key carrying its wippen assembly has no top seat at which to read where the capstan touches the wippen heel.`,
+      capstan_off_the_heel: (atMm) =>
+        `The wippen weight is read with the wippen assembly on the jig, turning without friction on its center pin, the wippen’s body level, the jig’s roller under the wippen heel at its position, ${fromThePin(atMm, 'center pin')}: at the top seat the capstan does not touch the wippen heel, which rests on the key’s top.`,
+    },
+    wippenBalanceNote:
+      '**WBW = WW × KR**, the wippen balance weight: what the weight of the wippen assembly puts on the measuring point through the key, computed from the two readings as read, to the tenth of a gram.',
   },
   procedure: {
     front_weight: 'front weight FW',

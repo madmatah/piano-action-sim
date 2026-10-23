@@ -4,13 +4,22 @@
  * a decimal comma, French punctuation, and each code's parameters in the
  * sentence.
  */
-import type { Limit, Procedure, Target } from '@pas/wasm/types'
+import type { HeelContactFound, Limit, Procedure, Target } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
 import { word } from './catalog'
 import { fr as t } from './fr'
 
 /** The no-break space French puts before a colon and inside guillemets. */
 const NO_BREAK_SPACE = '\u00a0'
+
+/** Every way the capstan/heel contact point is found, by a record the
+ * type-check holds complete. */
+const FOUND = Object.keys({
+  where_the_capstan_touches_the_heel: true,
+  no_wippen_assembly: true,
+  no_top_seat: true,
+  capstan_off_the_heel: true,
+} satisfies Record<HeelContactFound['code'], true>) as HeelContactFound['code'][]
 
 /** Every limit, by a record the type-check holds complete. */
 const LIMITS = Object.keys({
@@ -127,6 +136,44 @@ describe('the sheet', () => {
         at_mm: -12.5,
       }),
     ).toContain('à 12,50 mm en arrière de l’axe')
+  })
+
+  it('says where the key weight ratio’s 10 g stood, from the balance pin, however its point was found', () => {
+    for (const code of FOUND) {
+      expect(t.sheet.keyRatioCentered[code](-118.2425), code).toContain(
+        'à 118,24 mm en arrière de la pointe de balancier',
+      )
+    }
+  })
+
+  it('says where the wippen weight’s roller stood, from the center pin, however its point was found', () => {
+    for (const code of FOUND.filter((c) => c !== 'no_wippen_assembly')) {
+      expect(t.sheet.wippenWeightCentered[code](61.2216), code).toContain(
+        'à 61,22 mm en avant de l’axe',
+      )
+    }
+  })
+
+  it('says why the load stood elsewhere than where the capstan touches the wippen heel, after a no-break space and a colon', () => {
+    expect(t.sheet.keyRatioCentered.no_wippen_assembly(-122)).toContain(
+      `${NO_BREAK_SPACE}: la touche ne porte pas de chevalet.`,
+    )
+    expect(t.sheet.keyRatioCentered.no_top_seat(-122)).toContain('n’a pas de position de repos')
+    expect(t.sheet.keyRatioCentered.capstan_off_the_heel(-122)).toContain(
+      'repose sur le dessus de la touche',
+    )
+    expect(t.sheet.wippenWeightCentered.no_top_seat(59.5)).toContain(
+      `${NO_BREAK_SPACE}: la touche portant son chevalet n’a pas de position de repos`,
+    )
+    expect(t.sheet.wippenWeightCentered.capstan_off_the_heel(59.5)).toContain(
+      `${NO_BREAK_SPACE}: à la position de repos`,
+    )
+  })
+
+  it('says the key carries no wippen assembly to weigh, and names no roller position', () => {
+    const said = t.sheet.wippenWeightCentered.no_wippen_assembly(59.5)
+    expect(said).toContain('ne porte pas de chevalet à peser')
+    expect(said).not.toContain('59')
   })
 
   it('gives the reasons for an indicative reading as clauses, each after a no-break space and a semicolon', () => {

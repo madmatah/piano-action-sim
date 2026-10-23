@@ -1006,7 +1006,11 @@ keystick's. It opens on Hirschkorn's key; its first panel chooses the
 instrument on the bench among those shipped, each offered by its whole name.
 Its panels: the weighing sheet, with the measuring point's distance
 back from the front lip of the key, each reading as the trade reads it with its
-value in full small beside it, both key friction weights labeled, a note naming
+value in full small beside it, both key friction weights labeled, under the
+key weight ratio where its 10 g stood and under the wippen weight where the
+roller stood, each from its pin and how that point was found, WW and WBW read
+on a key carrying its wippen and refused with why on one carrying none, the
+equation of balance said as the key carries its wippen or none, a note naming
 what makes the readings indicative, and why any is refused, a frame whose stops
 fight drawn riding on them, off its balance punching, with why its weights are
 refused, and a frame that cannot seat its key still showing every setting and its
