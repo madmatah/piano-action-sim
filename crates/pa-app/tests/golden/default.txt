@@ -8,11 +8,14 @@ sheet.front_weight.shown 27.3 0x403b4ccccccccccd
 sheet.front_weight.unit g
 sheet.front_weight.trust indicative geometry
 sheet.front_weight.fingerprint statics/4
-sheet.key_weight_ratio.value 0.5197100936892347 0x3fe0a1770ff97bc6
+sheet.key_weight_ratio.value 0.5225493313490588 0x3fe0b8b960161ba6
 sheet.key_weight_ratio.shown 0.52 0x3fe0a3d70a3d70a4
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
 sheet.key_weight_ratio.fingerprint statics/4
+sheet.key_weight_ratio.capstan_heel_contact WhereTheCapstanTouchesTheHeel { part: WippenHeelCloth }
+sheet.key_weight_ratio.capstan_heel_contact.x -0.11824246269766497 0xbfbe45235648f3dc
+sheet.key_weight_ratio.capstan_heel_contact.y 0.03557870041287099 0x3fa2375f156a388a
 sheet.key_height.value 0.06165915375694637 0x3faf91c9e1c52e79
 sheet.key_height.shown 0.06165915375694637 0x3faf91c9e1c52e79
 sheet.key_height.unit m

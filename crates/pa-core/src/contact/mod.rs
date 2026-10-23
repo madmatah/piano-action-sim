@@ -505,8 +505,11 @@ pub enum AnchorCode {
     /// The covering's lip, the front edge of the keytop: where every
     /// touchweight's measuring point is taken back from.
     Lip,
-    /// The top of the capstan on its axis: where the wippen's heel bears, and
-    /// where the key weight ratio's 10 g is centered.
+    /// The top of the capstan on its axis: where a load standing for the
+    /// action bears when the key is seated, and where the key weight ratio's
+    /// 10 g is centered on a key carrying no wippen. On a key carrying its
+    /// wippen, the heel bears where the contacts put it, which the sheet
+    /// reads ([`crate::parts::mounts::Mounted::capstan_on_the_heel`]).
     CapstanContact,
 }
 

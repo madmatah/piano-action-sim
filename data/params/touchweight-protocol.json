@@ -37,7 +37,7 @@
       "locator": { "page": 22, "column": 1 },
       "quote": "With the scale set to zero, a 10-gram weight is placed on the back of the key, centered on a vertical axis which passes through the capstan/heel contact point. This gives results accurate to two decimal places. For instance, if the scale reads -5.5 the Key Weight Ratio (KR) would be 0.55.",
       "what_for": "The key weight ratio, read on the front weight jig with the scale tared: the reading over the load.",
-      "engine": "TouchweightProtocol::key_ratio_load_g; both shipped profiles, data/profiles/hirschkorn.json and data/profiles/measured-section.json, bind theirs to this record."
+      "engine": "TouchweightProtocol::key_ratio_load_g; both shipped profiles, data/profiles/hirschkorn.json and data/profiles/measured-section.json, bind theirs to this record. The bench centers it where the capstan touches the wippen's heel at the key's top seat, on a key carrying its wippen, and on the capstan's top, on its axis, where the key carries none, has no top seat with it, or its capstan does not touch the heel there."
     },
     {
       "name": "wippen_weight",

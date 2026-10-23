@@ -45,6 +45,16 @@ impl Placement {
         let r = self.rotate(p);
         Point::new(self.origin.x + r.x, self.origin.y + r.y)
     }
+
+    /// A point of the world, in this frame: [`Self::world`] undone, the
+    /// origin taken off and the rotation turned back. Sums and products
+    /// only, so a point carried out and back stands where it was to
+    /// round-off: what reads a point the contacts give in the world as a
+    /// point of a body.
+    pub fn local(&self, p: Point) -> Point {
+        let (dx, dy) = (p.x - self.origin.x, p.y - self.origin.y);
+        Point::new(self.cos * dx + self.sin * dy, self.cos * dy - self.sin * dx)
+    }
 }
 
 /// Every body placed, for one value of every coordinate.
@@ -289,6 +299,39 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// Consistency: **a world point is carried back into its body** by
+    /// [`Placement::local`], within `8 ε (|origin| + |p|)`: on a frame turned
+    /// by one angle, as the key's and the wippen's are, whose cosine and sine
+    /// `libm` gives each within an ulp, so that `c² + s²` stands within
+    /// `2 ε` of one. Carried out, each coordinate takes two products, a sum
+    /// and the origin added, within `2 ε` of `|origin| + |p|`; carried back,
+    /// the origin taken off and two products and a sum again, within as
+    /// much; and the rotation turned back leaves `p` times `c² + s²`, within
+    /// `2 ε |p|`. Under `8 ε (|origin| + |p|)` in all; a sign or an axis
+    /// swapped is off by the point's own size.
+    #[test]
+    fn a_world_point_is_carried_back_into_its_body() {
+        let mut rng = XorShift::new(0x10ca_1000);
+        let mut uniform = |half: f64| rng.uniform(-half, half);
+        for _ in 0..1000 {
+            let angle = uniform(core::f64::consts::PI);
+            let at = Placement {
+                origin: Point::new(uniform(0.2), uniform(0.2)),
+                cos: libm::cos(angle),
+                sin: libm::sin(angle),
+            };
+            let p = Point::new(uniform(0.3), uniform(0.3));
+            let back = at.local(at.world(p));
+            let size = |v: Point| (v.x * v.x + v.y * v.y).sqrt();
+            let bound = 8.0 * f64::EPSILON * (size(at.origin) + size(p));
+            let off = size(Point::new(back.x - p.x, back.y - p.y));
+            assert!(
+                off <= bound,
+                "{p:?} came back at {back:?}, {off:e} > {bound:e}"
+            );
         }
     }
 

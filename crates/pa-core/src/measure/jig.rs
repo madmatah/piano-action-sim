@@ -21,9 +21,12 @@
 //!
 //! Front weight is the reading with nothing on the key. The key weight ratio
 //! is read tared: the scale zeroed with the key on it, 10 g centered on the
-//! capstan's contact point, and the reading over the load with its sign
+//! capstan/heel contact point, and the reading over the load with its sign
 //! turned, so that a scale reading −5.5 gives 0.55. Both are
-//! [`scale_reading_g`], so the lever they share is taken once.
+//! [`scale_reading_g`], so the lever they share is taken once. On a key
+//! carrying its wippen, the contact point is where its capstan touches the
+//! heel at the top seat, which the sheet reads; elsewhere the capstan's top,
+//! on its axis.
 //!
 //! # What the jig cannot see
 //!
@@ -113,7 +116,10 @@ pub struct KeyJig {
     mount: Mounted,
     /// The measuring point, in the key's frame: the scale stands below it.
     measuring_point: Point,
-    /// The capstan's contact point, in the key's frame.
+    /// The capstan's contact point, in the key's frame: the top of its
+    /// head, on its axis, where the key weight ratio is read on a key that
+    /// carries no wippen, and on one whose capstan is not read touching its
+    /// heel ([`Self::key_ratio_at`]).
     capstan: Point,
     /// The load the key weight ratio is read with, grams: the protocol's.
     key_ratio_load_g: f64,
@@ -143,6 +149,12 @@ impl KeyJig {
             capstan: key.capstan_contact(),
             key_ratio_load_g: protocol.key_ratio_load_g,
         })
+    }
+
+    /// The capstan's contact point, in the key's frame: the top of its head,
+    /// on its axis.
+    pub fn capstan_contact(&self) -> Point {
+        self.capstan
     }
 
     /// A weight of `mass_g` grams centered on `at`, a point of the key in its
@@ -200,7 +212,14 @@ impl KeyJig {
     /// contact point, grams. Negative, as the source's worked example reads
     /// it: the load is behind the pin, and the front lifts off the roller.
     pub fn key_ratio_reading_g(&self) -> Result<f64, JigRefusal> {
-        self.tared_reading_g(&[self.weight_on_the_capstan(self.key_ratio_load_g)])
+        self.key_ratio_reading_g_at(self.capstan)
+    }
+
+    /// What the tared scale reads with the protocol's 10 g centered on
+    /// `at`, a point of the key in its frame, grams: where the capstan
+    /// touches the wippen's heel, on a key that carries one.
+    pub fn key_ratio_reading_g_at(&self, at: Point) -> Result<f64, JigRefusal> {
+        self.tared_reading_g(&[self.weight_on_the_key(at, self.key_ratio_load_g)])
     }
 
     /// **Key weight ratio**, force convention, dimensionless: the tared
@@ -208,7 +227,16 @@ impl KeyJig {
     /// *"If the scale reads −5.5 the Key Weight Ratio (KR) would be 0.55"*
     /// [V, Stanwood 2000, p. 22].
     pub fn key_ratio(&self) -> Result<f64, JigRefusal> {
-        Ok(-self.key_ratio_reading_g()? / self.key_ratio_load_g)
+        self.key_ratio_at(self.capstan)
+    }
+
+    /// **Key weight ratio** with the 10 g centered on `at`, a point of the
+    /// key in its frame: *"on a vertical axis which passes through the
+    /// capstan/heel contact point"* [V, Stanwood 2000, p. 22], which on a key
+    /// carrying its wippen is where its capstan touches the heel at the top
+    /// seat ([`crate::parts::mounts::Mounted::capstan_on_the_heel`]).
+    pub fn key_ratio_at(&self, at: Point) -> Result<f64, JigRefusal> {
+        Ok(-self.key_ratio_reading_g_at(at)? / self.key_ratio_load_g)
     }
 }
 
@@ -492,6 +520,38 @@ mod tests {
             .tared_reading_g(&[jig.weight_on_the_key(Point::new(-0.050, 0.03), 50.0)])
             .unwrap();
         assert!(behind < 0.0, "{behind}");
+    }
+
+    /// Consistency: **the key ratio at a point is its arm over the
+    /// measuring arm**, and the key ratio the bare key reads is the one at
+    /// the capstan's top, to the bit: the same operations, the same point.
+    /// A point 1.3 mm behind the capstan's axis and 3 mm below its top, as
+    /// the heel touches a flat capstan, reads the ratio of its own arm,
+    /// within the two readings' round-off.
+    #[test]
+    fn the_key_ratio_at_a_point_is_its_arm_over_the_measuring_arm() {
+        const BEHIND_THE_AXIS: f64 = 0.0013;
+        const BELOW_THE_TOP: f64 = 0.003;
+        let protocol = crate::test_fixture::protocol();
+        let key = crate::test_fixture::key();
+        let jig = jig(&key, &protocol);
+        let top = key.capstan_contact();
+        assert_eq!(
+            jig.key_ratio().unwrap().to_bits(),
+            jig.key_ratio_at(top).unwrap().to_bits()
+        );
+        let at = Point::new(top.x - BEHIND_THE_AXIS, top.y - BELOW_THE_TOP);
+        let expected = -at.x / protocol.measuring_point(&key);
+        let with_load = jig
+            .reading_g(&[jig.weight_on_the_key(at, KEY_RATIO_LOAD_G)])
+            .unwrap();
+        let fw = jig.front_weight_g().unwrap();
+        let magnitude = fw.abs().max(with_load.abs()) / KEY_RATIO_LOAD_G;
+        let kr = jig.key_ratio_at(at).unwrap();
+        assert!(
+            agree(kr, expected, 2.0 * magnitude),
+            "{kr} against {expected}"
+        );
     }
 
     /// The tare takes the key's own weight out of the ratio: a heavier key,

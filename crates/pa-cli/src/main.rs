@@ -18,7 +18,9 @@ use std::path::{Path, PathBuf};
 
 use pa_app::boundary::{self, json, Acted, Refusal, Riding};
 use pa_app::golden;
-use pa_app::instrument::{Action, Instrument, KeyMass, ProcedureId, Sheet, Trust, Unit};
+use pa_app::instrument::{
+    Action, ContactFound, Instrument, KeyMass, ProcedureId, Sheet, Trust, Unit,
+};
 use pa_app::profile::Profile;
 
 /// Where `golden` writes when it is not told, relative to the repository root.
@@ -300,6 +302,31 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
                     println!(
                         "  {:<22}the wippen rests: {:?} on {:?}",
                         "", c.link, c.parts
+                    );
+                }
+                if let Some(contact) = m.conditions.capstan_heel_contact {
+                    println!(
+                        "  {:<22}centered {:.2} mm {} the pin: {}",
+                        "",
+                        contact.at.x.abs() * 1000.0,
+                        if contact.at.x < 0.0 {
+                            "behind"
+                        } else {
+                            "in front of"
+                        },
+                        match contact.found {
+                            ContactFound::WhereTheCapstanTouchesTheHeel { part } => format!(
+                                "where the capstan touches the heel at the top seat, on {}",
+                                part.code()
+                            ),
+                            ContactFound::NoWippenAssembly =>
+                                "the capstan's top, the key carrying no wippen".to_owned(),
+                            ContactFound::NoTopSeat =>
+                                "the capstan's top, the key carrying its wippen having no top seat"
+                                    .to_owned(),
+                            ContactFound::CapstanOffTheHeel =>
+                                "the capstan's top, the heel resting on the key's top".to_owned(),
+                        }
                     );
                 }
                 if let Some(t) = m.conditions.temporary_weight {

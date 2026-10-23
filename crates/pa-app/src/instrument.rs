@@ -52,8 +52,8 @@ use pa_core::measure::jig::KeyJig;
 /// A reading of the sheet and what it carries, re-exported so an adapter can
 /// show each without reaching past the application layer.
 pub use pa_core::measure::measurement::{
-    Bases, Basis, Input, Measurement, ProcedureId, Rounding, Trust, Unit, WippenAssemblyBases,
-    Zeroed,
+    Bases, Basis, ContactFound, ContactPoint, Input, Measurement, ProcedureId, Rounding, Trust,
+    Unit, WippenAssemblyBases, Zeroed,
 };
 /// Why the key cannot be seated, re-exported so an adapter can say why a
 /// frame cannot be weighed without reaching past the application layer.

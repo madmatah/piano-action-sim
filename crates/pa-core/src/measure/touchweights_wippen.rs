@@ -130,32 +130,73 @@ impl Bench {
     /// line, on the right of a drawn outline that runs counter-clockwise,
     /// less the radius.
     fn gap_by_hand(&self, q: &[f64], feature: Feature) -> f64 {
-        let m = &self.mounted().mechanism;
-        let pose = m.pose(q);
-        let shape = |piece: Piece| {
-            let part = &m.parts()[piece.part().index()];
-            let at = pose.placement(part.body);
-            let silhouette = part.silhouette();
-            match piece {
-                Piece::Arc { seg, .. } => match silhouette[usize::from(seg)] {
-                    Seg::Arc { c, r, .. } => Shape::Disc(at.world(c), r),
-                    Seg::Line { .. } => unreachable!("an arc's segment"),
-                },
-                Piece::Vertex { seg, .. } => {
-                    Shape::Disc(at.world(silhouette[usize::from(seg)].start()), 0.0)
-                }
-                Piece::Segment { seg, .. } => {
-                    let line = silhouette[usize::from(seg)];
-                    Shape::Line(at.world(line.start()), at.world(line.end()))
-                }
-                Piece::Center { .. } => unreachable!("a link reads no center"),
-            }
-        };
+        let shape = |piece: Piece| self.shape(q, piece);
         match (shape(feature.a), shape(feature.b)) {
             (Shape::Disc(c, r), Shape::Disc(d, s)) => distance(c, d) - r - s,
             (Shape::Disc(c, r), Shape::Line(p, l)) | (Shape::Line(p, l), Shape::Disc(c, r)) => {
                 let (dx, dy) = (l.x - p.x, l.y - p.y);
                 ((c.x - p.x) * dy - (c.y - p.y) * dx) / (dx * dx + dy * dy).sqrt() - r
+            }
+            (Shape::Line(..), Shape::Line(..)) => unreachable!("two faces meet at a corner"),
+        }
+    }
+
+    /// The drawn piece `piece` written out in the world at `q`: an arc as
+    /// its disc, a vertex as a disc of no radius, a segment as its line.
+    fn shape(&self, q: &[f64], piece: Piece) -> Shape {
+        let m = &self.mounted().mechanism;
+        let pose = m.pose(q);
+        let part = &m.parts()[piece.part().index()];
+        let at = pose.placement(part.body);
+        let silhouette = part.silhouette();
+        match piece {
+            Piece::Arc { seg, .. } => match silhouette[usize::from(seg)] {
+                Seg::Arc { c, r, .. } => Shape::Disc(at.world(c), r),
+                Seg::Line { .. } => unreachable!("an arc's segment"),
+            },
+            Piece::Vertex { seg, .. } => {
+                Shape::Disc(at.world(silhouette[usize::from(seg)].start()), 0.0)
+            }
+            Piece::Segment { seg, .. } => {
+                let line = silhouette[usize::from(seg)];
+                Shape::Line(at.world(line.start()), at.world(line.end()))
+            }
+            Piece::Center { .. } => unreachable!("a link reads no center"),
+        }
+    }
+
+    /// Where the two pieces of `feature` meet at `q`, by hand, in the world:
+    /// side A's surface point, then side B's. A disc on a line meets it at
+    /// the foot of the perpendicular from its center, the disc's own point
+    /// its radius from the center toward the line; two discs meet on the
+    /// line of their centers, each surface its radius from its own center.
+    /// The gap moves neither point: they are the two surfaces' points along
+    /// the normal at `q`, whatever the gap.
+    fn hand_contact(&self, q: &[f64], feature: Feature) -> (Point, Point) {
+        let on_a_line = |c: Point, r: f64, p: Point, l: Point| {
+            let (dx, dy) = (l.x - p.x, l.y - p.y);
+            let length = (dx * dx + dy * dy).sqrt();
+            let (tx, ty) = (dx / length, dy / length);
+            let along = (c.x - p.x) * tx + (c.y - p.y) * ty;
+            let foot = Point::new(p.x + along * tx, p.y + along * ty);
+            // The outline runs counter-clockwise, so the material's outside
+            // stands on the line's right.
+            let (nx, ny) = (ty, -tx);
+            (Point::new(c.x - r * nx, c.y - r * ny), foot)
+        };
+        match (self.shape(q, feature.a), self.shape(q, feature.b)) {
+            (Shape::Disc(c, r), Shape::Disc(d, t)) => {
+                let length = distance(c, d);
+                let (ux, uy) = ((d.x - c.x) / length, (d.y - c.y) / length);
+                (
+                    Point::new(c.x + r * ux, c.y + r * uy),
+                    Point::new(d.x - t * ux, d.y - t * uy),
+                )
+            }
+            (Shape::Disc(c, r), Shape::Line(p, l)) => on_a_line(c, r, p, l),
+            (Shape::Line(p, l), Shape::Disc(c, r)) => {
+                let (on_the_disc, foot) = on_a_line(c, r, p, l);
+                (foot, on_the_disc)
             }
             (Shape::Line(..), Shape::Line(..)) => unreachable!("two faces meet at a corner"),
         }
@@ -421,6 +462,11 @@ fn within_a_step_of(curve: &[f64]) -> f64 {
         .fold(0.0_f64, f64::max);
     step + 2.0 * bend
 }
+
+/// A center pin at which the test wippen on a capstan 30 mm tall is pushed
+/// past its range at the key's top seat, meters
+/// ([`super::seat_wippen::on_a_tall_capstan`]).
+const REFUSED_AT_THE_TOP_SEAT: f64 = 0.069;
 
 /// The test bench carrying the test wippen.
 fn the_test_bench() -> Bench {
@@ -1190,7 +1236,6 @@ fn the_band_names_a_wippen_limit_at_the_seat_the_sheet_refuses() {
     use super::seat::{SeatRefusal, WhichSeat, WippenRefusal};
     use super::seat_wippen::{halve_between, on_a_tall_capstan, FITS_AT_THE_TOP_SEAT_ONLY};
     use crate::measure::sweep::SweepRefusal;
-    const REFUSED_AT_THE_TOP_SEAT: f64 = 0.069;
     const ONE_PAGE_STEP: f64 = 0.0005;
     let fits = |center: f64| {
         on_a_tall_capstan(center)
@@ -1325,6 +1370,19 @@ fn weighed(
     Setup,
 ) {
     let a = regulated();
+    let (on_frame, jig) = weighed_with(&a, wippen);
+    (on_frame, jig, a)
+}
+
+/// `a`'s key on its frame and on the jig, its bushings the test bench's,
+/// carrying `wippen` where it carries one, as the bench weighs it.
+fn weighed_with(
+    a: &Setup,
+    wippen: Option<(&WippenAssembly, &WippenAssemblyMass)>,
+) -> (
+    crate::parts::mounts::OnItsFrame,
+    crate::measure::jig::KeyJig,
+) {
     let mass = mass_of(&a.key);
     let bushings = AxisFriction::of_weight_at(KEY_FRICTION_G, a.measuring_point()).bound_n_m;
     let on_frame = crate::parts::mounts::on_its_frame(
@@ -1339,7 +1397,7 @@ fn weighed(
     .expect("the key mounts on its frame");
     let jig = crate::measure::jig::KeyJig::new(&a.key, &a.protocol, mass)
         .expect("the key mounts on the jig");
-    (on_frame, jig, a)
+    (on_frame, jig)
 }
 
 /// The sheet of a key on its frame and on the jig, as the bench reads it.
@@ -1371,10 +1429,13 @@ fn sheet_of(
 }
 
 /// Consistency: **both key friction weights read the same bits with the
-/// wippen and without**, and so do front weight and the key weight ratio:
-/// the key friction weights weigh the key alone, its bushings, the same key
-/// on the same frame the bench mounts beside the key with its wippen; the
-/// jig weighs the key alone too.
+/// wippen and without**, and so does front weight: the key friction weights
+/// weigh the key alone, its bushings, the same key on the same frame the
+/// bench mounts beside the key with its wippen; the jig weighs the key alone
+/// too. The key weight ratio is not among them: with its wippen it is read
+/// where the capstan touches the heel at the top seat, and without on the
+/// capstan's top
+/// ([`the_key_weight_ratio_is_read_where_the_capstan_touches_the_heel_at_the_top_seat`]).
 #[test]
 fn the_key_friction_weights_read_the_same_bits_with_the_wippen_and_without() {
     use crate::measure::measurement::ProcedureId;
@@ -1385,7 +1446,6 @@ fn the_key_friction_weights_read_the_same_bits_with_the_wippen_and_without() {
     let bare = sheet_of(&without, &without_jig, &a, false);
     for procedure in [
         ProcedureId::FrontWeight,
-        ProcedureId::KeyWeightRatio,
         ProcedureId::KeyFrictionWeightZeroedOnTheJig,
         ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
     ] {
@@ -1583,5 +1643,379 @@ fn lifted_off_its_punching_a_key_carrying_its_wippen_is_read_on_its_folded_coord
     assert!(
         (held - pull).abs() <= within,
         "the stops let go at a pull of {held} g, by hand {pull} g"
+    );
+}
+
+/// How far a point the hand works where two pieces meet may stand from the
+/// one the engine reads, meters: `64 ε` of the 0.3 m every coordinate stands
+/// under. The hand and the engine work the same pieces at the same `q`, and
+/// the row's two points stand on the two surfaces along the normal whatever
+/// its gap, so the two differ by round-off alone: the row's own, the point
+/// carried into its body's frame ([`crate::mechanism::Placement::local`],
+/// `8 ε`), and the hand's few dozen roundings.
+const HAND_CONTACT_M: f64 = 64.0 * f64::EPSILON * 0.3;
+
+/// How far a jig reading may stand from its closed form, grams: sixteen
+/// units in the last place of the largest magnitude it touches, `magnitude`
+/// (the jig's tests' `agree`).
+fn jig_round_off(magnitude: f64) -> f64 {
+    16.0 * f64::EPSILON * magnitude
+}
+
+/// The kind of drawn piece the capstan bears with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Kind {
+    Segment,
+    Arc,
+    Vertex,
+}
+
+fn kind_of(piece: Piece) -> Kind {
+    match piece {
+        Piece::Segment { .. } => Kind::Segment,
+        Piece::Arc { .. } => Kind::Arc,
+        Piece::Vertex { .. } => Kind::Vertex,
+        Piece::Center { .. } => unreachable!("a link reads no center"),
+    }
+}
+
+/// The regulated test setup with its capstan's head turned to a dome of
+/// 9.7 mm, as the test fixture's key with every feature has it.
+fn with_a_domed_capstan() -> Setup {
+    let mut a = regulated();
+    a.key.capstan_screw.dome_radius = Some(0.0097);
+    a
+}
+
+/// The regulated test setup with its capstan `behind_mm` behind the balance
+/// pin, as [`capstan_at`] builds its bench.
+fn with_the_capstan_at(behind_mm: f64) -> Setup {
+    let mut a = regulated();
+    a.key.capstan = -behind_mm * 1e-3;
+    a
+}
+
+/// The benches the capstan's touch on the heel is checked on, each with the
+/// kind of piece the capstan bears with at the top seat: the test bench, on
+/// its capstan's flat top, the heel's circle standing about 1.3 mm behind
+/// the capstan's axis; its capstan domed to 9.7 mm, on the dome, about
+/// 0.4 mm behind; and its capstan 129 mm behind the balance pin, on the
+/// rim of its flat top, the heel's circle standing about 3 mm in front of
+/// it.
+fn touch_benches() -> Vec<(&'static str, Setup, Kind)> {
+    vec![
+        ("the flat capstan", regulated(), Kind::Segment),
+        ("the 9.7 mm dome", with_a_domed_capstan(), Kind::Arc),
+        (
+            "the capstan at 129 mm",
+            with_the_capstan_at(129.0),
+            Kind::Vertex,
+        ),
+    ]
+}
+
+/// `a`'s key carrying the test wippen, as the band's tests mount it.
+fn bench_of(a: &Setup) -> Bench {
+    let (wippen, mass) = test_wippen();
+    Bench::new(a, wippen, mass, KEY_FRICTION_G)
+}
+
+/// `a`'s sheet, its key carrying the test wippen.
+fn carrying_sheet_of(a: &Setup) -> crate::measure::weighing::Sheet {
+    let (wippen, mass) = test_wippen();
+    let (on_frame, jig) = weighed_with(a, Some((&wippen, &mass)));
+    sheet_of(&on_frame, &jig, a, true)
+}
+
+/// The key weight ratio `sheet` reads.
+fn key_ratio_of(
+    sheet: &crate::measure::weighing::Sheet,
+) -> crate::measure::measurement::Measurement {
+    use crate::measure::measurement::ProcedureId;
+    sheet
+        .get(ProcedureId::KeyWeightRatio)
+        .expect("the sheet holds it")
+        .clone()
+        .expect("it is read")
+}
+
+/// Consistency, by hand: **the capstan touches the heel where its pieces
+/// meet at the top seat**, on the heel cloth. On each bench the closed row
+/// of the capstan's link bears with the kind of piece its capstan stands
+/// under the heel with ([`touch_benches`]); the points the engine reads, on
+/// the capstan in the key's frame and on the heel in the wippen's, are the
+/// hand's ([`Bench::hand_contact`]) within round-off
+/// ([`HAND_CONTACT_M`]).
+#[test]
+fn the_capstan_touches_the_heel_where_its_pieces_meet_at_the_top_seat() {
+    for (name, a, kind) in touch_benches() {
+        let b = bench_of(&a);
+        let top = b.seats().top;
+        let m = b.mounted();
+        let feature = b.carrying(&top.q, Motion::Down);
+        assert_eq!(kind_of(feature.a), kind, "{name}");
+        let contact = m
+            .capstan_on_the_heel(&top.q, TOUCHING)
+            .unwrap_or_else(|| panic!("{name}: the capstan touches the heel"));
+        assert_eq!(contact.part, PartCode::WippenHeelCloth, "{name}");
+        let (on_a, on_b) = b.hand_contact(&top.q, feature);
+        let pose = m.mechanism.pose(&top.q);
+        let wippen = m.wippen.expect("a wippen").body;
+        for (what, engine, hand) in [
+            (
+                "on the capstan",
+                contact.on_the_capstan,
+                pose.placement(m.key).local(on_a),
+            ),
+            (
+                "on the heel",
+                contact.on_the_heel,
+                pose.placement(wippen).local(on_b),
+            ),
+        ] {
+            assert!(
+                distance(engine, hand) <= HAND_CONTACT_M,
+                "{name}, {what}: {engine:?}, by hand {hand:?}"
+            );
+        }
+    }
+}
+
+/// Consistency: **a capstan under the heel's wood touches it there**: 135 mm
+/// behind the balance pin, the test bench's capstan stands in front of the
+/// heel cloth's front end at the top seat, and the part it touches is the
+/// heel's wood.
+#[test]
+fn a_capstan_under_the_heels_wood_touches_it_there() {
+    let b = capstan_at(135.0);
+    let top = b.seats().top;
+    let contact = b
+        .mounted()
+        .capstan_on_the_heel(&top.q, TOUCHING)
+        .expect("the capstan touches the heel");
+    assert_eq!(contact.part, PartCode::WippenHeel);
+}
+
+/// Consistency: **a heel resting on the key's top is not touched by the
+/// capstan**: 100 mm behind the balance pin, the test bench's capstan stands
+/// in front of the heel, which rests on the key's top at the top seat.
+#[test]
+fn a_heel_resting_on_the_keys_top_is_not_touched_by_the_capstan() {
+    let b = capstan_at(100.0);
+    let top = b.seats().top;
+    assert_eq!(b.mounted().capstan_on_the_heel(&top.q, TOUCHING), None);
+}
+
+/// Consistency, by hand: **in the valley the capstan touches the heel
+/// through the row that carries it down.** Where the heel cloth's back end
+/// meets the heel's bottom ([`in_the_valley`]), the capstan bears on both at
+/// the bottom seat; the point read is the one of the row the hand finds
+/// carrying the wippen down, the larger ratio, within round-off.
+#[test]
+fn in_the_valley_the_capstan_touches_the_heel_through_the_row_that_carries_it_down() {
+    let b = in_the_valley();
+    let bottom = b.seats().bottom;
+    let m = b.mounted();
+    let feature = b.carrying(&bottom.q, Motion::Down);
+    let contact = m
+        .capstan_on_the_heel(&bottom.q, TOUCHING)
+        .expect("the capstan touches the heel");
+    let (on_a, _) = b.hand_contact(&bottom.q, feature);
+    let hand = m.mechanism.pose(&bottom.q).placement(m.key).local(on_a);
+    assert!(
+        distance(contact.on_the_capstan, hand) <= HAND_CONTACT_M,
+        "{:?}, by hand {hand:?}",
+        contact.on_the_capstan
+    );
+}
+
+/// Consistency, by hand: **the key weight ratio is read where the capstan
+/// touches the heel at the top seat**, *"centered on a vertical axis which
+/// passes through the capstan/heel contact point"* [V, Stanwood 2000,
+/// p. 22]. On the level jig the ratio is the arm over the measuring arm, so
+/// read at the contact `x_c` rather than on the capstan's top `X_cap` it
+/// moves by `(|x_c| − |X_cap|) / x_meas`, `x_c` worked by hand
+/// ([`Bench::hand_contact`]). The bound is the hand's round-off over the
+/// measuring arm and the two jig readings', each within sixteen units in
+/// the last place of the readings' magnitude over the load; and the shift
+/// stands more than twice that bound from nothing, so a ratio still read on
+/// the capstan's top fails.
+#[test]
+fn the_key_weight_ratio_is_read_where_the_capstan_touches_the_heel_at_the_top_seat() {
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    for (name, a, _) in touch_benches() {
+        let b = bench_of(&a);
+        let top = b.seats().top;
+        let m = b.mounted();
+        let (on_a, _) = b.hand_contact(&top.q, b.carrying(&top.q, Motion::Down));
+        let x_c = m.mechanism.pose(&top.q).placement(m.key).local(on_a).x;
+        let x_cap = a.key.capstan_contact().x;
+        let x_meas = a.measuring_point();
+        let kr = key_ratio_of(&carrying_sheet_of(&a));
+        let (_, jig) = weighed_with(&a, None);
+        let kr_top = jig.key_ratio().expect("the jig reads it");
+        let front = jig.front_weight_g().expect("the key is weighed").abs();
+        let load = a.protocol.key_ratio_load_g;
+        let bound = HAND_CONTACT_M / x_meas + 2.0 * jig_round_off((front + load) / load);
+        let shift = (x_c.abs() - x_cap.abs()) / x_meas;
+        assert!(
+            matches!(
+                kr.conditions.capstan_heel_contact,
+                Some(ContactPoint {
+                    found: ContactFound::WhereTheCapstanTouchesTheHeel {
+                        part: PartCode::WippenHeelCloth
+                    },
+                    ..
+                })
+            ),
+            "{name}: {:?}",
+            kr.conditions.capstan_heel_contact
+        );
+        assert!(
+            (kr.value - kr_top - shift).abs() <= bound,
+            "{name}: KR {} against {kr_top} on the capstan's top, by hand {shift} apart, \
+             within {bound}",
+            kr.value
+        );
+        assert!(shift.abs() > 2.0 * bound, "{name}: {shift} against {bound}");
+    }
+}
+
+/// Consistency: **with no top seat the key weight ratio is read on the
+/// capstan's top.** On a capstan 30 mm tall under a center pin 69 mm high,
+/// the top seat pushes the wippen past its range, so no point where the
+/// capstan touches the heel is read: the 10 g is centered on the capstan's
+/// top, on its axis, as on a bare key, and the ratio is the bare jig's to
+/// the bit.
+#[test]
+fn with_no_top_seat_the_key_weight_ratio_is_read_on_the_capstans_top() {
+    use super::seat_wippen::{on_a_tall_capstan, TALL_CAPSTAN};
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    assert!(on_a_tall_capstan(REFUSED_AT_THE_TOP_SEAT)
+        .seating()
+        .top(&mut Statics::new())
+        .is_err());
+    let mut a = regulated();
+    a.key.capstan_screw.height = TALL_CAPSTAN;
+    let (mut wippen, mass) = test_wippen();
+    wippen.center.y = REFUSED_AT_THE_TOP_SEAT;
+    let (on_frame, jig) = weighed_with(&a, Some((&wippen, &mass)));
+    let kr = key_ratio_of(&sheet_of(&on_frame, &jig, &a, true));
+    assert_eq!(
+        kr.conditions.capstan_heel_contact,
+        Some(ContactPoint {
+            at: a.key.capstan_contact(),
+            found: ContactFound::NoTopSeat
+        })
+    );
+    assert_eq!(
+        kr.value.to_bits(),
+        jig.key_ratio().expect("the jig reads it").to_bits()
+    );
+}
+
+/// Consistency: **with the heel on the key's top the key weight ratio is
+/// read on the capstan's top**: 100 mm behind the balance pin, the capstan
+/// does not touch the heel at the top seat, and the 10 g is centered on the
+/// capstan's top, on its axis, the ratio the bare jig's to the bit.
+#[test]
+fn with_the_heel_on_the_keys_top_the_key_weight_ratio_is_read_on_the_capstans_top() {
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    let a = with_the_capstan_at(100.0);
+    let (_, jig) = weighed_with(&a, None);
+    let kr = key_ratio_of(&carrying_sheet_of(&a));
+    assert_eq!(
+        kr.conditions.capstan_heel_contact,
+        Some(ContactPoint {
+            at: a.key.capstan_contact(),
+            found: ContactFound::CapstanOffTheHeel
+        })
+    );
+    assert_eq!(
+        kr.value.to_bits(),
+        jig.key_ratio().expect("the jig reads it").to_bits()
+    );
+}
+
+/// Consistency: **where the key alone's seats are refused, the contact is
+/// read at the top seat.** With the front rail 300 mm in front of the
+/// balance pin, past the key's front edge at 258 mm, no stop stands below
+/// the key's front: the key alone's seats are refused, its top seat not,
+/// and the key weight ratio is read where the capstan touches the heel at
+/// the top seat [`Seating::top`] seats the key carrying its wippen at.
+#[test]
+fn where_the_key_alones_seats_are_refused_the_contact_is_read_at_the_top_seat() {
+    use super::seat::SeatRefusal;
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    const PAST_THE_KEYS_FRONT: f64 = 0.300;
+    let mut a = regulated();
+    a.frame.front_rail = PAST_THE_KEYS_FRONT;
+    let b = bench_of(&a);
+    let alone = Seating {
+        mounted: b.mounted().key_alone.as_deref().expect("a key alone"),
+        ..b.seating()
+    };
+    assert_eq!(
+        alone.seats(&mut Statics::new()).err(),
+        Some(SeatRefusal::NoStopBelowTheFront)
+    );
+    let top = b
+        .seating()
+        .top(&mut Statics::new())
+        .expect("the top seat fits");
+    let contact = b
+        .mounted()
+        .capstan_on_the_heel(&top.q, TOUCHING)
+        .expect("the capstan touches the heel at the top seat");
+    let kr = key_ratio_of(&carrying_sheet_of(&a));
+    assert_eq!(
+        kr.conditions.capstan_heel_contact,
+        Some(ContactPoint {
+            at: contact.on_the_capstan,
+            found: ContactFound::WhereTheCapstanTouchesTheHeel { part: contact.part }
+        })
+    );
+}
+
+/// Consistency: **where only the bottom seat is refused, the contact is read
+/// at the top seat.** On a capstan 30 mm tall under a center pin 72 mm high,
+/// the wippen fits at the key's top seat and is pushed past its range at the
+/// bottom one: the sheet's seats are refused, and the key weight ratio is
+/// read where the capstan touches the heel at the top seat the seats solved
+/// and handed back, the one [`Seating::top`] seats, without solving it
+/// again.
+#[test]
+fn where_only_the_bottom_seat_is_refused_the_contact_is_read_at_the_top_seat() {
+    use super::seat::{SeatRefusal, WhichSeat};
+    use super::seat_wippen::{on_a_tall_capstan, FITS_AT_THE_TOP_SEAT_ONLY, TALL_CAPSTAN};
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    let k = on_a_tall_capstan(FITS_AT_THE_TOP_SEAT_ONLY);
+    assert!(matches!(
+        k.seating().seats(&mut Statics::new()),
+        Err(SeatRefusal::WippenPushedPastItsRange {
+            at: WhichSeat::Bottom,
+            ..
+        })
+    ));
+    let top = k
+        .seating()
+        .top(&mut Statics::new())
+        .expect("the top seat fits");
+    let contact = k
+        .mounted
+        .capstan_on_the_heel(&top.q, TOUCHING)
+        .expect("the capstan touches the heel at the top seat");
+    let mut a = regulated();
+    a.key.capstan_screw.height = TALL_CAPSTAN;
+    let (mut wippen, mass) = test_wippen();
+    wippen.center.y = FITS_AT_THE_TOP_SEAT_ONLY;
+    let (on_frame, jig) = weighed_with(&a, Some((&wippen, &mass)));
+    let kr = key_ratio_of(&sheet_of(&on_frame, &jig, &a, true));
+    assert_eq!(
+        kr.conditions.capstan_heel_contact,
+        Some(ContactPoint {
+            at: contact.on_the_capstan,
+            found: ContactFound::WhereTheCapstanTouchesTheHeel { part: contact.part }
+        })
     );
 }

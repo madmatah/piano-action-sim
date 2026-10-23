@@ -54,8 +54,8 @@ use pa_core::contact::{
 };
 use pa_core::measure::jig::JigRefusal;
 use pa_core::measure::measurement::{
-    Input as CoreInput, Measurement, Mount as CoreMount, ProcedureId, Rounding as CoreRounding,
-    Trust as CoreTrust, Unit as CoreUnit, Zeroed,
+    ContactFound, Input as CoreInput, Measurement, Mount as CoreMount, ProcedureId,
+    Rounding as CoreRounding, Trust as CoreTrust, Unit as CoreUnit, Zeroed,
 };
 use pa_core::measure::seat::{SeatRefusal, WhichSeat as CoreWhichSeat};
 use pa_core::measure::sweep::{Sample, SweepRefusal};
@@ -1630,6 +1630,53 @@ pub struct TemporaryWeight {
     pub zeroed: Zeroing,
 }
 
+/// Where a reading centers its load on the capstan/heel contact point,
+/// and how the point was found.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+pub struct CapstanHeelContact {
+    /// Where, millimeters along the body the reading weighs, positive in
+    /// front: from the balance pin for the key weight ratio, from the
+    /// wippen's center pin for the wippen weight.
+    pub at_mm: f64,
+    /// How it was found.
+    pub found: HeelContactFound,
+}
+
+/// How the capstan/heel contact point a reading centers its load on was
+/// found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(TS))]
+#[serde(tag = "code", rename_all = "snake_case")]
+pub enum HeelContactFound {
+    /// Where the capstan touches the heel, the key carrying its wippen at
+    /// rest, at its top seat.
+    WhereTheCapstanTouchesTheHeel {
+        /// The part of the heel it touches: its cloth, or its wood.
+        part: Part,
+    },
+    /// The key carries no wippen: the capstan's top, on its axis.
+    NoWippenAssembly,
+    /// The key carrying its wippen has no top seat.
+    NoTopSeat,
+    /// At the top seat the capstan does not touch the heel, which rests on
+    /// the key's top.
+    CapstanOffTheHeel,
+}
+
+impl From<ContactFound> for HeelContactFound {
+    fn from(found: ContactFound) -> Self {
+        match found {
+            ContactFound::WhereTheCapstanTouchesTheHeel { part } => {
+                Self::WhereTheCapstanTouchesTheHeel { part: part.into() }
+            }
+            ContactFound::NoWippenAssembly => Self::NoWippenAssembly,
+            ContactFound::NoTopSeat => Self::NoTopSeat,
+            ContactFound::CapstanOffTheHeel => Self::CapstanOffTheHeel,
+        }
+    }
+}
+
 /// A link carrying the wippen the key carries, and the parts of the heel it
 /// bears on: the capstan on the heel cloth or on the heel's wood, or the
 /// heel on the key's top.
@@ -1674,6 +1721,10 @@ pub struct Conditions {
     pub temporary_weight: Option<TemporaryWeight>,
     /// The readings it is computed from, where it is computed.
     pub from: Vec<Procedure>,
+    /// Where it centers its load on the capstan/heel contact point, and how
+    /// that point was found: the key weight ratio's 10 g; nothing for the
+    /// other readings.
+    pub capstan_heel_contact: Option<CapstanHeelContact>,
 }
 
 /// One reading of the sheet: read, with its value in full and what the trade
@@ -1763,6 +1814,10 @@ impl Reading {
                     },
                 }),
                 from: c.from.iter().map(|&p| p.into()).collect(),
+                capstan_heel_contact: c.capstan_heel_contact.map(|contact| CapstanHeelContact {
+                    at_mm: mm(contact.at.x),
+                    found: contact.found.into(),
+                }),
             }),
             increments: m.report.increments,
             iterations: m.report.iterations,
@@ -3728,6 +3783,29 @@ mod tests {
         for p in ProcedureId::ALL {
             assert_eq!(written(&Procedure::from(p)), format!("\"{}\"", p.code()));
         }
+        for found in [
+            ContactFound::WhereTheCapstanTouchesTheHeel {
+                part: PartCode::WippenHeelCloth,
+            },
+            ContactFound::NoWippenAssembly,
+            ContactFound::NoTopSeat,
+            ContactFound::CapstanOffTheHeel,
+        ] {
+            let crossed: serde_json::Value =
+                serde_json::from_str(&written(&HeelContactFound::from(found))).expect("JSON");
+            assert_eq!(crossed["code"], found.code());
+        }
+        assert_eq!(
+            written(&HeelContactFound::from(
+                ContactFound::WhereTheCapstanTouchesTheHeel {
+                    part: PartCode::WippenHeel
+                }
+            )),
+            format!(
+                "{{\"code\":\"where_the_capstan_touches_the_heel\",\"part\":\"{}\"}}",
+                PartCode::WippenHeel.code()
+            )
+        );
         for p in [
             PartCode::Keystick,
             PartCode::Keytop,

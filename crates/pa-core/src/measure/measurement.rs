@@ -25,7 +25,7 @@
 //! ([`Input`]). Every reading carries the counts of the static solves it
 //! took ([`SolveReport`]) and the fingerprint of the solver that took it.
 
-use crate::contact::ContactCode;
+use crate::contact::{ContactCode, PartCode};
 use crate::geometry::Point;
 use crate::parts::mounts::KeyMount;
 use crate::parts::verdicts::CarriedBy;
@@ -462,6 +462,60 @@ pub struct Conditions {
     pub temporary_weight: Option<TemporaryWeight>,
     /// The readings it is computed from, where it is computed.
     pub from: Vec<ProcedureId>,
+    /// Where the reading centers its load on Stanwood's *"capstan/heel
+    /// contact point"*, and how that point was found: the key weight ratio's
+    /// 10 g, and the roller the wippen weight is read on. `None` for every
+    /// other reading.
+    pub capstan_heel_contact: Option<ContactPoint>,
+}
+
+/// Where a reading centers its load on the capstan/heel contact point, and
+/// how the point was found.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ContactPoint {
+    /// The point, in the frame of the body the reading weighs: the key's for
+    /// the key weight ratio, from its balance pin; the wippen's for the
+    /// wippen weight, from its center pin.
+    pub at: Point,
+    /// How it was found.
+    pub found: ContactFound,
+}
+
+/// How the capstan/heel contact point a reading centers its load on was
+/// found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContactFound {
+    /// Where the capstan touches the heel, the key carrying its wippen at its
+    /// top seat, the key at rest: on the heel's `part`, its cloth or, where
+    /// the capstan stands off it, its wood.
+    WhereTheCapstanTouchesTheHeel {
+        /// The part of the heel it touches.
+        part: PartCode,
+    },
+    /// The key carries no wippen: the capstan's top, on its axis.
+    NoWippenAssembly,
+    /// The key carrying its wippen has no top seat, so no point where the
+    /// capstan touches the heel: the seats were refused before a top seat
+    /// with the wippen was solved, or at it. The capstan's top, on its axis,
+    /// for the key weight ratio; the heel's lowest point for the wippen
+    /// weight.
+    NoTopSeat,
+    /// At the top seat the capstan does not touch the heel, which rests on
+    /// the key's top: the capstan's top, on its axis, for the key weight
+    /// ratio; the heel's lowest point for the wippen weight.
+    CapstanOffTheHeel,
+}
+
+impl ContactFound {
+    /// How it was found's identifier.
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::WhereTheCapstanTouchesTheHeel { .. } => "where_the_capstan_touches_the_heel",
+            Self::NoWippenAssembly => "no_wippen_assembly",
+            Self::NoTopSeat => "no_top_seat",
+            Self::CapstanOffTheHeel => "capstan_off_the_heel",
+        }
+    }
 }
 
 impl Conditions {
@@ -478,6 +532,7 @@ impl Conditions {
             sweep: None,
             temporary_weight: None,
             from: Vec::new(),
+            capstan_heel_contact: None,
         }
     }
 }

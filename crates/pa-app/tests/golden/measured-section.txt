@@ -9,6 +9,9 @@ sheet.key_weight_ratio.shown 0.49 0x3fdf5c28f5c28f5c
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
 sheet.key_weight_ratio.fingerprint statics/4
+sheet.key_weight_ratio.capstan_heel_contact NoWippenAssembly
+sheet.key_weight_ratio.capstan_heel_contact.x -0.122 0xbfbf3b645a1cac08
+sheet.key_weight_ratio.capstan_heel_contact.y 0.0335 0x3fa126e978d4fdf4
 sheet.key_height.value 0.06498878883168044 0x3fb0a31af2a382fe
 sheet.key_height.shown 0.06498878883168044 0x3fb0a31af2a382fe
 sheet.key_height.unit m

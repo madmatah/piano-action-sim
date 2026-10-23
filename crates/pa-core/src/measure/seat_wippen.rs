@@ -364,7 +364,8 @@ fn seating_from_the_key_alones_own_seats_gives_the_seats_to_the_bit() {
     assert_eq!(alones.as_ref().map(|seats| &seats.top), Ok(&top));
     assert_eq!(
         k.seating()
-            .seats_from_the_key_alones(&mut Statics::new(), &alones),
+            .seats_from_the_key_alones(&mut Statics::new(), &alones)
+            .0,
         k.seating().seats(&mut Statics::new())
     );
 }
@@ -1231,7 +1232,7 @@ fn the_wippens_refusals_are_named_at_their_seats() {
 }
 
 /// The tallest capstan its hard range takes, meters.
-const TALL_CAPSTAN: f64 = 0.030;
+pub(super) const TALL_CAPSTAN: f64 = 0.030;
 
 /// A center pin at which the test wippen on [`TALL_CAPSTAN`] fits at the
 /// key's top seat, a degree or two under the top of its range, and is

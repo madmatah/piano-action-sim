@@ -569,7 +569,9 @@ Every reading on the weighing sheet is a protocol run on the model, and comes
 back as a measurement: its value in full; what the trade reads it as, by the
 protocol's own rounding; its unit and resolution; its conditions (where the
 key was read, the stops holding the seat it was read at or walked from, the
-loads that seated it, the walk, the temporary weight); its trust; the counts
+loads that seated it, the walk, the temporary weight, the point a load was
+centered on as the capstan/heel contact point and how it was found); its
+trust; the counts
 of the static solves it took; and the fingerprint of the solver that took it
 ([Determinism, stated correctly](#determinism-stated-correctly)). Or it is refused with its reason, and the others are read all the
 same. `pa-cli weigh` prints each with its procedure, its trust and its counts.
@@ -586,11 +588,16 @@ Their closed forms are test oracles, compiled for the domain's tests only.
   reads that reaction over g times the measuring point's arm: signed, so a
   back-heavy key reads negative, as his protocol for a negative front weight
   reads it. The ratio is the reading tared with the key on the jig, then with
-  10 g centered on the capstan's contact point, over the load with its sign
-  turned. Front weight is read to the nearest 0.1 g, the ratio to 0.01. The
-  closed forms, static moment over arm and capstan arm over arm, are test
-  oracles the jig matches to round-off. A jig pivots the key at the pin, so it
-  cannot see where the key bears on its balance punching; only a reading on
+  10 g *"centered on a vertical axis which passes through the capstan/heel
+  contact point"* [V, Stanwood 2000, p. 22], over the load with its sign
+  turned: on a key carrying its wippen, where its capstan touches the heel at
+  the top seat
+  ([At the capstan/heel contact point](#at-the-capstanheel-contact-point));
+  on one carrying none, the capstan's top, on its axis. Front weight is read
+  to the nearest 0.1 g, the ratio to 0.01. The closed forms, static moment
+  over arm and that point's arm over arm, are test oracles the jig matches to
+  round-off. A jig pivots the key at the pin, so it cannot see where the key
+  bears on its balance punching; only a reading on
   the frame can ([Validation instruments](#validation-instruments), "One real key, measured by the owner").
 - **Key height and dip** are the seated pose run on the model ([Parts and statics](#parts-and-statics)): the back
   of the key held down at the capstan, then the front pressed down until a stop
@@ -1318,6 +1325,39 @@ and not the friction weight, its center 1.2 times as tight the friction weight
 and not the balance weight, and the wippen moves the balance weight by the
 virtual work of its weight over the stroke.
 
+### At the capstan/heel contact point
+
+Stanwood centers the key weight ratio's 10 g *"on a vertical axis which passes
+through the capstan/heel contact point"* [V, Stanwood 2000, p. 22]. On a key
+carrying its wippen the bench reads that point where the capstan touches the
+heel at the top seat, the key at rest: the seats solve the top seat once and
+hand it back beside them, so a key whose bottom seat alone is refused keeps
+its point; where the key alone's seats are refused and its top seat is not,
+the top seat is seated from the key alone's for that point. Of the rows of
+the capstan's link closed within touching there, the one that carries the
+wippen going down is read, as the fold picks it
+([The fold, and the seat's load](#the-fold-and-the-seats-load)); its two
+points stand on the capstan's surface and on the heel's along their normal,
+whatever the row's gap, and each is carried into its own body's frame. The
+key weight ratio is then read on the jig at the capstan's point: its arm over
+the measuring arm, the jig level. A heel cloth on a flat capstan's top bears
+where its circle's center stands over the top, not on the capstan's axis; on a
+dome, on the line of the two centers; and past the rim of a flat top, on the
+rim. On the test bench the ratio moves from 0.4939 on the capstan's axis to
+0.4994, the heel touching 1.34 mm behind it; domed to 9.7 mm, to 0.4954,
+0.37 mm behind; with the capstan 129 mm behind the balance pin, from 0.5223 to
+0.5121, on the front rim 2.5 mm in front of the axis. On Hirschkorn's key his
+dome touches his heel cloth 0.64 mm behind its axis, and KR reads 0.5225,
+where centered on the dome's top it would read 0.5197: both show 0.52.
+
+Where the key carries no wippen, the 10 g is centered on the capstan's top, on
+its axis; where the key carrying
+its wippen has no top seat, or the capstan does not touch the heel there, the
+heel resting on the key's top, it is centered there too. The reading says
+which, with the point it was centered on. The friction between the capstan and
+the heel is not modeled (stage 1b's defaults), so the point is where the
+surfaces meet and nothing else.
+
 ### The regulation with the wippen
 
 The regulation solve mounts the key with its wippen, and its trials classify
@@ -1351,7 +1391,8 @@ reads with one more thinnest paper.
 | D, U, BW, F, the band | the key with its wippen (built) |
 | The touch weight | the key with its wippen (built) |
 | Both key friction weights | the key alone (built) |
-| FW, KR | the jig |
+| FW | the jig |
+| KR | the jig, its 10 g centered where the capstan touches the heel at the top seat of the key with its wippen, or on the capstan's top (built) |
 | WW | the wippen on a frictionless revolute at its center pin, at the protocol's level, the scale under the capstan's mark (planned) |
 
 ## Decisions that stand
@@ -1501,7 +1542,10 @@ window that separates the two conventions without rejecting a real action;
 `an_unusually_high_real_key_ratio_passes` test it.
 
 **Ratios are outputs, never inputs.** The key weight ratio changes only through
-the capstan's position, the measuring point and the bearing point, the action
+the capstan's position, the measuring point and the bearing point, and on a
+key carrying a wippen where its capstan touches the heel: its capstan's
+height and dome, the wippen's center, and the heel's position, height and
+radius ([At the capstan/heel contact point](#at-the-capstanheel-contact-point)). The action
 ratio through those and the knuckle's distance from the shank center. The
 trade's definitions of the action ratio (lever product, a gauge read at the top
 of the stroke, Stanwood's strike ratio, the ratio of useful travels) differ on
@@ -1940,7 +1984,7 @@ input being his. His wippen assembly rests on his capstan where his
 contact 1 closes on the heel's circle, Pw5, the key at rest on the real felts
 (`his_wippen_rests_where_his_capstan_closes_on_his_heel`), and the capstan
 bears on its heel cloth at both seats. On his frame as printed, carrying his
-wippen, the bench reads FW 27.3 g, KR 0.52, a key height of 61.66 mm,
+wippen, the bench reads FW 27.3 g, KR 0.52 (0.5225), a key height of 61.66 mm,
 indicative, and a dip of 9.72 mm at the key front, D −12 g (−12.37), U −25 g
 (−24.70), BW −18.5 g (−18.53), F 6.5 g (6.16) and both key friction weights
 6 g: the key is leaded for its action, rests nose-down on its front punching
@@ -2307,9 +2351,10 @@ shortened under its frame; the owner's measured section as it arrives, every
 reading that needs the key's mass refused, the same weighed by a stated
 typical weighing, and weighed back-heavy; and his key alone, with no wippen on
 its capstan, its key height target the height it stands at alone. For each, each reading of the weighing sheet, its value in
-full and as the trade reads it, its trust, the walk's start and the temporary
-weight, or why it is refused, and where the wippen rests at the reading's
-seat; then what holds the key, how it rides where its stops fight, the
+full and as the trade reads it, its trust, the walk's start, the point the
+key weight ratio's 10 g was centered on and how it was found, and the
+temporary weight, or why it is refused, and where the wippen rests at the
+reading's seat; then what holds the key, how it rides where its stops fight, the
 faults, the papers and the pose, with the wippen's angle and what carries it,
 or that the key carries none; last, D and U read on the
 band, with the sweep's window and where each fell, or why the band cannot be
@@ -2373,7 +2418,9 @@ among them, always valid whatever the frame does; the key friction weight
 its control shows is the sheet's reading of that torque. The **sheet**: every
 reading by its procedure's code, read (its value in full, what the trade
 reads it as by the protocol's rounding, its unit and resolution, its trust,
-its conditions and the solves it took) or refused with its reason, whether
+its conditions, the capstan/heel contact point a load was centered on among
+them in millimeters along its body, and the solves it took) or refused with
+its reason, whether
 or not the key can be seated, so that a frame that cannot seat its key reads
 its jig and refuses the rest line by line. The **diagnostics**: why the key
 cannot be seated, how it rides where its stops fight, the faults, how it

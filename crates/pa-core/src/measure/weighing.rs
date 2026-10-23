@@ -5,7 +5,7 @@
 //! | Reading | Procedure | Read as |
 //! |---|---|---|
 //! | front weight | the key leveled on Stanwood's jig ([`super::jig`]) | to the nearest 0.1 g |
-//! | key weight ratio | the tared jig, 10 g on the capstan's contact point | to the nearest 0.01 |
+//! | key weight ratio | the tared jig, 10 g centered where the capstan touches the heel at the top seat, or on the capstan's top | to the nearest 0.01 |
 //! | key height, key dip | the seated pose ([`super::seat`]) | as found, a paper the resolution |
 //! | down weight D | the breakaway walk from the top seat ([`super::walk`]) | up to the gram |
 //! | up weight U | the breakaway walk from the bottom seat | down to the gram |
@@ -49,7 +49,14 @@
 //! without its wippen ([`Mounted::key_alone`]): they weigh the key's
 //! bushings, which the trade reads with the action off the key, and they
 //! read the same bits with the wippen and without. Front weight and the key
-//! weight ratio are the jig's, where the key stands alone.
+//! weight ratio are the jig's, where the key stands alone; the key weight
+//! ratio's 10 g is centered on Stanwood's *"capstan/heel contact point"*,
+//! which on a key carrying its wippen is where its capstan touches the heel
+//! at the top seat, the key at rest, read once per sheet at the top seat the
+//! seats solved ([`Weighing::capstan_on_the_heel`]). Where the key carries
+//! no wippen, has no top seat with it, or its capstan does not touch the
+//! heel there, the 10 g is centered on the capstan's top, on its axis, and
+//! the reading says which.
 //!
 //! # A key friction weight typed
 //!
@@ -67,16 +74,16 @@
 
 use super::jig::{JigRefusal, KeyJig};
 use super::measurement::{
-    Bases, Conditions, Measurement, Mount, Preparation, ProcedureId, Rounding, Swept,
-    TemporaryWeight, Trust, Unit, Walked, Zeroed,
+    Bases, Conditions, ContactFound, ContactPoint, Measurement, Mount, Preparation, ProcedureId,
+    Rounding, Swept, TemporaryWeight, Trust, Unit, Walked, Zeroed,
 };
 use super::seat::{Seat, SeatRefusal, Seating, Seats, SEAT_MARGIN};
 use super::sweep::{Band, Sample, SweepRefusal};
 use super::walk::{Breakaway, Stroke, WalkRefusal, HALVINGS, ROUNDING_TOLERANCE_G, STEP_G};
 use crate::geometry::Point;
 use crate::mechanism::{AxisFriction, MaterialPoint, PointLoad, Problem};
-use crate::parts::mounts::{Mounted, OnItsFrame};
-use crate::parts::verdicts::wippen_carried_by;
+use crate::parts::mounts::{HeelContact, Mounted, OnItsFrame};
+use crate::parts::verdicts::{wippen_carried_by, TOUCHING};
 use crate::solve::{SolveReport, Statics, SOLVER_FINGERPRINT};
 use crate::G;
 
@@ -178,6 +185,18 @@ impl Sheet {
     }
 }
 
+/// Where the capstan touches the wippen's heel at the top seat, as the sheet
+/// reads it once ([`Weighing::capstan_on_the_heel`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AtTheHeel {
+    /// How it was found.
+    pub found: ContactFound,
+    /// The point, where the capstan touches the heel there.
+    pub contact: Option<HeelContact>,
+    /// The solves of the top seat it was read at, nothing where none was.
+    pub report: SolveReport,
+}
+
 /// The band, and the down and up weights read on it ([`Weighing::band`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Banded {
@@ -249,7 +268,9 @@ impl Weighing<'_> {
     /// seats it again with its temporary weight on, the key alone where it
     /// carries a wippen, whose own top seat the one zeroed on the frame is
     /// zeroed at: the one its seats started from, seated again only where
-    /// they did not seat it there.
+    /// they did not seat it there. Where the key alone's seats are refused
+    /// but that top seat is not, the key carrying its wippen is seated at
+    /// its top seat from it, for where the capstan touches the heel.
     pub fn sheet(&self, statics: &mut Statics) -> Sheet {
         let alone = self
             .on_frame
@@ -257,21 +278,33 @@ impl Weighing<'_> {
             .key_alone
             .as_ref()
             .map(|_| self.alone(&[]).seats(statics));
-        let seats = match &alone {
+        let alone_top = match &alone {
+            Some(Ok(alone)) => Some(Ok(alone.top.clone())),
+            Some(Err(_)) => Some(self.alone(&[]).top(statics)),
+            None => None,
+        };
+        let (seats, top_with_the_wippen) = match &alone {
             Some(alone) => self.seating(&[]).seats_from_the_key_alones(statics, alone),
-            None => self.seating(&[]).seats(statics),
-        }
-        .map_err(Refused::Seat);
-        let alone_top = match alone {
-            Some(Ok(alone)) => Ok(alone.top),
-            Some(Err(_)) => self.alone(&[]).top(statics).map_err(Refused::Seat),
+            None => (self.seating(&[]).seats(statics), None),
+        };
+        let top_with_the_wippen = match (&alone, &alone_top) {
+            (Some(Err(_)), Some(Ok(alone_top))) => self
+                .seating(&[])
+                .top_from_the_key_alones(statics, alone_top)
+                .ok(),
+            _ => top_with_the_wippen,
+        };
+        let seats = seats.map_err(Refused::Seat);
+        let at_the_heel = self.capstan_on_the_heel(top_with_the_wippen.as_ref());
+        let alone_top = match alone_top {
+            Some(top) => top.map_err(Refused::Seat),
             None => seats.as_ref().map(|s| s.top.clone()).map_err(Clone::clone),
         };
         let (height, dip) = self.height_and_dip(&seats);
         let [down, up, balance, friction] = self.weights(statics, &seats);
         let results = [
             (ProcedureId::FrontWeight, self.front_weight()),
-            (ProcedureId::KeyWeightRatio, self.key_ratio()),
+            (ProcedureId::KeyWeightRatio, self.key_ratio(&at_the_heel)),
             (ProcedureId::KeyHeight, height),
             (ProcedureId::KeyDip, dip),
             (ProcedureId::DownWeight, down),
@@ -387,10 +420,53 @@ impl Weighing<'_> {
         ))
     }
 
+    /// Where the capstan touches the wippen's heel at `top`, the top seat of
+    /// the key carrying its wippen as the seats solved it, or seated from the
+    /// key alone's top seat where the key alone's seats are refused, and how
+    /// that was found: what the key weight ratio and the wippen weight center
+    /// their loads on. The top seat's solves are counted with it, and
+    /// nothing where no top seat with the wippen was read.
+    pub fn capstan_on_the_heel(&self, top: Option<&Seat>) -> AtTheHeel {
+        let mounted = &self.on_frame.mounted;
+        if mounted.wippen.is_none() {
+            return AtTheHeel {
+                found: ContactFound::NoWippenAssembly,
+                contact: None,
+                report: SolveReport::NOTHING,
+            };
+        }
+        let Some(top) = top else {
+            return AtTheHeel {
+                found: ContactFound::NoTopSeat,
+                contact: None,
+                report: SolveReport::NOTHING,
+            };
+        };
+        let contact = mounted.capstan_on_the_heel(&top.q, TOUCHING);
+        AtTheHeel {
+            found: contact.map_or(ContactFound::CapstanOffTheHeel, |c| {
+                ContactFound::WhereTheCapstanTouchesTheHeel { part: c.part }
+            }),
+            contact,
+            report: top.report,
+        }
+    }
+
     /// **Key weight ratio**, force convention, to the hundredth: the tared
-    /// jig's reading with 10 g on the capstan, its sign turned, over the load.
-    pub fn key_ratio(&self) -> Result<Measurement, Refused> {
-        let ratio = self.jig.key_ratio().map_err(jig_refused)?;
+    /// jig's reading with 10 g centered on the capstan/heel contact point,
+    /// its sign turned, over the load. On a key carrying its wippen, that is
+    /// where its capstan touches the heel at the top seat, `at_the_heel`;
+    /// elsewhere, and where that point is not read, the capstan's top, on
+    /// its axis.
+    pub fn key_ratio(&self, at_the_heel: &AtTheHeel) -> Result<Measurement, Refused> {
+        let (ratio, at) = match at_the_heel.contact {
+            Some(contact) => (
+                self.jig.key_ratio_at(contact.on_the_capstan),
+                contact.on_the_capstan,
+            ),
+            None => (self.jig.key_ratio(), self.jig.capstan_contact()),
+        };
+        let ratio = ratio.map_err(jig_refused)?;
         Ok(self.measured(
             ProcedureId::KeyWeightRatio,
             ratio,
@@ -399,8 +475,14 @@ impl Weighing<'_> {
             100.0,
             Rounding::Nearest,
             0.0,
-            Conditions::at(Mount::Jig, self.measuring_point_from_lip_m),
-            SolveReport::NOTHING,
+            Conditions {
+                capstan_heel_contact: Some(ContactPoint {
+                    at,
+                    found: at_the_heel.found,
+                }),
+                ..Conditions::at(Mount::Jig, self.measuring_point_from_lip_m)
+            },
+            at_the_heel.report,
         ))
     }
 
@@ -1553,6 +1635,30 @@ mod tests {
             assert_eq!(t.zeroed, zeroed);
             assert!(t.mass_g > 0.0);
         }
+    }
+
+    /// Consistency: **a key carrying no wippen reads its key weight ratio on
+    /// the capstan's top, to the bit**: the 10 g centered on the capstan's
+    /// top, on its axis, its condition saying the key carries no wippen, the
+    /// ratio the jig's on that point with the same operations, and no solve
+    /// counted.
+    #[test]
+    fn a_key_carrying_no_wippen_reads_its_key_weight_ratio_on_the_capstans_top_to_the_bit() {
+        let a = regulated();
+        let b = bench(&a, 6.0);
+        let kr = read(&b.sheet(), ProcedureId::KeyWeightRatio).clone();
+        assert_eq!(
+            kr.conditions.capstan_heel_contact,
+            Some(ContactPoint {
+                at: a.key.capstan_contact(),
+                found: ContactFound::NoWippenAssembly
+            })
+        );
+        assert_eq!(
+            kr.value.to_bits(),
+            b.jig.key_ratio().expect("the jig reads it").to_bits()
+        );
+        assert_eq!(kr.report, SolveReport::NOTHING);
     }
 
     /// Consistency: **a key nobody has weighed reads what needs no mass.**

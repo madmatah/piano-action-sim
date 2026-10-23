@@ -17,7 +17,7 @@
 //! to, and the bench is held to it.
 
 use pa_core::geometry::Point;
-use pa_core::measure::measurement::ProcedureId;
+use pa_core::measure::measurement::{ContactFound, ContactPoint, ProcedureId};
 use pa_core::parts::frame::KeyKind;
 use serde_json::Value;
 
@@ -146,9 +146,11 @@ fn fall(p: Point, rest: f64, bottom: f64) -> f64 {
 ///   front edge are held to Pg4 and Pg5 where it draws them, which names a
 ///   felt laid elsewhere along the key before the seats show it.
 /// - **Table A.1's static moment** over the measuring arm is the front
-///   weight the jig reads, to round-off; and the key weight ratio is the
-///   capstan's arm over the measuring arm. These see what the attitudes
-///   cannot: a center of mass read in another frame.
+///   weight the jig reads, to round-off; and the key weight ratio is the arm
+///   of where his capstan touches his heel at the top seat, the point its
+///   condition names, over the measuring arm, that point standing on his
+///   dome to round-off. These see what the attitudes cannot: a center of
+///   mass read in another frame.
 fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
     let record: Value = serde_json::from_str(RECORD).expect("his record");
     let fixture: Value = serde_json::from_str(FIXTURE).expect("the fixture");
@@ -339,12 +341,44 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
              arm is {front_weight} g"
         ));
     }
-    let ratio = -key.capstan / arm;
-    let kr = read(ProcedureId::KeyWeightRatio)?;
-    if (kr - ratio).abs() > 64.0 * f64::EPSILON {
+    let sheet = b.sheet();
+    let Some(Ok(kr)) = sheet.get(ProcedureId::KeyWeightRatio) else {
         return Err(format!(
-            "key weight ratio: the jig reads {kr}, the capstan's arm over the measuring arm is \
-             {ratio}"
+            "key weight ratio: {:?}",
+            sheet.get(ProcedureId::KeyWeightRatio)
+        ));
+    };
+    let Some(ContactPoint {
+        at,
+        found: ContactFound::WhereTheCapstanTouchesTheHeel { .. },
+    }) = kr.conditions.capstan_heel_contact
+    else {
+        return Err(format!(
+            "key weight ratio: read at {:?}, not where his capstan touches his heel",
+            kr.conditions.capstan_heel_contact
+        ));
+    };
+    let ratio = -at.x / arm;
+    if (kr.value - ratio).abs() > 64.0 * f64::EPSILON {
+        return Err(format!(
+            "key weight ratio: the jig reads {}, the arm of where his capstan touches his heel \
+             over the measuring arm is {ratio}",
+            kr.value
+        ));
+    }
+    // The point stands on his dome, a round-off from it: the row's point
+    // carried into the key's frame, within 64 units in the last place of
+    // the 0.3 m its coordinates stand under.
+    let dome = key
+        .capstan_screw
+        .dome_radius
+        .ok_or("his capstan has no dome")?;
+    let top = key.capstan_contact();
+    let (dx, dy) = (at.x - key.capstan, at.y - (top.y - dome));
+    let off = (dx * dx + dy * dy).sqrt() - dome;
+    if off.abs() > 64.0 * f64::EPSILON * 0.3 {
+        return Err(format!(
+            "key weight ratio: read at {at:?}, {off} m off his dome"
         ));
     }
     Ok((rounds, bench))
@@ -556,6 +590,77 @@ mod tests {
         assert!(
             (0.000_001_65..0.000_001_75).contains(&more),
             "the real felts add {more} m to his dip at Pk2"
+        );
+    }
+
+    /// Consistency, by hand: **his key weight ratio is read where his dome
+    /// touches his heel cloth**, at his top seat. The closed row of the
+    /// capstan's link there is his dome's arc on his cloth's arc; the hand
+    /// puts their contact on the line of the two arcs' centers, at his top
+    /// seat's coordinates through the engine's pose, the dome's surface its
+    /// radius along it, and carries it into the key's frame. On the level
+    /// jig the ratio is that point's arm over the measuring arm, within the
+    /// hand's round-off over the measuring arm, `64 ε` of the 0.3 m its
+    /// coordinates stand under, and the two jig readings', sixteen units in
+    /// the last place of the readings' magnitude over the 10 g each. It reads
+    /// 0.5225, his capstan touching his heel 0.64 mm behind his dome's axis,
+    /// where on the dome's top it read 0.5197.
+    #[test]
+    fn his_key_weight_ratio_is_read_where_his_dome_touches_his_heel_cloth() {
+        use pa_core::contact::{Piece, Rows, ROW_MARGIN};
+        use pa_core::geometry::Seg;
+        use pa_core::parts::verdicts::TOUCHING;
+        let b = his();
+        let (k, seats) = b.seated().expect("his key seats");
+        let m = &k.mounted.mechanism;
+        let capstans = k.mounted.wippen.expect("his wippen").links[0];
+        let pose = m.pose(&seats.top.q);
+        let mut rows = Rows::new();
+        m.rows(&pose, ROW_MARGIN, &mut rows);
+        let closed: Vec<_> = rows
+            .of_pair(capstans)
+            .filter(|(_, row)| row.gap <= TOUCHING)
+            .map(|(_, row)| row.feature)
+            .collect();
+        let [feature] = closed[..] else {
+            panic!("one row of his capstan's link is closed: {closed:?}")
+        };
+        let disc = |piece: Piece| {
+            let part = &m.parts()[piece.part().index()];
+            let Piece::Arc { seg, .. } = piece else {
+                panic!("{:?} bears with {piece:?}, not an arc", part.code)
+            };
+            let Seg::Arc { c, r, .. } = part.silhouette()[usize::from(seg)] else {
+                unreachable!("an arc's segment")
+            };
+            (part.code, pose.placement(part.body).world(c), r)
+        };
+        let (dome, c, r) = disc(feature.a);
+        let (cloth, d, _) = disc(feature.b);
+        assert_eq!(
+            (dome, cloth),
+            (PartCode::Capstan, PartCode::WippenHeelCloth)
+        );
+        let length = ((d.x - c.x) * (d.x - c.x) + (d.y - c.y) * (d.y - c.y)).sqrt();
+        let on_the_dome = Point::new(
+            c.x + r * (d.x - c.x) / length,
+            c.y + r * (d.y - c.y) / length,
+        );
+        let x_c = pose.placement(k.mounted.key).local(on_the_dome).x;
+        let arm = b.measuring_point();
+        let sheet = b.sheet();
+        let read = |p| match sheet.get(p) {
+            Some(Ok(m)) => m.value,
+            other => panic!("{p:?}: {other:?}"),
+        };
+        let load = b.protocol().key_ratio_load_g;
+        let readings = (read(ProcedureId::FrontWeight).abs() + load) / load;
+        let bound = 64.0 * f64::EPSILON * 0.3 / arm + 2.0 * 16.0 * f64::EPSILON * readings;
+        let kr = read(ProcedureId::KeyWeightRatio);
+        assert!(
+            (kr - -x_c / arm).abs() <= bound,
+            "KR {kr}, by hand {}, within {bound}",
+            -x_c / arm
         );
     }
 
