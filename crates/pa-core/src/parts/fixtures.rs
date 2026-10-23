@@ -3,7 +3,7 @@
 
 use super::frame::{FrameRanges, KeyKind};
 use super::mounts::{on_its_frame, KeyMount, Mounted};
-use super::{FrameDesign, KeyDesign};
+use super::{FrameDesign, KeyDesign, WippenAssembly, WippenAssemblyMass};
 use crate::geometry::Point;
 use crate::measure::seat::{Seating, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
@@ -57,6 +57,7 @@ fn regulate_the_fixture() -> Setup {
         kind: KeyKind::Natural,
         mass: mass_of(&key),
         protocol: &protocol,
+        wippen_assembly: None,
     }
     .solve(TARGETS);
     let Ok(TargetOutcome::Met { stacks, .. }) = outcome else {
@@ -116,9 +117,78 @@ pub fn on_pivot(a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFra
     mounted_as(KeyMount::Pivot, a, kind, friction, weighed)
 }
 
+/// `a`'s key on its frame as [`on_frame`] mounts it, carrying `wippen` on
+/// its capstan, with what is known of its mass.
+pub fn on_frame_carrying(
+    a: &Setup,
+    friction: f64,
+    weighed: bool,
+    wippen: (&WippenAssembly, &WippenAssemblyMass),
+) -> OnFrame {
+    carrying(
+        KeyMount::OnPunching,
+        a,
+        KeyKind::Natural,
+        friction,
+        weighed,
+        Some(wippen),
+    )
+}
+
+/// `a`'s key turning about a fixed axis through its balance bearing, as
+/// [`on_pivot`] mounts it, carrying `wippen` on its capstan, with what is
+/// known of its mass: a key that cannot lift, for what the wippen's
+/// refusals are named on such a key.
+pub fn on_pivot_carrying(
+    a: &Setup,
+    friction: f64,
+    weighed: bool,
+    wippen: (&WippenAssembly, &WippenAssemblyMass),
+) -> OnFrame {
+    carrying(
+        KeyMount::Pivot,
+        a,
+        KeyKind::Natural,
+        friction,
+        weighed,
+        Some(wippen),
+    )
+}
+
+/// The test wippen assembly ([`crate::test_fixture::wippen_assembly`]) with
+/// its published mass, as the bench carries it.
+pub fn test_wippen() -> (WippenAssembly, WippenAssemblyMass) {
+    (
+        crate::test_fixture::wippen_assembly(),
+        crate::test_fixture::wippen_assembly_mass(),
+    )
+}
+
+/// `a`'s key on its frame, weighed, its bushings without friction, carrying
+/// `wippen` with the test wippen's mass.
+pub fn carrying_the(a: &Setup, wippen: &WippenAssembly) -> OnFrame {
+    on_frame_carrying(
+        a,
+        0.0,
+        true,
+        (wippen, &crate::test_fixture::wippen_assembly_mass()),
+    )
+}
+
 fn mounted_as(mount: KeyMount, a: &Setup, kind: KeyKind, friction: f64, weighed: bool) -> OnFrame {
+    carrying(mount, a, kind, friction, weighed, None)
+}
+
+fn carrying(
+    mount: KeyMount,
+    a: &Setup,
+    kind: KeyKind,
+    friction: f64,
+    weighed: bool,
+    wippen: Option<(&WippenAssembly, &WippenAssemblyMass)>,
+) -> OnFrame {
     let mass = if weighed { mass_of(&a.key) } else { None };
-    let k = on_its_frame(mount, &a.key, &a.frame, kind, mass, friction)
+    let k = on_its_frame(mount, &a.key, &a.frame, kind, mass, friction, wippen)
         .expect("the key's contacts are drawn");
     OnFrame {
         mounted: k.mounted,

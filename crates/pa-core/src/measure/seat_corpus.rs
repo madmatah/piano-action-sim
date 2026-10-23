@@ -8,8 +8,10 @@
 //! seat to the other, its down weight above its up weight by the band its
 //! friction makes. C12, consistency: wherever the balance punching carries
 //! the key, the key on its punching is the key on a pivot, to the bit, and
-//! the full problem, its punching free to lift, finds the same seats. Five
-//! classes:
+//! the full problem, its punching free to lift, finds the same seats. Every
+//! case carrying the test wippen seats or is refused by name, its seats
+//! where the oracle confirms them, the links among the contacts it reads.
+//! Five classes:
 //!
 //! - **near**: the regulated bench, every rail, felt, cloth, pin and
 //!   mortise moved within a few millimeters, the chamfer from none to
@@ -449,6 +451,69 @@ fn every_walk_reaches_the_other_seat_and_reads_d_above_u() {
     assert_eq!(walked, 200);
 }
 
+/// C8, consistency, for the walks of a key carrying its wippen: on every
+/// key a keyboard could be built from, the test wippen on its capstan and a
+/// 6 g band of friction at its bushings, each walk reaches the other seat,
+/// within a quarter of its cap of steps, and the down weight stands above
+/// the up weight by at least twice the bushings' friction read through the
+/// longest arm the measuring point has, the wippen center's friction only
+/// adding to it. A breakaway carries the key and its wippen through the
+/// stroke in one increment, its link closed, each step a row margin of
+/// their farthest points at most, some 65 to 100 steps on these strokes:
+/// every increment stays within one cap of steps, the most of them ending
+/// on it, its first piece stopping at the cap on a converged iterate and the
+/// next taking no step; the pieces of the cap carry a deeper dip
+/// ([`crate::measure::touchweights_wippen`]).
+#[test]
+fn every_walk_of_a_key_carrying_its_wippen_reaches_the_other_seat_and_reads_d_above_u() {
+    let (wippen, wippen_mass) = crate::parts::fixtures::test_wippen();
+    let mut statics = Statics::new();
+    let mut walked = 0;
+    let mut most = 0;
+    for (class, a) in corpus() {
+        if !matches!(class, Class::Near | Class::Phy8) {
+            continue;
+        }
+        let arm = a.protocol.measuring_point(&a.key);
+        let bound = crate::mechanism::AxisFriction::of_weight_at(6.0, arm).bound_n_m;
+        let k = crate::parts::fixtures::on_frame_carrying(&a, bound, true, (&wippen, &wippen_mass));
+        let seating = k.seating();
+        let seats = seating
+            .seats(&mut statics)
+            .unwrap_or_else(|r| panic!("{class:?}: {r:?}\n{a:?}"));
+        let walk = |statics: &mut Statics, stroke| {
+            seating
+                .walk(statics, &seats, stroke)
+                .unwrap_or_else(|r| panic!("{class:?}, {stroke:?}: {r:?}\n{a:?}"))
+        };
+        let (down, up) = (
+            walk(&mut statics, Stroke::Down),
+            walk(&mut statics, Stroke::Up),
+        );
+        for w in [&down, &up] {
+            assert!(w.grams.is_finite());
+            assert!(w.steps <= CAP / 4, "{class:?}: {} steps", w.steps);
+            most = most.max(w.report.most_iterations);
+        }
+        let reach = (k.measuring_point.x * k.measuring_point.x
+            + k.measuring_point.y * k.measuring_point.y)
+            .sqrt();
+        let least = 2.0 * 1000.0 * bound / (crate::G * reach);
+        assert!(
+            down.grams - up.grams >= least,
+            "{class:?}: D {} g, U {} g, less than the {least} g its bushings make",
+            down.grams,
+            up.grams
+        );
+        walked += 1;
+    }
+    assert_eq!(walked, 200);
+    assert!(
+        most <= ITERATION_CAP,
+        "an increment took {most} steps, more than the {ITERATION_CAP} of one cap"
+    );
+}
+
 /// C12, consistency: **wherever the balance punching carries the key, the
 /// key on its punching is the key on a pivot.** On every key of the near and
 /// PHY-8 classes, a keyboard could be built from each:
@@ -544,4 +609,113 @@ fn on_its_punching_the_key_is_the_key_on_a_pivot() {
         compared += 1;
     }
     assert_eq!(compared, 200);
+}
+
+/// C8, consistency: **the bare key's seats converge in one piece of the
+/// static solve's cap**, every case of the corpus that seats, the wide
+/// class's included: the key held on its punching is solved in pieces, as
+/// the key free to lift is, and no bare key's seat needs a second piece,
+/// so its readings keep their bits.
+#[test]
+fn the_bare_keys_seats_converge_in_one_piece_of_the_cap() {
+    let mut statics = Statics::new();
+    let mut seated = 0;
+    for (class, a) in corpus() {
+        let k = on_frame(&a, KeyKind::Natural, 0.0, true);
+        if let Ok(seats) = k.seating().seats(&mut statics) {
+            for seat in [&seats.top, &seats.bottom] {
+                assert!(
+                    seat.report.iterations <= ITERATION_CAP,
+                    "{class:?}: a seat took {} steps\n{a:?}",
+                    seat.report.iterations
+                );
+            }
+            seated += 1;
+        }
+    }
+    assert!(seated >= 248, "only {seated} keys seated");
+}
+
+/// C8, consistency, for the seats of a key carrying its wippen: **the
+/// corpus's keys carrying the test wippen seat where the oracle confirms
+/// them, or are refused by name.** Every case seats or refuses with a code,
+/// never `NotConverged` and never the heel or its cloth in a key part; every
+/// seat passes the oracle, which reads the links among the contacts; and
+/// every key a keyboard could be built from, and every frame whose stops
+/// fight, seats, each seat within half the static solve's cap in all: a
+/// quarter for the key alone's seat, which the bare corpus holds, and a
+/// quarter for the solve with the wippen from it. Each seat of the near
+/// class is an equilibrium of its loads by the unilateral virtual-work
+/// inequality, over the key's angle and the wippen's, the slide where its
+/// punching holds it.
+#[test]
+fn the_seats_of_a_key_carrying_its_wippen_stand_where_the_oracle_confirms_them() {
+    let (wippen, _) = crate::parts::fixtures::test_wippen();
+    let mut statics = Statics::new();
+    let mut seated = std::collections::BTreeMap::new();
+    for (class, a) in corpus() {
+        let k = crate::parts::fixtures::carrying_the(&a, &wippen);
+        let core = k.seating().seats(&mut statics);
+        match core {
+            Ok(seats) => {
+                *seated.entry(format!("{class:?}")).or_insert(0) += 1;
+                let alone = on_frame(&a, KeyKind::Natural, 0.0, true)
+                    .seating()
+                    .seats(&mut statics)
+                    .expect("the key alone seats where it seats with its wippen");
+                for (seat, own, which) in [
+                    (&seats.top, &alone.top, "top"),
+                    (&seats.bottom, &alone.bottom, "bottom"),
+                ] {
+                    if let Err(e) = sound(&k, &seat.q, &seat.held_by) {
+                        panic!("{class:?}, the core's {which} seat: {e}\n{a:?}");
+                    }
+                    if class != Class::Wide {
+                        assert!(
+                            seat.report.iterations <= ITERATION_CAP / 2
+                                && seat.report.iterations - own.report.iterations
+                                    <= ITERATION_CAP / 4,
+                            "{class:?}, the {which} seat: {} steps, the key alone's {}",
+                            seat.report.iterations,
+                            own.report.iterations
+                        );
+                    }
+                }
+                if class == Class::Near {
+                    let key = k.mounted.key;
+                    let load = |at: Point, f: f64| crate::mechanism::PointLoad {
+                        at: crate::mechanism::MaterialPoint { body: key, at },
+                        force: Point::new(0.0, -f),
+                    };
+                    let loads = [load(k.capstan, seats.capstan_load)];
+                    let eq = k
+                        .mounted
+                        .solve(&mut statics, &seats.top.q, &loads, Friction::Off)
+                        .expect("a seat solves again");
+                    assert_virtual_work(
+                        &k.mounted.mechanism,
+                        &eq,
+                        &loads,
+                        Friction::Off,
+                        &eq.q.clone(),
+                        &[1, 2],
+                        1e-6,
+                        0xc8a3,
+                    );
+                }
+            }
+            Err(SeatRefusal::NotConverged { .. } | SeatRefusal::Mechanism(_)) => {
+                panic!("{class:?}: {core:?}\n{a:?}")
+            }
+            Err(SeatRefusal::WippenInTheKey {
+                part: PartCode::WippenHeel | PartCode::WippenHeelCloth,
+                ..
+            }) => panic!("{class:?}: the links failed to read the heel: {core:?}\n{a:?}"),
+            Err(_) => {}
+        }
+    }
+    let count = |class: &str| seated.get(class).copied().unwrap_or(0);
+    assert_eq!(count("Near"), 160, "{seated:?}");
+    assert_eq!(count("Phy8"), 40, "{seated:?}");
+    assert_eq!(count("Wedged"), 48, "{seated:?}");
 }

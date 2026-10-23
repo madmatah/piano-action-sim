@@ -26,12 +26,14 @@ import type {
   TemporaryWeight,
   Verdict,
   WeighingRefusal,
+  WippenCarriedBy,
 } from '@pas/wasm/types'
 import {
   decimals,
   FROM_LIP_MM,
   fixed,
   GAP_MM,
+  isTooSmallToShow,
   LENGTH_MM,
   MASS_G,
   OUT_OF_RANGE,
@@ -41,7 +43,15 @@ import {
   TEMPORARY_WEIGHT_G,
   WEIGHT_G,
 } from '../format'
-import { type Catalog, type Labeled, type Named, unitIn, type Worded, word } from './catalog'
+import {
+  type Catalog,
+  capitalized,
+  type Labeled,
+  type Named,
+  unitIn,
+  type Worded,
+  word,
+} from './catalog'
 
 /** `x` to `digits` places, with a decimal comma, never -0. */
 function number(quantity: number, digits: number): string {
@@ -50,6 +60,12 @@ function number(quantity: number, digits: number): string {
 
 /** `x` to the decimals `resolution` is shown to. */
 const to = (quantity: number, resolution: number): string => number(quantity, decimals(resolution))
+
+/** A distance a refusal of the wippen assembly names, so that one the engine
+ * reads as more than nothing never reads as 0 mm, which would say the part
+ * stands where it may. */
+const showPartDistance = (mm: number): string =>
+  isTooSmallToShow(mm, PART_MM) ? `moins de ${to(PART_MM, PART_MM)} mm` : `${to(mm, PART_MM)} mm`
 
 /** Reasons as a note or a tooltip lists them, each a clause of its own. */
 const reasons = (clauses: readonly string[]): string => clauses.join(' ; ')
@@ -69,6 +85,8 @@ const ITS_STOP: Named<Contact> = {
   back_rail_cloth: 'son drap de repos arrière',
   front_pin_in_the_mortise: 'sa pointe d’enfoncement en haut de sa mortaise',
   front_pin_on_the_wood: 'sa pointe d’enfoncement contre le bois à côté de sa mortaise',
+  capstan_on_the_heel: 'son pilote sous le talon de chevalet',
+  heel_on_the_key: 'son dessus sous le talon de chevalet',
 }
 
 /** The stops, as a sentence lists them: « sa mouche d’enfoncement et son
@@ -84,6 +102,8 @@ const ON_THE: Named<Contact> = {
   front_pin_in_the_mortise: 'sur la pointe d’enfoncement, en haut de sa mortaise',
   front_pin_on_the_wood: 'sur la pointe d’enfoncement, contre le bois autour de sa mortaise',
   back_rail_cloth: 'sur le drap de repos arrière',
+  capstan_on_the_heel: 'sous le talon de chevalet, par son pilote',
+  heel_on_the_key: 'sous le talon de chevalet, par son dessus',
 }
 
 /** A contact as a note names it in passing, where something is measured at
@@ -94,6 +114,8 @@ const AT_THE: Named<Contact> = {
   back_rail_cloth: 'au drap de repos arrière',
   front_pin_in_the_mortise: 'à la pointe d’enfoncement dans sa mortaise',
   front_pin_on_the_wood: 'à la pointe d’enfoncement sur le bois',
+  capstan_on_the_heel: 'au pilote sous le talon de chevalet',
+  heel_on_the_key: 'au talon de chevalet sur la touche',
 }
 
 /** A part as a fault names it, with its article. */
@@ -122,6 +144,12 @@ const THE_PART: Named<Part> = {
   paper_punching: 'la mouche en papier',
   back_rail: 'la barre de repos arrière',
   back_rail_cloth: 'le drap de repos arrière',
+  wippen: 'le corps du chevalet',
+  wippen_heel: 'le talon de chevalet',
+  wippen_heel_cloth: 'le feutre de talon',
+  jack: 'le bâton d’échappement',
+  repetition_lever: 'le levier de répétition',
+  center_pin: 'l’axe',
 }
 
 /** A part after « de »: « du pilote », « de la capsule de touche ». */
@@ -133,6 +161,24 @@ function ofThe(part: Part): string {
 /** How the key rides on its stops, naming them and the lift. */
 function riding(how: Riding): string {
   return `la touche est portée par ${stopsNamed([how.front, 'back_rail_cloth'])}, ${to(how.lift_mm, LENGTH_MM)} mm au-dessus de sa mouche de balancier : ses butées la tiennent plus haut que sa mouche, elle n’a donc pas de course, et aucun poids ne la fait passer d’une position à l’autre.`
+}
+
+/** What one link carrying the wippen bears on, as a sentence: the capstan
+ * on the heel cloth, on the wippen heel off its cloth, or on both; or the
+ * wippen heel down on the key's top. */
+function carrying({ link, parts }: WippenCarriedBy): string {
+  const onTheCloth = parts.includes('wippen_heel_cloth')
+  const onTheWood = parts.includes('wippen_heel')
+  if (link === 'heel_on_the_key') {
+    return onTheCloth && !onTheWood
+      ? 'Le talon de chevalet repose sur le dessus de la touche par son feutre de talon.'
+      : 'Le talon de chevalet repose sur le dessus de la touche.'
+  }
+  if (onTheCloth && onTheWood)
+    return 'Le pilote porte sur le feutre de talon et sur le talon de chevalet à côté.'
+  return onTheCloth
+    ? 'Le pilote porte sur le feutre de talon.'
+    : 'Le pilote porte sur le talon de chevalet, hors du feutre de talon.'
 }
 
 /** How far past a target, in millimeters: to the hundredth, a shortfall
@@ -155,6 +201,13 @@ const NOT_CONVERGED: Named<Solve> = {
     'le calcul statique a atteint son nombre maximal d’itérations sur un pas du tracé de la courbe d’enfoncement et de remontée.',
 }
 
+/** At which seat: a seat the engine gains and this does not word fails the
+ * type-check where it is indexed. */
+const AT_THE_SEAT = {
+  top: 'à la position de repos',
+  bottom: 'en fond de course',
+} as const
+
 /** Which way the key was going. */
 const STROKE: Named<Stroke> = {
   down: 'à la descente',
@@ -171,6 +224,7 @@ const panel: Catalog['panel'] = {
   weighing: 'La touche, pesée entière',
   frame: 'Le châssis',
   touch: 'Toucher',
+  wippen: 'Le chevalet',
 }
 
 /** Why a reading is refused, or why the key cannot be seated. */
@@ -214,6 +268,12 @@ const refusal: Catalog['refusal'] = {
     `aucun dessus de touche ne se trouve à ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'en arrière' : 'en avant'} de la pointe de balancier, où va le poids provisoire.`,
   from_a_refused_reading: ({ reading }) =>
     `cette mesure se calcule à partir ${reading === 'down_weight' ? 'du poids d’enfoncement, refusé' : reading === 'up_weight' ? 'du poids de remontée, refusé' : 'd’une mesure refusée'}.`,
+  wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
+    `${AT_THE_SEAT[at]}, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de ${showPartDistance(heel_depth_mm)} dans la touche, comme le ferait un axe placé trop bas pour son pilote.`,
+  wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
+    `${AT_THE_SEAT[at]}, le chevalet n’atteint pas la touche : il pend jusqu’à la limite de ce que le modèle représente, et, degré par degré jusque-là, son talon passe au plus près à ${showPartDistance(heel_clearance_mm)} du pilote ou du dessus de la touche, comme le ferait un axe placé trop haut.`,
+  wippen_in_the_key: ({ part, key_part, depth_mm }) =>
+    `${THE_PART[part]} pénètre de ${showPartDistance(depth_mm)} dans ${THE_PART[key_part]} : aucune mécanique ne prend cette position, seul le talon de chevalet porte sur la touche.`,
 }
 
 /** The temporary weight a key friction weight stood on the key. */
@@ -276,6 +336,17 @@ const LIMIT_WHY: {
     key_dip: () =>
       'la touche sortirait de sa pointe de balancier avant un enfoncement aussi faible',
   },
+  wippen_past_its_range: {
+    key_height: () =>
+      'le chevalet que porte la touche serait d’abord poussé au-delà de ce que le modèle représente, les mouches en papier montant le pilote sous son talon',
+    key_dip: () =>
+      'le chevalet que porte la touche serait d’abord poussé au-delà de ce que le modèle représente en fond de course, l’arrière de la touche montant sous son talon',
+  },
+  wippen_out_of_reach: {
+    key_height: () =>
+      'le chevalet que porte la touche n’atteindrait pas la touche, le pilote restant trop bas pour son talon',
+    key_dip: () => 'le chevalet que porte la touche n’atteindrait pas la touche',
+  },
 }
 
 const regulationWhy: Catalog['regulation']['why'] = {
@@ -326,6 +397,8 @@ const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
 
 /** What no part could be built as, or what the bench has not. */
 const problem: Worded<Problem> = {
+  no_wippen_assembly: ({ path }) =>
+    `la touche ne porte pas de chevalet : elle n’a donc pas de réglage ${path}.`,
   not_finite: () => 'une valeur qui n’est pas un nombre.',
   out_of_range: ({ param, value, min, max }) => {
     const unit = unitIn(param, UNIT)
@@ -364,6 +437,14 @@ const problem: Worded<Problem> = {
     `une mortaise d’enfoncement de ${to(depth_mm, PART_MM)} mm de profondeur traverse les ${to(wood_mm, PART_MM)} mm du corps de la touche.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
     `le point de mesure se place sur le revêtement, de son bord jusqu’à ${to(covering_mm, FROM_LIP_MM)} mm en arrière : à ${to(from_lip_mm, FROM_LIP_MM)} mm du bord, on est hors du revêtement.`,
+  part_mass_not_positive: ({ part }) => `${THE_PART[part]} pèse plus que rien.`,
+  no_thickness: ({ part }) => `${THE_PART[part]} a une épaisseur.`,
+  no_radius: ({ part }) =>
+    part === 'center_pin'
+      ? 'l’axe a un diamètre.'
+      : `le cercle ${ofThe(part)}, dont la face du feutre est un arc, a un rayon.`,
+  part_outline_crosses_itself: ({ part }) =>
+    `le contour ${ofThe(part)} se croiserait lui-même : aucune pièce n’est taillée ainsi.`,
   unknown_path: ({ path }) => `le banc d’essai n’a pas de réglage ${path}.`,
   unknown_profile: ({ profile }) => `le banc d’essai ne propose pas d’instrument ${profile}.`,
   set_by_action: ({ path }) =>
@@ -441,6 +522,11 @@ const control: { readonly [K in Label]: Labeled } = {
   back_rail_at: { label: 'barre de repos arrière, en arrière de la pointe de balancier' },
   place: { label: 'placer le châssis sous la touche' },
   weight: { label: 'poids sur le point de mesure' },
+  wippen_center: { label: 'axe du chevalet, en arrière de la pointe de balancier' },
+  wippen_center_height: { label: 'axe du chevalet, au-dessus du plateau' },
+  heel_position: { label: 'position du talon de chevalet, depuis l’axe' },
+  heel_height: { label: 'hauteur du talon de chevalet, sous l’axe du bâton d’échappement' },
+  wippen_friction: { label: 'friction de l’axe du chevalet' },
 }
 
 /** A form's field, as a sentence names it, with its article. */
@@ -513,6 +599,8 @@ export const fr: Catalog = {
         'La touche ne trouve aucune position d’équilibre sur ce châssis : elle est dessinée en transparence, à plat sur sa mouche de balancier, pour montrer ses pièces face à celles du châssis, pas là où elle se trouverait.',
       lifted_off:
         'Le poids sur le point de mesure soulève la touche hors de son châssis : elle est dessinée en transparence là où l’a laissée sa dernière position d’équilibre, qui ne la tient plus, et ne porte sur rien.',
+      wippen_refused:
+        'Le chevalet ne peut pas se placer là où cette modification le mettrait : la touche et son chevalet sont dessinés en transparence là où les a laissés leur dernière position d’équilibre, qui ne les tient plus.',
     },
   },
 
@@ -541,6 +629,15 @@ export const fr: Catalog = {
   stopsFight: (riding) =>
     `Les butées s’opposent : ${riding} La touche est dessinée portée par elles ; ce qui ne demande pas de course est mesuré ci-dessous, et les poids qui en demandent une sont refusés.`,
   riding,
+  wippenCarriedBy: (links) => links.map(carrying).join(' '),
+  wippenRefused: {
+    pushed_past_its_range: (p) =>
+      `Le chevalet ne peut pas se placer là. ${capitalized(refusal.wippen_pushed_past_its_range({ ...p, code: 'wippen_pushed_past_its_range' }))}`,
+    out_of_reach: (p) =>
+      `Le chevalet ne peut pas se placer là. ${capitalized(refusal.wippen_out_of_reach({ ...p, code: 'wippen_out_of_reach' }))}`,
+    in_the_key: (p) =>
+      `Le chevalet ne peut pas se placer là. ${capitalized(refusal.wippen_in_the_key({ ...p, code: 'wippen_in_the_key' }))}`,
+  },
   problem,
   editRefusal,
   refused: {
@@ -620,6 +717,8 @@ export const fr: Catalog = {
     key_friction:
       'la friction de ses garnitures est une hypothèse du banc d’essai tant que vous ne la réglez pas',
     geometry: 'certaines de ses dimensions n’ont pas de source',
+    wippen_assembly_mass: 'la masse du chevalet est une hypothèse du banc d’essai',
+    wippen_friction: 'la friction de l’axe du chevalet est une hypothèse du banc d’essai',
   },
   unit: { g: 'g', mm: 'mm', ratio: '', gmm: UNIT.gmm },
   backBearing: {

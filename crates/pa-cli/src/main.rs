@@ -296,6 +296,12 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
                     m.report.increments,
                     m.report.iterations
                 );
+                for c in &m.conditions.wippen_carried_by {
+                    println!(
+                        "  {:<22}the wippen rests: {:?} on {:?}",
+                        "", c.link, c.parts
+                    );
+                }
                 if let Some(t) = m.conditions.temporary_weight {
                     println!(
                         "  {:<22}temporary weight {:.2} g at {:.0} mm {} the pin",

@@ -19,7 +19,13 @@
 //! 2. Find `W0`, the frictionless balance at that seat: the weight on the
 //!    measuring point at which the loads' generalized force on the key's
 //!    angle vanishes there, so that the seat's stop carries nothing. On a key
-//!    whose one free coordinate is its angle, one linear equation.
+//!    whose one free coordinate is its angle, one linear equation. A key
+//!    carrying a wippen carries its angle with it through the link that
+//!    rests it on the key, and the wippen's generalized force is folded onto
+//!    the key's angle through that link
+//!    ([`Mounted::wippen_follows`](crate::parts::mounts::Mounted::wippen_follows)),
+//!    by the motion the walk starts: going down the link that lifts the
+//!    wippen most where two are closed, coming up the one it stays on.
 //! 3. From the seat, friction on and the preparation loads removed, put
 //!    `W0` plus one [`STEP_G`] on the measuring point, then one more, each
 //!    an increment of the static solve from the state the last one left,
@@ -31,6 +37,11 @@
 //! 4. Halve the last step [`HALVINGS`] times, each trial an increment from
 //!    the state that step started from: the weight that carries the key to
 //!    the other seat, to a part in 65 536 of a gram.
+//!
+//! A key carrying a wippen breaks away carrying it: each increment moves
+//! the key and its wippen together, the wippen's center friction carried
+//! through the link onto the key's, so a walk reads D and U through the
+//! wippen the key carries.
 //!
 //! A walk that takes [`CAP`] steps without the key reaching the other seat
 //! is refused. With rigid stops and one constant friction torque the key
@@ -60,11 +71,12 @@
 use crate::contact::{ContactCode, Rows, ROW_MARGIN};
 use crate::geometry::Point;
 use crate::mechanism::{MaterialPoint, PointLoad, Problem};
-use crate::parts::verdicts::TOUCHING;
+use crate::parts::mounts::Motion;
+use crate::parts::verdicts::{wippen_carried_by, CarriedBy, TOUCHING};
 use crate::solve::{Friction, Holder, Refusal, SolveReport, Statics};
 use crate::G;
 
-use super::seat::{Seat, Seating, Seats};
+use super::seat::{RefusedBy, Seat, SeatRefusal, Seating, Seats, WippenRefusal};
 
 /// How much the walk adds to the weight at each step, grams: the gram the
 /// trade's weights come in.
@@ -122,6 +134,9 @@ pub struct Breakaway {
     pub stalls: u32,
     /// The seat it started from, and what held it there.
     pub held_by: Vec<ContactCode>,
+    /// Where the wippen the key carries rested at that seat; empty where it
+    /// carries none.
+    pub wippen_carried_by: Vec<CarriedBy>,
     /// Every increment the walk solved, added up.
     pub report: SolveReport,
 }
@@ -149,6 +164,13 @@ pub enum WalkRefusal {
     /// ([`Mounted::leaves_its_pin`](crate::parts::mounts::Mounted::leaves_its_pin)),
     /// with nothing modeled to stop it.
     LiftsOffItsFrame,
+    /// An increment leaned the wippen the key carries on a limit of its
+    /// turn, named at the seat the sheet refuses it at, with how far past
+    /// that limit its heel stands there
+    /// ([`Seating::name_the_wippens_refusal`]). Between two seats that both
+    /// stand the wippen in range, an increment that pushes it past its range
+    /// lifts the key off its frame instead ([`Self::LiftsOffItsFrame`]).
+    Wippen(WippenRefusal),
     /// An increment reached the static solve's cap first.
     NotConverged {
         /// Steps taken.
@@ -158,6 +180,11 @@ pub enum WalkRefusal {
     },
     /// The mounted key cannot be solved as given.
     Mechanism(Problem),
+    /// The key alone, which a refusal of the wippen's is named at the seats
+    /// of ([`Seating::name_the_wippens_refusal`]), has no seat: its refusal
+    /// is the key's own, as the key alone's seats, which the walk's seats
+    /// start from, would have refused it.
+    KeyAlone(SeatRefusal),
 }
 
 impl Seating<'_> {
@@ -208,7 +235,7 @@ impl Seating<'_> {
         if reached(&start.q) {
             return Err(WalkRefusal::NoTravel);
         }
-        let from_g = self.frictionless_balance(start)?;
+        let from_g = self.frictionless_balance(start, stroke)?;
         let mut report = SolveReport::NOTHING;
         let mut increment = |statics: &mut Statics, from: &[f64], grams: f64| {
             let mut loads = self.standing.to_vec();
@@ -216,7 +243,7 @@ impl Seating<'_> {
             let eq = self
                 .mounted
                 .solve(statics, from, &loads, Friction::On)
-                .map_err(|r| refused(self.mounted, r))?;
+                .map_err(|r| name_the_refusal(self, statics, r))?;
             report = report.and(eq.report);
             Ok::<_, WalkRefusal>(eq.q)
         };
@@ -259,6 +286,7 @@ impl Seating<'_> {
             steps: k,
             stalls,
             held_by: start.held_by.clone(),
+            wippen_carried_by: wippen_carried_by(self.mounted, &start.q),
             report,
         })
     }
@@ -283,13 +311,23 @@ impl Seating<'_> {
     /// One linear equation, the generalized force being linear in the
     /// weight at a fixed pose: exact while the key's angle is the one
     /// coordinate it moves by, on a pivot or on its balance punching, which
-    /// carries it at both seats wherever a walk is taken.
-    fn frictionless_balance(&self, seat: &Seat) -> Result<f64, WalkRefusal> {
+    /// carries it at both seats wherever a walk is taken. The wippen a key
+    /// carries turns with that angle through the link row closed within
+    /// [`TOUCHING`] that rests it on the key, and its generalized force is
+    /// folded onto the key's angle through it, `Q_k + r·Q_w`, by the motion
+    /// `stroke` starts; the weight on the measuring point puts none on the
+    /// wippen's angle.
+    fn frictionless_balance(&self, seat: &Seat, stroke: Stroke) -> Result<f64, WalkRefusal> {
         let m = &self.mounted.mechanism;
         let pose = m.pose(&seat.q);
         let angle = self.mounted.angle;
         let mut forces = vec![0.0; m.coords().len()];
         m.generalized_forces(&pose, self.standing, &mut forces);
+        let motion = match stroke {
+            Stroke::Down => Motion::Down,
+            Stroke::Up => Motion::Up,
+        };
+        let follows = self.mounted.wippen_follows(&seat.q, motion, TOUCHING);
         // A gram on the measuring point turns the key by its weight times
         // the point's vertical speed per radian, downwards.
         let at = MaterialPoint {
@@ -297,7 +335,7 @@ impl Seating<'_> {
             at: self.measuring_point,
         };
         let per_gram = -m.jacobian_column(&pose, at, angle).y * 1e-3 * G;
-        let balance = -forces[angle.0] / per_gram;
+        let balance = -self.mounted.folded(&forces, follows) / per_gram;
         if per_gram == 0.0 || !balance.is_finite() {
             return Err(WalkRefusal::NoLever);
         }
@@ -305,8 +343,23 @@ impl Seating<'_> {
     }
 }
 
-/// A static solve's refusal, as the walk's.
-fn refused(mounted: &crate::parts::mounts::Mounted, refusal: Refusal) -> WalkRefusal {
+/// A static solve's refusal of an increment of the walk on `seating`'s key:
+/// the wippen leaning on a limit of its turn named as the sheet names it, at
+/// the seat it refuses it at, or as the key lifting off its frame, not as
+/// the key leaning on a limit of its own
+/// ([`Seating::name_the_wippens_refusal`]).
+pub(crate) fn name_the_refusal(
+    seating: &Seating<'_>,
+    statics: &mut Statics,
+    refusal: Refusal,
+) -> WalkRefusal {
+    match seating.name_the_wippens_refusal(statics, Err(&refusal)) {
+        Some(RefusedBy::Wippen(why)) => return WalkRefusal::Wippen(why),
+        Some(RefusedBy::KeyLiftingOffItsFrame) => return WalkRefusal::LiftsOffItsFrame,
+        Some(RefusedBy::KeyAlone(why)) => return WalkRefusal::KeyAlone(why),
+        None => {}
+    }
+    let mounted = seating.mounted;
     if mounted.lifts_off_its_frame(&refusal) {
         return WalkRefusal::LiftsOffItsFrame;
     }

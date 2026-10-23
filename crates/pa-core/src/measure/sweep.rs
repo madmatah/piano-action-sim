@@ -23,9 +23,12 @@
 //!    stands one [`STEP`] lower, then two, and so on through every whole step
 //!    strictly inside the window, the measuring point's travel from the top
 //!    seat to the bottom one. At each step the coordinates the angle leaves
-//!    free, the key's lift off its balance punching, are solved from where
-//!    the last step left them, friction on, under the key's weight and
-//!    whatever stands on it; the angle's reaction is read.
+//!    free, the key's lift off its balance punching and the angle of a
+//!    wippen it carries, are solved from where the last step left them,
+//!    friction on, under the key's weight, the wippen's and whatever stands
+//!    on the key; the angle's reaction is read. A wippen follows the key
+//!    through its link, its center's friction against the motion, so the
+//!    reaction carries its weight and its friction through the link.
 //! 3. Then back from the bottom seat, through the same travels upwards.
 //! 4. The reaction on the angle is a torque. Read through the measuring
 //!    point's arm about the key's bearing, the arm it has at that step, it is
@@ -68,12 +71,11 @@
 use crate::contact::ContactCode;
 use crate::geometry::Point;
 use crate::mechanism::{MaterialPoint, Prescribed, Problem};
-use crate::parts::mounts::Mounted;
 use crate::parts::verdicts::TOUCHING;
 use crate::solve::{Equilibrium, Friction, Holder, Refusal, SolveReport, Statics};
 use crate::G;
 
-use super::seat::{Seating, Seats};
+use super::seat::{RefusedBy, SeatRefusal, Seating, Seats, WippenRefusal};
 use super::walk::Stroke;
 
 /// How far the measuring point travels between two readings of the sweep,
@@ -149,6 +151,13 @@ pub enum SweepRefusal {
     /// A step's solve leaned on the top of the slide's range: the key left
     /// its balance pin, and its frame.
     LiftsOffItsFrame,
+    /// A step leaned the wippen the key carries on a limit of its turn,
+    /// named at the seat the sheet refuses it at, with how far past that
+    /// limit its heel stands there ([`Seating::name_the_wippens_refusal`]).
+    /// Between two seats that both stand the wippen in range, a step that
+    /// pushes it past its range lifts the key off its frame instead
+    /// ([`Self::LiftsOffItsFrame`]).
+    Wippen(WippenRefusal),
     /// A step found no equilibrium in the modeled world: these contacts
     /// fight at the angle it held.
     NoEquilibrium {
@@ -165,6 +174,11 @@ pub enum SweepRefusal {
     },
     /// The mounted key cannot be solved as given.
     Mechanism(Problem),
+    /// The key alone, which a refusal of the wippen's is named at the seats
+    /// of ([`Seating::name_the_wippens_refusal`]), has no seat: its refusal
+    /// is the key's own, as the key alone's seats, which the sweep's seats
+    /// start from, would have refused it.
+    KeyAlone(SeatRefusal),
 }
 
 /// The measuring point on a circle about the key's bearing, as the top seat
@@ -319,7 +333,7 @@ impl Seating<'_> {
         let eq = self
             .mounted
             .solve_held(statics, from, self.standing, &held, Friction::On)
-            .map_err(|r| refused(self.mounted, r))?;
+            .map_err(|r| name_the_refusal(self, statics, r))?;
         let pose = m.pose(&eq.q);
         // A gram on the measuring point turns the key by its weight times the
         // point's vertical speed per radian, downwards.
@@ -381,8 +395,23 @@ impl Seating<'_> {
     }
 }
 
-/// A static solve's refusal, as the sweep's.
-fn refused(mounted: &Mounted, refusal: Refusal) -> SweepRefusal {
+/// A static solve's refusal of a step of the sweep on `seating`'s key: the
+/// wippen leaning on a limit of its turn named as the sheet names it, at the
+/// seat it refuses it at, or as the key lifting off its frame, not as the
+/// key leaning on a limit of its own
+/// ([`Seating::name_the_wippens_refusal`]).
+pub(crate) fn name_the_refusal(
+    seating: &Seating<'_>,
+    statics: &mut Statics,
+    refusal: Refusal,
+) -> SweepRefusal {
+    match seating.name_the_wippens_refusal(statics, Err(&refusal)) {
+        Some(RefusedBy::Wippen(why)) => return SweepRefusal::Wippen(why),
+        Some(RefusedBy::KeyLiftingOffItsFrame) => return SweepRefusal::LiftsOffItsFrame,
+        Some(RefusedBy::KeyAlone(why)) => return SweepRefusal::KeyAlone(why),
+        None => {}
+    }
+    let mounted = seating.mounted;
     if mounted.lifts_off_its_frame(&refusal) {
         return SweepRefusal::LiftsOffItsFrame;
     }
@@ -443,9 +472,16 @@ mod tests {
         /// measuring point with the key level, of mass `mass`.
         fn new(a: &Setup, mount: KeyMount, kf_g: f64, mass: MassProps) -> Self {
             let bound = AxisFriction::of_weight_at(kf_g, a.measuring_point()).bound_n_m;
-            let on_frame =
-                on_its_frame(mount, &a.key, &a.frame, KeyKind::Natural, Some(mass), bound)
-                    .expect("the key mounts on its frame");
+            let on_frame = on_its_frame(
+                mount,
+                &a.key,
+                &a.frame,
+                KeyKind::Natural,
+                Some(mass),
+                bound,
+                None,
+            )
+            .expect("the key mounts on its frame");
             Self {
                 a: a.clone(),
                 on_frame,

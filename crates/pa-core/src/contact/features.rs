@@ -47,6 +47,16 @@ impl Piece {
     pub fn is_disc(self) -> bool {
         matches!(self, Self::Arc { .. } | Self::Vertex { .. })
     }
+
+    /// The part it belongs to.
+    pub fn part(self) -> PartId {
+        match self {
+            Self::Segment { part, .. }
+            | Self::Arc { part, .. }
+            | Self::Vertex { part, .. }
+            | Self::Center { part } => part,
+        }
+    }
 }
 
 /// What a row pairs: a piece of side A against a piece of side B.

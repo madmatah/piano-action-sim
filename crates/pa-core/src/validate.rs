@@ -15,7 +15,11 @@
 //! front mortise cut through the top of the key, its measuring point off its
 //! covering; and the one pairing of a key with its frame the contacts could
 //! not read, a groove under the front mortise too long for the front rail
-//! punching to bear beside it. Everything an assembled keyboard can be,
+//! punching to bear beside it; and a wippen assembly whose parts could not
+//! be cut or weighed: a part of no mass, its heel's circle or its center pin
+//! of no radius, its heel cloth of no thickness, off its heel or thicker
+//! than it, a part's outline crossing itself, its center pin out of its
+//! body's wood. Everything an assembled keyboard can be,
 //! however badly regulated, is **computed and reported**: a frame placed
 //! for another key, stops that fight, a pin standing proud of its mortise,
 //! a key regulated into jamming are states, which the faults, the verdicts
@@ -27,9 +31,12 @@
 //! reaches the statics, and no outline the key is drawn by crosses itself.
 
 use crate::contact::PartCode;
+use crate::geometry::polygon::{crosses_itself, distance_to_edges, drawn, encloses};
+use crate::geometry::Point;
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::AxisFriction;
 use crate::parts::frame::{Crown, FrameSections, PinShape, RailSection, PAPER};
+use crate::parts::wippen_assembly::{PinnedPart, Stretch, WippenAssembly, WippenAssemblyMass};
 use crate::parts::{FrameDesign, KeyDesign, KeyMass};
 
 /// Why an edit is refused: what it would make that no part could be built
@@ -197,6 +204,31 @@ pub enum Problem {
         /// How far the covering runs back from its lip, meters.
         covering: f64,
     },
+    /// A part of the wippen assembly weighed at no mass, or less.
+    PartMassNotPositive {
+        /// The part.
+        part: PartCode,
+        /// Its mass, kilograms.
+        mass: f64,
+    },
+    /// A lining of no thickness, or less: the heel cloth.
+    NoThickness {
+        /// The lining.
+        part: PartCode,
+    },
+    /// A circle of no radius, or less: the heel's, which its cloth's outer
+    /// face is an arc of, or the center pin's.
+    NoRadius {
+        /// The part drawn on it.
+        part: PartCode,
+    },
+    /// A part of the wippen assembly whose outline crosses itself: its
+    /// traced body, jack or repetition lever, or its heel, the heel's sides
+    /// run across its cloth's pocket.
+    PartOutlineCrossesItself {
+        /// The part.
+        part: PartCode,
+    },
 }
 
 /// Everything about an instrument that no part could be built as, if any,
@@ -213,6 +245,9 @@ pub struct Design<'a> {
     pub protocol: &'a TouchweightProtocol,
     /// The bushings' friction.
     pub friction: &'a AxisFriction,
+    /// The wippen assembly the key carries on its capstan, with what is
+    /// known of its mass; none where the key carries none.
+    pub wippen_assembly: Option<(&'a WippenAssembly, &'a WippenAssemblyMass)>,
 }
 
 /// Whether `d` is a design parts could be built as; the first problem found
@@ -265,6 +300,102 @@ pub fn validate(d: &Design<'_>) -> Result<(), Problem> {
     let from_lip = d.protocol.measuring_point_from_lip;
     if !(0.0..=covering).contains(&from_lip) {
         return Err(Problem::MeasuringPointOffCovering { from_lip, covering });
+    }
+    if let Some((assembly, mass)) = d.wippen_assembly {
+        for spec in &WippenAssembly::PARAMS {
+            spec.holds(assembly)?;
+        }
+        wippen_assembly(assembly, mass)?;
+    }
+    Ok(())
+}
+
+/// The wippen assembly: each of its parts of some mass; its heel's circle of
+/// some radius, its cloth of some thickness, the cloth's ends on the heel's
+/// circle, its back end behind its front end, both within the heel's lower
+/// corners, and its top under the heel's, its pocket in the heel's wood;
+/// no part's outline crossing itself; and a center pin of some diameter in
+/// the body's wood.
+fn wippen_assembly(a: &WippenAssembly, mass: &WippenAssemblyMass) -> Result<(), Problem> {
+    for (part, m) in mass.parts() {
+        if m.mass <= 0.0 {
+            return Err(Problem::PartMassNotPositive { part, mass: m.mass });
+        }
+    }
+    let heel = &a.heel;
+    let cloth = heel.cloth;
+    if heel.radius <= 0.0 {
+        return Err(Problem::NoRadius {
+            part: PartCode::WippenHeel,
+        });
+    }
+    if cloth.thickness <= 0.0 {
+        return Err(Problem::NoThickness {
+            part: PartCode::WippenHeelCloth,
+        });
+    }
+    let off_the_heel = |by: f64| {
+        Err(Problem::DoesNotFit {
+            part: PartCode::WippenHeelCloth,
+            within: PartCode::WippenHeel,
+            by,
+        })
+    };
+    let length = cloth.back + cloth.front;
+    if length <= 0.0 {
+        return off_the_heel(-length);
+    }
+    for reach in [cloth.back, cloth.front] {
+        if reach.abs() >= heel.radius {
+            return off_the_heel(reach.abs() - heel.radius);
+        }
+    }
+    for (end, corner) in [(cloth.back, heel.back), (cloth.front, heel.front)] {
+        if end >= corner {
+            return off_the_heel(end - corner);
+        }
+    }
+    let Some(points) = heel.points(a.jack.pin) else {
+        return off_the_heel(0.0);
+    };
+    let above = points.cloth_back_top.y.max(points.cloth_front_top.y) - heel.top;
+    if above >= 0.0 {
+        return off_the_heel(above);
+    }
+    let outlines = [
+        (PartCode::Wippen, Some(a.body_outline())),
+        (PartCode::WippenHeel, a.heel_outline()),
+        (PartCode::Jack, Some(a.jack_outline())),
+        (
+            PartCode::RepetitionLever,
+            Some(a.repetition_lever_outline()),
+        ),
+    ];
+    for (part, outline) in outlines {
+        if outline.is_none_or(|segs| crosses_itself(&drawn(&segs))) {
+            return Err(Problem::PartOutlineCrossesItself { part });
+        }
+    }
+    let pin = 0.5 * a.center_pin_diameter;
+    if pin <= 0.0 {
+        return Err(Problem::NoRadius {
+            part: PartCode::CenterPin,
+        });
+    }
+    let body = drawn(&a.body_outline());
+    let origin = Point::new(0.0, 0.0);
+    let room = distance_to_edges(&body, origin);
+    let by = if encloses(&body, origin) {
+        pin - room
+    } else {
+        pin + room
+    };
+    if by > 0.0 {
+        return Err(Problem::DoesNotFit {
+            part: PartCode::CenterPin,
+            within: PartCode::Wippen,
+            by,
+        });
     }
     Ok(())
 }
@@ -876,7 +1007,145 @@ pub fn numbers(d: &Design<'_>) -> Vec<(&'static str, f64)> {
     if let Some(r) = radius_m {
         out.push(("friction.radius", *r));
     }
+    if let Some((assembly, mass)) = d.wippen_assembly {
+        wippen_assembly_numbers(assembly, mass, &mut out);
+    }
     out
+}
+
+/// The wippen assembly's numbers, each named, every field read; a traced
+/// outline's every number under the outline's one name.
+fn wippen_assembly_numbers(
+    a: &WippenAssembly,
+    mass: &WippenAssemblyMass,
+    out: &mut Vec<(&'static str, f64)>,
+) {
+    let WippenAssembly {
+        center,
+        body,
+        heel,
+        jack,
+        repetition_lever,
+        center_pin_diameter,
+        width,
+        friction,
+    } = a;
+    let traced = |name: &'static str, stretches: &[Stretch], out: &mut Vec<(&'static str, f64)>| {
+        out.extend(
+            stretches
+                .iter()
+                .flat_map(Stretch::numbers)
+                .map(|x| (name, x)),
+        );
+    };
+    out.extend([("wippen.center.x", center.x), ("wippen.center.y", center.y)]);
+    traced("wippen_outline", body, out);
+    let crate::parts::wippen_assembly::WippenHeel {
+        position,
+        height,
+        radius,
+        top,
+        back_top,
+        front_top,
+        back,
+        front,
+        cloth,
+    } = heel;
+    let crate::parts::wippen_assembly::HeelCloth {
+        back: cloth_back,
+        front: cloth_front,
+        thickness,
+    } = cloth;
+    out.extend([
+        ("wippen_heel.position", *position),
+        ("wippen_heel.height", *height),
+        ("wippen_heel.radius", *radius),
+        ("wippen_heel.top", *top),
+        ("wippen_heel.back_top", *back_top),
+        ("wippen_heel.front_top", *front_top),
+        ("wippen_heel.back", *back),
+        ("wippen_heel.front", *front),
+        ("wippen_heel_cloth.back", *cloth_back),
+        ("wippen_heel_cloth.front", *cloth_front),
+        ("wippen_heel_cloth.thickness", *thickness),
+    ]);
+    for (names, part) in [
+        (
+            [
+                "jack.pin.x",
+                "jack.pin.y",
+                "jack.rest_angle",
+                "jack_outline",
+                "jack.width",
+            ],
+            jack,
+        ),
+        (
+            [
+                "repetition_lever.pin.x",
+                "repetition_lever.pin.y",
+                "repetition_lever.rest_angle",
+                "repetition_lever_outline",
+                "repetition_lever.width",
+            ],
+            repetition_lever,
+        ),
+    ] {
+        let PinnedPart {
+            pin,
+            rest_angle,
+            outline,
+            width,
+        } = part;
+        out.extend([
+            (names[0], pin.x),
+            (names[1], pin.y),
+            (names[2], *rest_angle),
+        ]);
+        traced(names[3], outline, out);
+        out.push((names[4], *width));
+    }
+    out.extend([
+        ("center_pin.diameter", *center_pin_diameter),
+        ("wippen.width", *width),
+        ("wippen.friction.bound", friction.bound_n_m),
+    ]);
+    if let Some(r) = friction.radius_m {
+        out.push(("wippen.friction.radius", r));
+    }
+    let names = [
+        [
+            "wippen.published.mass",
+            "wippen.published.center.x",
+            "wippen.published.center.y",
+            "wippen.published.inertia",
+        ],
+        [
+            "jack.published.mass",
+            "jack.published.center.x",
+            "jack.published.center.y",
+            "jack.published.inertia",
+        ],
+        [
+            "repetition_lever.published.mass",
+            "repetition_lever.published.center.x",
+            "repetition_lever.published.center.y",
+            "repetition_lever.published.inertia",
+        ],
+    ];
+    for (names, (_, part)) in names.into_iter().zip(mass.parts()) {
+        let crate::parts::wippen_assembly::PartMass {
+            mass,
+            center,
+            inertia,
+        } = part;
+        out.extend([
+            (names[0], mass),
+            (names[1], center.x),
+            (names[2], center.y),
+            (names[3], inertia),
+        ]);
+    }
 }
 
 /// The name of each paper a frame's drawer holds, among the design's
@@ -1000,6 +1269,7 @@ mod tests {
         frame: FrameDesign,
         protocol: TouchweightProtocol,
         friction: AxisFriction,
+        wippen: Option<(WippenAssembly, WippenAssemblyMass)>,
     }
 
     impl Standard {
@@ -1013,7 +1283,28 @@ mod tests {
                 frame: crate::test_fixture::frame(),
                 protocol,
                 friction,
+                wippen: None,
             }
+        }
+
+        /// The test design carrying the test wippen.
+        fn with_wippen() -> Self {
+            Self {
+                wippen: Some((
+                    crate::test_fixture::wippen_assembly(),
+                    crate::test_fixture::wippen_assembly_mass(),
+                )),
+                ..Self::new()
+            }
+        }
+
+        /// The test wippen it carries.
+        fn wippen(&mut self) -> &mut WippenAssembly {
+            &mut self
+                .wippen
+                .as_mut()
+                .expect("a test design carrying a wippen")
+                .0
         }
 
         fn design(&self) -> Design<'_> {
@@ -1023,6 +1314,7 @@ mod tests {
                 frame: &self.frame,
                 protocol: &self.protocol,
                 friction: &self.friction,
+                wippen_assembly: self.wippen.as_ref().map(|(a, m)| (a, m)),
             }
         }
 
@@ -1037,7 +1329,7 @@ mod tests {
     /// setting reads it back. The bushings' setting drops the radius a
     /// weight was read at, a torque set as such having none.
     fn writes_the_field_it_names<T>(spec: &ParamSpec<T>, on: impl Fn(&mut Standard) -> &mut T) {
-        let mut s = Standard::new();
+        let mut s = Standard::with_wippen();
         let before = numbers(&s.design());
         let mark = if spec.hard.1 <= 0.0 {
             -0.012_345_678_9
@@ -1055,7 +1347,11 @@ mod tests {
         assert_eq!(marked, [spec.name], "{} writes {marked:?}", spec.name);
         let others = |v: &[(&'static str, f64)]| -> Vec<(&'static str, u64)> {
             v.iter()
-                .filter(|(name, _)| *name != spec.name && *name != "friction.radius")
+                .filter(|(name, _)| {
+                    *name != spec.name
+                        && *name != "friction.radius"
+                        && *name != "wippen.friction.radius"
+                })
                 .map(|(name, x)| (*name, x.to_bits()))
                 .collect()
         };
@@ -1086,6 +1382,9 @@ mod tests {
         }
         for spec in &AxisFriction::PARAMS {
             writes_the_field_it_names(spec, |s| &mut s.friction);
+        }
+        for spec in &WippenAssembly::PARAMS {
+            writes_the_field_it_names(spec, Standard::wippen);
         }
     }
 
@@ -1767,6 +2066,209 @@ mod tests {
             inertia: 0.002,
         };
         assert_eq!(s.validate(), Err(Problem::MassNotPositive { mass: -0.1 }));
+    }
+
+    /// Consistency: **a key carrying the test wippen passes, and its
+    /// design's numbers name the wippen's**, each stretch of each part of
+    /// the assembly placed by one of them, and a key carrying none names
+    /// none of them.
+    #[test]
+    fn a_key_carrying_the_test_wippen_passes_and_names_its_numbers() {
+        let s = Standard::with_wippen();
+        assert_eq!(s.validate(), Ok(()));
+        let names: Vec<&str> = numbers(&s.design()).iter().map(|(n, _)| *n).collect();
+        let mut parts = Vec::new();
+        s.wippen.as_ref().expect("a wippen").0.parts(
+            crate::mechanism::BodyId(3),
+            crate::mechanism::BodyId::GROUND,
+            &mut parts,
+        );
+        for part in &parts {
+            for (_, name) in &part.placed_by {
+                assert!(names.contains(name), "{:?} placed by {name}", part.code);
+            }
+        }
+        for name in [
+            "wippen.center.x",
+            "jack.rest_angle",
+            "repetition_lever.published.mass",
+        ] {
+            assert!(names.contains(&name), "{name}");
+        }
+        let plain: Vec<&str> = numbers(&Standard::new().design())
+            .iter()
+            .map(|(n, _)| *n)
+            .collect();
+        assert!(!plain.iter().any(|n| n.starts_with("wippen")), "{plain:?}");
+    }
+
+    /// Consistency: **no number of the wippen assembly that is not finite
+    /// passes**, in a setting, in a traced outline, or in a part's mass;
+    /// and **a part of no mass is refused**, naming it.
+    #[test]
+    fn no_number_of_the_wippen_assembly_that_is_not_finite_passes_nor_a_part_of_no_mass() {
+        let mut s = Standard::with_wippen();
+        s.wippen().heel.height = f64::NAN;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::NotFinite {
+                param: "wippen_heel.height"
+            })
+        );
+        let mut s = Standard::with_wippen();
+        s.wippen().jack.outline[2] = Stretch::Line(Point::new(f64::INFINITY, 0.0));
+        assert_eq!(
+            s.validate(),
+            Err(Problem::NotFinite {
+                param: "jack_outline"
+            })
+        );
+        let mut s = Standard::with_wippen();
+        if let Some((_, WippenAssemblyMass::Published { jack, .. })) = s.wippen.as_mut() {
+            jack.mass = 0.0;
+        }
+        assert_eq!(
+            s.validate(),
+            Err(Problem::PartMassNotPositive {
+                part: PartCode::Jack,
+                mass: 0.0
+            })
+        );
+    }
+
+    /// Consistency: **a heel cloth of no thickness, or thicker than its
+    /// heel, is refused**: a cloth of nothing; and one whose top at its
+    /// front end, the higher, the cloth's front reaching further from the
+    /// circle's center than its back, stands 0.1 mm above the heel's top,
+    /// by that 0.1 mm, its thickness worked out by hand from the circle:
+    /// the top at the front end stands `(R − t)·√(R² − f²)/R` below the
+    /// circle's center, `f` the front end's reach.
+    #[test]
+    fn a_heel_cloth_of_no_thickness_or_thicker_than_its_heel_is_refused() {
+        let mut s = Standard::with_wippen();
+        s.wippen().heel.cloth.thickness = 0.0;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::NoThickness {
+                part: PartCode::WippenHeelCloth
+            })
+        );
+        let past = 0.0001;
+        let mut s = Standard::with_wippen();
+        let assembly = s.wippen().clone();
+        let heel = assembly.heel;
+        let (r, f) = (heel.radius, heel.cloth.front);
+        let below = heel.center(assembly.jack.pin).y - heel.top - past;
+        s.wippen().heel.cloth.thickness = r - below * r / (r * r - f * f).sqrt();
+        let Err(Problem::DoesNotFit { part, within, by }) = s.validate() else {
+            panic!("{:?}", s.validate());
+        };
+        assert_eq!(
+            (part, within),
+            (PartCode::WippenHeelCloth, PartCode::WippenHeel)
+        );
+        // The roundings of a few products of lengths of a decimeter.
+        assert!((by - past).abs() <= 1e-15, "{by}");
+    }
+
+    /// Consistency: **a heel cloth reaching past its heel's lower corner,
+    /// or off its circle, is refused**, by how far.
+    #[test]
+    fn a_heel_cloth_past_its_heels_corner_or_off_its_circle_is_refused() {
+        let past = 0.0005;
+        let mut s = Standard::with_wippen();
+        let corner = s.wippen().heel.back;
+        s.wippen().heel.cloth.back = corner + past;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::DoesNotFit {
+                part: PartCode::WippenHeelCloth,
+                within: PartCode::WippenHeel,
+                by: (corner + past) - corner,
+            })
+        );
+        let mut s = Standard::with_wippen();
+        let radius = s.wippen().heel.radius;
+        s.wippen().heel.cloth.front = radius + past;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::DoesNotFit {
+                part: PartCode::WippenHeelCloth,
+                within: PartCode::WippenHeel,
+                by: (radius + past) - radius,
+            })
+        );
+    }
+
+    /// Consistency: **an arc of no radius is refused**: the heel's circle,
+    /// and the center pin's.
+    #[test]
+    fn an_arc_of_no_radius_is_refused() {
+        let mut s = Standard::with_wippen();
+        s.wippen().heel.radius = 0.0;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::NoRadius {
+                part: PartCode::WippenHeel
+            })
+        );
+        let mut s = Standard::with_wippen();
+        s.wippen().center_pin_diameter = 0.0;
+        assert_eq!(
+            s.validate(),
+            Err(Problem::NoRadius {
+                part: PartCode::CenterPin
+            })
+        );
+    }
+
+    /// Consistency: **a center pin standing out of the body's wood is
+    /// refused**, by how far: on the test wippen the pin's nearest edge is
+    /// the bottom of the body's back part, the line through (−12.53,
+    /// −4.01) and (3.28, −4.04) mm, its distance from the pin worked out by
+    /// hand; a pin of 0.5 mm more radius stands out of it by 0.5 mm.
+    #[test]
+    fn a_center_pin_out_of_the_bodys_wood_is_refused() {
+        let (a, b) = (
+            Point::new(-0.01253, -0.00401),
+            Point::new(0.00328, -0.00404),
+        );
+        let (dx, dy) = (b.x - a.x, b.y - a.y);
+        let room = (a.x * dy - a.y * dx).abs() / (dx * dx + dy * dy).sqrt();
+        let past = 0.0005;
+        let mut s = Standard::with_wippen();
+        s.wippen().center_pin_diameter = 2.0 * (room + past);
+        let Err(Problem::DoesNotFit { part, within, by }) = s.validate() else {
+            panic!("{:?}", s.validate());
+        };
+        assert_eq!((part, within), (PartCode::CenterPin, PartCode::Wippen));
+        assert!((by - past).abs() <= 1e-15, "{by}");
+    }
+
+    /// Consistency: **a part whose outline crosses itself is refused**,
+    /// naming it: the jack with the foot of its front face drawn 10 mm
+    /// behind its back face, across it; and the heel whose back side meets
+    /// the body 5 mm in front of where its front side does, so that its
+    /// back side runs across its front side.
+    #[test]
+    fn a_part_whose_outline_crosses_itself_is_refused() {
+        let mut s = Standard::with_wippen();
+        s.wippen().jack.outline[2] = Stretch::Line(Point::new(-0.010, 0.020));
+        assert_eq!(
+            s.validate(),
+            Err(Problem::PartOutlineCrossesItself {
+                part: PartCode::Jack
+            })
+        );
+        let mut s = Standard::with_wippen();
+        let front_top = s.wippen().heel.front_top;
+        s.wippen().heel.back_top = -(front_top + 0.005);
+        assert_eq!(
+            s.validate(),
+            Err(Problem::PartOutlineCrossesItself {
+                part: PartCode::WippenHeel
+            })
+        );
     }
 
     /// The test design with the key that carries every feature the

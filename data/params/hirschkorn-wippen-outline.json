@@ -1,0 +1,1290 @@
+{
+ "id": "hirschkorn-wippen-outline",
+ "what": "Hirschkorn's wippen assembly (Boston GP-178, note 52) where his tables give no number for its shape: the wippen's body, its heel and the heel cloth, the jack, the repetition lever and the center pin the wippen turns on. Traced from his Figure A.1, the only drawing of them in the thesis, as positions in pixels of the page rendered at 600 dpi; tools/derivations/12-hirschkorn-wippen-outline.py carries each body's into its own frame by a similarity fitted on the markers whose coordinates are printed, prints the residuals at the others as the trace's uncertainty, and derives the numbers below from them.",
+ "source": {
+  "author": "Martin C. Hirschkorn",
+  "title": "Dynamic Model of a Piano Action Mechanism",
+  "kind": "MASc thesis, Systems Design Engineering, University of Waterloo, 2004",
+  "local_copy": "data/references/papers/hirschkorn_thesis.pdf",
+  "traced_from": "Figure A.1, Defined Points on Action Components",
+  "page": 68,
+  "pdf_page": 77,
+  "instrument": "Boston GP-178 grand piano, note 52"
+ },
+ "how_read": {
+  "rendering": "pdftoppm -f 77 -l 77 -r 600 -png hirschkorn_thesis.pdf a1",
+  "dpi": 600,
+  "image": "5100 by 6600 pixels: the whole page, US letter.",
+  "pixels": "x to the right and y down from the page's top-left corner, in pixels of that rendering, continuous: the top-left pixel spans (0, 0) to (1, 1).",
+  "method": "The figure is line art drawn as vector paths. Each position is a vertex of those paths, the center of a marker's ellipse or of a pin's circle (the mean of its four quadrant points), or the point halfway along a curve, read with pdftocairo -svg -f 77 -l 77 hirschkorn_thesis.pdf a1.svg in points of the page and multiplied by 600/72 into the rendering's pixels, to 0.01 pixel. Every curve of these outlines is a circular arc, to 0.01 pixel: its start, the point halfway along it (the curve at t = 1/2) and its end give its circle. A stroke is about 0.46 point wide, half a millimeter of wippen; a position is its stroke's center line.",
+  "scale": "One pixel is about 0.139 mm: the figure draws the wippen, the jack and the repetition lever at the scale it draws the key, about 1:3.25, each apart from the others in its own frame."
+ },
+ "paths": "A path is a list of positions, from its start to its end. A position given as [x, y] is reached from the one before it by a straight line; one given as {\"through\": [x, y], \"to\": [x, y]} by the circular arc through the point halfway along it. A closed path ends where it starts.",
+ "bodies": {
+  "wippen": {
+   "frame": "Table A.4's: origin at the wippen's pivot, the center pin at Pg2 on the ground; x toward Pw2, toward the player when the wippen stands at angle zero; y up.",
+   "fitted_on": "Pg2, Pw2 and Pw3, the three pins, whose printed coordinates are points of the wippen: a similarity (turn, scale and shift, the page's y running down) by least squares. Pw4 and Pw6 are points of printed lines, compared across the line; Pw5's marker sits on the heel cloth, on the circle its printed point is the center of.",
+   "residuals_mm": {
+    "Pg2": 0.01,
+    "Pw2": 0.01,
+    "Pw3": 0.02,
+    "Pw4": 0.05,
+    "Pw6": 0.13,
+    "Pw5": 0.08,
+    "heel_cloth": 0.05,
+    "what": "The trace's uncertainty, as tools/derivations/12 prints it: at the three fitted pins, the distance between where the fit puts each and its printed point; at Pw4 and Pw6, points of printed lines, the distance across the line; at Pw5, the marker's distance off the circle it is drawn on; at heel_cloth, the drawn outer face's circle against Pw5's, the larger of the distance between their centers and the difference of their radii."
+   },
+   "markers": {
+    "Pg2": {
+     "px": [
+      1268.63,
+      3756.12
+     ],
+     "what": "The center of the small circle at the wippen's left end, the center pin, where the figure's axes meet: the origin of the wippen's frame, (0, 0)."
+    },
+    "Pw2": {
+     "px": [
+      1980.28,
+      3763.35
+     ],
+     "what": "The center of the small circle at the wippen's right end: Table A.4's Pw2, the jack's pin."
+    },
+    "Pw3": {
+     "px": [
+      1610.61,
+      3549.74
+     ],
+     "what": "The center of the small circle at the top of the post that stands up from the body: Table A.4's Pw3, the repetition lever's pin."
+    },
+    "Pw4": {
+     "px": [
+      1809.06,
+      3601.82
+     ],
+     "what": "The center of the ellipse drawn on the slanted wire post in front of Pw3: a point of Table A.4's Pw4 line, the jack's stop."
+    },
+    "Pw5": {
+     "px": [
+      1719.95,
+      3903.53
+     ],
+     "what": "The center of the ellipse drawn on the heel cloth: a point of the circle Table A.4's Pw5 is the center of."
+    },
+    "Pw6": {
+     "px": [
+      1393.57,
+      3741.33
+     ],
+     "what": "The center of the ellipse drawn on the pad in the notch behind Pw3: a point of Table A.4's Pw6 line, the repetition lever's stop."
+    },
+    "CMw": {
+     "px": [
+      1642.42,
+      3744.34
+     ],
+     "what": "The center of the wippen's center-of-mass symbol."
+    }
+   },
+   "axes": {
+    "px": [
+     [
+      1268.62,
+      3756.12
+     ],
+     [
+      1359.54,
+      3753.78
+     ]
+    ],
+    "what": "The figure's x axis, drawn as an arrow from the origin."
+   },
+   "outlines": {
+    "body": {
+     "what": "The wippen's body, from the bottom of its back end: up the back end and forward along its top, over the notch the repetition lever's stop sits in, up, over and down the post that carries Pw3, along the long top to the rounded front end round Pw2, back along the bottom, straight across under the heel from the top of its front side to the top of its back side, along the bottom of the narrower back part, and to its start. The figure draws the body and the heel as one outline; the heel is below.",
+     "path": [
+      [
+       1179.2,
+       3787.3
+      ],
+      [
+       1178.48,
+       3750.98
+      ],
+      [
+       1205.92,
+       3714.26
+      ],
+      [
+       1322.92,
+       3711.78
+      ],
+      [
+       1351.43,
+       3745.54
+      ],
+      [
+       1351.95,
+       3753.74
+      ],
+      [
+       1437.01,
+       3752.64
+      ],
+      [
+       1437.01,
+       3744.11
+      ],
+      [
+       1494.56,
+       3742.71
+      ],
+      {
+       "through": [
+        1525.44,
+        3732.68
+       ],
+       "to": [
+        1543.65,
+        3705.76
+       ]
+      },
+      [
+       1586.2,
+       3703.91
+      ],
+      [
+       1582.78,
+       3524.71
+      ],
+      {
+       "through": [
+        1595.03,
+        3514.58
+       ],
+       "to": [
+        1610.25,
+        3510.03
+       ]
+      },
+      {
+       "through": [
+        1626.04,
+        3511.78
+       ],
+       "to": [
+        1639.88,
+        3519.56
+       ]
+      },
+      [
+       1644.4,
+       3702.28
+      ],
+      [
+       1688.87,
+       3701.86
+      ],
+      {
+       "through": [
+        1705.59,
+        3725.79
+       ],
+       "to": [
+        1733.11,
+        3735.51
+       ]
+      },
+      [
+       2004.46,
+       3729.1
+      ],
+      {
+       "through": [
+        2020.45,
+        3741.26
+       ],
+       "to": [
+        2027.73,
+        3759.99
+       ]
+      },
+      {
+       "through": [
+        2024.15,
+        3779.79
+       ],
+       "to": [
+        2010.74,
+        3794.79
+       ]
+      },
+      [
+       1812.11,
+       3799.58
+      ],
+      [
+       1579.65,
+       3805.53
+      ],
+      [
+       1338.09,
+       3811.62
+      ],
+      {
+       "through": [
+        1319.46,
+        3791.5
+       ],
+       "to": [
+        1292.9,
+        3784.67
+       ]
+      },
+      [
+       1179.2,
+       3787.3
+      ]
+     ]
+    },
+    "heel": {
+     "what": "The heel, hanging under the body's bottom, and the pocket the heel cloth sits in, as the outline of the body draws them: from the top of its front side down to its front lower corner, along its bottom to the cloth, up the cloth's front end, along the cloth's top, down its back end, along the bottom to the back lower corner, and up the cove of its back side to the body's bottom.",
+     "points": {
+      "front_top": {
+       "px": [
+        1812.11,
+        3799.58
+       ],
+       "what": "Where the heel's front side meets the body's bottom."
+      },
+      "front_corner": {
+       "px": [
+        1806.8,
+        3882.26
+       ],
+       "what": "The heel's front lower corner."
+      },
+      "cloth_front_outer": {
+       "px": [
+        1777.83,
+        3886.62
+       ],
+       "what": "The heel cloth's front end, at its outer face."
+      },
+      "cloth_front_inner": {
+       "px": [
+        1774.87,
+        3871.03
+       ],
+       "what": "The heel cloth's front end, at its top."
+      },
+      "cloth_back_inner": {
+       "px": [
+        1659.77,
+        3886.88
+       ],
+       "what": "The heel cloth's back end, at its top: its top is drawn straight between its two ends."
+      },
+      "cloth_back_outer": {
+       "px": [
+        1660.35,
+        3902.51
+       ],
+       "what": "The heel cloth's back end, at its outer face."
+      },
+      "back_corner": {
+       "px": [
+        1631.45,
+        3904.3
+       ],
+       "what": "The heel's back lower corner."
+      },
+      "back_cove": {
+       "through": [
+        1617.36,
+        3854.08
+       ],
+       "to": [
+        1580.5,
+        3817.19
+       ],
+       "what": "The cove of the heel's back side, from its back lower corner up to where it stands square under the body."
+      },
+      "back_top": {
+       "px": [
+        1579.65,
+        3805.53
+       ],
+       "what": "Where the heel's back side meets the body's bottom."
+      }
+     }
+    },
+    "heel_cloth_line": {
+     "what": "The heel cloth's outer face, from its back end to its front end, drawn as an arc: the face the capstan bears on.",
+     "path": [
+      [
+       1660.35,
+       3902.51
+      ],
+      {
+       "through": [
+        1720.42,
+        3904.38
+       ],
+       "to": [
+        1777.83,
+        3886.62
+       ]
+      }
+     ]
+    },
+    "center_pin": {
+     "what": "The small circle at the origin: the center pin. A larger circle about it, of 10.1 pixels' radius, is the hole it turns in, not traced.",
+     "path": [
+      [
+       1273.24,
+       3756.12
+      ],
+      {
+       "through": [
+        1271.9,
+        3752.87
+       ],
+       "to": [
+        1268.62,
+        3751.53
+       ]
+      },
+      {
+       "through": [
+        1265.37,
+        3752.87
+       ],
+       "to": [
+        1264.03,
+        3756.12
+       ]
+      },
+      {
+       "through": [
+        1265.37,
+        3759.37
+       ],
+       "to": [
+        1268.62,
+        3760.71
+       ]
+      },
+      {
+       "through": [
+        1271.9,
+        3759.37
+       ],
+       "to": [
+        1273.24,
+        3756.12
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "jack": {
+   "frame": "Table A.5's: origin at the jack's pivot, Pw2 on the wippen, at the corner of the jack's L; x toward the toe (Pj3), y along the jack toward its top (Pj2, Pj5).",
+   "fitted_on": "The jack's pin, the origin; Pj2, the center of the arc that rounds the top of the jack's back face; and Pj3, the center of the arc of the toe's end: three printed points of the jack, by least squares. Pj5 is a printed line, compared across the line with the jack's front face and with its marker; Pj4's marker sits on the end of the felted button its circle stands for.",
+   "residuals_mm": {
+    "pin": 0.01,
+    "Pj2": 0.0,
+    "Pj3": 0.01,
+    "Pj2_radius": 0.0,
+    "Pj3_radius": 0.05,
+    "Pj5_face": 0.03,
+    "Pj5": 0.1,
+    "Pj4": 0.17,
+    "what": "As for the wippen: at the pin, Pj2 and Pj3, fitted; the drawn arcs' radii against Pj2's and Pj3's printed ones; Pj5_face, the jack's drawn front face, and Pj5, its marker, across Pj5's printed line; Pj4's marker off its circle."
+   },
+   "markers": {
+    "pin": {
+     "px": [
+      3130.99,
+      3763.35
+     ],
+     "what": "The center of the circle at the corner of the jack's L, where the figure's axes meet: the jack's pin, Pw2, the origin of the jack's frame, (0, 0)."
+    },
+    "Pj2": {
+     "px": [
+      3001.02,
+      3425.25
+     ],
+     "what": "The center of the ellipse drawn on the top of the jack: a point of Table A.5's Pj2, the arc and the two lines tangent to it."
+    },
+    "Pj3": {
+     "px": [
+      3306.71,
+      3720.83
+     ],
+     "what": "The center of the ellipse drawn on the toe's end: a point of the circle Table A.5's Pj3 is the center of."
+    },
+    "Pj4": {
+     "px": [
+      2956.19,
+      3596.94
+     ],
+     "what": "The center of the ellipse drawn on the end of the felted button carried on a rod across the jack: a point of the circle Table A.5's Pj4 is the center of."
+    },
+    "Pj5": {
+     "px": [
+      3035.0,
+      3445.08
+     ],
+     "what": "The center of the ellipse drawn on the jack's front face, under its top: a point of Table A.5's Pj5 line."
+    },
+    "CMj": {
+     "px": [
+      3123.77,
+      3686.82
+     ],
+     "what": "The center of the jack's center-of-mass symbol."
+    }
+   },
+   "axes": {
+    "px": [
+     [
+      3130.99,
+      3763.35
+     ],
+     [
+      3216.08,
+      3731.38
+     ]
+    ],
+    "what": "The figure's x axis, drawn as an arrow from the origin toward the toe."
+   },
+   "outlines": {
+    "jack": {
+     "what": "The jack, from the top of its toe's end: over the toe's rounded end and its hump, back along the toe's top to the jack's front face, up the front face to the top, along the top to the rounded corner of its back face, down the back face to the bulge about the pin, under the bulge to the L's outer corner, round it, along the toe's underside and up the toe's end to its start.",
+     "path": [
+      [
+       3321.65,
+       3725.36
+      ],
+      {
+       "through": [
+        3315.57,
+        3720.58
+       ],
+       "to": [
+        3307.91,
+        3719.53
+       ]
+      },
+      {
+       "through": [
+        3300.79,
+        3722.5
+       ],
+       "to": [
+        3296.13,
+        3728.65
+       ]
+      },
+      {
+       "through": [
+        3294.4,
+        3735.53
+       ],
+       "to": [
+        3293.62,
+        3742.58
+       ]
+      },
+      [
+       3157.32,
+       3769.17
+      ],
+      [
+       3023.34,
+       3415.66
+      ],
+      [
+       2995.48,
+       3426.2
+      ],
+      {
+       "through": [
+        2991.48,
+        3429.99
+       ],
+       "to": [
+        2991.31,
+        3435.48
+       ]
+      },
+      [
+       3091.24,
+       3699.19
+      ],
+      {
+       "through": [
+        3080.74,
+        3718.89
+       ],
+       "to": [
+        3080.86,
+        3741.21
+       ]
+      },
+      {
+       "through": [
+        3091.61,
+        3760.8
+       ],
+       "to": [
+        3110.38,
+        3772.92
+       ]
+      },
+      [
+       3128.78,
+       3821.09
+      ],
+      {
+       "through": [
+        3153.91,
+        3820.84
+       ],
+       "to": [
+        3172.01,
+        3803.42
+       ]
+      },
+      [
+       3326.73,
+       3756.71
+      ],
+      {
+       "through": [
+        3328.02,
+        3740.4
+       ],
+       "to": [
+        3321.65,
+        3725.36
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "repetition_lever": {
+   "frame": "Table A.6's: origin at the repetition lever's pivot, Pw3 on the wippen, its pin hole between Pr3 and Pr2; x along the lever toward Pr2, Pr4 and Pr5.",
+   "fitted_on": "The lever's pin, the origin, and Pr2, the center of the arc along the lever's top toward its front end: two printed points of the lever, which fix the similarity without a residual. Pr5 is a printed line, compared across the line with its marker; Pr3's and Pr4's markers sit on the circles their printed points are the centers of.",
+   "residuals_mm": {
+    "pin": 0.0,
+    "Pr2": 0.0,
+    "Pr2_radius": 0.02,
+    "Pr5": 0.39,
+    "Pr3": 0.23,
+    "Pr4": 0.57,
+    "what": "As for the wippen: at the pin and Pr2, fitted, two points that fix the similarity and leave nothing; the drawn arc's radius against Pr2's printed one; Pr5's marker across its printed line; Pr3's and Pr4's markers off their circles."
+   },
+   "markers": {
+    "pin": {
+     "px": [
+      2980.51,
+      2853.35
+     ],
+     "what": "The center of the circle in the lever where the figure's axes meet: the lever's pin, Pw3, the origin of the lever's frame, (0, 0)."
+    },
+    "Pr2": {
+     "px": [
+      3229.44,
+      2722.2
+     ],
+     "what": "The center of the ellipse drawn on the lever's top, where it begins to curve down to its front end: a point of Table A.6's Pr2, the arc and the two lines tangent to it."
+    },
+    "Pr3": {
+     "px": [
+      2769.75,
+      3050.86
+     ],
+     "what": "The center of the ellipse drawn under the button that hangs under the lever's back end: a point of the circle Table A.6's Pr3 is the center of."
+    },
+    "Pr4": {
+     "px": [
+      3309.79,
+      2744.27
+     ],
+     "what": "The center of the ellipse drawn on the block under the lever's front end: a point of the circle Table A.6's Pr4 is the center of."
+    },
+    "Pr5": {
+     "px": [
+      3344.63,
+      2681.56
+     ],
+     "what": "The center of the ellipse drawn on the pad on top of the lever's front end: a point of Table A.6's Pr5 line."
+    },
+    "CMr": {
+     "px": [
+      3043.59,
+      2828.61
+     ],
+     "what": "The center of the repetition lever's center-of-mass symbol."
+    }
+   },
+   "axes": {
+    "px": [
+     [
+      2980.5,
+      2853.35
+     ],
+     [
+      3064.29,
+      2817.97
+     ]
+    ],
+    "what": "The figure's x axis, drawn as an arrow from the origin along the lever."
+   },
+   "outlines": {
+    "repetition_lever": {
+     "what": "The repetition lever's bar, from the bottom of its back end: along its top to where the top curves down, along that arc to the front end, down the front end, back along its underside and up the back end's slant to its start.",
+     "path": [
+      [
+       2700.1,
+       2948.21
+      ],
+      [
+       3212.21,
+       2730.47
+      ],
+      {
+       "through": [
+        3296.17,
+        2705.3
+       ],
+       "to": [
+        3383.63,
+        2699.15
+       ]
+      },
+      [
+       3386.95,
+       2706.64
+      ],
+      [
+       2775.75,
+       2966.5
+      ],
+      [
+       2708.95,
+       2968.23
+      ],
+      [
+       2700.1,
+       2948.21
+      ]
+     ]
+    }
+   }
+  }
+ },
+ "records": [
+  {
+   "name": "wippen_outline",
+   "value": [
+    {
+     "line": [
+      -12.53,
+      -4.01
+     ]
+    },
+    {
+     "line": [
+      3.28,
+      -4.04
+     ]
+    },
+    {
+     "line": [
+      4.25,
+      -4.1
+     ]
+    },
+    {
+     "line": [
+      5.19,
+      -4.3
+     ]
+    },
+    {
+     "line": [
+      6.1,
+      -4.63
+     ]
+    },
+    {
+     "line": [
+      6.95,
+      -5.09
+     ]
+    },
+    {
+     "line": [
+      7.73,
+      -5.66
+     ]
+    },
+    {
+     "line": [
+      8.42,
+      -6.34
+     ]
+    },
+    {
+     "line": [
+      9.0,
+      -7.11
+     ]
+    },
+    {
+     "line": [
+      9.47,
+      -7.95
+     ]
+    },
+    {
+     "line": [
+      43.07,
+      -7.96
+     ]
+    },
+    {
+     "line": [
+      75.41,
+      -7.95
+     ]
+    },
+    {
+     "arc": [
+      103.04,
+      -7.98
+     ],
+     "center": [
+      100.39,
+      -3.57
+     ],
+     "radius": 5.15
+    },
+    {
+     "arc": [
+      105.52,
+      -3.2
+     ],
+     "center": [
+      100.39,
+      -3.57
+     ],
+     "radius": 5.15
+    },
+    {
+     "line": [
+      102.39,
+      1.17
+     ]
+    },
+    {
+     "line": [
+      64.65,
+      1.24
+     ]
+    },
+    {
+     "line": [
+      63.63,
+      1.37
+     ]
+    },
+    {
+     "line": [
+      62.64,
+      1.66
+     ]
+    },
+    {
+     "line": [
+      61.71,
+      2.11
+     ]
+    },
+    {
+     "line": [
+      60.86,
+      2.69
+     ]
+    },
+    {
+     "line": [
+      60.11,
+      3.39
+     ]
+    },
+    {
+     "line": [
+      59.47,
+      4.2
+     ]
+    },
+    {
+     "line": [
+      58.97,
+      5.1
+     ]
+    },
+    {
+     "line": [
+      58.62,
+      6.07
+     ]
+    },
+    {
+     "line": [
+      52.44,
+      6.17
+     ]
+    },
+    {
+     "arc": [
+      52.45,
+      31.59
+     ],
+     "center": [
+      48.73,
+      27.49
+     ],
+     "radius": 5.53
+    },
+    {
+     "arc": [
+      48.37,
+      33.02
+     ],
+     "center": [
+      48.73,
+      27.47
+     ],
+     "radius": 5.55
+    },
+    {
+     "line": [
+      44.5,
+      31.07
+     ]
+    },
+    {
+     "line": [
+      44.34,
+      6.15
+     ]
+    },
+    {
+     "line": [
+      38.42,
+      6.04
+     ]
+    },
+    {
+     "line": [
+      38.0,
+      4.97
+     ]
+    },
+    {
+     "line": [
+      37.41,
+      3.98
+     ]
+    },
+    {
+     "line": [
+      36.67,
+      3.11
+     ]
+    },
+    {
+     "line": [
+      35.79,
+      2.36
+     ]
+    },
+    {
+     "line": [
+      34.81,
+      1.78
+     ]
+    },
+    {
+     "line": [
+      33.74,
+      1.36
+     ]
+    },
+    {
+     "line": [
+      32.61,
+      1.12
+     ]
+    },
+    {
+     "line": [
+      31.46,
+      1.08
+     ]
+    },
+    {
+     "line": [
+      23.46,
+      1.09
+     ]
+    },
+    {
+     "line": [
+      23.43,
+      -0.1
+     ]
+    },
+    {
+     "line": [
+      11.6,
+      0.05
+     ]
+    },
+    {
+     "line": [
+      11.56,
+      1.19
+     ]
+    },
+    {
+     "line": [
+      7.71,
+      5.98
+     ]
+    },
+    {
+     "line": [
+      -8.56,
+      6.05
+     ]
+    },
+    {
+     "line": [
+      -12.5,
+      1.04
+     ]
+    }
+   ],
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The wippen's body in its frame, counter-clockwise from the bottom of its back end, closed straight under the heel along its bottom: each stretch starts at its point, a line or an arc about its center, and ends where the next starts, the last where the first starts. Each cove, concave from the wood, is given as the eight chords the bench draws an arc with; the convex arcs, the post's round top and the front end round Pw2, as arcs. The notch the repetition lever's stop sits in is the body's; the stop is not traced."
+  },
+  {
+   "name": "jack_outline",
+   "value": [
+    {
+     "arc": [
+      26.67,
+      -4.45
+     ],
+     "center": [
+      24.69,
+      -5.01
+     ],
+     "radius": 2.05
+    },
+    {
+     "arc": [
+      25.17,
+      -3.01
+     ],
+     "center": [
+      24.7,
+      -5.01
+     ],
+     "radius": 2.06
+    },
+    {
+     "arc": [
+      23.19,
+      -3.62
+     ],
+     "center": [
+      28.84,
+      -8.15
+     ],
+     "radius": 7.25
+    },
+    {
+     "line": [
+      22.17,
+      -5.3
+     ]
+    },
+    {
+     "line": [
+      3.15,
+      -2.05
+     ]
+    },
+    {
+     "line": [
+      3.13,
+      50.5
+     ]
+    },
+    {
+     "arc": [
+      -1.01,
+      50.51
+     ],
+     "center": [
+      -1.0,
+      49.5
+     ],
+     "radius": 1.0
+    },
+    {
+     "line": [
+      -2.01,
+      49.51
+     ]
+    },
+    {
+     "arc": [
+      -2.0,
+      10.3
+     ],
+     "center": [
+      0.88,
+      4.66
+     ],
+     "radius": 6.33
+    },
+    {
+     "arc": [
+      -5.42,
+      5.35
+     ],
+     "center": [
+      0.88,
+      4.67
+     ],
+     "radius": 6.33
+    },
+    {
+     "line": [
+      -3.14,
+      -0.23
+     ]
+    },
+    {
+     "arc": [
+      -3.12,
+      -7.39
+     ],
+     "center": [
+      0.03,
+      -3.87
+     ],
+     "radius": 4.73
+    },
+    {
+     "line": [
+      3.37,
+      -7.23
+     ]
+    },
+    {
+     "arc": [
+      25.78,
+      -8.77
+     ],
+     "center": [
+      22.07,
+      -5.76
+     ],
+     "radius": 4.78
+    }
+   ],
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The jack in its own frame, origin at its pin, Pw2: its L, the toe's rounded end and its hump, the front face (Pj5's line), the top and the arc rounding the back face's top (Pj2), the bulge about the pin, and the rounded outer corner of the L; written as wippen_outline is. The felted button on its rod across the jack, Pj4, is not traced."
+  },
+  {
+   "name": "repetition_lever_outline",
+   "value": [
+    {
+     "line": [
+      -41.02,
+      3.11
+     ]
+    },
+    {
+     "line": [
+      -40.97,
+      0.07
+     ]
+    },
+    {
+     "line": [
+      -32.34,
+      -3.34
+     ]
+    },
+    {
+     "line": [
+      59.95,
+      -3.33
+     ]
+    },
+    {
+     "arc": [
+      59.93,
+      -2.2
+     ],
+     "center": [
+      36.3,
+      -52.1
+     ],
+     "radius": 55.22
+    },
+    {
+     "line": [
+      36.31,
+      3.12
+     ]
+    }
+   ],
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The repetition lever's bar in its own frame, origin at its pin, Pw3: its top and the arc it curves down along to its front end (Pr2's), its front end, its underside and the slant of its back end; written as wippen_outline is. The button under its back end (Pr3), the block under its front end (Pr4), the pad on top of it (Pr5) and the pin standing up at its back are not traced."
+  },
+  {
+   "name": "center_pin_diameter",
+   "value": 1.27,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The center pin the wippen turns on, at Pg2: the diameter of the small circle the figure draws there."
+  },
+  {
+   "name": "heel_top",
+   "value": -7.95,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The wippen body's bottom where the heel hangs from it, the height of the heel's top in the wippen's frame: the mean of the two points where the heel's sides meet the body."
+  },
+  {
+   "name": "heel_back_top",
+   "value": 16.43,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "How far behind Pw5's center the heel's back side meets the body's bottom, along the wippen's x."
+  },
+  {
+   "name": "heel_front_top",
+   "value": 15.91,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "How far in front of Pw5's center the heel's front side meets the body's bottom, along the wippen's x."
+  },
+  {
+   "name": "heel_back",
+   "value": 9.58,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "How far behind Pw5's center the heel's back lower corner stands, along the wippen's x. It stands on the line through the heel cloth's two ends on its outer face, which the heel's bottom runs along on either side of the cloth: 0.26 mm under the one traced. The heel's back side runs straight up from it to the body, its cove taken as its chord, 1.83 mm deep at its middle."
+  },
+  {
+   "name": "heel_front",
+   "value": 14.88,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "How far in front of Pw5's center the heel's front lower corner stands, along the wippen's x, on the same line as its back lower corner: 0.01 mm from the one traced. The heel's front side runs straight up from it to the body."
+  },
+  {
+   "name": "heel_cloth_back",
+   "value": 5.55,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "How far behind Pw5's center the heel cloth's back end stands, on its outer face, along the wippen's x: the end of the arc the capstan bears on."
+  },
+  {
+   "name": "heel_cloth_front",
+   "value": 10.84,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "How far in front of Pw5's center the heel cloth's front end stands, on its outer face, along the wippen's x."
+  },
+  {
+   "name": "heel_cloth_thickness",
+   "value": 2.11,
+   "unit": "mm",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The heel cloth's thickness at its ends, in along its circle's radius from its outer face, Pw5's circle, to its top: the mean of its two ends. The figure draws its top straight between them, in the pocket of the heel's bottom it sits in, 1.50 mm under its outer face's chord at its middle."
+  },
+  {
+   "name": "jack_rest_angle",
+   "value": 0.3189,
+   "unit": "rad",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The jack's angle on the wippen, counter-clockwise from the wippen's frame to the jack's, at which Pj4's circle rests on Pw4's line: contact 5 closed, the jack on its stop. Written to 0.0001 rad, which leaves contact 5 open or shut by under a micrometer."
+  },
+  {
+   "name": "repetition_lever_rest_angle",
+   "value": 0.3463,
+   "unit": "rad",
+   "reliability": "E",
+   "derived_by": "tools/derivations/12-hirschkorn-wippen-outline.py",
+   "what": "The repetition lever's angle on the wippen, counter-clockwise from the wippen's frame to the lever's, at which Pr3's circle rests on Pw6's line: contact 6 closed, the lever on its stop, as it rests with no hammer on it. Written to 0.0001 rad, which leaves contact 6 open or shut by under a micrometer."
+  },
+  {
+   "name": "wippen_width",
+   "value": 10.0,
+   "unit": "mm",
+   "reliability": "S",
+   "why": "Not published, and the figure draws a section. Assumed: the wippen's body, its heel and the heel cloth, and the center pin, across the keyboard, so that the solid view extrudes them; no reading depends on it. To measure on the owner's wippen."
+  },
+  {
+   "name": "jack_width",
+   "value": 6.0,
+   "unit": "mm",
+   "reliability": "S",
+   "why": "Not published, and the figure draws a section. Assumed: the jack across the keyboard, narrower than the wippen, so that the solid view extrudes it; no reading depends on it. To measure on the owner's wippen."
+  },
+  {
+   "name": "repetition_lever_width",
+   "value": 10.0,
+   "unit": "mm",
+   "reliability": "S",
+   "why": "Not published, and the figure draws a section. Assumed: the repetition lever across the keyboard, as wide as the wippen, its window for the jack not drawn, so that the solid view extrudes it; no reading depends on it. To measure on the owner's wippen."
+  }
+ ],
+ "not_traced": {
+  "stops": "The jack's stop on the wippen, the slanted wire post with its pad (Pw4), and the repetition lever's, the pad in the notch behind Pw3 (Pw6): contacts 5 and 6, which the record closes by the jack's and the lever's rest angles. They are drawn when the jack and the lever move.",
+  "jack_button": "The felted button on its rod across the jack (Pj4), the jack's side of contact 5.",
+  "lever_fittings": "The button under the repetition lever's back end (Pr3), the block under its front end (Pr4), the pad on top of it (Pr5) and the pin standing up at its back: the lever's sides of contacts 6, 10 and 11, and its spring's.",
+  "hole": "The larger circle about the center pin, the hole the wippen turns on it in.",
+  "mass": "Table A.1 gives the wippen's, the jack's and the repetition lever's masses and centers of mass. The figure's center-of-mass markers stand apart from them: CMw 2.8 mm, CMj 9.4 mm and CMr 7.4 mm, each in its body's frame; the record never takes a marker for a mass."
+ }
+}

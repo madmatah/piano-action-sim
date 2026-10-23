@@ -71,14 +71,40 @@
 //! in the target's own reading: a dip the front pin forbids by bottoming in
 //! its mortise is refused with how much deeper it is than the pin lets the
 //! key go. It is never laid as the nearest stack and shown as a miss.
+//!
+//! A wippen on the capstan turns with the stacks: more balance paper raises
+//! the capstan under its heel at the top seat, and less front paper lets it
+//! rise further at the bottom. A stack can push the wippen past its range,
+//! or leave it out of the key's reach, and such a trial has no reading: it
+//! counts by its direction, as the search's documentation says. Pushed past
+//! its range at the top seat on the dip search, where the key rides on its
+//! stops, it counts as the stops fighting and names none of its own: the
+//! refusal names the stops the last fighting or riding trial named, or the
+//! fight itself where none did. A target only a classified stack would give
+//! is refused naming the wippen, short by the target less the nearest
+//! reading a stack with the wippen in its range gives, or by the whole
+//! target where no stack seats the key with its wippen in range. A wippen
+//! part standing in a key part tells no direction, the key and the wippen
+//! turning about different points, so the regulation is refused on it,
+//! naming both parts and the depth. The stacks as laid, from below, can
+//! cross a wippen's limit within one paper of the answer: the balance stack
+//! as laid leaving the wippen out of reach refuses the key height before any
+//! dip is searched, and the front stack as laid pushing it past its range at
+//! the bottom seat refuses the dip, each short by the distance from the
+//! target to the reading one thinnest paper above the stack as laid, the
+//! step the regulation promises to land within. Only where the stops fight
+//! or ride on that trial, or it stands the key off its pin, is the distance
+//! taken to the reading at the stack the search asked for, within the
+//! bisection's resolution of it; a wippen part in a key part there, or any
+//! other refusal, ends the regulation.
 
 use crate::contact::ContactCode;
-use crate::measure::seat::{SeatRefusal, Seating, SEAT_MARGIN};
+use crate::measure::seat::{SeatRefusal, Seating, WhichSeat, SEAT_MARGIN};
 use crate::measure::TouchweightProtocol;
 use crate::mechanism::MassProps;
 use crate::parts::frame::{FrameDesign, KeyKind};
 use crate::parts::mounts::{on_its_frame, KeyMount, OnItsFrame};
-use crate::parts::KeyDesign;
+use crate::parts::{KeyDesign, WippenAssembly, WippenAssemblyMass};
 use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 use crate::solve::{SolveReport, Statics};
 
@@ -171,6 +197,15 @@ pub enum Limit {
     /// paper the target asks for raises the balance punching, and the key on
     /// it, past the pin's top.
     OffItsBalancePin,
+    /// The wippen the key carries would be pushed past its range before the
+    /// target is reached: at the top seat, by more balance paper raising
+    /// the capstan under its heel; at the bottom seat, by less front paper
+    /// letting the key's back and its capstan rise further.
+    WippenPastItsRange,
+    /// The wippen the key carries would not reach the key before the target
+    /// is reached: the balance paper the target asks for leaves the capstan
+    /// short of its heel.
+    WippenOutOfReach,
 }
 
 /// One punching stack as the solve leaves it.
@@ -224,7 +259,12 @@ pub enum TargetOutcome {
         limited_by: Limit,
         /// How far it lies out of reach, meters of its own reading: the
         /// target less the nearest key height or dip any stack gives, by
-        /// magnitude; the whole target where no dip can be read at all.
+        /// magnitude; the whole target where no dip can be read at all, or
+        /// where no stack seats the key with its wippen in its range. For a
+        /// stack as laid across a limit of the wippen's, the distance from
+        /// the target to the reading one thinnest paper above it, or at the
+        /// stack the search asked for where that trial's stops fight or
+        /// ride, or it stands the key off its pin.
         shortfall_m: f64,
     },
 }
@@ -257,6 +297,10 @@ pub struct Regulating<'a> {
     /// The protocol, whose measuring point the press of the bottom seat acts
     /// at.
     pub protocol: &'a TouchweightProtocol,
+    /// The wippen assembly the key carries on its capstan, with what is
+    /// known of its mass, where it carries one: the bench mounts it, so the
+    /// solve does.
+    pub wippen_assembly: Option<(&'a WippenAssembly, &'a WippenAssemblyMass)>,
 }
 
 /// One trial of a bisection: a stack, seated.
@@ -283,6 +327,33 @@ enum Trial {
     /// how far above its punching it leaves its pin, meters, negative where
     /// the punching stands above the pin's top.
     OffItsPin { leaves_its_pin: f64 },
+    /// The wippen the key carries is pushed past its range at this stack,
+    /// at the seat that met it, its heel that deep in the key at the top of
+    /// its range, meters.
+    WippenPastItsRange { at: WhichSeat, heel_depth: f64 },
+    /// The wippen the key carries does not reach the key at this stack, at
+    /// the seat that met it, its heel coming that near the key at its
+    /// nearest, degree by degree through its range, meters.
+    WippenOutOfReach { at: WhichSeat, heel_clearance: f64 },
+}
+
+impl Trial {
+    /// A trial with a direction or a reading, or the refusal that ends the
+    /// regulation where it has neither: a wippen past its range or out of
+    /// reach where the search does not classify it, and nothing stopping
+    /// the front of the key.
+    fn refusal(&self) -> Option<SeatRefusal> {
+        match *self {
+            Self::WippenPastItsRange { at, heel_depth } => {
+                Some(SeatRefusal::WippenPushedPastItsRange { at, heel_depth })
+            }
+            Self::WippenOutOfReach { at, heel_clearance } => {
+                Some(SeatRefusal::WippenOutOfReach { at, heel_clearance })
+            }
+            Self::NoStopBelowTheFront => Some(SeatRefusal::NoStopBelowTheFront),
+            _ => None,
+        }
+    }
 }
 
 /// Which stack a bisection searches.
@@ -297,8 +368,8 @@ enum Searched {
 
 /// Where a bisection ends.
 enum Bisected {
-    /// The paper the target asks for.
-    Asked(f64),
+    /// The paper the target asks for, and what the trial seated on it read.
+    Asked(f64, f64),
     /// The target out of reach.
     Out(TargetOutcome),
 }
@@ -343,19 +414,37 @@ impl Regulating<'_> {
         let mut statics = Statics::new();
         let mut report = SolveReport::NOTHING;
 
-        let asked_balance = match self.bisect(
+        let (asked_balance, height_asked) = match self.bisect(
             &mut statics,
             &mut report,
             Searched::Balance,
             targets.key_height,
         )? {
-            Bisected::Asked(paper) => paper,
+            Bisected::Asked(paper, reading) => (paper, reading),
             Bisected::Out(outcome) => return Ok(outcome),
         };
         let balance_papers = self.frame.drawer.papers_for(asked_balance);
         let laid_balance: f64 = balance_papers.iter().sum();
+        // The stack as laid, from below, may leave a wippen out of reach
+        // within a paper of where it reaches.
+        if self.wippen_assembly.is_some() {
+            if let Trial::WippenOutOfReach { .. } =
+                self.height_trial(&mut statics, &mut report, laid_balance)?
+            {
+                let next = self.height_trial(
+                    &mut statics,
+                    &mut report,
+                    laid_balance + self.frame.drawer.thinnest(),
+                )?;
+                return Ok(TargetOutcome::Infeasible {
+                    target: Target::KeyHeight,
+                    limited_by: Limit::WippenOutOfReach,
+                    shortfall_m: laid_shortfall(next, targets.key_height, height_asked)?,
+                });
+            }
+        }
 
-        let asked_front = match self.bisect(
+        let (asked_front, dip_asked) = match self.bisect(
             &mut statics,
             &mut report,
             Searched::Front {
@@ -363,12 +452,33 @@ impl Regulating<'_> {
             },
             targets.key_dip,
         )? {
-            Bisected::Asked(paper) => paper,
+            Bisected::Asked(paper, reading) => (paper, reading),
             Bisected::Out(outcome) => return Ok(outcome),
         };
         let front_papers = self.frame.drawer.papers_for(asked_front);
 
-        let achieved = self.read(&mut statics, &mut report, &balance_papers, &front_papers)?;
+        let achieved = match self.read(&mut statics, &mut report, &balance_papers, &front_papers) {
+            Err(Unsolvable::NoSeat(SeatRefusal::WippenPushedPastItsRange {
+                at: WhichSeat::Bottom,
+                ..
+            })) => {
+                // The front stack as laid, from below, lets the key's back
+                // rise within a paper of where the wippen is past its range.
+                let laid_front: f64 = front_papers.iter().sum();
+                let next = self.dip_trial(
+                    &mut statics,
+                    &mut report,
+                    laid_balance,
+                    laid_front + self.frame.drawer.thinnest(),
+                )?;
+                return Ok(TargetOutcome::Infeasible {
+                    target: Target::KeyDip,
+                    limited_by: Limit::WippenPastItsRange,
+                    shortfall_m: laid_shortfall(next, targets.key_dip, dip_asked)?,
+                });
+            }
+            other => other?,
+        };
         Ok(TargetOutcome::Met {
             stacks: Stacks {
                 balance: Stack {
@@ -422,6 +532,7 @@ impl Regulating<'_> {
             self.kind,
             self.mass,
             0.0,
+            self.wippen_assembly,
         )
         .map_err(|p| Unsolvable::NoSeat(SeatRefusal::Mechanism(p)))
     }
@@ -466,6 +577,12 @@ impl Regulating<'_> {
             Err(SeatRefusal::LiftsOffItsFrame { leaves_its_pin }) => {
                 Ok(Trial::OffItsPin { leaves_its_pin })
             }
+            Err(SeatRefusal::WippenPushedPastItsRange { at, heel_depth }) => {
+                Ok(Trial::WippenPastItsRange { at, heel_depth })
+            }
+            Err(SeatRefusal::WippenOutOfReach { at, heel_clearance }) => {
+                Ok(Trial::WippenOutOfReach { at, heel_clearance })
+            }
             Err(refusal) => Err(Unsolvable::NoSeat(refusal)),
         }
     }
@@ -502,6 +619,12 @@ impl Regulating<'_> {
             Err(SeatRefusal::NoStopBelowTheFront) => Ok(Trial::NoStopBelowTheFront),
             Err(SeatRefusal::LiftsOffItsFrame { leaves_its_pin }) => {
                 Ok(Trial::OffItsPin { leaves_its_pin })
+            }
+            Err(SeatRefusal::WippenPushedPastItsRange { at, heel_depth }) => {
+                Ok(Trial::WippenPastItsRange { at, heel_depth })
+            }
+            Err(SeatRefusal::WippenOutOfReach { at, heel_clearance }) => {
+                Ok(Trial::WippenOutOfReach { at, heel_clearance })
             }
             Err(refusal) => Err(Unsolvable::NoSeat(refusal)),
         }
@@ -545,6 +668,33 @@ impl Regulating<'_> {
     /// stands the key off its balance pin sends the search down either way:
     /// past the target for key height, the stops fighting for the dip. A
     /// target the search cannot bracket is refused, naming what keeps it out.
+    ///
+    /// A wippen the key carries can leave a trial without a reading, by its
+    /// direction: for key height, pushed past its range counts as past the
+    /// target, more paper only raising the capstan further under its heel,
+    /// and out of reach as short of it, more paper bringing the capstan up to
+    /// the heel; for the dip, pushed past its range at the bottom seat counts
+    /// as a dip deeper than the target, more front paper lowering the capstan
+    /// there, and at the top seat as stops that fight, its stops left as the
+    /// last trial named them. Such a trial moves its end of the bracket and
+    /// marks it classified, with no reading; a search whose end stays
+    /// classified asks for a stack only a classified trial reaches, and the
+    /// target is refused naming the wippen, short by the target less the
+    /// reading of the seated trial at the other end, or the whole target
+    /// where none seated. One classified at the end of the search it would
+    /// need, at the most paper the search lays for a target needing more, or
+    /// on the bare felt for one needing less, leaves no stack at all: the
+    /// target is refused at once, the whole of it short. A wippen out of
+    /// reach on the dip search, which the balance stack as laid rules out,
+    /// and a wippen part standing in a key part, which tells no direction,
+    /// end the regulation.
+    ///
+    /// On the dip search a key riding on its stops marks the high end with
+    /// no reading, as its stops fighting do: its two seats are one, so its
+    /// dip reads nothing that more front paper could bring to the target,
+    /// as with a key off its balance pin on either search. On the key height
+    /// search a riding key still reads its height, so it marks the low end
+    /// with it.
     fn bisect(
         &self,
         statics: &mut Statics,
@@ -576,19 +726,39 @@ impl Regulating<'_> {
                 shortfall_m: shortfall.abs(),
             }))
         };
+        let wippen = |trial: &Trial| -> Option<Counts> {
+            match (trial, rising) {
+                (Trial::WippenOutOfReach { .. }, true) => {
+                    Some(Counts::Short(Limit::WippenOutOfReach))
+                }
+                (Trial::WippenPastItsRange { .. }, true) => {
+                    Some(Counts::Past(Limit::WippenPastItsRange))
+                }
+                (
+                    Trial::WippenPastItsRange {
+                        at: WhichSeat::Bottom,
+                        ..
+                    },
+                    false,
+                ) => Some(Counts::Short(Limit::WippenPastItsRange)),
+                (
+                    Trial::WippenPastItsRange {
+                        at: WhichSeat::Top, ..
+                    },
+                    false,
+                ) => Some(Counts::Fights),
+                _ => None,
+            }
+        };
 
         // The bare felt: no paper at all.
-        let mut lo_seated = false;
-        let mut lo_reading = f64::NAN;
-        // For key height, the reading at the low end of the bracket, seated
-        // or riding; `None` where the stops fight there with no seat.
-        let mut lo_at: Option<f64> = None;
+        let mut low_end = End::UNREAD;
         let mut last_fight: Vec<ContactCode> = Vec::new();
         match trial(statics, report, 0.0)? {
             Trial::Seated { reading, held_by } => {
                 let by = past(reading);
                 if by == 0.0 {
-                    return Ok(Bisected::Asked(0.0));
+                    return Ok(Bisected::Asked(0.0, reading));
                 }
                 if by > 0.0 {
                     let limit = if rising {
@@ -598,9 +768,7 @@ impl Regulating<'_> {
                     };
                     return out(limit, by);
                 }
-                lo_seated = true;
-                lo_reading = reading;
-                lo_at = Some(reading);
+                low_end.seat(reading);
             }
             Trial::Fights(fighting) => {
                 if !rising {
@@ -614,7 +782,7 @@ impl Regulating<'_> {
                     return out(fight_limit(target, &held_by), wanted);
                 }
                 last_fight = held_by;
-                lo_at = Some(reading);
+                low_end.ride(reading);
             }
             Trial::NoStopBelowTheFront => return out(Limit::NoStopBelowTheFront, wanted),
             // Off its pin with no paper at all: no stack has it on its pin.
@@ -623,11 +791,21 @@ impl Regulating<'_> {
                     leaves_its_pin,
                 }));
             }
+            classified => match wippen(&classified) {
+                Some(Counts::Short(limit)) => low_end.classify(limit),
+                // Past the target with no paper at all, or no dip with the
+                // felt alone: no stack seats it.
+                Some(Counts::Past(limit)) => return out(limit, wanted),
+                Some(Counts::Fights) => return out(fight_limit(target, &last_fight), wanted),
+                None => return Err(Unsolvable::NoSeat(refused(&classified))),
+            },
         }
 
         // The most paper the search lays.
-        let mut hi_seated = true;
-        let mut hi_reading = f64::NAN;
+        let mut high_end = End {
+            seated: true,
+            ..End::UNREAD
+        };
         match trial(statics, report, STACK_SEARCH)? {
             Trial::Seated { reading, held_by } => {
                 let by = past(reading);
@@ -639,7 +817,7 @@ impl Regulating<'_> {
                     };
                     return out(limit, by);
                 }
-                hi_reading = reading;
+                high_end.seat(reading);
             }
             // Riding with the most paper the search lays, the key rides with
             // any less, at the height its stops set: a target under it is
@@ -661,68 +839,118 @@ impl Regulating<'_> {
                 if rising {
                     return Err(Unsolvable::NoSeat(SeatRefusal::CannotSeat { fighting }));
                 }
-                hi_seated = false;
+                high_end.fight();
                 last_fight = fighting;
             }
             Trial::NoStopBelowTheFront => return out(Limit::NoStopBelowTheFront, wanted),
             // Off its pin with the most paper the search lays: the search
             // goes on below it.
-            Trial::OffItsPin { .. } => hi_seated = false,
+            Trial::OffItsPin { .. } => high_end.fight(),
+            classified => match wippen(&classified) {
+                // Short of the target with the most paper the search lays:
+                // no stack seats it.
+                Some(Counts::Short(limit)) => return out(limit, wanted),
+                Some(Counts::Past(limit)) => high_end.classify(limit),
+                // The stops fight at the most paper, as a riding trial does:
+                // the search goes on below it, the stops left as named.
+                Some(Counts::Fights) => high_end.fight(),
+                None => return Err(Unsolvable::NoSeat(refused(&classified))),
+            },
         }
 
-        let (mut lo, mut hi) = (0.0, STACK_SEARCH);
+        let (mut low, mut high) = (0.0, STACK_SEARCH);
         for _ in 0..HALVINGS {
-            let mid = 0.5 * (lo + hi);
-            match trial(statics, report, mid)? {
+            let middle = 0.5 * (low + high);
+            match trial(statics, report, middle)? {
                 Trial::Seated { reading, .. } if past(reading) < 0.0 => {
-                    lo = mid;
-                    lo_seated = true;
-                    lo_reading = reading;
-                    lo_at = Some(reading);
+                    low = middle;
+                    low_end.seat(reading);
                 }
                 Trial::Seated { reading, .. } => {
-                    hi = mid;
-                    hi_seated = true;
-                    hi_reading = reading;
+                    high = middle;
+                    high_end.seat(reading);
                 }
                 Trial::Fights(fighting) => {
                     if rising {
-                        lo = mid;
-                        lo_seated = false;
-                        lo_at = None;
+                        low = middle;
+                        low_end.fight();
                     } else {
-                        hi = mid;
-                        hi_seated = false;
+                        high = middle;
+                        high_end.fight();
                     }
                     last_fight = fighting;
                 }
                 Trial::Rides { held_by, reading } => {
                     if rising {
-                        lo = mid;
-                        lo_seated = false;
-                        lo_at = Some(reading);
+                        low = middle;
+                        low_end.ride(reading);
                     } else {
-                        hi = mid;
-                        hi_seated = false;
+                        high = middle;
+                        high_end.fight();
                     }
                     last_fight = held_by;
                 }
                 Trial::NoStopBelowTheFront => return out(Limit::NoStopBelowTheFront, wanted),
                 Trial::OffItsPin { .. } => {
-                    hi = mid;
-                    hi_seated = false;
+                    high = middle;
+                    high_end.fight();
                 }
+                classified => match wippen(&classified) {
+                    Some(Counts::Short(limit)) => {
+                        low = middle;
+                        low_end.classify(limit);
+                    }
+                    Some(Counts::Past(limit)) => {
+                        high = middle;
+                        high_end.classify(limit);
+                    }
+                    Some(Counts::Fights) => {
+                        high = middle;
+                        high_end.fight();
+                    }
+                    None => return Err(Unsolvable::NoSeat(refused(&classified))),
+                },
             }
         }
 
+        // A classified end has no reading: the stack the search asks for is
+        // one only a classified trial reaches.
+        let (answer, other) = if rising {
+            (high_end, low_end)
+        } else {
+            (low_end, high_end)
+        };
+        if let Some(limit) = answer.classified {
+            return out(
+                limit,
+                if other.seated {
+                    past(other.reading)
+                } else {
+                    wanted
+                },
+            );
+        }
         if rising {
-            if !hi_seated {
+            if let Some(limit) = low_end.classified {
+                // Every seated trial stood past the target: it lies where
+                // only a classified stack reaches, short of the lowest key
+                // height the wippen leaves.
+                return out(
+                    limit,
+                    if high_end.seated {
+                        past(high_end.reading)
+                    } else {
+                        wanted
+                    },
+                );
+            }
+            if !high_end.seated {
                 // Past the target the key stands off its balance pin, so the
                 // target lies past the highest key height the pin lets the
                 // stack reach: the reading at the low end of the bracket,
                 // seated there or riding. A key riding past the target at
                 // every stack on its pin is kept out by its stops.
-                return match lo_at {
+                return match low_end.at {
                     Some(reading) if past(reading) < 0.0 => {
                         out(Limit::OffItsBalancePin, past(reading))
                     }
@@ -732,20 +960,115 @@ impl Regulating<'_> {
                     })),
                 };
             }
-            if !lo_seated {
+            if !low_end.seated {
                 // Every seated trial stood past the target: it lies below
                 // the lowest key height the stops leave.
-                return out(fight_limit(target, &last_fight), past(hi_reading));
+                return out(fight_limit(target, &last_fight), past(high_end.reading));
             }
-            Ok(Bisected::Asked(hi))
+            Ok(Bisected::Asked(high, high_end.reading))
         } else {
-            if !hi_seated {
+            if !high_end.seated {
                 // The target lies shallower than the shallowest dip the key
                 // has before the stops fight: the one short of it, seated.
-                return out(fight_limit(target, &last_fight), past(lo_reading));
+                return out(fight_limit(target, &last_fight), past(low_end.reading));
             }
-            Ok(Bisected::Asked(lo))
+            Ok(Bisected::Asked(low, low_end.reading))
         }
+    }
+}
+
+/// One end of a bisection's bracket, as the last trial that moved it left
+/// it, one setter for each way a trial marks it.
+#[derive(Clone, Copy)]
+struct End {
+    /// Whether a seated trial marked it.
+    seated: bool,
+    /// What the last seated trial there read.
+    reading: f64,
+    /// The limit a wippen's trial that marked it without a reading names.
+    classified: Option<Limit>,
+    /// The reading there, seated or riding; `None` where the stops fight
+    /// there with no seat. Read at the low end of the key height search.
+    at: Option<f64>,
+}
+
+impl End {
+    /// An end no trial has marked.
+    const UNREAD: Self = Self {
+        seated: false,
+        reading: f64::NAN,
+        classified: None,
+        at: None,
+    };
+
+    /// Marked by a seated trial reading `reading`.
+    fn seat(&mut self, reading: f64) {
+        self.seated = true;
+        self.reading = reading;
+        self.classified = None;
+        self.at = Some(reading);
+    }
+
+    /// Marked by a trial riding on its stops, reading `reading`.
+    fn ride(&mut self, reading: f64) {
+        self.seated = false;
+        self.classified = None;
+        self.at = Some(reading);
+    }
+
+    /// Marked by stops that fight, by a key off its pin, or by a wippen
+    /// counted as stops that fight: no reading.
+    fn fight(&mut self) {
+        self.seated = false;
+        self.classified = None;
+        self.at = None;
+    }
+
+    /// Marked by a wippen's trial without a reading, naming `limit`.
+    fn classify(&mut self, limit: Limit) {
+        self.seated = false;
+        self.classified = Some(limit);
+        self.at = None;
+    }
+}
+
+/// How a trial the wippen left without a reading counts in a search.
+#[derive(Clone, Copy)]
+enum Counts {
+    /// Short of the target, the stack too thin: the low end of the bracket.
+    Short(Limit),
+    /// Past the target, the stack too thick: the high end.
+    Past(Limit),
+    /// As stops that fight, on the dip search: the high end.
+    Fights,
+}
+
+/// The seat refusal a trial with no direction ends the regulation with.
+fn refused(trial: &Trial) -> SeatRefusal {
+    trial
+        .refusal()
+        .expect("a trial with neither a direction nor a reading is a refusal")
+}
+
+/// How far a target lies from what a stack as laid gives where that stack,
+/// laid from below within one paper of the answer, crosses a limit of the
+/// wippen's, meters: the distance from the target to the reading of `next`,
+/// the trial on the stack as laid with one more thinnest paper, the step the
+/// regulation promises to land within; where that trial's stops fight, or
+/// it stands the key off its pin, the distance to `asked`, the reading of
+/// the seated trial at the stack the search asked for, which lies within
+/// the bisection's resolution of it. Any other refusal of `next` ends the
+/// regulation. Only the seated arm is pinned by a test: on the test benches
+/// the trial one thinnest paper past a stack laid across a wippen limit
+/// seats, and a frame on which it fights, rides, stands the key off its pin
+/// or is refused within that one paper is not one the tests build.
+fn laid_shortfall(next: Trial, wanted: f64, asked: f64) -> Result<f64, Unsolvable> {
+    match next {
+        Trial::Seated { reading, .. } => Ok((wanted - reading).abs()),
+        Trial::Fights(_) | Trial::Rides { .. } | Trial::OffItsPin { .. } => {
+            Ok((wanted - asked).abs())
+        }
+        other => Err(Unsolvable::NoSeat(refused(&other))),
     }
 }
 
@@ -766,6 +1089,7 @@ mod tests {
         frame: FrameDesign,
         kind: KeyKind,
         protocol: TouchweightProtocol,
+        wippen: Option<(WippenAssembly, WippenAssemblyMass)>,
     }
 
     impl Bench {
@@ -775,6 +1099,7 @@ mod tests {
                 frame: crate::test_fixture::frame(),
                 kind: KeyKind::Natural,
                 protocol: crate::test_fixture::protocol(),
+                wippen: None,
             }
         }
 
@@ -785,6 +1110,7 @@ mod tests {
                 kind: self.kind,
                 mass: mass_of(&self.key),
                 protocol: &self.protocol,
+                wippen_assembly: self.wippen.as_ref().map(|(a, m)| (a, m)),
             }
         }
 
@@ -896,6 +1222,10 @@ mod tests {
             Ok(Trial::OffItsPin { leaves_its_pin }) => {
                 panic!("the key stands off its pin, which it leaves {leaves_its_pin} m up")
             }
+            Ok(Trial::WippenPastItsRange { at, .. }) => {
+                panic!("the wippen past its range at {at:?}")
+            }
+            Ok(Trial::WippenOutOfReach { at, .. }) => panic!("the wippen out of reach at {at:?}"),
             Err(e) => panic!("{e:?}"),
         }
     }
@@ -1227,7 +1557,7 @@ mod tests {
             key_dip: 0.008,
         };
         let mut sink = SolveReport::NOTHING;
-        let Ok(Bisected::Asked(balance)) = cut.regulating().bisect(
+        let Ok(Bisected::Asked(balance, _)) = cut.regulating().bisect(
             &mut Statics::new(),
             &mut sink,
             Searched::Balance,
@@ -1514,5 +1844,494 @@ mod tests {
         let (a, b) = (met(one), met(two));
         assert_eq!(a.0.balance.asked.to_bits(), b.0.balance.asked.to_bits());
         assert_eq!(a.1.key_dip.to_bits(), b.1.key_dip.to_bits());
+    }
+
+    impl Bench {
+        /// The bench carrying the test wippen, `adjusted` from the test
+        /// fixture's.
+        fn carrying(mut self, adjusted: impl FnOnce(&mut WippenAssembly)) -> Self {
+            let (mut wippen, mass) = crate::parts::fixtures::test_wippen();
+            adjusted(&mut wippen);
+            self.wippen = Some((wippen, mass));
+            self
+        }
+
+        /// The paper the search asks for `wanted` on `searched`, and what its
+        /// trial read; or the search's refusal.
+        #[expect(
+            clippy::result_large_err,
+            reason = "a test's outcome, compared whole where it is returned and carried no further"
+        )]
+        fn bisected(&self, searched: Searched, wanted: f64) -> Result<(f64, f64), TargetOutcome> {
+            let mut sink = SolveReport::NOTHING;
+            match self
+                .regulating()
+                .bisect(&mut Statics::new(), &mut sink, searched, wanted)
+            {
+                Ok(Bisected::Asked(paper, reading)) => Ok((paper, reading)),
+                Ok(Bisected::Out(outcome)) => Err(outcome),
+                Err(e) => panic!("{e:?}"),
+            }
+        }
+
+        /// What the trial on the balance stack `balance` reads for key
+        /// height, as the search reads it.
+        fn height(&self, balance: f64) -> f64 {
+            let mut sink = SolveReport::NOTHING;
+            reading(
+                self.regulating()
+                    .height_trial(&mut Statics::new(), &mut sink, balance),
+            )
+        }
+
+        /// What the trial on the stacks `balance` and `front` reads for the
+        /// dip, as the search reads it.
+        fn dip(&self, balance: f64, front: f64) -> f64 {
+            let mut sink = SolveReport::NOTHING;
+            reading(
+                self.regulating()
+                    .dip_trial(&mut Statics::new(), &mut sink, balance, front),
+            )
+        }
+    }
+
+    /// The balance stack the bench's targets lay, as laid: 0.7 mm.
+    fn bench_balance() -> f64 {
+        let (stacks, _) = met(Bench::standard().solve(TARGETS));
+        total(&stacks.balance.papers)
+    }
+
+    /// Consistency: **a regulation reaching the top of either search carries
+    /// the wippen**, its key held on its punching turning far through its
+    /// pieces. A key height that asks for nearly the whole 20 mm of balance
+    /// paper the search lays is laid; one past what the whole of it gives is
+    /// refused as the rail's, never for want of a seat. The same at the
+    /// deepest dip the front stack allows, on the bench's balance stack: a
+    /// dip just short of the bare felt's is laid, and one deeper is refused
+    /// as the felt's. Each search is read alone: at 20 mm of balance paper
+    /// the dip turns the wippen's body down into the key at the bottom
+    /// seat, which ends a whole regulation there by name.
+    #[test]
+    fn a_regulation_reaching_the_top_of_either_search_carries_the_wippen() {
+        let b = Bench::standard().carrying(|_| {});
+        let most = b.height(STACK_SEARCH);
+        let (paper, _) = b
+            .bisected(Searched::Balance, most - 0.0001)
+            .unwrap_or_else(|out| panic!("refused: {out:?}"));
+        assert!(paper > STACK_SEARCH - 0.0005, "{paper} m of paper");
+        match b.bisected(Searched::Balance, most + 0.0001) {
+            Err(TargetOutcome::Infeasible {
+                target: Target::KeyHeight,
+                limited_by: Limit::RailTooLow,
+                ..
+            }) => {}
+            other => panic!("{other:?}"),
+        }
+        let balance = bench_balance();
+        let deepest = b.dip(balance, 0.0);
+        let front = Searched::Front { balance };
+        let (paper, _) = b
+            .bisected(front, deepest - 0.0001)
+            .unwrap_or_else(|out| panic!("refused: {out:?}"));
+        assert!(paper > 0.0 && paper < 0.0005, "{paper} m of paper");
+        match b.bisected(front, deepest + 0.0001) {
+            Err(TargetOutcome::Infeasible {
+                target: Target::KeyDip,
+                limited_by: Limit::FeltThickerThanTheStack,
+                ..
+            }) => {}
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **the regulated key carrying its wippen meets its
+    /// targets on the papers it meets them alone**: the bench's regulation
+    /// lays the same papers with the test wippen as without, and reads key
+    /// height and dip within what the seats' convergence leaves in a
+    /// reading of each other.
+    #[test]
+    fn the_regulated_key_carrying_its_wippen_meets_its_targets_on_the_papers_it_meets_them_alone() {
+        let (alone, alone_read) = met(Bench::standard().solve(TARGETS));
+        let (with, with_read) = met(Bench::standard().carrying(|_| {}).solve(TARGETS));
+        assert_eq!(with.balance.papers, alone.balance.papers);
+        assert_eq!(with.front.papers, alone.front.papers);
+        assert!((with_read.key_height - alone_read.key_height).abs() <= SEAT_NOISE);
+        assert!((with_read.key_dip - alone_read.key_dip).abs() <= 2.0 * SEAT_NOISE);
+    }
+
+    /// Consistency: **a wippen out of reach at low stacks counts as short of
+    /// the target.** With its center pin 106 mm high, within the hard range,
+    /// the wippen is out of the key's reach on the balance stacks under
+    /// about 0.29 mm, the capstan short of its heel. The bench's key height,
+    /// first reached on 0.7 mm, is still laid; one that only a stack leaving
+    /// the wippen out of reach would give is refused, naming the wippen,
+    /// short by no more than what the target lies under a stack that reaches
+    /// it, 0.3 mm, reads.
+    #[test]
+    fn a_wippen_out_of_reach_at_low_stacks_counts_as_short_of_the_target() {
+        let b = Bench::standard().carrying(|w| w.center.y = 0.106);
+        let mut sink = SolveReport::NOTHING;
+        let r = b.regulating();
+        assert!(matches!(
+            r.height_trial(&mut Statics::new(), &mut sink, 0.0),
+            Ok(Trial::WippenOutOfReach {
+                at: WhichSeat::Top,
+                ..
+            })
+        ));
+        let (stacks, _) = met(b.solve(TARGETS));
+        assert_eq!(
+            stacks.balance.papers,
+            met(Bench::standard().solve(TARGETS)).0.balance.papers
+        );
+        let low = Targets {
+            key_height: 0.0638,
+            ..TARGETS
+        };
+        match b.solve(low) {
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyHeight,
+                limited_by: Limit::WippenOutOfReach,
+                shortfall_m,
+            }) => assert!(
+                shortfall_m > 0.0 && shortfall_m <= b.height(0.0003) - low.key_height,
+                "short by {shortfall_m} m"
+            ),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **a wippen pushed past its range counts as past the
+    /// target**, the mirror at high stacks. On a capstan 30 mm tall, within
+    /// the hard range, balance stacks over about 17 mm push the wippen past
+    /// its range at the top seat, the capstan raised under its heel. A key
+    /// height first reached on 12 mm is laid; one that only a stack pushing
+    /// the wippen past its range would give is refused, naming the wippen,
+    /// short by no more than the target less what a stack of 17 mm, the
+    /// wippen in its range, reads.
+    #[test]
+    fn a_wippen_pushed_past_its_range_counts_as_past_the_target() {
+        let mut b = Bench::standard().carrying(|_| {});
+        b.key.capstan_screw.height = 0.030;
+        let mut sink = SolveReport::NOTHING;
+        assert!(matches!(
+            b.regulating()
+                .height_trial(&mut Statics::new(), &mut sink, STACK_SEARCH),
+            Ok(Trial::WippenPastItsRange {
+                at: WhichSeat::Top,
+                ..
+            })
+        ));
+        let middle = b.height(0.012);
+        let (paper, _) = b
+            .bisected(Searched::Balance, middle)
+            .unwrap_or_else(|out| panic!("refused: {out:?}"));
+        assert!((paper - 0.012).abs() < 1e-6, "{paper} m of paper");
+        let high = Targets {
+            key_height: 0.1020,
+            ..TARGETS
+        };
+        match b.solve(high) {
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyHeight,
+                limited_by: Limit::WippenPastItsRange,
+                shortfall_m,
+            }) => assert!(
+                shortfall_m > 0.0 && shortfall_m <= high.key_height - b.height(0.017),
+                "short by {shortfall_m} m"
+            ),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **a wippen part standing in a key part refuses the
+    /// regulation, naming it**, with both parts and how deep, on either
+    /// search: the overlap tells no direction. On the height search, with
+    /// the center pin set 60 mm high, the wippen's body stands in the back
+    /// check block at the balance stacks the search tries. On the dip
+    /// search, for a key height of 80 mm, some 7.6 mm of balance paper: the
+    /// wippen's body behind its center pin clears the key at the top seat,
+    /// and at the bottom seat, the capstan risen with the dip and the wippen
+    /// turned up, it comes down into the back check block.
+    #[test]
+    fn a_wippen_part_in_a_key_part_refuses_the_regulation_naming_it() {
+        let low = Bench::standard().carrying(|w| w.center.y = 0.060);
+        match low.solve(TARGETS) {
+            Err(Unsolvable::NoSeat(SeatRefusal::WippenInTheKey {
+                part: crate::contact::PartCode::Wippen,
+                key_part: crate::contact::PartCode::BackCheckBlock,
+                depth,
+            })) => assert!(depth > crate::measure::seat::SEAT_OVERLAP, "{depth} m"),
+            other => panic!("{other:?}"),
+        }
+        let b = Bench::standard().carrying(|_| {});
+        let tall = Targets {
+            key_height: 0.080,
+            ..TARGETS
+        };
+        let (balance, _) = b
+            .bisected(Searched::Balance, tall.key_height)
+            .unwrap_or_else(|out| panic!("refused: {out:?}"));
+        let laid = total(&b.frame.drawer.papers_for(balance));
+        let r = b.regulating();
+        let k = r.mount(&r.trial_frame(laid, 0.0)).expect("the key mounts");
+        let top = r
+            .seating(&k)
+            .top(&mut Statics::new())
+            .expect("the top seat clears the key");
+        assert_eq!(
+            crate::parts::mounts::wippen_part_in_the_key(&k.mounted, &top.q),
+            None
+        );
+        match b.solve(tall) {
+            Err(Unsolvable::NoSeat(SeatRefusal::WippenInTheKey {
+                part: crate::contact::PartCode::Wippen,
+                key_part: crate::contact::PartCode::BackCheckBlock,
+                depth,
+            })) => assert!(depth > crate::measure::seat::SEAT_OVERLAP, "{depth} m"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **a wippen pushed past its range at the bottom seat
+    /// counts as a dip deeper than the target.** On a capstan 34.5 mm tall,
+    /// within the hard range, front stacks under about 0.86 mm let the
+    /// key's back rise far enough at the bottom seat to push the wippen past
+    /// its range. A dip of 9.5 mm, first reached on a thicker stack, is laid
+    /// within one paper; one of 10.5 mm, which only such a stack would give,
+    /// is refused naming the wippen, short by more than nothing and no more
+    /// than the target less the dip a stack of 0.9 mm, the wippen in its
+    /// range, reads.
+    #[test]
+    fn a_wippen_pushed_past_its_range_at_the_bottom_seat_counts_as_a_dip_deeper_than_the_target() {
+        let mut b = Bench::standard().carrying(|_| {});
+        b.key.capstan_screw.height = 0.0345;
+        let balance = bench_balance();
+        let mut sink = SolveReport::NOTHING;
+        assert!(matches!(
+            b.regulating()
+                .dip_trial(&mut Statics::new(), &mut sink, balance, 0.0),
+            Ok(Trial::WippenPastItsRange {
+                at: WhichSeat::Bottom,
+                ..
+            })
+        ));
+        let shallower = Targets {
+            key_dip: 0.0095,
+            ..TARGETS
+        };
+        let (stacks, achieved) = met(b.solve(shallower));
+        assert!(achieved.key_dip >= shallower.key_dip - 1e-12);
+        let laid = total(&stacks.front.papers);
+        assert!(
+            b.dip(balance, laid + ONE_PAPER) < shallower.key_dip,
+            "within one paper"
+        );
+        let deeper = Targets {
+            key_dip: 0.0105,
+            ..TARGETS
+        };
+        match b.solve(deeper) {
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyDip,
+                limited_by: Limit::WippenPastItsRange,
+                shortfall_m,
+            }) => assert!(
+                shortfall_m > 0.0 && shortfall_m <= deeper.key_dip - b.dip(balance, 0.0009),
+                "short by {shortfall_m} m"
+            ),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **a wippen pushed past its range where the key rides
+    /// counts as its stops fighting.** The front rail raised 5 mm and the
+    /// capstan 36 mm tall, within their hard ranges: on the bench's balance
+    /// stack the key seats under 5 mm of front paper, rides on its front
+    /// punching and its cloth from there, and from 15 mm the riding key,
+    /// turned up on its cloth, pushes the wippen past its range at the top
+    /// seat. A dip reached below the fight is laid within one paper, never
+    /// refused; one shallower than any below the fight is refused by the
+    /// stops the riding trials named, the felt's, never naming the wippen,
+    /// though the most paper the search lays pushes the wippen past its
+    /// range. The dips below the fight shrink to nothing as the front
+    /// punching comes up to meet the key at rest, so the target shallower
+    /// than all of them is the key's front raised a tenth of a millimeter at
+    /// the bottom of its stroke.
+    #[test]
+    fn a_wippen_pushed_past_its_range_where_the_key_rides_counts_as_its_stops_fighting() {
+        let mut b = Bench::standard().carrying(|_| {});
+        b.frame.front_rail_height += 0.005;
+        b.key.capstan_screw.height = 0.036;
+        let balance = bench_balance();
+        let mut sink = SolveReport::NOTHING;
+        assert!(matches!(
+            b.regulating()
+                .dip_trial(&mut Statics::new(), &mut sink, balance, STACK_SEARCH),
+            Ok(Trial::WippenPastItsRange {
+                at: WhichSeat::Top,
+                ..
+            })
+        ));
+        assert!(matches!(
+            b.regulating()
+                .dip_trial(&mut Statics::new(), &mut sink, balance, 0.010),
+            Ok(Trial::Rides { .. })
+        ));
+        let reached = Targets {
+            key_dip: 0.0030,
+            ..TARGETS
+        };
+        let (stacks, achieved) = met(b.solve(reached));
+        assert!(achieved.key_dip >= reached.key_dip - 1e-12);
+        assert!(b.dip(balance, total(&stacks.front.papers) + ONE_PAPER) < reached.key_dip);
+        let shallow = Targets {
+            key_dip: -0.0001,
+            ..TARGETS
+        };
+        match b.solve(shallow) {
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyDip,
+                limited_by,
+                ..
+            }) => assert_eq!(
+                limited_by,
+                fight_limit(
+                    Target::KeyDip,
+                    &[ContactCode::FrontRailPunching, ContactCode::BackRailCloth]
+                )
+            ),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Consistency: **a stack laid across a wippen's limit refuses its
+    /// target, naming the wippen**, each target within one paper of its
+    /// limit. With the center pin 106 mm high, a key height of 64.10 mm asks
+    /// for some 0.30 mm of balance paper, where the wippen reaches the key,
+    /// and the drawer lays 0.28 mm from below, where it does not: the key
+    /// height is refused as key height, before any dip is searched. On a
+    /// capstan 34.5 mm tall, a dip of 10.225 mm asks for some 0.868 mm of
+    /// front paper and the drawer lays 0.86 mm, which pushes the wippen
+    /// past its range at the bottom seat: the dip is refused as the dip,
+    /// never for want of a seat. Each is short, to the bit, by the distance from the
+    /// target to what the stack as laid reads with one more thinnest paper.
+    #[test]
+    fn a_stack_laid_across_a_wippen_limit_refuses_its_target_naming_the_wippen() {
+        let high = Bench::standard().carrying(|w| w.center.y = 0.106);
+        let near = Targets {
+            key_height: 0.06410,
+            ..TARGETS
+        };
+        let (asked, _) = high
+            .bisected(Searched::Balance, near.key_height)
+            .unwrap_or_else(|out| panic!("refused: {out:?}"));
+        let laid = total(&high.frame.drawer.papers_for(asked));
+        let mut sink = SolveReport::NOTHING;
+        assert!(matches!(
+            high.regulating()
+                .height_trial(&mut Statics::new(), &mut sink, laid),
+            Ok(Trial::WippenOutOfReach { .. })
+        ));
+        let next = high.height(laid + high.frame.drawer.thinnest());
+        assert_eq!(
+            high.solve(near),
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyHeight,
+                limited_by: Limit::WippenOutOfReach,
+                shortfall_m: (near.key_height - next).abs(),
+            })
+        );
+
+        let mut tall = Bench::standard().carrying(|_| {});
+        tall.key.capstan_screw.height = 0.0345;
+        let balance = bench_balance();
+        let deep = Targets {
+            key_dip: 0.010225,
+            ..TARGETS
+        };
+        let (asked, _) = tall
+            .bisected(Searched::Front { balance }, deep.key_dip)
+            .unwrap_or_else(|out| panic!("refused: {out:?}"));
+        let laid = total(&tall.frame.drawer.papers_for(asked));
+        assert!(matches!(
+            tall.regulating()
+                .dip_trial(&mut Statics::new(), &mut sink, balance, laid),
+            Ok(Trial::WippenPastItsRange {
+                at: WhichSeat::Bottom,
+                ..
+            })
+        ));
+        let next = tall.dip(balance, laid + tall.frame.drawer.thinnest());
+        assert_eq!(
+            tall.solve(deep),
+            Ok(TargetOutcome::Infeasible {
+                target: Target::KeyDip,
+                limited_by: Limit::WippenPastItsRange,
+                shortfall_m: (deep.key_dip - next).abs(),
+            })
+        );
+    }
+
+    /// Consistency: **a dip search whose bare felt pushes the wippen past
+    /// its range at the top seat refuses the whole dip as stops that
+    /// fight**: on a capstan 30 mm tall under the most balance paper the
+    /// search lays, where the top seat pushes the wippen past its range
+    /// whatever the front stack, no front stack seats the key.
+    #[test]
+    fn a_dip_search_whose_bare_felt_pushes_the_wippen_past_its_range_refuses_the_whole_dip() {
+        let mut b = Bench::standard().carrying(|_| {});
+        b.key.capstan_screw.height = 0.030;
+        let wanted = TARGETS.key_dip;
+        let mut sink = SolveReport::NOTHING;
+        assert!(matches!(
+            b.regulating()
+                .dip_trial(&mut Statics::new(), &mut sink, STACK_SEARCH, 0.0),
+            Ok(Trial::WippenPastItsRange {
+                at: WhichSeat::Top,
+                ..
+            })
+        ));
+        assert_eq!(
+            b.bisected(
+                Searched::Front {
+                    balance: STACK_SEARCH
+                },
+                wanted
+            ),
+            Err(TargetOutcome::Infeasible {
+                target: Target::KeyDip,
+                limited_by: Limit::StopsFight,
+                shortfall_m: wanted,
+            })
+        );
+    }
+
+    /// Consistency: **a key height search whose most paper leaves the
+    /// wippen out of reach refuses the whole target, naming the wippen**:
+    /// a center pin set 200 mm above the keybed, which no capstan raised by
+    /// the search's 20 mm of balance paper reaches.
+    #[test]
+    fn a_key_height_search_whose_most_paper_leaves_the_wippen_out_of_reach_refuses_the_whole_target(
+    ) {
+        let b = Bench::standard().carrying(|w| w.center.y = 0.200);
+        let wanted = TARGETS.key_height;
+        let mut sink = SolveReport::NOTHING;
+        assert!(matches!(
+            b.regulating()
+                .height_trial(&mut Statics::new(), &mut sink, STACK_SEARCH),
+            Ok(Trial::WippenOutOfReach {
+                at: WhichSeat::Top,
+                ..
+            })
+        ));
+        assert_eq!(
+            b.bisected(Searched::Balance, wanted),
+            Err(TargetOutcome::Infeasible {
+                target: Target::KeyHeight,
+                limited_by: Limit::WippenOutOfReach,
+                shortfall_m: wanted,
+            })
+        );
     }
 }

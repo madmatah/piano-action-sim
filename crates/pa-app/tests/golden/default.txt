@@ -1,5 +1,5 @@
 # golden sheet: default
-# the standard bench: Hirschkorn's key, Boston GP-178 note 52, on his printed frame with real felts, as it arrives
+# the standard bench: Hirschkorn's key, Boston GP-178 note 52, carrying his wippen assembly, on his printed frame with real felts, as it arrives
 # Every reading in full bits: the shortest decimal that reads back to the
 # same double, then its bit pattern. Written by `cargo run -p pa-cli -- golden`;
 # a change that moves a reading rewrites this file and says why.
@@ -7,49 +7,53 @@ sheet.front_weight.value 27.276436273643277 0x403b46c48712b9da
 sheet.front_weight.shown 27.3 0x403b4ccccccccccd
 sheet.front_weight.unit g
 sheet.front_weight.trust indicative geometry
-sheet.front_weight.fingerprint statics/3
+sheet.front_weight.fingerprint statics/4
 sheet.key_weight_ratio.value 0.5197100936892347 0x3fe0a1770ff97bc6
 sheet.key_weight_ratio.shown 0.52 0x3fe0a3d70a3d70a4
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
-sheet.key_weight_ratio.fingerprint statics/3
-sheet.key_height.value 0.06165915375694688 0x3faf91c9e1c52ec3
-sheet.key_height.shown 0.06165915375694688 0x3faf91c9e1c52ec3
+sheet.key_weight_ratio.fingerprint statics/4
+sheet.key_height.value 0.06165915375694637 0x3faf91c9e1c52e79
+sheet.key_height.shown 0.06165915375694637 0x3faf91c9e1c52e79
 sheet.key_height.unit m
 sheet.key_height.trust indicative geometry
-sheet.key_height.fingerprint statics/3
-sheet.key_dip.value 0.00971701909272827 0x3f83e68439be3584
-sheet.key_dip.shown 0.00971701909272827 0x3f83e68439be3584
+sheet.key_height.fingerprint statics/4
+sheet.key_height.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
+sheet.key_dip.value 0.009717019092727756 0x3f83e68439be345c
+sheet.key_dip.shown 0.009717019092727756 0x3f83e68439be345c
 sheet.key_dip.unit m
 sheet.key_dip.trust indicative geometry
-sheet.key_dip.fingerprint statics/3
-sheet.down_weight.value -21.608544573142726 0xc0359bc993bfce69
-sheet.down_weight.shown -21.0 0xc035000000000000
+sheet.key_dip.fingerprint statics/4
+sheet.key_dip.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
+sheet.down_weight.value -12.367577154735347 0xc028bc3312a4b0aa
+sheet.down_weight.shown -12.0 0xc028000000000000
 sheet.down_weight.unit g
 sheet.down_weight.trust indicative geometry
-sheet.down_weight.fingerprint statics/3
-sheet.down_weight.walk.from_g -27.12675593788882 0xc03b207313bfce69
-sheet.up_weight.value -32.83187133365619 0xc0406a7ac2864441
-sheet.up_weight.shown -33.0 0xc040800000000000
+sheet.down_weight.fingerprint statics/4
+sheet.down_weight.walk.from_g -18.23434503803613 0xc0323bfe09525855
+sheet.down_weight.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
+sheet.up_weight.value -24.696688213781645 0xc038b25a28a5b369
+sheet.up_weight.shown -25.0 0xc039000000000000
 sheet.up_weight.unit g
 sheet.up_weight.trust indicative geometry
-sheet.up_weight.fingerprint statics/3
-sheet.up_weight.walk.from_g -27.34146148258197 0xc03b576a050c8882
-sheet.balance_weight.value -27.22020795339946 0xc03b385f8c662b76
-sheet.balance_weight.shown -27.0 0xc03b000000000000
+sheet.up_weight.fingerprint statics/4
+sheet.up_weight.walk.from_g -18.869410076574614 0xc032de91a8a5b369
+sheet.up_weight.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
+sheet.balance_weight.value -18.532132684258496 0xc0328839d8fc05df
+sheet.balance_weight.shown -18.5 0xc032800000000000
 sheet.balance_weight.unit g
 sheet.balance_weight.trust indicative geometry
-sheet.balance_weight.fingerprint statics/3
-sheet.friction_weight.value 5.611663380256731 0x40167257e2997432
-sheet.friction_weight.shown 6.0 0x4018000000000000
+sheet.balance_weight.fingerprint statics/4
+sheet.friction_weight.value 6.164555529523149 0x4018a8813ea6b628
+sheet.friction_weight.shown 6.5 0x401a000000000000
 sheet.friction_weight.unit g
 sheet.friction_weight.trust indicative geometry
-sheet.friction_weight.fingerprint statics/3
+sheet.friction_weight.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_jig.value 5.944997388768931 0x4017c7ad653e4596
 sheet.key_friction_weight_zeroed_on_the_jig.shown 6.0 0x4018000000000000
 sheet.key_friction_weight_zeroed_on_the_jig.unit g
 sheet.key_friction_weight_zeroed_on_the_jig.trust indicative geometry
-sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/3
+sheet.key_friction_weight_zeroed_on_the_jig.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_jig.walk.from_g 0.4267860240228367 0x3fdb507653e4595c
 sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.mass_g 61.72111999999963 0x404edc4da9003eb6
 sheet.key_friction_weight_zeroed_on_the_jig.temporary_weight.station_x -0.1 0xbfb999999999999a
@@ -58,20 +62,20 @@ sheet.key_friction_weight_zeroed_on_the_frame.value 5.5182113647461 0x401612a600
 sheet.key_friction_weight_zeroed_on_the_frame.shown 6.0 0x4018000000000000
 sheet.key_friction_weight_zeroed_on_the_frame.unit g
 sheet.key_friction_weight_zeroed_on_the_frame.trust indicative geometry
-sheet.key_friction_weight_zeroed_on_the_frame.fingerprint statics/3
+sheet.key_friction_weight_zeroed_on_the_frame.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 6.277091233040912e-15 0x3cfc44fe53fb3255
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 60.765100935755584 0x404e61eed3d49ac8
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x -0.1 0xbfb999999999999a
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_y 0.02402 0x3f9898b2e9ccb7d4
 readout.key_mass_g 120.08000000000001 0x405e051eb851eb86
-readout.gap_front_mm 4.723055713889979e-15 0x3cf5455000000000
+readout.gap_front_mm 1.212951180468158e-15 0x3cd5d9c000000000
 readout.gap_back_mm 8.318590922694728 0x4020a31e59738d7a
 readout.key_friction_weight_g 5.497851245505889 0x4015fdccb786e1f5
-readout.key_height_target_mm 61.65915375694688 0x404ed45f267a8faa
+readout.key_height_target_mm 61.65915375694637 0x404ed45f267a8f62
 readout.key_dip_target_mm 10.0 0x4024000000000000
 readout.finger RestingOn FrontRailPunching
-readout.out_of_level_deg 0.7122036693791911 0x3fe6ca5f598264f2
-readout.bedding_at_the_back.slope -0.012546657818932671 0xbf89b20fe80d2526
+readout.out_of_level_deg 0.712203669379191 0x3fe6ca5f598264f1
+readout.bedding_at_the_back.slope -0.012546657818934827 0xbf89b20fe80d2a01
 readout.bears_at_the_back_mm 203.69372716480163 0x40697633034fa56f
 readout.back_bearing StopEdge
 readout.stopped_by_the_mortise false
@@ -84,22 +88,26 @@ papers.front 3
 papers.front.0 0.0004 0x3f3a36e2eb1c432d
 papers.front.1 0.0004 0x3f3a36e2eb1c432d
 papers.front.2 8e-5 0x3f14f8b588e368f1
-pose.sin_angle 0.012429978872176685 0x3f8974e385f7bf07
+pose.sin_angle 0.012429978872176693 0x3f8974e385f7bf0c
 pose.measuring_point.x 0.22658694114834274 0x3fcd00cd06f76647
-pose.measuring_point.y 0.05208532802082609 0x3faaaaed98e6d9ce
-band.down_weight_on_the_band.value -21.609895228250277 0xc0359c2217fb5247
-band.down_weight_on_the_band.shown -21.0 0xc035000000000000
+pose.measuring_point.y 0.052085328020826084 0x3faaaaed98e6d9cd
+pose.wippen.angle 0.10498920757732377 0x3fbae0929cfa4170
+pose.wippen.carried_by CapstanOnTheHeel:WippenHeelCloth
+band.down_weight_on_the_band.value -12.370932034974018 0xc028bdeacdbe8118
+band.down_weight_on_the_band.shown -12.0 0xc028000000000000
 band.down_weight_on_the_band.unit g
 band.down_weight_on_the_band.trust indicative geometry
-band.down_weight_on_the_band.fingerprint statics/3
+band.down_weight_on_the_band.fingerprint statics/4
 band.down_weight_on_the_band.sweep.samples 184
-band.down_weight_on_the_band.sweep.window 0.009245872355827668 0x3f82ef7ffb215254
+band.down_weight_on_the_band.sweep.window 0.009245872355827182 0x3f82ef7ffb21513c
 band.down_weight_on_the_band.sweep.at 5.000000000000143e-5 0x3f0a36e2eb1c4400
-band.up_weight_on_the_band.value -32.83092184911217 0xc0406a5ba5abbbfc
-band.up_weight_on_the_band.shown -33.0 0xc040800000000000
+band.down_weight_on_the_band.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth
+band.up_weight_on_the_band.value -24.69341137782446 0xc038b18368766e2c
+band.up_weight_on_the_band.shown -25.0 0xc039000000000000
 band.up_weight_on_the_band.unit g
 band.up_weight_on_the_band.trust indicative geometry
-band.up_weight_on_the_band.fingerprint statics/3
+band.up_weight_on_the_band.fingerprint statics/4
 band.up_weight_on_the_band.sweep.samples 184
-band.up_weight_on_the_band.sweep.window 0.009245872355827668 0x3f82ef7ffb215254
+band.up_weight_on_the_band.sweep.window 0.009245872355827182 0x3f82ef7ffb21513c
 band.up_weight_on_the_band.sweep.at 0.0092 0x3f82d77318fc5048
+band.up_weight_on_the_band.wippen_carried_by CapstanOnTheHeel:WippenHeelCloth

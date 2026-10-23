@@ -25,6 +25,17 @@ pub enum ContactCode {
     /// straddling the slot's edge, and one standing off the middle of its
     /// slot meets a wall as the key turns and the slot moves along it.
     FrontPinOnTheWood,
+    /// The capstan's head, its top, its rim and its sides, against the
+    /// heel's outline below the wippen's body, cloth and wood: where the key
+    /// lifts the wippen, on the heel cloth as the trade wants it, or on the
+    /// heel's wood where the capstan stands under the heel but off its
+    /// cloth. A link between two moving bodies, not a stop of the key.
+    CapstanOnTheHeel,
+    /// The key's top, the keystick's and the back check block's, against
+    /// the same outline of the heel: where the heel comes down on the key
+    /// where the capstan stands out from under the heel. A link, as the
+    /// capstan's is.
+    HeelOnTheKey,
 }
 
 impl ContactCode {
@@ -36,7 +47,16 @@ impl ContactCode {
             Self::BackRailCloth => "back_rail_cloth",
             Self::FrontPinInTheMortise => "front_pin_in_the_mortise",
             Self::FrontPinOnTheWood => "front_pin_on_the_wood",
+            Self::CapstanOnTheHeel => "capstan_on_the_heel",
+            Self::HeelOnTheKey => "heel_on_the_key",
         }
+    }
+
+    /// Whether it links the key to the wippen it carries, rather than
+    /// stopping the key on its frame: a link is no stop, and what holds the
+    /// key, where its stroke ends and which stops fight never name one.
+    pub fn is_link(self) -> bool {
+        matches!(self, Self::CapstanOnTheHeel | Self::HeelOnTheKey)
     }
 }
 

@@ -8,7 +8,11 @@ import type { Stack } from "./Stack";
  * the instrument has not: the validation layer's problems, in the trade's
  * units with the unit in each name, and the edit's own.
  */
-export type Problem = { "code": "not_finite", 
+export type Problem = { "code": "no_wippen_assembly", 
+/**
+ * The path.
+ */
+path: string, } | { "code": "not_finite", 
 /**
  * The path it was set at, or the action's argument it was typed
  * as; the domain's name of a dimension no path sets.
@@ -155,7 +159,27 @@ from_lip_mm: number,
 /**
  * How far the covering runs back from its lip, millimeters.
  */
-covering_mm: number, } | { "code": "unknown_path", 
+covering_mm: number, } | { "code": "part_mass_not_positive", 
+/**
+ * The part.
+ */
+part: Part, 
+/**
+ * Its mass, grams.
+ */
+mass_g: number, } | { "code": "no_thickness", 
+/**
+ * The lining.
+ */
+part: Part, } | { "code": "no_radius", 
+/**
+ * The part drawn on it.
+ */
+part: Part, } | { "code": "part_outline_crosses_itself", 
+/**
+ * The part.
+ */
+part: Part, } | { "code": "unknown_path", 
 /**
  * The path asked for.
  */

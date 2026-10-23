@@ -68,6 +68,16 @@ export function fixed(x: number, digits: number): string {
 }
 
 /**
+ * Whether `distance`, more than nothing, rounds to nothing at `resolution`: a
+ * distance the engine reads as more than nothing that the page would show as
+ * 0, which a catalog words as less than its resolution instead. The value is
+ * rounded as `fixed` shows it; no number is computed.
+ */
+export function isTooSmallToShow(distance: number, resolution: number): boolean {
+  return distance > 0 && Number(fixed(distance, decimals(resolution))) === 0
+}
+
+/**
  * A number as a field holding it is seeded: to `resolution`, without the
  * zeros a typed number would not have, so 10.200000000000001 mm of dip is
  * typed as 10.2.

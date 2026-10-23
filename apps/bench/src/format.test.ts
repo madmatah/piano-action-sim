@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decimals, fixed, typed } from './format'
+import { decimals, fixed, isTooSmallToShow, typed } from './format'
 import { pieces } from './Rich'
 
 describe('decimals', () => {
@@ -12,6 +12,16 @@ describe('fixed', () => {
   it('never writes -0', () => {
     expect(fixed(-1e-18, 2)).toBe('0.00')
     expect(fixed(-0.25, 1)).toBe('-0.3')
+  })
+})
+
+describe('isTooSmallToShow', () => {
+  it('tells a distance more than nothing that rounds to nothing from one that rounds to its resolution', () => {
+    expect(isTooSmallToShow(0.02, 0.1)).toBe(true)
+    expect(isTooSmallToShow(0.06, 0.1)).toBe(false)
+  })
+  it('never calls nothing too small to show', () => {
+    expect(isTooSmallToShow(0, 0.1)).toBe(false)
   })
 })
 

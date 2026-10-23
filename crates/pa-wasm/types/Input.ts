@@ -4,4 +4,4 @@
  * An input a procedure reads, whose source decides whether a reading is a
  * measurement or an indication.
  */
-export type Input = "key_mass" | "center_of_mass_height" | "key_friction" | "geometry";
+export type Input = "key_mass" | "center_of_mass_height" | "key_friction" | "geometry" | "wippen_assembly_mass" | "wippen_friction";

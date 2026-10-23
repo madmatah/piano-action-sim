@@ -40,6 +40,17 @@
 //! slides a weight he has; the bench sizes a weight where it stands, the same
 //! cancellation.
 //!
+//! # The wippen the key carries
+//!
+//! A key carrying a wippen is seated, walked and swept with it: key height
+//! and dip, D, U, BW, F and the band read the key as the bench has its
+//! action, each reading saying where the wippen rests at its seat. Both key
+//! friction weights read the key alone, the same key on the same frame
+//! without its wippen ([`Mounted::key_alone`]): they weigh the key's
+//! bushings, which the trade reads with the action off the key, and they
+//! read the same bits with the wippen and without. Front weight and the key
+//! weight ratio are the jig's, where the key stands alone.
+//!
 //! # A key friction weight typed
 //!
 //! The trade measures a key's bushings as Stanwood's key friction weight, and
@@ -59,12 +70,13 @@ use super::measurement::{
     Bases, Conditions, Measurement, Mount, Preparation, ProcedureId, Rounding, Swept,
     TemporaryWeight, Trust, Unit, Walked, Zeroed,
 };
-use super::seat::{SeatRefusal, Seating, Seats, SEAT_MARGIN};
+use super::seat::{Seat, SeatRefusal, Seating, Seats, SEAT_MARGIN};
 use super::sweep::{Band, Sample, SweepRefusal};
 use super::walk::{Breakaway, Stroke, WalkRefusal, HALVINGS, ROUNDING_TOLERANCE_G, STEP_G};
 use crate::geometry::Point;
 use crate::mechanism::{AxisFriction, MaterialPoint, PointLoad, Problem};
-use crate::parts::mounts::OnItsFrame;
+use crate::parts::mounts::{Mounted, OnItsFrame};
+use crate::parts::verdicts::wippen_carried_by;
 use crate::solve::{SolveReport, Statics, SOLVER_FINGERPRINT};
 use crate::G;
 
@@ -234,9 +246,27 @@ pub struct Weighing<'a> {
 impl Weighing<'_> {
     /// Every reading, by its procedure, in the sheet's order. The key is
     /// seated once for key height, dip, D and U; each key friction weight
-    /// seats it again with its temporary weight on.
+    /// seats it again with its temporary weight on, the key alone where it
+    /// carries a wippen, whose own top seat the one zeroed on the frame is
+    /// zeroed at: the one its seats started from, seated again only where
+    /// they did not seat it there.
     pub fn sheet(&self, statics: &mut Statics) -> Sheet {
-        let seats = self.seating(&[]).seats(statics).map_err(Refused::Seat);
+        let alone = self
+            .on_frame
+            .mounted
+            .key_alone
+            .as_ref()
+            .map(|_| self.alone(&[]).seats(statics));
+        let seats = match &alone {
+            Some(alone) => self.seating(&[]).seats_from_the_key_alones(statics, alone),
+            None => self.seating(&[]).seats(statics),
+        }
+        .map_err(Refused::Seat);
+        let alone_top = match alone {
+            Some(Ok(alone)) => Ok(alone.top),
+            Some(Err(_)) => self.alone(&[]).top(statics).map_err(Refused::Seat),
+            None => seats.as_ref().map(|s| s.top.clone()).map_err(Clone::clone),
+        };
         let (height, dip) = self.height_and_dip(&seats);
         let [down, up, balance, friction] = self.weights(statics, &seats);
         let results = [
@@ -254,7 +284,7 @@ impl Weighing<'_> {
             ),
             (
                 ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
-                self.key_friction_weight_zeroed_on_the_frame(statics, &seats),
+                self.key_friction_weight_zeroed_on_the_frame(statics, &alone_top),
             ),
         ];
         Sheet {
@@ -267,8 +297,21 @@ impl Weighing<'_> {
 
     /// The seated-pose procedure on this key, `standing` on it throughout.
     pub fn seating<'b>(&'b self, standing: &'b [PointLoad]) -> Seating<'b> {
+        self.seating_on(&self.on_frame.mounted, standing)
+    }
+
+    /// The seated-pose procedure on the key alone, without the wippen it
+    /// carries ([`Mounted::key_alone`]), `standing` on it throughout; on the
+    /// key itself where it carries none.
+    pub fn alone<'b>(&'b self, standing: &'b [PointLoad]) -> Seating<'b> {
+        let mounted = &self.on_frame.mounted;
+        self.seating_on(mounted.key_alone.as_deref().unwrap_or(mounted), standing)
+    }
+
+    /// The seated-pose procedure on `mounted`, this key's, `standing` on it.
+    fn seating_on<'b>(&'b self, mounted: &'b Mounted, standing: &'b [PointLoad]) -> Seating<'b> {
         Seating {
-            mounted: &self.on_frame.mounted,
+            mounted,
             capstan: self.on_frame.capstan,
             measuring_point: self.measuring_point,
             margin: SEAT_MARGIN,
@@ -385,6 +428,7 @@ impl Weighing<'_> {
             0.0,
             Conditions {
                 held_by: seats.top.held_by.clone(),
+                wippen_carried_by: wippen_carried_by(&self.on_frame.mounted, &seats.top.q),
                 preparation: Some(Preparation {
                     capstan_load_n: seats.capstan_load,
                     press_n: 0.0,
@@ -403,6 +447,7 @@ impl Weighing<'_> {
             0.0,
             Conditions {
                 held_by: seats.bottom.held_by.clone(),
+                wippen_carried_by: wippen_carried_by(&self.on_frame.mounted, &seats.bottom.q),
                 preparation: Some(Preparation {
                     capstan_load_n: seats.capstan_load,
                     press_n: seats.press,
@@ -534,6 +579,7 @@ impl Weighing<'_> {
             ROUNDING_TOLERANCE_G,
             Conditions {
                 held_by: walk.held_by.clone(),
+                wippen_carried_by: walk.wippen_carried_by.clone(),
                 preparation: Some(Preparation {
                     capstan_load_n: seats.capstan_load,
                     press_n: press,
@@ -567,7 +613,7 @@ impl Weighing<'_> {
         let band = seating.sweep(statics, &seats).map_err(Refused::Sweep)?;
         let samples = u32::try_from(band.down.len()).unwrap_or(u32::MAX);
         let report = seats.top.report.and(seats.bottom.report).and(band.report);
-        let read = |procedure, extreme: &Sample, rounding, held_by: &[_], press_n| {
+        let read = |procedure, extreme: &Sample, rounding, seat: &Seat, press_n| {
             self.measured(
                 procedure,
                 extreme.grams,
@@ -577,7 +623,8 @@ impl Weighing<'_> {
                 rounding,
                 ROUNDING_TOLERANCE_G,
                 Conditions {
-                    held_by: held_by.to_vec(),
+                    held_by: seat.held_by.clone(),
+                    wippen_carried_by: wippen_carried_by(&self.on_frame.mounted, &seat.q),
                     preparation: Some(Preparation {
                         capstan_load_n: seats.capstan_load,
                         press_n,
@@ -597,14 +644,14 @@ impl Weighing<'_> {
             ProcedureId::DownWeightOnTheBand,
             &band.down_weight,
             Rounding::Up,
-            &seats.top.held_by,
+            &seats.top,
             0.0,
         );
         let up_weight = read(
             ProcedureId::UpWeightOnTheBand,
             &band.up_weight,
             Rounding::Down,
-            &seats.bottom.held_by,
+            &seats.bottom,
             seats.press,
         );
         Ok(Banded {
@@ -619,8 +666,9 @@ impl Weighing<'_> {
     /// the key's top, behind the pin on a key heavy in front and in front of
     /// it on one heavy behind; the key goes back on its frame with the weight
     /// on it, its back pushed down onto its cloth; the least weight on the
-    /// measuring point that makes it fall is read, up to the gram. A key
-    /// nobody has weighed has no front weight to zero, and is refused.
+    /// measuring point that makes it fall is read, up to the gram, on the key
+    /// alone, without the wippen it may carry ([`Self::alone`]). A key nobody
+    /// has weighed has no front weight to zero, and is refused.
     pub fn key_friction_weight_zeroed_on_the_jig(
         &self,
         statics: &mut Statics,
@@ -649,19 +697,20 @@ impl Weighing<'_> {
 
     /// **Key friction weight, zeroed on the frame**: the temporary weight's
     /// mass chosen to cancel the generalized force of gravity on the key
-    /// where it rests at the top of its stroke, so that what is left to
-    /// overcome is its bushings' friction alone, read through the arm the
-    /// measuring point has there. An unweighed key needs no temporary weight
-    /// and is read all the same.
+    /// where it rests at the top of its stroke, `top`, the key alone's top
+    /// seat ([`Self::alone`]), so that what is left to overcome is its
+    /// bushings' friction alone, read through the arm the measuring point
+    /// has there. An unweighed key needs no temporary weight and is read all
+    /// the same. Read on the key alone, as Stanwood's is.
     pub fn key_friction_weight_zeroed_on_the_frame(
         &self,
         statics: &mut Statics,
-        seats: &Result<Seats, Refused>,
+        top: &Result<Seat, Refused>,
     ) -> Result<Measurement, Refused> {
-        let seats = seats.as_ref().map_err(Clone::clone)?;
-        let mounted = &self.on_frame.mounted;
+        let top = top.as_ref().map_err(Clone::clone)?;
+        let mounted = self.alone(&[]).mounted;
         let m = &mounted.mechanism;
-        let pose = m.pose(&seats.top.q);
+        let pose = m.pose(&top.q);
         let mut forces = vec![0.0; m.coords().len()];
         m.generalized_forces(&pose, &[], &mut forces);
         // Positive lifts the front: a key heavy in front turns the other way.
@@ -702,8 +751,8 @@ impl Weighing<'_> {
             .ok_or(Refused::NoKeyTopAtTheStation { station_m: x })
     }
 
-    /// The down weight of the key with `temporary` standing on it, seated
-    /// again with it on: a key friction weight.
+    /// The down weight of the key alone with `temporary` standing on it,
+    /// seated again with it on: a key friction weight.
     fn key_friction_weight(
         &self,
         statics: &mut Statics,
@@ -722,7 +771,7 @@ impl Weighing<'_> {
                 )
             })
             .collect();
-        let seating = self.seating(&standing);
+        let seating = self.alone(&standing);
         let seats = seating.seats(statics).map_err(Refused::Seat)?;
         let walk = seating
             .walk(statics, &seats, Stroke::Down)
@@ -862,6 +911,7 @@ mod tests {
         center_of_mass_height: Basis::Estimated,
         key_friction: Basis::Assumed,
         geometry: Basis::Assumed,
+        wippen_assembly: None,
     };
 
     /// A key on its frame and on the jig, as the bench mounts them.
@@ -890,6 +940,7 @@ mod tests {
                 KeyKind::Natural,
                 mass,
                 friction.bound_n_m,
+                None,
             )
             .expect("the key mounts on its frame"),
             jig: KeyJig::new(&a.key, &a.protocol, mass).expect("the key mounts on the jig"),

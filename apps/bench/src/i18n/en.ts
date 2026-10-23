@@ -22,12 +22,14 @@ import type {
   TemporaryWeight,
   Verdict,
   WeighingRefusal,
+  WippenCarriedBy,
 } from '@pas/wasm/types'
 import {
   decimals,
   FROM_LIP_MM,
   fixed,
   GAP_MM,
+  isTooSmallToShow,
   LENGTH_MM,
   MASS_G,
   OUT_OF_RANGE,
@@ -37,10 +39,24 @@ import {
   TEMPORARY_WEIGHT_G,
   WEIGHT_G,
 } from '../format'
-import { type Catalog, type Labeled, type Named, unitIn, type Worded, word } from './catalog'
+import {
+  type Catalog,
+  capitalized,
+  type Labeled,
+  type Named,
+  unitIn,
+  type Worded,
+  word,
+} from './catalog'
 
 /** `x` to the decimals `resolution` is shown to. */
 const to = (quantity: number, resolution: number): string => fixed(quantity, decimals(resolution))
+
+/** A distance a refusal of the wippen assembly names, so that one the engine
+ * reads as more than nothing never reads as 0 mm, which would say the part
+ * stands where it may. */
+const showPartDistance = (mm: number): string =>
+  isTooSmallToShow(mm, PART_MM) ? `less than ${to(PART_MM, PART_MM)} mm` : `${to(mm, PART_MM)} mm`
 
 /** Reasons as a note or a tooltip lists them, each a clause of its own. */
 const reasons = (clauses: readonly string[]): string => clauses.join('; ')
@@ -60,6 +76,8 @@ const STOP: Named<Contact> = {
   back_rail_cloth: 'back rail cloth',
   front_pin_in_the_mortise: 'front rail pin at the top of its mortise',
   front_pin_on_the_wood: 'front rail pin against the wood beside its mortise',
+  capstan_on_the_heel: 'capstan under the wippen heel',
+  heel_on_the_key: 'top under the wippen heel',
 }
 
 /** The stops, as a sentence lists them: "its front punching and its back
@@ -75,6 +93,8 @@ const ON_THE: Named<Contact> = {
   front_pin_in_the_mortise: 'on the front rail pin, at the top of its mortise',
   front_pin_on_the_wood: 'on the front rail pin, against the wood round its mortise',
   back_rail_cloth: 'on the back rail cloth',
+  capstan_on_the_heel: 'under the wippen heel, by its capstan',
+  heel_on_the_key: 'under the wippen heel, by its top',
 }
 
 /** A contact as a note names it in passing. */
@@ -84,6 +104,8 @@ const CONTACT: Named<Contact> = {
   back_rail_cloth: 'back rail cloth',
   front_pin_in_the_mortise: 'front pin in the mortise',
   front_pin_on_the_wood: 'front pin on the wood',
+  capstan_on_the_heel: 'capstan on the heel',
+  heel_on_the_key: 'heel on the key',
 }
 
 /** A part as a fault names it. */
@@ -112,11 +134,35 @@ const PART: Named<Part> = {
   paper_punching: 'paper punching',
   back_rail: 'back rail',
   back_rail_cloth: 'back rail cloth',
+  wippen: 'wippen',
+  wippen_heel: 'wippen heel',
+  wippen_heel_cloth: 'heel cloth',
+  jack: 'jack',
+  repetition_lever: 'repetition lever',
+  center_pin: 'center pin',
 }
 
 /** How the key rides on its stops, naming them and the lift. */
 function riding(how: Riding): string {
   return `the key rides on ${stopsNamed([how.front, 'back_rail_cloth'])}, ${to(how.lift_mm, LENGTH_MM)} mm above its balance punching: its stops hold it higher than its punching does, so it has no stroke, and no weight takes it from one seat to the other.`
+}
+
+/** What one link carrying the wippen bears on, as a sentence: the capstan
+ * on the heel cloth, on the wippen heel off its cloth, or on both; or the
+ * wippen heel down on the key's top. */
+function carrying({ link, parts }: WippenCarriedBy): string {
+  const onTheCloth = parts.includes('wippen_heel_cloth')
+  const onTheWood = parts.includes('wippen_heel')
+  if (link === 'heel_on_the_key') {
+    return onTheCloth && !onTheWood
+      ? 'The wippen heel rests on the key’s top by its heel cloth.'
+      : 'The wippen heel rests on the key’s top.'
+  }
+  if (onTheCloth && onTheWood)
+    return 'The capstan bears on the heel cloth and on the wippen heel beside it.'
+  return onTheCloth
+    ? 'The capstan bears on the heel cloth.'
+    : 'The capstan bears on the wippen heel, off its heel cloth.'
 }
 
 /** How far past a target, in millimeters: to the hundredth, a shortfall
@@ -154,6 +200,7 @@ const panel: Catalog['panel'] = {
   weighing: 'The key, weighed whole',
   frame: 'The frame',
   touch: 'Touch',
+  wippen: 'The wippen assembly',
 }
 
 /** Why a reading is refused, or why the key cannot be seated. */
@@ -196,6 +243,12 @@ const refusal: Catalog['refusal'] = {
     `no top of the key stands ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'behind' : 'in front of'} the balance pin, where the temporary weight goes.`,
   from_a_refused_reading: ({ reading }) =>
     `the ${reading === 'down_weight' ? 'down weight' : reading === 'up_weight' ? 'up weight' : 'reading'} it is computed from is refused.`,
+  wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
+    `at the ${at} seat the key pushes the wippen assembly past its range, its heel lifted to the edge of what the model holds and still ${showPartDistance(heel_depth_mm)} in the key there, as a center pin set too low for its capstan would.`,
+  wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
+    `at the ${at} seat the wippen assembly does not reach the key: it hangs to the edge of its range, and degree by degree through that range its heel passes at its nearest ${showPartDistance(heel_clearance_mm)} from the capstan or the key's top, as a center pin set too high would.`,
+  wippen_in_the_key: ({ part, key_part, depth_mm }) =>
+    `the ${PART[part]} stands ${showPartDistance(depth_mm)} in the ${PART[key_part]}: a pose no action takes, where only the wippen heel meets the key.`,
 }
 
 /** The temporary weight a key friction weight stood on the key. */
@@ -254,6 +307,17 @@ const LIMIT_WHY: {
       "the key would leave its balance pin first, the paper raising its balance punching past the pin's top",
     key_dip: () => 'the key would ride off its balance pin before the dip is that shallow',
   },
+  wippen_past_its_range: {
+    key_height: () =>
+      'the wippen assembly the key carries would be pushed past its range first, the paper raising the capstan under its heel',
+    key_dip: () =>
+      "the wippen assembly the key carries would be pushed past its range at the bottom seat first, the key's back rising under its heel",
+  },
+  wippen_out_of_reach: {
+    key_height: () =>
+      'the wippen assembly the key carries would not reach the key, the capstan standing short of its heel',
+    key_dip: () => 'the wippen assembly the key carries would not reach the key',
+  },
 }
 
 const regulationWhy: Catalog['regulation']['why'] = {
@@ -304,6 +368,8 @@ const UNIT: Named<SettingUnit> = { mm: 'mm', g: 'g', gmm: 'g·mm' }
 
 /** What no part could be built as, or what the bench has not. */
 const problem: Worded<Problem> = {
+  no_wippen_assembly: ({ path }) =>
+    `the key carries no wippen assembly, so it has no setting ${path}.`,
   not_finite: () => 'a value that is not a number.',
   out_of_range: ({ param, value, min, max }) => {
     const unit = unitIn(param, UNIT)
@@ -342,6 +408,14 @@ const problem: Worded<Problem> = {
     `a front mortise ${to(depth_mm, PART_MM)} mm deep goes through the ${to(wood_mm, PART_MM)} mm of the keystick.`,
   measuring_point_off_covering: ({ from_lip_mm, covering_mm }) =>
     `the measuring point stands on the covering, from its lip to ${to(covering_mm, FROM_LIP_MM)} mm behind it: ${to(from_lip_mm, FROM_LIP_MM)} mm from the lip is off it.`,
+  part_mass_not_positive: ({ part }) => `a ${PART[part]} weighs more than nothing.`,
+  no_thickness: ({ part }) => `a ${PART[part]} has some thickness.`,
+  no_radius: ({ part }) =>
+    part === 'center_pin'
+      ? 'a center pin has some diameter.'
+      : `the ${PART[part]}'s circle, which its cloth's face is an arc of, has some radius.`,
+  part_outline_crosses_itself: ({ part }) =>
+    `the ${PART[part]}'s outline would cross itself: no ${PART[part]} is cut like that.`,
   unknown_path: ({ path }) => `the bench has no setting ${path}.`,
   unknown_profile: ({ profile }) => `the bench ships no instrument ${profile}.`,
   set_by_action: ({ path }) => `${path} is not set directly: it is laid, regulated or weighed.`,
@@ -412,6 +486,11 @@ const control: { readonly [K in Label]: Labeled } = {
   back_rail_at: { label: 'back rail, behind the balance pin' },
   place: { label: 'place the frame under the key' },
   weight: { label: 'weight on the measuring point' },
+  wippen_center: { label: 'wippen center pin, behind the balance pin' },
+  wippen_center_height: { label: 'wippen center pin, above the keybed' },
+  heel_position: { label: 'wippen heel position, from the center pin' },
+  heel_height: { label: 'wippen heel height, below the jack center' },
+  wippen_friction: { label: 'wippen center friction' },
 }
 
 /** A weighing's field, as a sentence names it. */
@@ -478,6 +557,8 @@ export const en: Catalog = {
         'The key finds no equilibrium on this frame: it is drawn faded, level on its balance punching, to show its parts against the frame’s, not where it would stand.',
       lifted_off:
         'The weight on the measuring point lifts the key off its frame: it is drawn faded where its last equilibrium left it, which no longer holds it, and bears on nothing.',
+      wippen_refused:
+        'The wippen assembly cannot stand where this edit would put it: the key and its wippen assembly are drawn faded where their last equilibrium left them, which no longer holds them.',
     },
   },
 
@@ -507,6 +588,15 @@ export const en: Catalog = {
   stopsFight: (riding) =>
     `The stops fight: ${riding} The key is drawn riding on them; what needs no stroke is read below, and the weights that need one are refused.`,
   riding,
+  wippenCarriedBy: (links) => links.map(carrying).join(' '),
+  wippenRefused: {
+    pushed_past_its_range: (p) =>
+      `The wippen assembly cannot stand there. ${capitalized(refusal.wippen_pushed_past_its_range({ ...p, code: 'wippen_pushed_past_its_range' }))}`,
+    out_of_reach: (p) =>
+      `The wippen assembly cannot stand there. ${capitalized(refusal.wippen_out_of_reach({ ...p, code: 'wippen_out_of_reach' }))}`,
+    in_the_key: (p) =>
+      `The wippen assembly cannot stand there. ${capitalized(refusal.wippen_in_the_key({ ...p, code: 'wippen_in_the_key' }))}`,
+  },
   problem,
   editRefusal,
   refused: {
@@ -587,6 +677,8 @@ export const en: Catalog = {
       'the height of the key’s center of mass, which no scale gives, is estimated from its drawn section',
     key_friction: 'its bushings’ friction is the bench’s assumption until you set it',
     geometry: 'some of its dimensions have no record',
+    wippen_assembly_mass: 'the wippen assembly’s mass is the bench’s assumption',
+    wippen_friction: 'the friction of the wippen’s center is the bench’s assumption',
   },
   unit: { g: 'g', mm: 'mm', ratio: '', gmm: UNIT.gmm },
   backBearing: {

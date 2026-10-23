@@ -374,9 +374,166 @@ mod tests {
     use super::*;
     use crate::instrument::{Action, Outcome, Stack};
     use crate::registry::path;
+    use pa_core::contact::{ContactCode, PartCode, PartId};
+    use pa_core::parts::mounts::Mounted;
+    use pa_core::parts::verdicts::wippen_carried_by;
 
     fn his() -> Instrument {
         Instrument::of(Profile::named("hirschkorn").expect("shipped")).expect("his instrument")
+    }
+
+    /// The links that carry his wippen at his key's two seats on `b`, top
+    /// then bottom, each with the parts of the heel it bears on.
+    fn carried_at_the_seats(b: &Instrument) -> [Vec<(ContactCode, Vec<PartCode>)>; 2] {
+        let (k, seats) = b.seated().expect("his key seats");
+        [&seats.top.q, &seats.bottom.q].map(|q| {
+            wippen_carried_by(&k.mounted, q)
+                .into_iter()
+                .map(|c| (c.link, c.parts))
+                .collect()
+        })
+    }
+
+    /// How deep the parts of the wippen that `wippen_part` picks stand in
+    /// the parts of the key that `key_part` picks, at `q`, meters, read off
+    /// their outlines.
+    fn standing_in_the_key(
+        mounted: &Mounted,
+        q: &[f64],
+        wippen_part: fn(PartCode) -> bool,
+        key_part: fn(PartCode) -> bool,
+    ) -> f64 {
+        let m = &mounted.mechanism;
+        let wippen = mounted.wippen.as_ref().expect("his key carries his wippen");
+        let picked = |body, keep: fn(PartCode) -> bool| -> Vec<PartId> {
+            (0..m.parts().len())
+                .filter(|&i| m.parts()[i].body == body && keep(m.parts()[i].code))
+                .map(|i| PartId(u16::try_from(i).expect("fewer than 65 536 parts")))
+                .collect()
+        };
+        m.parts_overlap(
+            &m.pose(q),
+            &picked(wippen.body, wippen_part),
+            &picked(mounted.key, key_part),
+        )
+    }
+
+    /// Consistency across implementations, not validation: **his wippen
+    /// rests where his capstan closes on his heel.** Script 12 closes his
+    /// contact 1, the capstan's dome on the heel's circle Pw5, with the key
+    /// at rest: on his rounds, where script 10 closes the whole action, and
+    /// on the real felts the bench bears on, which turn the key 5.6
+    /// microradians further nose-up at rest, and so stand the heel 11
+    /// microradians lower. The bench's top seat stands the wippen where
+    /// script 12's felts do, to within its print and what the static solve
+    /// closes a contact to: a picometer over the heel's arm, and the key's
+    /// own closure carried through the capstan's arm over the heel's.
+    #[test]
+    fn his_wippen_rests_where_his_capstan_closes_on_his_heel() {
+        let b = his();
+        let fixture: Value = serde_json::from_str(FIXTURE).expect("the fixture");
+        let printed = |what: &str| fixture["script_12"][what].as_f64().expect(what);
+        let rad = fixture["script_12"]["printed_to"]["rad"]
+            .as_f64()
+            .expect("rad");
+        let (k, seats) = b.seated().expect("his key seats");
+        let wippen = k
+            .mounted
+            .wippen
+            .as_ref()
+            .expect("his key carries his wippen");
+        let rest = seats.top.q[wippen.angle.0];
+        let heel = Profile::named("hirschkorn")
+            .expect("shipped")
+            .start
+            .wippen_assembly
+            .as_ref()
+            .expect("his profile carries his wippen")
+            .assembly
+            .heel
+            .position;
+        let ratio = -b.key().capstan / heel;
+        let closed = 1e-12 / heel + ratio * 1e-12 / 0.2;
+        let felts = printed("rest_wippen_rad_on_the_felts");
+        assert!(
+            (rest - felts).abs() <= 0.5 * rad + closed,
+            "his wippen rests at {rest} rad, script 12 closes it at {felts} rad on the felts"
+        );
+    }
+
+    /// Consistency: **his capstan bears on his heel cloth at both seats**,
+    /// and nothing else carries his wippen: the capstan's dome under the
+    /// heel's circle, 1.7 mm in front of its lowest point at the top of the
+    /// stroke, well inside the cloth that runs on 5.55 mm behind and 10.84 mm
+    /// in front of the circle's center.
+    #[test]
+    fn his_capstan_bears_on_his_heel_cloth_at_both_seats() {
+        let on_the_cloth = vec![(
+            ContactCode::CapstanOnTheHeel,
+            vec![PartCode::WippenHeelCloth],
+        )];
+        assert_eq!(
+            carried_at_the_seats(&his()),
+            [on_the_cloth.clone(), on_the_cloth]
+        );
+    }
+
+    /// Consistency: **at his settings, his capstan lowered to the page's
+    /// least carries his heel alone, at both seats.** Lowered from where
+    /// his profile stands it by the page's half millimeter down to the
+    /// page's least 4 mm, the capstan carries his heel at each step at both
+    /// seats, and his heel never comes down on his key's top beside it.
+    /// Nothing is claimed with his other settings moved.
+    #[test]
+    fn at_his_settings_his_capstan_lowered_to_the_pages_least_carries_his_heel_alone() {
+        const LEAST_MM: f64 = 4.0;
+        const STEP_MM: f64 = 0.5;
+        let mut b = his();
+        let from = b.value(path::CAPSTAN_HEIGHT).expect("his capstan");
+        let steps = ((from - LEAST_MM) / STEP_MM).floor() as u32;
+        let links = |b: &Instrument| {
+            carried_at_the_seats(b).map(|at| at.into_iter().map(|(link, _)| link).collect())
+        };
+        let mut found = Vec::new();
+        for k in (0..=steps).rev() {
+            let height = LEAST_MM + f64::from(k) * STEP_MM;
+            b.set(path::CAPSTAN_HEIGHT, height)
+                .unwrap_or_else(|why| panic!("{height} mm: {why:?}"));
+            found.push((height, links(&b)));
+        }
+        let alone: [Vec<ContactCode>; 2] = [
+            vec![ContactCode::CapstanOnTheHeel],
+            vec![ContactCode::CapstanOnTheHeel],
+        ];
+        let expected: Vec<_> = (0..=steps)
+            .rev()
+            .map(|k| (LEAST_MM + f64::from(k) * STEP_MM, alone.clone()))
+            .collect();
+        assert!(
+            steps > 0,
+            "his capstan stands {from} mm, above the page's least"
+        );
+        assert_eq!(found, expected);
+    }
+
+    /// Consistency: **his wippen clears his key everywhere but at the heel,
+    /// at both seats.** No part of his wippen assembly but the heel and its
+    /// cloth stands in any part of his key, and the heel and its cloth stand
+    /// in no part of it but the capstan they rest on: the body over the back
+    /// check block and the tail, the jack and the repetition lever over the
+    /// keystick, all clear.
+    #[test]
+    fn his_wippen_clears_his_key_everywhere_but_at_the_heel_at_both_seats() {
+        let b = his();
+        let (k, seats) = b.seated().expect("his key seats");
+        let heel = |code| matches!(code, PartCode::WippenHeel | PartCode::WippenHeelCloth);
+        let not_heel = |code| !matches!(code, PartCode::WippenHeel | PartCode::WippenHeelCloth);
+        let not_capstan = |code| code != PartCode::Capstan;
+        let any = |_| true;
+        for q in [&seats.top.q, &seats.bottom.q] {
+            assert_eq!(standing_in_the_key(&k.mounted, q, not_heel, any), 0.0);
+            assert_eq!(standing_in_the_key(&k.mounted, q, heel, not_capstan), 0.0);
+        }
     }
 
     /// Consistency across implementations, not validation: **the bench
@@ -528,5 +685,80 @@ mod tests {
         .expect("the measured section");
         assert_eq!(b.state_hash(), section().state_hash());
         assert_eq!(b.log().len(), 5, "the log kept through every selection");
+    }
+
+    /// Consistency: **his reading at whole degrees stands above his
+    /// wippen's continuous nearest by no more than half a degree of its
+    /// turn.** His center pin raised by the millimeter from where his top
+    /// seat first hangs his wippen out of his key's reach, found by halving
+    /// between his own height and 110.1 mm, which stand either side of it,
+    /// to 40 mm above it, his capstan's dome under his heel, the key alone at
+    /// its top seat: the bench reads his heel's nearest approach to his key
+    /// at the whole degrees it decides reach at
+    /// ([`Mounted::measure_the_heel_past`]); between two of them the heel
+    /// turns by its reach times half a degree at most from the nearer, so the
+    /// reading stands no lower than the nearest over the whole turn
+    /// ([`read::nearest_over_its_whole_turn`]), and no higher than that by
+    /// more than the reach times half the widest step: the nearest is
+    /// resolved from above, so the excess measured is no more than the true
+    /// one. A measurement of the bench's resolution, not of a rule it could
+    /// break: the largest excess, 0.11 mm a millimeter past his boundary, is
+    /// the figure `docs/FOUNDATIONS.md` > Where a solve starts states.
+    #[test]
+    fn his_reading_at_whole_degrees_stands_above_his_wippens_continuous_nearest_by_no_more_than_half_a_degree_of_its_turn(
+    ) {
+        use crate::instrument::read;
+        use pa_core::measure::seat::{SeatRefusal, WhichSeat};
+        use pa_core::parts::mounts::WippenLimit;
+        const OUT_OF_REACH: f64 = 0.1101;
+        const ABOVE_HIS_BOUNDARY_MM: u32 = 40;
+        const STATED_LARGEST_EXCESS: f64 = 0.11e-3;
+        const STATED_ABOVE_HIS_BOUNDARY_MM: u32 = 1;
+        let raised = |center: f64| {
+            let mut b = his();
+            b.set(path::WIPPEN_CENTER_ABOVE, center * 1e3)
+                .expect("a center pin within its hard range");
+            b
+        };
+        let reaches = |center: f64| {
+            !matches!(
+                raised(center).seated(),
+                Err(SeatRefusal::WippenOutOfReach {
+                    at: WhichSeat::Top,
+                    ..
+                })
+            )
+        };
+        let own = his()
+            .value(path::WIPPEN_CENTER_ABOVE)
+            .expect("his wippen's center")
+            * 1e-3;
+        assert!(
+            !reaches(OUT_OF_REACH) && reaches(own),
+            "the halving's ends stand either side of his boundary"
+        );
+        let (boundary, _) = read::halve_between(OUT_OF_REACH, own, reaches);
+        let mut largest = (0.0, 0);
+        for above_mm in 0..=ABOVE_HIS_BOUNDARY_MM {
+            let center = boundary + f64::from(above_mm) * 1e-3;
+            let (mounted, q) = read::at_the_key_alones_top_seat(&raised(center));
+            let reading = mounted.measure_the_heel_past(&q, WippenLimit::OutOfReach);
+            let (nearest, widest) = read::nearest_over_its_whole_turn(&mounted, &q);
+            let reach = mounted.wippen.expect("his wippen").reach;
+            let excess = reading - nearest;
+            assert!(
+                excess >= 0.0 && excess <= reach * 0.5 * widest,
+                "{center} m: {reading} m read, {nearest} m at its nearest"
+            );
+            if excess > largest.0 {
+                largest = (excess, above_mm);
+            }
+        }
+        assert!(
+            largest.0 <= STATED_LARGEST_EXCESS && largest.1 == STATED_ABOVE_HIS_BOUNDARY_MM,
+            "the largest excess is {} m, {} mm above his boundary at {boundary} m",
+            largest.0,
+            largest.1
+        );
     }
 }

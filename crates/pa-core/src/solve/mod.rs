@@ -33,7 +33,7 @@ pub use statics::{Equilibrium, Friction, Holder, Refusal, Statics, Support};
 /// `the_fingerprint_names_the_frozen_numbers`, which fails when one changes
 /// and the fingerprint does not. One name, one hash: a name is never given
 /// back to other frozen numbers.
-pub const SOLVER_FINGERPRINT: &str = "statics/3";
+pub const SOLVER_FINGERPRINT: &str = "statics/4";
 
 #[cfg(test)]
 mod tests {
@@ -55,8 +55,11 @@ mod tests {
     /// Every number frozen in the solver and the procedures that read with
     /// it, in a fixed order: the static solve's caps and tolerances, the box
     /// problem's, the dense algebra's rank tolerance, the row margin, the
-    /// key's angle limit and the step of its nominal pose, the steps that
-    /// narrow the attitude of a key lowered onto its frame from above, in how
+    /// key's angle limit, the wippen's, and the step of the key's nominal
+    /// pose, the steps that
+    /// narrow the attitude of a key lowered onto its frame from above, the
+    /// most halvings of the degree a wippen lowered onto its key first
+    /// touches it in, in how
     /// many pieces of the cap a key free to lift is solved, the seated pose's
     /// margin and overlap, the walk's step, cap and halvings, how near a
     /// contact counts as touching, the regulation's search and halvings, the
@@ -103,9 +106,11 @@ mod tests {
             dense::RANK_TOLERANCE.to_bits(),
             crate::contact::ROW_MARGIN.to_bits(),
             mounts::KEY_ANGLE_LIMIT.to_bits(),
+            mounts::WIPPEN_ANGLE_LIMIT.to_bits(),
             mounts::NOMINAL_STEP.to_bits(),
             u64::from(mounts::ATTITUDE_REFINEMENTS),
-            u64::from(mounts::FREE_PIECES),
+            u64::from(mounts::LOWERING_HALVINGS),
+            u64::from(mounts::SOLVE_PIECES),
             seat::SEAT_MARGIN.to_bits(),
             seat::SEAT_OVERLAP.to_bits(),
             walk::STEP_G.to_bits(),
@@ -141,7 +146,7 @@ mod tests {
         let hash = fnv1a(&frozen());
         assert_eq!(
             (SOLVER_FINGERPRINT, hash),
-            ("statics/3", 0x0526_f513_9ebb_9e34),
+            ("statics/4", 0x0727_479d_62d9_da12),
             "a frozen number changed: the hash is now {hash:#018x}. Give the solver a new \
              fingerprint and record the hash beside it."
         );

@@ -37,6 +37,26 @@
 //! ([`crate::parts::mounts::lowered_onto_its_frame`]), the stalled steps
 //! counted with its own. The bottom seat starts from the top seat.
 //!
+//! # The wippen the key carries
+//!
+//! A key carrying a wippen on its capstan is seated with it: the wippen
+//! rests on the capstan, or on the key's top where the capstan stands out
+//! from under its heel, through two links that are not stops. No seat lists
+//! a link, and both stay in the vertical balance the bearing carries. Each
+//! seat starts from the key alone's own seat there, seated once for both by
+//! this module's rule, the wippen lowered onto the key where it stands
+//! ([`Seating::start`]): the key alone reaches its seat in large steps, where
+//! the key with its wippen, its link within the row margin through the whole
+//! turn, would crawl a margin a step. The preparation folds the wippen's
+//! weight onto the key's angle through the link it would rest on
+//! ([`Mounted::wippen_follows`]), the load at the capstan now standing for
+//! the hammer. A seat names the wippen's refusals: pushed past its range, or
+//! out of the key's reach, at the seat that met it, with how far past that
+//! limit the heel stands with the key alone there, and a wippen part
+//! standing in a key part. Any other solve that leans the wippen on a limit
+//! is named at the seat the sheet refuses it at
+//! ([`Seating::name_the_wippens_refusal`]).
+//!
 //! # On its punching, or riding
 //!
 //! The key is free to lift off its balance punching
@@ -55,12 +75,12 @@
 //! see whichever stop binds first: the front punching, the front pin
 //! bottoming in its mortise, or the pin meeting the wood beside its slot.
 
-use crate::contact::{ContactCode, ROW_MARGIN};
+use crate::contact::{ContactCode, PartCode, ROW_MARGIN};
 use crate::geometry::Point;
 use crate::mechanism::{MaterialPoint, PointLoad, Problem};
-use crate::parts::mounts::Mounted;
+use crate::parts::mounts::{Motion, Mounted, WippenLimit};
 use crate::parts::verdicts::TOUCHING;
-use crate::solve::{Friction, Holder, Refusal, SolveReport, Statics};
+use crate::solve::{Equilibrium, Friction, Holder, Refusal, SolveReport, Statics};
 use crate::G;
 
 /// The torque, newton-meters, by which each preparation load seats the key
@@ -181,6 +201,246 @@ pub enum SeatRefusal {
         /// The stationarity residual left, newtons.
         residual: f64,
     },
+    /// The wippen is pushed past its range at this seat: the key lifts its
+    /// heel to the edge of its modeled world, as a center pin set too low
+    /// for its capstan, or a capstan set too tall, does. Also where the start
+    /// of the seat finds the heel in the key even at the top of the
+    /// wippen's range with the key at its own seat there
+    /// ([`Seating::start`]): at the top no pose of the key on its frame
+    /// stands its capstan lower, and at the bottom its stops hold it there.
+    WippenPushedPastItsRange {
+        /// The seat that met it.
+        at: WhichSeat,
+        /// How deep the heel and its cloth stand in the key's parts at the
+        /// top of the wippen's range, the key alone at this seat, meters:
+        /// the least distance between their drawn outlines, or where those
+        /// clear the key, how deep the links' contacts stand them in it
+        /// ([`Mounted::measure_the_heel_past`]); more than nothing, short of
+        /// a tie within the static solve's gap tolerance; no correction of
+        /// the capstan.
+        heel_depth: f64,
+    },
+    /// The wippen does not reach the key at this seat: it hangs to the edge
+    /// of its modeled world, its heel above the capstan and the key's top,
+    /// as a center pin set too high does.
+    WippenOutOfReach {
+        /// The seat that met it.
+        at: WhichSeat,
+        /// How near the heel and its cloth come to the key's parts, the
+        /// capstan and the key's top, degree by degree through the wippen's
+        /// range, the key alone at this seat, meters: the least distance
+        /// between their drawn outlines at the whole degrees the bench
+        /// decides reach at ([`Mounted::measure_the_heel_past`]), nothing at
+        /// the setting where the wippen comes back to reaching; no correction
+        /// of the center pin.
+        heel_clearance: f64,
+    },
+    /// A part of the wippen stands in a part of the key deeper than
+    /// [`SEAT_OVERLAP`], wherever the wippen stands. Only the heel meets the
+    /// key: its body, its jack or its lever in a key part is
+    /// a pose no action takes, such as the body over a capstan standing
+    /// beside the heel, taller than the heel hangs below the body. The heel
+    /// or its cloth there, which the links read, is a contact that failed to
+    /// read them.
+    WippenInTheKey {
+        /// The wippen's part that stands deepest in the key.
+        part: PartCode,
+        /// The key's part it stands in.
+        key_part: PartCode,
+        /// How deep, meters.
+        depth: f64,
+    },
+}
+
+/// Why the wippen a key carries refuses a solve of the key, named as the
+/// sheet names it: a limit of its turn at a seat of the key, with how far
+/// past that limit its heel stands with the key alone at that seat, or a
+/// part of it standing in a part of the key.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WippenRefusal {
+    /// Pushed past its range at the seat `at`
+    /// ([`SeatRefusal::WippenPushedPastItsRange`]).
+    PushedPastItsRange {
+        /// The seat.
+        at: WhichSeat,
+        /// How deep the heel and its cloth stand in the key's parts at the
+        /// top of the wippen's range, the key alone at that seat, meters:
+        /// by their drawn outlines, or by the links' contacts where those
+        /// clear the key ([`Mounted::measure_the_heel_past`]).
+        heel_depth: f64,
+    },
+    /// Out of the key's reach at the seat `at`
+    /// ([`SeatRefusal::WippenOutOfReach`]).
+    OutOfReach {
+        /// The seat.
+        at: WhichSeat,
+        /// How near the heel and its cloth come to the key's parts, degree
+        /// by degree through the wippen's range, the key alone at that seat,
+        /// meters ([`Mounted::measure_the_heel_past`]).
+        heel_clearance: f64,
+    },
+    /// A part of it stands in a part of the key deeper than
+    /// [`SEAT_OVERLAP`]: only the heel meets the key, through the links
+    /// ([`SeatRefusal::WippenInTheKey`]).
+    InTheKey {
+        /// The wippen's part that stands deepest in the key.
+        part: PartCode,
+        /// The key's part it stands in.
+        key_part: PartCode,
+        /// How deep, meters.
+        depth: f64,
+    },
+}
+
+impl WippenRefusal {
+    /// The refusal at `limit` at the seat `at`, the heel standing `past` it
+    /// there, meters.
+    fn at_its_limit(limit: WippenLimit, at: WhichSeat, past: f64) -> Self {
+        match limit {
+            WippenLimit::PushedPastItsRange => Self::PushedPastItsRange {
+                at,
+                heel_depth: past,
+            },
+            WippenLimit::OutOfReach => Self::OutOfReach {
+                at,
+                heel_clearance: past,
+            },
+        }
+    }
+}
+
+impl From<WippenRefusal> for SeatRefusal {
+    fn from(why: WippenRefusal) -> Self {
+        match why {
+            WippenRefusal::PushedPastItsRange { at, heel_depth } => {
+                Self::WippenPushedPastItsRange { at, heel_depth }
+            }
+            WippenRefusal::OutOfReach { at, heel_clearance } => {
+                Self::WippenOutOfReach { at, heel_clearance }
+            }
+            WippenRefusal::InTheKey {
+                part,
+                key_part,
+                depth,
+            } => Self::WippenInTheKey {
+                part,
+                key_part,
+                depth,
+            },
+        }
+    }
+}
+
+/// What refuses a solve of a key carrying its wippen that is not a seat's,
+/// as [`Seating::name_the_wippens_refusal`] names it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RefusedBy {
+    /// The wippen, named as the sheet names it.
+    Wippen(WippenRefusal),
+    /// The key lifting off its frame: a solve that pushes the wippen past
+    /// its range where the key alone stands it in range at both seats, by
+    /// the drawn outlines and by the links' contacts alike, found the key
+    /// off its balance punching, which only a pull takes it off, and
+    /// a pull that lifts the key with its wippen carries the key alone up
+    /// its balance pin too. A key its bushings hold off its punching, inside
+    /// their friction, whose wippen an edit then brings to the top of its
+    /// range, is named so as well, though it stays where it is.
+    KeyLiftingOffItsFrame,
+    /// The key alone has no seat to name the wippen's refusal at: its
+    /// refusal is the key's own.
+    KeyAlone(SeatRefusal),
+}
+
+/// What refuses a loading's or an increment's solve of a key carrying its
+/// wippen, as [`Seating::name_the_started_solves_refusal`] names it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum StartedRefusal {
+    /// Refused as [`Seating::name_the_wippens_refusal`] names it.
+    Refused(RefusedBy),
+    /// The wippen, kept where a state left it, out of reach with its heel at
+    /// nothing from the key: the solve is started again, the wippen lowered
+    /// from the top of its range ([`Seating::start`], no angle kept), as the
+    /// sheet starts it.
+    StartAgainLoweredFromTheTop,
+}
+
+/// The wippen's refusal of a seat's solve at the seat `at`, started from
+/// `the_seat`, the key alone's own seat there with the wippen's angle where
+/// the start lowered it: a limit of its turn the solve's refusal leans it on
+/// ([`Mounted::wippen_limit`]), with how far past it the heel stands with
+/// the key there ([`Mounted::measure_the_heel_past`]); or the equilibrium
+/// standing a part of it in a key part ([`name_a_wippen_part_in_the_key`]).
+/// `None` for any other outcome, and on a mount that carries no wippen.
+fn name_the_wippens_refusal_at(
+    mounted: &Mounted,
+    solved: Result<&Equilibrium, &Refusal>,
+    at: WhichSeat,
+    the_seat: &[f64],
+) -> Option<WippenRefusal> {
+    match solved {
+        Err(refusal) => mounted.wippen_limit(refusal).map(|limit| {
+            WippenRefusal::at_its_limit(limit, at, mounted.measure_the_heel_past(the_seat, limit))
+        }),
+        Ok(eq) => name_a_wippen_part_in_the_key(mounted, &eq.q),
+    }
+}
+
+/// A part of the wippen `mounted` carries standing in a part of the key at
+/// `q` deeper than [`SEAT_OVERLAP`]
+/// ([`crate::parts::mounts::wippen_part_in_the_key`]); `None` where none
+/// does, and on a mount that carries no wippen.
+fn name_a_wippen_part_in_the_key(mounted: &Mounted, q: &[f64]) -> Option<WippenRefusal> {
+    crate::parts::mounts::wippen_part_in_the_key(mounted, q)
+        .filter(|found| found.depth > SEAT_OVERLAP)
+        .map(|found| WippenRefusal::InTheKey {
+            part: found.part,
+            key_part: found.key_part,
+            depth: found.depth,
+        })
+}
+
+/// Which of the two seats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WhichSeat {
+    /// At the top of the stroke.
+    Top,
+    /// At the bottom.
+    Bottom,
+}
+
+/// What a solve starts for ([`Seating::start`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Starting {
+    /// A seat, friction off, from the key alone's own seat there.
+    Seat(WhichSeat),
+    /// The loading rule putting the key on its frame, friction off, where
+    /// the rule places it.
+    Loading,
+    /// An increment, friction on, from where the last state left the key.
+    Increment,
+}
+
+/// Where a solve of the key starts ([`Seating::start`]).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Start {
+    /// From this pose.
+    From {
+        /// The coordinates.
+        q: Vec<f64>,
+        /// How the key alone's top seat went, where a loading's start
+        /// seated it there: its solves count with the solve the start
+        /// stands for.
+        key_alone: Option<SolveReport>,
+        /// How many times the start halved the degree in which it lowered
+        /// the wippen onto the key ([`crate::parts::mounts::Lowered`]):
+        /// nothing where it kept the wippen where a state left it, and on a
+        /// mount that carries no wippen.
+        lowering_halvings: u32,
+    },
+    /// Not where the key stands: an increment the rule cannot start there,
+    /// the wippen fitting nowhere. The key is put back by the loading rule,
+    /// whose starts obey the same rule.
+    ByTheLoadingRule,
 }
 
 impl Seat {
@@ -226,16 +486,71 @@ struct Preparation {
     capstan_load: f64,
     /// The press at the measuring point, newtons.
     press: f64,
+    /// How many times lowering the wippen onto the key level, which the
+    /// loads are sized at, halved its degree ([`crate::parts::mounts::Lowered`]).
+    lowering_halvings: u32,
 }
 
 impl Seating<'_> {
     /// Seats the key at the top and then at the bottom, as the procedure
-    /// says, with `statics`.
+    /// says, with `statics`: a key carrying a wippen from the key alone's
+    /// own seats ([`Self::seats_from_the_key_alones`]).
     pub fn seats(&self, statics: &mut Statics) -> Result<Seats, SeatRefusal> {
-        let m = &self.mounted.mechanism;
         let prepared = self.preparation()?;
-        let top = self.top_seat(statics, &prepared.top)?;
-        let bottom = self.seat(statics, &top.q, &prepared.bottom, false)?;
+        let alone = self.key_alone().map(|alone| alone.seats(statics));
+        self.seats_prepared(statics, &prepared, alone.as_ref())
+    }
+
+    /// The seats of a key carrying its wippen, as [`Self::seats`] seats it,
+    /// from `alone`, the key alone's own seats there or its refusal, seated
+    /// by this procedure on the key alone ([`Mounted::key_alone`]) with the
+    /// same capstan, measuring point, margin and standing loads: what a sheet
+    /// that reads the key alone's top seat too seats the key by, without
+    /// seating the key alone twice. A key's preparation is refused first,
+    /// then the key alone's refusal is the key's own. A key that carries no
+    /// wippen has no key alone, and `alone` is not read: it is seated as
+    /// [`Self::seats`] seats it.
+    pub fn seats_from_the_key_alones(
+        &self,
+        statics: &mut Statics,
+        alone: &Result<Seats, SeatRefusal>,
+    ) -> Result<Seats, SeatRefusal> {
+        if self.mounted.key_alone.is_none() {
+            return self.seats(statics);
+        }
+        let prepared = self.preparation()?;
+        self.seats_prepared(statics, &prepared, Some(alone))
+    }
+
+    /// The seats under the loads `prepared`, from the key alone's seats
+    /// `alone` where the key carries a wippen; the preparation's lowering of
+    /// the wippen counted with the top seat's.
+    fn seats_prepared(
+        &self,
+        statics: &mut Statics,
+        prepared: &Preparation,
+        alone: Option<&Result<Seats, SeatRefusal>>,
+    ) -> Result<Seats, SeatRefusal> {
+        let m = &self.mounted.mechanism;
+        let (mut top, bottom) = match alone {
+            None => {
+                let top = self.top_seat(statics, &prepared.top)?;
+                let bottom = self.seat(statics, &top.q, &prepared.bottom, false)?;
+                (top, bottom)
+            }
+            Some(alone) => {
+                let alone = alone.as_ref().map_err(Clone::clone)?;
+                (
+                    self.seat_by_the_key_alone(statics, &alone.top, &prepared.top, WhichSeat::Top)?,
+                    self.seat_by_the_key_alone(
+                        statics,
+                        &alone.bottom,
+                        &prepared.bottom,
+                        WhichSeat::Bottom,
+                    )?,
+                )
+            }
+        };
         // A punching read at its center bears on nothing once that center
         // stands past the key's underside; if its drawn face stands under the
         // key all the same, the key has come down through it as drawn.
@@ -251,6 +566,7 @@ impl Seating<'_> {
                 return Err(SeatRefusal::NoStopBelowTheFront);
             }
         }
+        top.report.lowering_halvings += prepared.lowering_halvings;
         Ok(Seats {
             top,
             bottom,
@@ -265,7 +581,177 @@ impl Seating<'_> {
     /// does not need.
     pub fn top(&self, statics: &mut Statics) -> Result<Seat, SeatRefusal> {
         let prepared = self.preparation()?;
-        self.top_seat(statics, &prepared.top)
+        let mut top = match self.key_alone() {
+            None => self.top_seat(statics, &prepared.top),
+            Some(alone) => {
+                let alone = alone.top(statics)?;
+                self.seat_by_the_key_alone(statics, &alone, &prepared.top, WhichSeat::Top)
+            }
+        }?;
+        top.report.lowering_halvings += prepared.lowering_halvings;
+        Ok(top)
+    }
+
+    /// How the wippen the key carries refuses a solve of the key that is
+    /// not a seat's, `solved` as it came out: a loading, an increment, a
+    /// step of a walk or of the band's sweep. `None` for any other outcome,
+    /// and on a mount that carries no wippen.
+    ///
+    /// A solve that leans the wippen on a limit of its turn is named at the
+    /// first of the key alone's seats at which the sheet's seats refuse that
+    /// limit, with how far past it the heel stands with the key alone there
+    /// ([`Mounted::measure_the_heel_past`]): out of the key's reach at the
+    /// top seat, where every part of the key behind its balance pin stands
+    /// lowest; pushed past its range at the top seat where the heel turned to
+    /// the top of its range stands in the key there, else at the bottom
+    /// seat, where those parts stand highest. Where neither seat stands the
+    /// heel past the top of its range, a key free to lift stood off its
+    /// balance punching, which only a pull takes it off: the key lifting off
+    /// its frame ([`RefusedBy::KeyLiftingOffItsFrame`]). A key on a pivot
+    /// cannot lift, and is named at its bottom seat there, which only a tie
+    /// at the top of the wippen's range, within the static solve's gap
+    /// tolerance, reaches: the heel is read there by its drawn outlines and,
+    /// where those clear the key, by the links' contacts, which the solve
+    /// leans on ([`Mounted::measure_the_heel_past`]). The key alone is seated by
+    /// this module's rule only once the solve is refused: at its top seat for
+    /// out of reach, at both seats for pushed past, and at its top seat again
+    /// where it has no bottom seat. Where it has no seat its refusal is the
+    /// key's own. An equilibrium standing a part of the wippen in a key part
+    /// deeper than [`SEAT_OVERLAP`] is named so.
+    ///
+    /// Out of reach reads more than nothing, short of a tie on a key part's
+    /// edge, wherever the wippen a solve started from was lowered from the
+    /// top of its range, for the reason `docs/FOUNDATIONS.md` > The assembly
+    /// and its place gives. A wippen kept where a state left it can read
+    /// nothing here: [`Self::name_the_started_solves_refusal`] names that
+    /// case for a loading or an increment.
+    pub fn name_the_wippens_refusal(
+        &self,
+        statics: &mut Statics,
+        solved: Result<&Equilibrium, &Refusal>,
+    ) -> Option<RefusedBy> {
+        let refusal = match solved {
+            Ok(eq) => {
+                return name_a_wippen_part_in_the_key(self.mounted, &eq.q).map(RefusedBy::Wippen)
+            }
+            Err(refusal) => refusal,
+        };
+        let limit = self.mounted.wippen_limit(refusal)?;
+        let (wippen, alone) = (self.mounted.wippen?, self.key_alone()?);
+        let measure_past = |seat: &Seat| {
+            let mut q = seat.q.clone();
+            q.insert(wippen.angle.0, 0.0);
+            self.mounted.measure_the_heel_past(&q, limit)
+        };
+        let name_at = |at, past| RefusedBy::Wippen(WippenRefusal::at_its_limit(limit, at, past));
+        if limit == WippenLimit::OutOfReach {
+            return Some(match alone.top(statics) {
+                Ok(top) => name_at(WhichSeat::Top, measure_past(&top)),
+                Err(refusal) => RefusedBy::KeyAlone(refusal),
+            });
+        }
+        let (top, bottom) = match alone.seats(statics) {
+            Ok(seats) => (seats.top, Ok(seats.bottom)),
+            Err(refusal) => match alone.top(statics) {
+                Ok(top) => (top, Err(refusal)),
+                Err(refusal) => return Some(RefusedBy::KeyAlone(refusal)),
+            },
+        };
+        let at_the_top = measure_past(&top);
+        if at_the_top > 0.0 {
+            return Some(name_at(WhichSeat::Top, at_the_top));
+        }
+        let at_the_bottom = match bottom {
+            Ok(bottom) => measure_past(&bottom),
+            Err(refusal) => return Some(RefusedBy::KeyAlone(refusal)),
+        };
+        Some(if at_the_bottom > 0.0 || self.mounted.lift.is_none() {
+            name_at(WhichSeat::Bottom, at_the_bottom)
+        } else {
+            RefusedBy::KeyLiftingOffItsFrame
+        })
+    }
+
+    /// How the wippen the key carries refuses a loading's or an increment's
+    /// solve, `solved` as it came out, started by [`Self::start`] with the
+    /// wippen's angle `kept` where a state left it: as
+    /// [`Self::name_the_wippens_refusal`] names it, but for a wippen kept
+    /// where a state left it that the solve finds out of reach with its heel
+    /// at nothing from the key. That wippen fell free below a key part an
+    /// edit brought over its heel's path, where the sheet, lowering it from
+    /// the top of its range, finds it on that part: it is started again so
+    /// ([`StartedRefusal::StartAgainLoweredFromTheTop`]). A tie on a key
+    /// part's edge reads nothing too, and is started again alike: lowered
+    /// from the top, the start or the solve from there names it as the sheet
+    /// does. Never started again where no angle was `kept`: a solve already
+    /// started lowered from the top is named as it stands, so a caller
+    /// starts a solve again at most once. `None` where nothing refuses it,
+    /// and on a mount that carries no wippen.
+    pub fn name_the_started_solves_refusal(
+        &self,
+        statics: &mut Statics,
+        solved: Result<&Equilibrium, &Refusal>,
+        kept: Option<f64>,
+    ) -> Option<StartedRefusal> {
+        Some(match self.name_the_wippens_refusal(statics, solved)? {
+            RefusedBy::Wippen(WippenRefusal::OutOfReach { heel_clearance, .. })
+                if kept.is_some() && heel_clearance <= 0.0 =>
+            {
+                StartedRefusal::StartAgainLoweredFromTheTop
+            }
+            refused => StartedRefusal::Refused(refused),
+        })
+    }
+
+    /// The same procedure on the key without its wippen
+    /// ([`Mounted::key_alone`]), where the key carries one: what each seat
+    /// of a key carrying its wippen starts from.
+    fn key_alone(&self) -> Option<Seating<'_>> {
+        self.mounted.key_alone.as_deref().map(|alone| Seating {
+            mounted: alone,
+            ..*self
+        })
+    }
+
+    /// The seat `at` of a key carrying its wippen, under `loads`: started
+    /// from `alone`, the key alone's own seat there, the wippen lowered
+    /// onto the key where it stands ([`Self::start`]), the key alone's
+    /// solves and the lowering's halvings counted with the seat's, as one
+    /// increment's.
+    fn seat_by_the_key_alone(
+        &self,
+        statics: &mut Statics,
+        alone: &Seat,
+        loads: &[PointLoad],
+        at: WhichSeat,
+    ) -> Result<Seat, SeatRefusal> {
+        let mut placed = alone.q.clone();
+        if let Some(wippen) = &self.mounted.wippen {
+            placed.insert(wippen.angle.0, 0.0);
+        }
+        let (from, lowering_halvings) =
+            match self.start(statics, &placed, None, Starting::Seat(at))? {
+                Start::From {
+                    q,
+                    lowering_halvings,
+                    ..
+                } => (q, lowering_halvings),
+                // A seat's start places the wippen or refuses it; only an
+                // increment is sent to the loading rule.
+                Start::ByTheLoadingRule => {
+                    return Err(WippenRefusal::PushedPastItsRange {
+                        at,
+                        heel_depth: self
+                            .mounted
+                            .measure_the_heel_past(&placed, WippenLimit::PushedPastItsRange),
+                    }
+                    .into())
+                }
+            };
+        let mut seat = self.seat(statics, &from, loads, at == WhichSeat::Top)?;
+        seat.report = alone.report.continued(seat.report);
+        seat.report.lowering_halvings += lowering_halvings;
+        Ok(seat)
     }
 
     /// The top seat under `loads`: from the key's nominal pose, and where the
@@ -334,6 +820,129 @@ impl Seating<'_> {
         }
     }
 
+    /// Where a solve of the key starts, by one rule that every start of a
+    /// key carrying its wippen obeys: each seat's, the loading rule's, and
+    /// each increment's. The key stands as `placed` places it: for a seat,
+    /// at the key alone's own seat there, the wippen's angle appended at any
+    /// value; for a loading, where the loading rule places it, nominal or
+    /// lowered from above; for an increment, where the last state left it.
+    /// `kept` is the wippen's angle where a state left it.
+    ///
+    /// **A seat** starts from the key alone's own seat ([`Mounted::key_alone`]),
+    /// seated by this module's rule, the wippen lowered onto the key there by
+    /// its heel and its cloth, to within the row margin of where they first
+    /// touch it, or to the bottom of its range where they clear the key all
+    /// the way down ([`crate::parts::mounts::wippen_lowered`]). Where they
+    /// stand in the key even at the top of the wippen's range, the seat is
+    /// refused: the wippen pushed past its range at that seat. At the top
+    /// seat no pose of the key on its frame stands its capstan lower, the
+    /// load at the capstan holding its back down on its cloth; at the bottom
+    /// seat the key's stops hold it there. The key alone reaches its seat in
+    /// large steps, its stops far until it meets them, where the key with its
+    /// wippen, its link within the row margin through the whole turn, would
+    /// crawl a margin a step from the level pose.
+    ///
+    /// **A loading or an increment** starts where the key stands:
+    ///
+    /// 1. **The wippen kept**: where a state left it, and its heel and its
+    ///    cloth stand in the key no deeper than the row margin there, it
+    ///    starts where it stood.
+    /// 2. **The wippen lowered** onto the key where the key stands, as a
+    ///    seat lowers it.
+    /// 3. **Where it fits nowhere**, a loading goes by the key alone's top
+    ///    seat, the wippen lowered there and refused as a seat refuses it,
+    ///    the key alone's solves reported with the start; where the key alone
+    ///    has no top seat, its refusal is the key's own. An increment never
+    ///    starts there: it is friction on, and starting it there would move a
+    ///    key that friction holds. The key is put back by the loading rule
+    ///    instead ([`Start::ByTheLoadingRule`]), whose own starts obey this
+    ///    rule.
+    ///
+    /// No solve starts where the heel or its cloth stands in the key at the
+    /// top of the wippen's range: a start that deep can lose its rows and let
+    /// the heel sink through. On rigid stops the key seats alone where it
+    /// seats with its wippen, within the static solve's tolerances, so a
+    /// decision taken at the key alone's seat differs from one taken at the
+    /// seat with its wippen only where the heel clears the key at the top of
+    /// the wippen's range by less than those picometers, which nothing
+    /// reads. That holds because the top of the range is decided on the
+    /// drawn outlines and on the links' contacts the solve reads
+    /// ([`crate::parts::mounts::wippen_lowered`]): the drawn outlines alone,
+    /// whose chords stand inside the heel cloth's arc by its sag, 21.8 µm on
+    /// the test heel, and inside a domed capstan's by the dome's, would let
+    /// a seat start where its solve then pushes the wippen past its range,
+    /// over a band of settings in which the links stand the cloth in the key
+    /// no deeper than those sags added together
+    /// ([`Mounted::measure_the_heel_past`]). On a mount that carries no
+    /// wippen, the start is `placed`.
+    pub fn start(
+        &self,
+        statics: &mut Statics,
+        placed: &[f64],
+        kept: Option<f64>,
+        starting: Starting,
+    ) -> Result<Start, SeatRefusal> {
+        use crate::parts::mounts::{heel_in_the_key, wippen_lowered};
+        let Some(wippen) = &self.mounted.wippen else {
+            return Ok(Start::From {
+                q: placed.to_vec(),
+                key_alone: None,
+                lowering_halvings: 0,
+            });
+        };
+        let at_the_seat = |q: &[f64], at: WhichSeat| {
+            wippen_lowered(self.mounted, q).ok_or_else(|| {
+                SeatRefusal::from(WippenRefusal::PushedPastItsRange {
+                    at,
+                    heel_depth: self
+                        .mounted
+                        .measure_the_heel_past(q, WippenLimit::PushedPastItsRange),
+                })
+            })
+        };
+        if let Starting::Seat(at) = starting {
+            let lowered = at_the_seat(placed, at)?;
+            return Ok(Start::From {
+                q: lowered.q,
+                key_alone: None,
+                lowering_halvings: lowered.halvings,
+            });
+        }
+        if let Some(angle) = kept {
+            let mut q = placed.to_vec();
+            q[wippen.angle.0] = angle;
+            if heel_in_the_key(self.mounted, &q) <= ROW_MARGIN {
+                return Ok(Start::From {
+                    q,
+                    key_alone: None,
+                    lowering_halvings: 0,
+                });
+            }
+        }
+        if let Some(lowered) = wippen_lowered(self.mounted, placed) {
+            return Ok(Start::From {
+                q: lowered.q,
+                key_alone: None,
+                lowering_halvings: lowered.halvings,
+            });
+        }
+        if starting == Starting::Increment {
+            return Ok(Start::ByTheLoadingRule);
+        }
+        let alone = self
+            .key_alone()
+            .expect("a key carrying a wippen is mounted with its key alone")
+            .top(statics)?;
+        let mut q = alone.q;
+        q.insert(wippen.angle.0, 0.0);
+        let lowered = at_the_seat(&q, WhichSeat::Top)?;
+        Ok(Start::From {
+            q: lowered.q,
+            key_alone: Some(alone.report),
+            lowering_halvings: lowered.halvings,
+        })
+    }
+
     /// The preparation loads, by the frozen rule of the module documentation,
     /// each seat's followed by the standing loads; refused where the capstan
     /// or the measuring point stands on the wrong side of the bearing for its
@@ -341,13 +950,26 @@ impl Seating<'_> {
     fn preparation(&self) -> Result<Preparation, SeatRefusal> {
         let m = &self.mounted.mechanism;
         let n = m.coords().len();
+        // The loads are sized at the level pose; a wippen that fits nowhere
+        // there is the start's to refuse, at the key alone's seat.
         let level = self.mounted.level();
+        let (level, lowering_halvings) = crate::parts::mounts::wippen_lowered(self.mounted, &level)
+            .map(|lowered| (lowered.q, lowered.halvings))
+            .unwrap_or_else(|| {
+                let mut q = level;
+                if let Some(wippen) = &self.mounted.wippen {
+                    q[wippen.angle.0] = m.coords()[wippen.angle.0].limits.1;
+                }
+                (q, 0)
+            });
         let pose = m.pose(&level);
         let angle = self.mounted.angle;
         let key = self.mounted.key;
-        let mut gravity = vec![0.0; n];
-        m.generalized_forces(&pose, self.standing, &mut gravity);
-        let gravity = gravity[angle.0];
+        let mut forces = vec![0.0; n];
+        m.generalized_forces(&pose, self.standing, &mut forces);
+        let follows = |motion| self.mounted.wippen_follows(&level, motion, ROW_MARGIN);
+        let rising = self.mounted.folded(&forces, follows(Motion::Up));
+        let falling = self.mounted.folded(&forces, follows(Motion::Down));
         // A downward newton at a point turns the key by minus the vertical
         // speed that point has per radian.
         let per_newton = |at: Point| {
@@ -361,8 +983,8 @@ impl Seating<'_> {
         if at_press.is_nan() || at_press >= 0.0 {
             return Err(SeatRefusal::MeasuringPointNotInFront);
         }
-        let capstan_load = (self.margin + (-gravity).max(0.0)) / at_capstan;
-        let press = (self.margin + (gravity + capstan_load * at_capstan).max(0.0)) / -at_press;
+        let capstan_load = (self.margin + (-rising).max(0.0)) / at_capstan;
+        let press = (self.margin + (falling + capstan_load * at_capstan).max(0.0)) / -at_press;
         let down = |at: Point, newtons: f64| PointLoad {
             at: MaterialPoint { body: key, at },
             force: Point::new(0.0, -newtons),
@@ -379,10 +1001,18 @@ impl Seating<'_> {
             bottom,
             capstan_load,
             press,
+            lowering_halvings,
         })
     }
 
-    /// One seat, from `from`, under `loads`, friction off.
+    /// One seat, from `from`, under `loads`, friction off. A key carrying
+    /// its wippen starts with the heel clear of the key at the top of the
+    /// wippen's range, the key alone at this seat ([`Self::start`]), where
+    /// the key with its wippen seats too within the static solve's
+    /// tolerances: its solve pushes the wippen past its range only in a tie
+    /// at that limit, within its gap tolerance, the start having read the
+    /// heel there by its drawn outlines and by the links' contacts the solve
+    /// leans on, and is named as the sheet names it all the same.
     fn seat(
         &self,
         statics: &mut Statics,
@@ -393,10 +1023,20 @@ impl Seating<'_> {
         let m = &self.mounted.mechanism;
         let code = |pair: u16| m.pairs()[usize::from(pair)].code;
         let bearing = self.mounted.lift.as_ref().map(|lift| lift.pair);
+        let at = if top {
+            WhichSeat::Top
+        } else {
+            WhichSeat::Bottom
+        };
         let eq = self
             .mounted
             .solve(statics, from, loads, Friction::Off)
             .map_err(|refusal| {
+                if let Some(wippen) =
+                    name_the_wippens_refusal_at(self.mounted, Err(&refusal), at, from)
+                {
+                    return wippen.into();
+                }
                 if let Some(leaves_its_pin) = self
                     .mounted
                     .leaves_its_pin()
@@ -418,8 +1058,8 @@ impl Seating<'_> {
                         let mut pairs: Vec<u16> = on
                             .iter()
                             .filter_map(|h| match *h {
-                                Holder::Contact { pair, .. } => Some(pair),
-                                Holder::Limit { .. } => None,
+                                Holder::Contact { pair, .. } if !code(pair).is_link() => Some(pair),
+                                Holder::Contact { .. } | Holder::Limit { .. } => None,
                             })
                             .collect();
                         pairs.sort_unstable();
@@ -437,23 +1077,35 @@ impl Seating<'_> {
                     }
                 }
             })?;
-        // Sunk where no contact reads: no seat.
+        // Sunk where no contact reads: no seat. A wippen's part standing in
+        // the key is named as such, the heel and its cloth among them, where
+        // the links failed to read them.
         let pose = m.pose(&eq.q);
         let sunk: Vec<ContactCode> = (0..m.pairs().len())
-            .filter(|&p| m.pair_overlap(&pose, u16::try_from(p).expect("a pair")) > SEAT_OVERLAP)
+            .filter(|&p| {
+                !m.pairs()[p].code.is_link()
+                    && m.pair_overlap(&pose, u16::try_from(p).expect("a pair")) > SEAT_OVERLAP
+            })
             .map(|p| m.pairs()[p].code)
             .collect();
         if !sunk.is_empty() {
             return Err(SeatRefusal::CannotSeat { fighting: sunk });
         }
+        if let Some(wippen) = name_the_wippens_refusal_at(self.mounted, Ok(&eq), at, from) {
+            return Err(wippen.into());
+        }
         let mut held_by: Vec<ContactCode> = Vec::new();
         let mut lift = 0.0;
         let mut pairs: Vec<u16> = Vec::new();
+        // A link is no stop: it carries the wippen, and stays in the
+        // vertical balance, its push on the key what the wippen weighs on it.
         for s in &eq.supports {
             if let Holder::Contact { pair, .. } = s.by {
                 if s.force > 0.0 && Some(pair) != bearing {
-                    pairs.push(pair);
                     lift += s.force * s.normal.y;
+                    if !code(pair).is_link() {
+                        pairs.push(pair);
+                    }
                 }
             }
         }
@@ -462,8 +1114,8 @@ impl Seating<'_> {
         for pair in pairs {
             held_by.push(code(pair));
         }
-        // What the bearing carries: whatever the weights and the contacts
-        // leave of the vertical balance.
+        // What the bearing carries: whatever the weights and the contacts,
+        // the links' pushes among them, leave of the vertical balance.
         let weight = m.bodies()[self.mounted.key.0]
             .mass
             .map_or(0.0, |mass| mass.mass * G);

@@ -21,6 +21,8 @@ const LIMITS = Object.keys({
   no_stop_below_the_front: true,
   rail_too_low: true,
   off_its_balance_pin: true,
+  wippen_past_its_range: true,
+  wippen_out_of_reach: true,
 } satisfies Record<Limit, true>) as Limit[]
 
 /** A regulation refused for `limited_by`, short by 0.42 mm. */
@@ -201,6 +203,81 @@ describe('a refused regulation', () => {
   })
 })
 
+describe('the wippen assembly at a limit of its turn', () => {
+  it('says at which seat, and how far past the limit its heel stands', () => {
+    expect(
+      t.refusal.wippen_pushed_past_its_range({
+        code: 'wippen_pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 2.34,
+      }),
+    ).toContain(
+      'en fond de course, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de 2,3 mm dans la touche',
+    )
+    expect(
+      t.refusal.wippen_out_of_reach({
+        code: 'wippen_out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 4.06,
+      }),
+    ).toContain(
+      `à la position de repos, le chevalet n’atteint pas la touche${NO_BREAK_SPACE}: il pend jusqu’à la limite de ce que le modèle représente, et, degré par degré jusque-là, son talon passe au plus près à 4,1 mm du pilote ou du dessus de la touche`,
+    )
+  })
+
+  it('says less than 0.1 mm where the distance is more than nothing and rounds to nothing at the tenth', () => {
+    expect(
+      t.refusal.wippen_pushed_past_its_range({
+        code: 'wippen_pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 0.02,
+      }),
+    ).toContain('soulevé jusqu’à cette limite, pénétrant encore de moins de 0,1 mm dans la touche')
+    expect(
+      t.refusal.wippen_out_of_reach({
+        code: 'wippen_out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 0.02,
+      }),
+    ).toContain(
+      'son talon passe au plus près à moins de 0,1 mm du pilote ou du dessus de la touche',
+    )
+    expect(
+      t.refusal.wippen_in_the_key({
+        code: 'wippen_in_the_key',
+        part: 'jack',
+        key_part: 'keystick',
+        depth_mm: 0.02,
+      }),
+    ).toContain('le bâton d’échappement pénètre de moins de 0,1 mm dans le corps de la touche')
+  })
+
+  it('says the tenth a distance rounds to where it rounds to more than nothing', () => {
+    expect(
+      t.refusal.wippen_pushed_past_its_range({
+        code: 'wippen_pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 0.06,
+      }),
+    ).toContain('soulevé jusqu’à cette limite, pénétrant encore de 0,1 mm dans la touche')
+    expect(
+      t.refusal.wippen_out_of_reach({
+        code: 'wippen_out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 0.06,
+      }),
+    ).toContain('son talon passe au plus près à 0,1 mm du pilote ou du dessus de la touche')
+    expect(
+      t.refusal.wippen_in_the_key({
+        code: 'wippen_in_the_key',
+        part: 'jack',
+        key_part: 'keystick',
+        depth_mm: 0.06,
+      }),
+    ).toContain('le bâton d’échappement pénètre de 0,1 mm dans le corps de la touche')
+  })
+})
+
 describe('a part named in a sentence', () => {
   it('takes its article', () => {
     expect(
@@ -327,6 +404,58 @@ describe('what holds the key', () => {
       }),
     ).toBe(
       'est soulevée de 0,31 mm de sa mouche de balancier, sur son drap de repos arrière, où sa friction la retient',
+    )
+  })
+})
+
+describe('the wippen', () => {
+  it('says what carries it, link by link, in the glossary’s words', () => {
+    expect([
+      t.wippenCarriedBy([{ link: 'capstan_on_the_heel', parts: ['wippen_heel_cloth'] }]),
+      t.wippenCarriedBy([{ link: 'capstan_on_the_heel', parts: ['wippen_heel'] }]),
+      t.wippenCarriedBy([
+        { link: 'capstan_on_the_heel', parts: ['wippen_heel', 'wippen_heel_cloth'] },
+      ]),
+      t.wippenCarriedBy([{ link: 'heel_on_the_key', parts: ['wippen_heel'] }]),
+    ]).toEqual([
+      'Le pilote porte sur le feutre de talon.',
+      'Le pilote porte sur le talon de chevalet, hors du feutre de talon.',
+      'Le pilote porte sur le feutre de talon et sur le talon de chevalet à côté.',
+      'Le talon de chevalet repose sur le dessus de la touche.',
+    ])
+  })
+
+  it('says why it cannot stand where the key is, naming both parts and the depth where one stands in the key', () => {
+    expect(
+      word(t.wippenRefused, 'in_the_key', {
+        code: 'in_the_key',
+        part: 'jack',
+        key_part: 'keystick',
+        depth_mm: 1.5,
+      }),
+    ).toBe(
+      `Le chevalet ne peut pas se placer là. Le bâton d’échappement pénètre de 1,5 mm dans le corps de la touche${NO_BREAK_SPACE}: aucune mécanique ne prend cette position, seul le talon de chevalet porte sur la touche.`,
+    )
+  })
+
+  it('says at which seat, and how far past a limit of its turn its heel stands, where it cannot stand', () => {
+    expect(
+      word(t.wippenRefused, 'pushed_past_its_range', {
+        code: 'pushed_past_its_range',
+        at: 'bottom',
+        heel_depth_mm: 2.34,
+      }),
+    ).toBe(
+      'Le chevalet ne peut pas se placer là. En fond de course, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de 2,3 mm dans la touche, comme le ferait un axe placé trop bas pour son pilote.',
+    )
+    expect(
+      word(t.wippenRefused, 'out_of_reach', {
+        code: 'out_of_reach',
+        at: 'top',
+        heel_clearance_mm: 4.06,
+      }),
+    ).toBe(
+      `Le chevalet ne peut pas se placer là. À la position de repos, le chevalet n’atteint pas la touche${NO_BREAK_SPACE}: il pend jusqu’à la limite de ce que le modèle représente, et, degré par degré jusque-là, son talon passe au plus près à 4,1 mm du pilote ou du dessus de la touche, comme le ferait un axe placé trop haut.`,
     )
   })
 })

@@ -1,6 +1,7 @@
 /**
  * The frame is drawn wholly, the key as the reader chose, its two mortises'
- * bushings apart, and a key no equilibrium places fainter than chosen.
+ * bushings apart, the wippen it carries wholly, and a key no equilibrium
+ * places fainter than chosen, its wippen fainter than whole.
  */
 import type { Part } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
@@ -16,7 +17,7 @@ describe('a body of the view', () => {
   it('is the frame drawn wholly, whatever is chosen for the key or wherever it stands', () => {
     expect(
       bodyOpacity({
-        grounded: true,
+        assembly: 'frame',
         chosen: CHOSEN,
         chosenForBushings: CHOSEN_FOR_BUSHINGS,
         isPlaced: false,
@@ -27,7 +28,7 @@ describe('a body of the view', () => {
   it('is a placed key drawn as the reader chose, its bushings apart', () => {
     expect(
       bodyOpacity({
-        grounded: false,
+        assembly: 'key',
         chosen: CHOSEN,
         chosenForBushings: CHOSEN_FOR_BUSHINGS,
         isPlaced: true,
@@ -38,7 +39,7 @@ describe('a body of the view', () => {
   it('is a key no equilibrium places drawn fainter than chosen, its bushings with it', () => {
     expect(
       bodyOpacity({
-        grounded: false,
+        assembly: 'key',
         chosen: CHOSEN,
         chosenForBushings: CHOSEN_FOR_BUSHINGS,
         isPlaced: false,
@@ -48,12 +49,34 @@ describe('a body of the view', () => {
 
   it('is a key no equilibrium places never drawn whole, even chosen whole', () => {
     const { parts, bushings } = bodyOpacity({
-      grounded: false,
+      assembly: 'key',
       chosen: 1,
       chosenForBushings: 1,
       isPlaced: false,
     })
     expect([parts < 1, bushings < 1]).toEqual([true, true])
+  })
+
+  it('is a placed wippen drawn wholly, whatever is chosen for the key', () => {
+    expect(
+      bodyOpacity({
+        assembly: 'wippen',
+        chosen: CHOSEN,
+        chosenForBushings: CHOSEN_FOR_BUSHINGS,
+        isPlaced: true,
+      }),
+    ).toEqual({ parts: 1, bushings: 1 })
+  })
+
+  it('is the wippen of a key no equilibrium places drawn faded with it, whatever is chosen for the key', () => {
+    expect(
+      bodyOpacity({
+        assembly: 'wippen',
+        chosen: CHOSEN,
+        chosenForBushings: CHOSEN_FOR_BUSHINGS,
+        isPlaced: false,
+      }),
+    ).toEqual({ parts: UNPLACED, bushings: UNPLACED })
   })
 })
 
@@ -88,6 +111,12 @@ describe('a part of a body', () => {
     paper_punching: 'parts',
     back_rail: 'parts',
     back_rail_cloth: 'parts',
+    wippen: 'parts',
+    wippen_heel: 'parts',
+    wippen_heel_cloth: 'parts',
+    jack: 'parts',
+    repetition_lever: 'parts',
+    center_pin: 'parts',
   }
 
   it('is a mortise’s bushing drawn as the body’s bushings, and any other part as its parts', () => {

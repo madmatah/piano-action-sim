@@ -1,5 +1,5 @@
 {
-  "what": "Hirschkorn's key (Boston GP-178, note 52) between its two stops on his printed frame, his front and back bearings rounds of 5 mm: its attitude at rest, the key's tail down on Pg5's round, and at the bottom, its front down on Pg4's, radians nose-up, and how far Pk2, where his finger presses, falls between the two, millimeters. Each as a command prints it, to the digits it prints, which this file keeps; the bench, whose frame bears on flat felts with their tops where his rounds' tops stand, is compared with them by pa-app's test the_bench_differs_from_his_rounds_by_the_felts_alone.",
+  "what": "Hirschkorn's key (Boston GP-178, note 52) between its two stops on his printed frame, his front and back bearings rounds of 5 mm: its attitude at rest, the key's tail down on Pg5's round, and at the bottom, its front down on Pg4's, radians nose-up, and how far Pk2, where his finger presses, falls between the two, millimeters; and his wippen at rest on the capstan, the key at rest. Each as a command prints it, to the digits it prints, which this file keeps; the bench, whose frame bears on flat felts with their tops where his rounds' tops stand, is compared with them by pa-app's tests the_bench_differs_from_his_rounds_by_the_felts_alone and his_wippen_rests_where_his_capstan_closes_on_his_heel.",
   "script_10": {
     "what": "His geometry as a rigid closure, each stop closed on the key's coordinate alone, the lines' normals taken as printed.",
     "command": "python3 -I tools/derivations/10-hirschkorn-assembled-at-rest.py",
@@ -18,5 +18,13 @@
     "rest_back_gap_mm": -0.026766,
     "bottom_front_gap_mm": 0.0,
     "printed_to": { "rad": 1e-9, "mm": 1e-6 }
+  },
+  "script_12": {
+    "what": "His wippen at rest, his contact 1 closed: the capstan's dome on the heel's circle, Pw5, the key at rest on his back rail's round as script 10 closes it, and on the real felts, the cloth's front edge, as the bench bears on it; radians, the wippen's heel up.",
+    "command": "python3 -I tools/derivations/12-hirschkorn-wippen-outline.py",
+    "section": "5. The wippen at rest, the key on its back rail cloth",
+    "rest_wippen_rad_on_his_rounds": 0.026664677,
+    "rest_wippen_rad_on_the_felts": 0.026653717,
+    "printed_to": { "rad": 1e-9 }
   }
 }

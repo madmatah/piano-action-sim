@@ -10,7 +10,7 @@ American English throughout: code, identifiers, comments, documents, commit mess
 
 ## Project
 
-piano-action-sim is an engine for building applications around the grand piano action, for a piano technician, its physics in Rust compiled to WebAssembly; its first application is a single-key regulation bench (`apps/bench`). Built: stage 1a, the key on its frame. Planned: the wippen, the hammer, the action in motion, 88 notes (`docs/FOUNDATIONS.md` > Stages). Read `docs/FOUNDATIONS.md` before changing the physics, the architecture, the dependencies or the tooling; its Crates, apps and gates maps the repository.
+piano-action-sim is an engine for building applications around the grand piano action, for a piano technician, its physics in Rust compiled to WebAssembly; its first application is a single-key regulation bench (`apps/bench`). Built: stage 1a, the key on its frame, and of 1b the wippen resting on the capstan. Planned: the wippen weight, the hammer, the action in motion, 88 notes (`docs/FOUNDATIONS.md` > Stages). Read `docs/FOUNDATIONS.md` before changing the physics, the architecture, the dependencies or the tooling; its Crates, apps and gates maps the repository.
 
 ## The owner
 

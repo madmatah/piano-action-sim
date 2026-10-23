@@ -68,7 +68,7 @@
 use std::sync::OnceLock;
 
 use pa_core::geometry::Point;
-use pa_core::measure::measurement::Basis;
+use pa_core::measure::measurement::{Basis, WippenAssemblyBases};
 use pa_core::measure::seat::{SeatRefusal, Seating, SEAT_MARGIN};
 use pa_core::measure::TouchweightProtocol;
 use pa_core::mechanism::AxisFriction;
@@ -76,9 +76,10 @@ use pa_core::parts::frame::{
     Crown, Drawer, FrameSections, KeyKind, NotADrawer, PinShape, PunchingStack, RailSection, PAPER,
 };
 use pa_core::parts::mounts::{on_its_frame, KeyMount};
+use pa_core::parts::wippen_assembly::{HeelCloth, PartMass, PinnedPart, Stretch, WippenHeel};
 use pa_core::parts::{
     BalanceMortise, Capstan, FrameDesign, FrontMortise, KeyDesign, KeyMass, NotAWeighing,
-    TopClearance,
+    TopClearance, WippenAssembly, WippenAssemblyMass,
 };
 use pa_core::regulation::Targets;
 use pa_core::solve::Statics;
@@ -90,7 +91,7 @@ use ts_rs::TS;
 
 /// The records a profile may point into, by their file name under
 /// `data/params/`, as compiled in.
-const RECORDS: [(&str, &str); 6] = [
+const RECORDS: [(&str, &str); 7] = [
     (
         "key-section.json",
         include_str!("../../../data/params/key-section.json"),
@@ -114,6 +115,10 @@ const RECORDS: [(&str, &str); 6] = [
     (
         "hirschkorn-key-outline.json",
         include_str!("../../../data/params/hirschkorn-key-outline.json"),
+    ),
+    (
+        "hirschkorn-wippen-outline.json",
+        include_str!("../../../data/params/hirschkorn-wippen-outline.json"),
     ),
 ];
 
@@ -360,6 +365,22 @@ pub struct Start {
     pub weight_g: f64,
     /// How it arrives.
     pub arrival: Arrival,
+    /// The wippen assembly the key carries on its capstan, where it carries
+    /// one.
+    pub wippen_assembly: Option<WippenAssemblyStart>,
+}
+
+/// A wippen assembly a profile puts on the key's capstan: its parts, its
+/// mass with the jack and the repetition lever at rest on it, and what each
+/// rests on.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WippenAssemblyStart {
+    /// Its parts and their place.
+    pub assembly: WippenAssembly,
+    /// Its mass.
+    pub mass: WippenAssemblyMass,
+    /// What its mass and its center's friction rest on.
+    pub bases: WippenAssemblyBases,
 }
 
 /// A profile, loaded: what an instrument starts from, and where each number
@@ -489,6 +510,7 @@ struct ProfileFile {
     key_kind: Option<Choice>,
     key_mass: Option<Choice>,
     arrival: Option<Choice>,
+    wippen_assembly: Option<Choice>,
     values: Vec<BindingFile>,
 }
 
@@ -790,6 +812,8 @@ enum Quantity {
     Ratio,
     /// A second moment of mass, kilogram square meters.
     Inertia,
+    /// An angle, radians.
+    Angle,
 }
 
 impl Quantity {
@@ -804,7 +828,8 @@ impl Quantity {
             | (Self::Grams, "g")
             | (Self::Torque, "N·m")
             | (Self::Ratio, "dimensionless")
-            | (Self::Inertia, "kg·m²") => Some(0),
+            | (Self::Inertia, "kg·m²")
+            | (Self::Angle, "rad") => Some(0),
             (Self::Grams, "kg") => Some(3),
             _ => None,
         }
@@ -1243,7 +1268,7 @@ fn top_clearance(b: &mut Bindings) -> Result<Option<TopClearance>, LoadError> {
 /// of its stroke, its front's top above the keybed. For a profile that
 /// publishes no key height, whose regulation keeps the height the key
 /// stands at.
-fn standing_key_height(start: &Start) -> Result<f64, LoadError> {
+pub(crate) fn standing_key_height(start: &Start) -> Result<f64, LoadError> {
     let not_read = |why: SeatRefusal| LoadError::KeyHeightNotRead(why);
     let mass = start
         .key
@@ -1256,6 +1281,10 @@ fn standing_key_height(start: &Start) -> Result<f64, LoadError> {
         start.kind,
         mass,
         0.0,
+        start
+            .wippen_assembly
+            .as_ref()
+            .map(|w| (&w.assembly, &w.mass)),
     )
     .map_err(|p| not_read(SeatRefusal::Mechanism(p)))?;
     let seats = Seating {
@@ -1545,6 +1574,14 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
         key_dip: b.length("key_dip")?,
     };
     let weight_g = b.number("weight_g", Quantity::Grams)?;
+    let wippen_assembly = match choose(
+        "wippen_assembly",
+        file.wippen_assembly.as_ref(),
+        &[("none", false), ("published", true)],
+    )? {
+        true => Some(published_wippen_assembly(b)?),
+        false => None,
+    };
     let mut start = Start {
         key,
         kind,
@@ -1556,6 +1593,7 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
         targets,
         weight_g,
         arrival,
+        wippen_assembly,
     };
     if standing {
         start.targets.key_height = standing_key_height(&start)?;
@@ -1568,6 +1606,235 @@ fn walk(b: &mut Bindings, file: &ProfileFile) -> Result<(Start, Vec<PaperColor>)
         );
     }
     Ok((start, paper_colors))
+}
+
+/// A wippen assembly a source publishes, read off the bindings: its center
+/// pin's place; its body's, its jack's and its repetition lever's outlines,
+/// traced, each read whole off its record ([`outline`]); its heel by its
+/// position, its height and its radius, its corners and its cloth; the jack
+/// and the lever on their pins at their rest angles; the center pin, the
+/// widths and the center's friction; and each of its three parts' mass,
+/// center of mass and inertia, in its own frame.
+fn published_wippen_assembly(b: &mut Bindings) -> Result<WippenAssemblyStart, LoadError> {
+    let point = |b: &mut Bindings, x: &'static str, y: &'static str| {
+        Ok::<_, LoadError>(Point::new(b.length(x)?, b.length(y)?))
+    };
+    let center = point(b, "wippen.center.x", "wippen.center.y")?;
+    let body = outline(b, "wippen_outline")?;
+    let heel = WippenHeel {
+        position: b.length("wippen_heel.position")?,
+        height: b.length("wippen_heel.height")?,
+        radius: b.length("wippen_heel.radius")?,
+        top: b.length("wippen_heel.top")?,
+        back_top: b.length("wippen_heel.back_top")?,
+        front_top: b.length("wippen_heel.front_top")?,
+        back: b.length("wippen_heel.back")?,
+        front: b.length("wippen_heel.front")?,
+        cloth: HeelCloth {
+            back: b.length("wippen_heel_cloth.back")?,
+            front: b.length("wippen_heel_cloth.front")?,
+            thickness: b.length("wippen_heel_cloth.thickness")?,
+        },
+    };
+    let pinned = |b: &mut Bindings, names: [&'static str; 5]| {
+        Ok::<_, LoadError>(PinnedPart {
+            pin: point(b, names[0], names[1])?,
+            rest_angle: b.number(names[2], Quantity::Angle)?,
+            outline: outline(b, names[3])?,
+            width: b.length(names[4])?,
+        })
+    };
+    let jack = pinned(
+        b,
+        [
+            "jack.pin.x",
+            "jack.pin.y",
+            "jack.rest_angle",
+            "jack_outline",
+            "jack.width",
+        ],
+    )?;
+    let repetition_lever = pinned(
+        b,
+        [
+            "repetition_lever.pin.x",
+            "repetition_lever.pin.y",
+            "repetition_lever.rest_angle",
+            "repetition_lever_outline",
+            "repetition_lever.width",
+        ],
+    )?;
+    let center_pin_diameter = b.length("center_pin.diameter")?;
+    let width = b.length("wippen.width")?;
+    let friction = AxisFriction {
+        bound_n_m: b.number("wippen.friction.bound", Quantity::Torque)?,
+        radius_m: b.optional("wippen.friction.radius", Quantity::Length)?,
+    };
+    let part = |b: &mut Bindings, names: [&'static str; 4]| {
+        Ok::<_, LoadError>(PartMass {
+            mass: b.number(names[0], Quantity::Mass)?,
+            center: Point::new(b.length(names[1])?, b.length(names[2])?),
+            inertia: b.number(names[3], Quantity::Inertia)?,
+        })
+    };
+    let mass = WippenAssemblyMass::Published {
+        wippen: part(
+            b,
+            [
+                "wippen.published.mass",
+                "wippen.published.center.x",
+                "wippen.published.center.y",
+                "wippen.published.inertia",
+            ],
+        )?,
+        jack: part(
+            b,
+            [
+                "jack.published.mass",
+                "jack.published.center.x",
+                "jack.published.center.y",
+                "jack.published.inertia",
+            ],
+        )?,
+        repetition_lever: part(
+            b,
+            [
+                "repetition_lever.published.mass",
+                "repetition_lever.published.center.x",
+                "repetition_lever.published.center.y",
+                "repetition_lever.published.inertia",
+            ],
+        )?,
+    };
+    let bases = WippenAssemblyBases {
+        mass: b.basis("wippen.published.mass"),
+        friction: b.basis("wippen.friction.bound"),
+    };
+    Ok(WippenAssemblyStart {
+        assembly: WippenAssembly {
+            center,
+            body,
+            heel,
+            jack,
+            repetition_lever,
+            center_pin_diameter,
+            width,
+            friction,
+        },
+        mass,
+        bases,
+    })
+}
+
+/// A traced outline bound to `param`, read whole off the record it points
+/// to: an outline is traced from a source, so a record holds it, never a
+/// profile's statement. The record's value is the outline's stretches in
+/// order, each a line from its point, `{ "line": [x, y] }`, or an arc
+/// counter-clockwise from its point round its center,
+/// `{ "arc": [x, y], "center": [x, y], "radius": r }`, every number in the
+/// record's unit; each number's provenance is the record, under `param`,
+/// in the order the stretch gives its numbers ([`Stretch::numbers`]).
+fn outline(b: &mut Bindings, param: &'static str) -> Result<Vec<Stretch>, LoadError> {
+    let (binding, used) = b.find(param)?;
+    *used = true;
+    let malformed = |why| LoadError::Malformed {
+        param: param.to_owned(),
+        why,
+    };
+    let How::Record {
+        file,
+        pointer,
+        derive: Derive::Whole,
+    } = &binding.how
+    else {
+        return Err(malformed(
+            "an outline is traced, and read whole from its record",
+        ));
+    };
+    let (file, pointer) = (*file, pointer.clone());
+    let records = Records::get();
+    let at = records.at(file, &pointer)?;
+    let (recorded, unit, reliability) = outline_record_of(at, file, &pointer)?;
+    let decades = Quantity::Length
+        .decades(unit)
+        .ok_or_else(|| LoadError::WrongUnit {
+            param,
+            unit: unit.to_owned(),
+        })?;
+    let length = |x: &Value| {
+        let x = x.as_f64().ok_or(LoadError::NotARecord {
+            file,
+            pointer: pointer.clone(),
+        })?;
+        shifted(x, decades).ok_or(LoadError::TooManyDigits { param })
+    };
+    let point = |v: Option<&Value>| match v.and_then(Value::as_array).map(Vec::as_slice) {
+        Some([x, y]) => Ok(Point::new(length(x)?, length(y)?)),
+        _ => Err(LoadError::NotARecord {
+            file,
+            pointer: pointer.clone(),
+        }),
+    };
+    let mut stretches = Vec::with_capacity(recorded.len());
+    for record in recorded {
+        let stretch = match (record.get("line"), record.get("arc")) {
+            (Some(at), None) => Stretch::Line(point(Some(at))?),
+            (None, Some(from)) => Stretch::Arc {
+                from: point(Some(from))?,
+                center: point(record.get("center"))?,
+                radius: length(record.get("radius").unwrap_or(&Value::Null))?,
+            },
+            _ => {
+                return Err(LoadError::NotARecord {
+                    file,
+                    pointer: pointer.clone(),
+                })
+            }
+        };
+        for value in stretch.numbers() {
+            b.provenance.push(Provenance {
+                param,
+                value,
+                source: Source::Record {
+                    file,
+                    pointer: pointer.clone(),
+                    reliability,
+                    measured: records.measured(file),
+                    derive: Derive::Whole,
+                    traced: records.traced(file),
+                    instrument: records.instrument(file),
+                },
+            });
+        }
+        stretches.push(stretch);
+    }
+    Ok(stretches)
+}
+
+/// An outline's record: its stretches, its unit and its marker.
+fn outline_record_of<'v>(
+    v: &'v Value,
+    file: &'static str,
+    pointer: &str,
+) -> Result<(&'v [Value], &'v str, Reliability), LoadError> {
+    let not_a_record = || LoadError::NotARecord {
+        file,
+        pointer: pointer.to_owned(),
+    };
+    let stretches = v
+        .get("value")
+        .and_then(Value::as_array)
+        .ok_or_else(not_a_record)?;
+    let unit = v
+        .get("unit")
+        .and_then(Value::as_str)
+        .ok_or_else(not_a_record)?;
+    let reliability = v
+        .get("reliability")
+        .and_then(Value::as_str)
+        .and_then(Reliability::of)
+        .ok_or_else(not_a_record)?;
+    Ok((stretches, unit, reliability))
 }
 
 // ---- loading ----------------------------------------------------------------
@@ -1626,6 +1893,7 @@ fn merged(
         key_kind: file.key_kind.clone().or(base.key_kind),
         key_mass: file.key_mass.clone().or(base.key_mass),
         arrival: file.arrival.clone().or(base.arrival),
+        wippen_assembly: file.wippen_assembly.clone().or(base.wippen_assembly),
         values: Vec::new(),
     };
     Ok((choices, bindings))
@@ -1826,6 +2094,10 @@ mod tests {
             frame: &start.frame,
             protocol: &start.protocol,
             friction: &friction,
+            wippen_assembly: start
+                .wippen_assembly
+                .as_ref()
+                .map(|w| (&w.assembly, &w.mass)),
         })
     }
 
@@ -1848,56 +2120,169 @@ mod tests {
                 Ok(p) => p,
                 Err(e) => panic!("data/profiles/{name}.json does not load: {e:?}"),
             };
-            let start = &profile.start;
-            let mut wanted = design_numbers(start);
-            wanted.extend([
-                ("key_height", start.targets.key_height),
-                ("key_dip", start.targets.key_dip),
-                ("weight_g", start.weight_g),
-            ]);
-            let mut bound: Vec<&Provenance> = profile.provenance.iter().collect();
-            for (param, value) in wanted {
-                let i = bound
-                    .iter()
-                    .position(|p| p.param == param)
-                    .unwrap_or_else(|| panic!("{name}: {param} has no provenance"));
-                let p = bound.remove(i);
-                assert_eq!(
-                    p.value.to_bits(),
-                    value.to_bits(),
-                    "{name}: {param} is {value}, its provenance says {}",
-                    p.value
-                );
-                match &p.source {
-                    Source::Record { file, pointer, .. } => {
-                        let at = Records::get().at(file, pointer).expect("a record");
-                        record_of(at, file, pointer).expect("a value, a unit and a marker");
-                    }
-                    Source::Stated {
-                        reliability,
-                        rule,
-                        why,
-                        ..
-                    } => {
-                        assert!(!why.trim().is_empty(), "{name}: {param} says not why");
-                        assert!(
-                            *reliability == Reliability::Assumed || rule.is_some(),
-                            "{name}: {param} is derived by no rule"
-                        );
-                    }
-                    Source::Computed { rule, .. } => assert!(!rule.is_empty()),
-                }
-            }
-            // What is left are the inputs the rules read, each bound.
-            for p in bound {
-                assert!(
-                    !matches!(p.source, Source::Computed { .. }),
-                    "{name}: {} is computed and read by nothing",
-                    p.param
-                );
-            }
+            every_number_has_its_provenance(&profile);
         }
         assert!(names >= 1);
+    }
+
+    /// Every number of the design `profile` builds, and its targets and the
+    /// weight on the key, has a provenance of its own name carrying its very
+    /// bits, list by list, outline by outline; a record's names a record
+    /// holding a value, or an outline's stretches, a unit of the number's
+    /// quantity and a marker; a stated one gives its reason, with its rule
+    /// where it is derived; and nothing computed is left unread.
+    fn every_number_has_its_provenance(profile: &Profile) {
+        let name = &profile.name;
+        let start = &profile.start;
+        let mut wanted = design_numbers(start);
+        wanted.extend([
+            ("key_height", start.targets.key_height),
+            ("key_dip", start.targets.key_dip),
+            ("weight_g", start.weight_g),
+        ]);
+        let mut bound: Vec<&Provenance> = profile.provenance.iter().collect();
+        for (param, value) in wanted {
+            let i = bound
+                .iter()
+                .position(|p| p.param == param)
+                .unwrap_or_else(|| panic!("{name}: {param} has no provenance"));
+            let p = bound.remove(i);
+            assert_eq!(
+                p.value.to_bits(),
+                value.to_bits(),
+                "{name}: {param} is {value}, its provenance says {}",
+                p.value
+            );
+            match &p.source {
+                Source::Record { file, pointer, .. } => {
+                    let at = Records::get().at(file, pointer).expect("a record");
+                    assert!(
+                        record_of(at, file, pointer).is_ok()
+                            || outline_record_of(at, file, pointer).is_ok(),
+                        "{name}: {param} reads no value, unit and marker at {file}{pointer}"
+                    );
+                }
+                Source::Stated {
+                    reliability,
+                    rule,
+                    why,
+                    ..
+                } => {
+                    assert!(!why.trim().is_empty(), "{name}: {param} says not why");
+                    assert!(
+                        *reliability == Reliability::Assumed || rule.is_some(),
+                        "{name}: {param} is derived by no rule"
+                    );
+                }
+                Source::Computed { rule, .. } => assert!(!rule.is_empty()),
+            }
+        }
+        // What is left are the inputs the rules read, each bound.
+        for p in bound {
+            assert!(
+                !matches!(p.source, Source::Computed { .. }),
+                "{name}: {} is computed and read by nothing",
+                p.param
+            );
+        }
+    }
+
+    /// Consistency: **a profile binds a published wippen assembly from its
+    /// records**, as his binds his wippen as printed, every number of it
+    /// with its provenance: his heel by Pw5's
+    /// position and radius and its height by its rule, 18.8 mm, its circle's
+    /// lowest point standing at Pw5's height less its radius in the wippen's
+    /// frame; his outlines read whole off their trace, every stretch of
+    /// them; his three parts' masses from Table A.1, his center's friction
+    /// from Table A.9, both published; and the design they make is one the
+    /// validation layer takes.
+    #[test]
+    fn a_profile_binds_a_published_wippen_assembly_from_its_records() {
+        let profile = Profile::named(STANDARD).expect("shipped");
+        every_number_has_its_provenance(profile);
+        let wippen = profile
+            .start
+            .wippen_assembly
+            .as_ref()
+            .expect("his profile carries his wippen");
+        let heel = wippen.assembly.heel;
+        assert_eq!(heel.position.to_bits(), 0.0595_f64.to_bits());
+        assert_eq!(heel.radius.to_bits(), 0.0253_f64.to_bits());
+        assert_eq!(heel.height.to_bits(), 0.0188_f64.to_bits());
+        let center = heel.center(wippen.assembly.jack.pin);
+        // Pw5 stands 3.0 mm above the wippen's axis; the height's rule adds
+        // and subtracts printed tenths of a millimeter, each a few units in
+        // the last place of a hundredth of a meter.
+        assert!(
+            (center.y - 0.003).abs() <= 1e-15 && center.x.to_bits() == 0.0595_f64.to_bits(),
+            "the heel's circle stands at Pw5 within its height's roundings: {center:?}"
+        );
+        let trace = Records::get().json("hirschkorn-wippen-outline.json");
+        let stretches = |name: &str| {
+            trace["records"]
+                .as_array()
+                .and_then(|r| r.iter().find(|r| r["name"] == name))
+                .and_then(|r| r["value"].as_array())
+                .map_or(0, Vec::len)
+        };
+        assert_eq!(wippen.assembly.body.len(), stretches("wippen_outline"));
+        assert_eq!(
+            wippen.assembly.jack.outline.len(),
+            stretches("jack_outline")
+        );
+        assert_eq!(
+            wippen.assembly.repetition_lever.outline.len(),
+            stretches("repetition_lever_outline")
+        );
+        assert_eq!(
+            wippen.bases,
+            WippenAssemblyBases {
+                mass: Basis::Published,
+                friction: Basis::Published,
+            }
+        );
+        let friction = profile
+            .start
+            .bushings
+            .on(&profile.start.key, &profile.start.protocol);
+        pa_core::validate::validate(&Design {
+            key: &profile.start.key,
+            mass: &profile.start.mass,
+            frame: &profile.start.frame,
+            protocol: &profile.start.protocol,
+            friction: &friction,
+            wippen_assembly: Some((&wippen.assembly, &wippen.mass)),
+        })
+        .expect("his wippen on his key is a design");
+    }
+
+    /// Consistency: **an outline is read from a record, never stated**: a
+    /// profile that states one does not load, naming it.
+    #[test]
+    fn an_outline_stated_and_not_recorded_does_not_load() {
+        let text = format!(
+            r#"{{
+                "profile": "a-stated-outline",
+                "what": "a wippen whose body outline is stated",
+                "base": "{STANDARD}",
+                "wippen_assembly": {{ "is": "published", "why": "a test" }},
+                "values": [
+                    {{ "param": "wippen.center.x", "value": -181.0, "unit": "mm",
+                      "reliability": "S", "why": "a test" }},
+                    {{ "param": "wippen.center.y", "value": 81.6, "unit": "mm",
+                      "reliability": "S", "why": "a test" }},
+                    {{ "param": "wippen_outline", "values": [0.0, 1.0], "unit": "mm",
+                      "reliability": "S", "why": "a test" }}
+                ]
+            }}"#
+        );
+        assert_eq!(
+            Profile::load("a-stated-outline", &text),
+            Err(LoadError::Malformed {
+                param: "wippen_outline".to_owned(),
+                why: "an outline is traced, and read whole from its record",
+            })
+        );
     }
 
     /// Consistency: **a number left unbound, or bound and read by nothing,
@@ -2095,6 +2480,7 @@ mod tests {
             targets: fixture::TARGETS,
             weight_g: 0.0,
             arrival: Arrival::Regulated,
+            wippen_assembly: None,
         };
         let bits = |s: &Start| -> Vec<(&'static str, u64)> {
             let mut n = design_numbers(s);
@@ -2487,7 +2873,9 @@ mod tests {
     /// loads, and nothing on his sheet need read the number back: his key
     /// button's height bound to its length, or his front pin's length to its
     /// thickness, moves no reading a test pins. So a number traced from his
-    /// Figure A.1 is bound to the trace's record of its own name; one read
+    /// Figure A.1, of his key or of his wippen assembly, is bound to the
+    /// trace's record of its own name, the heel's records named without the
+    /// wippen they belong to; one read
     /// from the owner's records or Stanwood's is bound to the very record
     /// the measured section binds it to, with the same bits. What his
     /// profile states as borrowed from the section, his balance rail and
@@ -2517,6 +2905,22 @@ mod tests {
                     assert_eq!(
                         *pointer,
                         format!("/records/{}", p.param.replace('.', "_")),
+                        "{} is bound to another number's trace",
+                        p.param
+                    );
+                }
+                Source::Record {
+                    file: "hirschkorn-wippen-outline.json",
+                    pointer,
+                    ..
+                } => {
+                    traced += 1;
+                    assert_eq!(
+                        *pointer,
+                        format!(
+                            "/records/{}",
+                            p.param.replace('.', "_").replace("wippen_heel", "heel")
+                        ),
                         "{} is bound to another number's trace",
                         p.param
                     );

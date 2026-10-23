@@ -52,12 +52,21 @@ use pa_core::measure::jig::KeyJig;
 /// A reading of the sheet and what it carries, re-exported so an adapter can
 /// show each without reaching past the application layer.
 pub use pa_core::measure::measurement::{
-    Bases, Basis, Input, Measurement, ProcedureId, Rounding, Trust, Unit, Zeroed,
+    Bases, Basis, Input, Measurement, ProcedureId, Rounding, Trust, Unit, WippenAssemblyBases,
+    Zeroed,
 };
 /// Why the key cannot be seated, re-exported so an adapter can say why a
 /// frame cannot be weighed without reaching past the application layer.
 pub use pa_core::measure::seat::SeatRefusal;
-use pa_core::measure::seat::{Seating, Seats, SEAT_MARGIN, SEAT_OVERLAP};
+/// Why the last loading or increment of a key carrying its wippen was not
+/// taken, by the wippen, named as the sheet names it, re-exported so an
+/// adapter can say it without reaching past the application layer: the
+/// state stays the last one taken, drawn faded, or none where none was.
+pub use pa_core::measure::seat::WippenRefusal;
+use pa_core::measure::seat::{
+    RefusedBy, Seating, Seats, Start as SolveStart, StartedRefusal, Starting, WhichSeat,
+    SEAT_MARGIN, SEAT_OVERLAP,
+};
 /// The band the driven sweep draws, and why it cannot be drawn.
 pub use pa_core::measure::sweep::{Band, Sample, SweepRefusal};
 /// Why a walk cannot be taken to the end of the key's stroke, and which way
@@ -75,8 +84,13 @@ use pa_core::mechanism::{
 pub use pa_core::parts::faults::Fault;
 use pa_core::parts::frame::KeyKind;
 use pa_core::parts::mounts::{self, Carried, KeyMount, Mounted, OnItsFrame};
-use pa_core::parts::verdicts::{edge_overlaps, holding, Holding, TOUCHING};
-use pa_core::parts::{FrameDesign, FrameRanges, KeyDesign, KeyRanges};
+/// What carries the wippen the key carries, re-exported so an adapter can
+/// say it without reaching past the application layer.
+pub use pa_core::parts::verdicts::CarriedBy;
+use pa_core::parts::verdicts::{edge_overlaps, holding, wippen_carried_by, Holding, TOUCHING};
+use pa_core::parts::{
+    FrameDesign, FrameRanges, KeyDesign, KeyRanges, WippenAssembly, WippenAssemblyMass,
+};
 /// What is known of the key's mass, the reading its weighing keeps, and why a
 /// weighing is refused, re-exported so an adapter can show and say each
 /// without reaching past the application layer.
@@ -392,6 +406,23 @@ pub enum KeyPlace {
     /// The weight on its measuring point lifts it off its frame: it is
     /// drawn where its last equilibrium left it, which no longer holds it.
     LiftedOff,
+    /// The wippen the key carries is refused where the last loading or
+    /// increment would stand it ([`WippenRefusal`]), named at the seat the
+    /// sheet refuses it at: the key and its wippen are drawn where their
+    /// last equilibrium left them, which no longer holds them.
+    WippenRefused,
+}
+
+/// How a loading or an increment came out.
+enum Placing {
+    /// A state, taken.
+    State(State),
+    /// The key lifts off its frame.
+    LiftsOff,
+    /// The wippen is refused there.
+    Wippen(WippenRefusal),
+    /// No state: no equilibrium, or a key sunk where no contact reads it.
+    Nothing,
 }
 
 /// The key's body in the bench's scene: the ground, which carries the frame,
@@ -432,6 +463,17 @@ pub struct Outline {
     /// Which number of the design places each run of its segments
     /// ([`PlacedBy`]).
     pub placed_by: Vec<(core::ops::Range<u16>, PlacedBy)>,
+}
+
+/// What `basis` is hashed as.
+fn basis_code(basis: Basis) -> u64 {
+    match basis {
+        Basis::Measured => 0,
+        Basis::Published => 1,
+        Basis::Estimated => 2,
+        Basis::Assumed => 3,
+        Basis::SetByHand => 4,
+    }
 }
 
 /// Where a contact is in a mounted key's list of pairs, as the rows name it.
@@ -638,6 +680,11 @@ pub enum EditRefusal {
         /// The name asked for.
         profile: String,
     },
+    /// The path sets the wippen assembly, and the key carries none.
+    NoWippenAssembly {
+        /// The path.
+        path: &'static str,
+    },
 }
 
 impl From<Problem> for EditRefusal {
@@ -775,6 +822,15 @@ pub struct Instrument {
     /// Whether the last edit put the key back by the initialization
     /// instead of moving it from where it stood.
     reinitialized: bool,
+    /// The wippen assembly the key carries on its capstan, where it carries
+    /// one, with its mass.
+    wippen_assembly: Option<(WippenAssembly, WippenAssemblyMass)>,
+    /// What the wippen's mass and its center's friction rest on, where the
+    /// key carries one: its profile's.
+    wippen_bases: Option<WippenAssemblyBases>,
+    /// Why the wippen refused the last loading or increment, where it did:
+    /// the state is then the last one taken.
+    wippen_refused: Option<WippenRefusal>,
     /// Every edit taken, in order.
     log: Vec<Edit>,
     /// The last edit refused since one was taken, and why.
@@ -811,8 +867,13 @@ impl Instrument {
             targets,
             weight_g,
             arrival,
+            wippen_assembly,
         } = start;
         let friction = bushings.on(&key, &protocol);
+        let (wippen_assembly, wippen_bases) = match wippen_assembly {
+            Some(w) => (Some((w.assembly, w.mass)), Some(w.bases)),
+            None => (None, None),
+        };
         let mut instrument = Self {
             profile,
             key,
@@ -827,6 +888,9 @@ impl Instrument {
             state: None,
             lifts_off: false,
             reinitialized: false,
+            wippen_assembly,
+            wippen_bases,
+            wippen_refused: None,
             log: Vec::new(),
             refused: None,
         };
@@ -841,8 +905,8 @@ impl Instrument {
     }
 
     /// The standard instrument: the standard profile's
-    /// ([`crate::profile::STANDARD`]), Hirschkorn's key on his printed frame,
-    /// as it arrives.
+    /// ([`crate::profile::STANDARD`]), Hirschkorn's key carrying his wippen
+    /// assembly on his printed frame, as it arrives.
     pub fn standard() -> Self {
         Self::of(Profile::standard()).expect("the standard instrument is built")
     }
@@ -852,6 +916,37 @@ impl Instrument {
     #[cfg(test)]
     pub(crate) fn weighed_section() -> Self {
         Self::of(Profile::weighed_section()).expect("the weighed section is regulable")
+    }
+
+    /// The owner's measured section weighed by the tests' weighing, carrying
+    /// the test wippen ([`pa_core::test_fixture::wippen_assembly`]) with its
+    /// published mass, as it arrives: regulated with the wippen on.
+    #[cfg(test)]
+    pub(crate) fn carrying_the_test_wippen() -> Self {
+        Self::carrying(pa_core::test_fixture::wippen_assembly())
+    }
+
+    /// The owner's measured section weighed by the tests' weighing, carrying
+    /// `assembly` with the test wippen's published mass, as it arrives.
+    #[cfg(test)]
+    pub(crate) fn carrying(assembly: WippenAssembly) -> Self {
+        Self::try_carrying(assembly).expect("the measured section carries its wippen")
+    }
+
+    /// [`Self::carrying`], or why it is refused.
+    #[cfg(test)]
+    pub(crate) fn try_carrying(assembly: WippenAssembly) -> Result<Self, EditRefusal> {
+        let profile = Profile::weighed_section();
+        let mut start = profile.start.clone();
+        start.wippen_assembly = Some(crate::profile::WippenAssemblyStart {
+            assembly,
+            mass: pa_core::test_fixture::wippen_assembly_mass(),
+            bases: WippenAssemblyBases {
+                mass: Basis::Published,
+                friction: Basis::Published,
+            },
+        });
+        Self::new(start, profile)
     }
 
     /// This instrument on a balance pin a key can be taken off
@@ -977,6 +1072,9 @@ impl Instrument {
             state,
             lifts_off,
             reinitialized,
+            wippen_assembly: _,
+            wippen_bases,
+            wippen_refused,
             log: _,
             refused: _,
         } = self;
@@ -993,13 +1091,7 @@ impl Instrument {
             KeyKind::Natural => false,
             KeyKind::Sharp => true,
         });
-        h.u64(match friction_basis {
-            Basis::Measured => 0,
-            Basis::Published => 1,
-            Basis::Estimated => 2,
-            Basis::Assumed => 3,
-            Basis::SetByHand => 4,
-        });
+        h.u64(basis_code(*friction_basis));
         h.f64(*weight_g);
         h.f64(targets.key_height);
         h.f64(targets.key_dip);
@@ -1025,6 +1117,41 @@ impl Instrument {
         }
         h.flag(*lifts_off);
         h.flag(*reinitialized);
+        match wippen_bases {
+            None => h.u64(0),
+            Some(bases) => {
+                h.u64(1);
+                h.u64(basis_code(bases.mass));
+                h.u64(basis_code(bases.friction));
+            }
+        }
+        let code_the_seat = |at: &WhichSeat| match at {
+            WhichSeat::Top => 0,
+            WhichSeat::Bottom => 1,
+        };
+        match wippen_refused {
+            None => h.u64(0),
+            Some(WippenRefusal::PushedPastItsRange { at, heel_depth }) => {
+                h.u64(1);
+                h.u64(code_the_seat(at));
+                h.f64(*heel_depth);
+            }
+            Some(WippenRefusal::OutOfReach { at, heel_clearance }) => {
+                h.u64(2);
+                h.u64(code_the_seat(at));
+                h.f64(*heel_clearance);
+            }
+            Some(WippenRefusal::InTheKey {
+                part,
+                key_part,
+                depth,
+            }) => {
+                h.u64(3);
+                h.bytes(part.code().as_bytes());
+                h.bytes(key_part.code().as_bytes());
+                h.f64(*depth);
+            }
+        }
         h.0
     }
 
@@ -1051,6 +1178,7 @@ impl Instrument {
                     WeighingField::FromLip => datum.from_lip_m,
                 }
             }
+            Field::Wippen(spec) => (spec.get)(&self.wippen_assembly.as_ref()?.0),
             Field::Papers(_) => return None,
         };
         Some(entry.from_si(si))
@@ -1113,6 +1241,7 @@ impl Instrument {
             frame: &self.frame,
             protocol: &self.protocol,
             friction: &self.friction,
+            wippen_assembly: self.wippen_assembly.as_ref().map(|(a, m)| (a, m)),
         }
     }
 
@@ -1190,6 +1319,24 @@ impl Instrument {
                 self.friction_basis = Basis::SetByHand;
             }
             Field::Weight(spec) => spec.apply(&mut self.weight_g, si)?,
+            Field::Wippen(spec) => {
+                let Some((assembly, mass)) = &self.wippen_assembly else {
+                    return Err(EditRefusal::NoWippenAssembly { path: entry.path });
+                };
+                let mut assembly = assembly.clone();
+                spec.apply(&mut assembly, si)?;
+                validate(&Design {
+                    wippen_assembly: Some((&assembly, mass)),
+                    ..self.design()
+                })?;
+                let mass = *mass;
+                self.wippen_assembly = Some((assembly, mass));
+                if entry.path == registry::path::WIPPEN_FRICTION_TORQUE {
+                    if let Some(bases) = &mut self.wippen_bases {
+                        bases.friction = Basis::SetByHand;
+                    }
+                }
+            }
             Field::Target(_) | Field::Weighing(_) | Field::Papers(_) => {
                 unreachable!("{path} is set by an action")
             }
@@ -1351,6 +1498,7 @@ impl Instrument {
             kind: self.kind,
             mass: self.mass_props(),
             protocol: &self.protocol,
+            wippen_assembly: self.wippen_assembly.as_ref().map(|(a, m)| (a, m)),
         }
         .solve(targets)
         .map_err(NotRegulated::Unsolvable)?;
@@ -1434,47 +1582,132 @@ impl Instrument {
     /// slide's range a whole degree from where it rides below, is put on its
     /// frame from above instead, and is off it only where that finds no
     /// state either.
+    ///
+    /// A key carrying a wippen starts each of these by the start rule
+    /// ([`Seating::start`], a loading): its wippen kept where the last state
+    /// left it, or lowered onto the key, or the key alone's top seat where it
+    /// fits nowhere. A loading the wippen refuses, pushed past its range even
+    /// there, leaning on a limit of its turn, or standing a part in a key
+    /// part, takes no state: the key and its wippen stay drawn where the last
+    /// state left them, faded, or level where none was
+    /// ([`Self::wippen_refused`]).
     fn initialize(&mut self) {
         self.lifts_off = false;
+        self.wippen_refused = None;
         if self.mass_props().is_none() {
             self.state = self.seated_at_the_top();
             return;
         }
-        self.state = match self.on_frame() {
-            Ok(k) => {
-                let loads = [self.touch_load(&k.mounted)];
-                let place = |start: &[f64]| {
-                    k.mounted
-                        .solve(&mut Statics::new(), start, &loads, Friction::Off)
-                };
-                let start = mounts::nominal_pose(&k.mounted);
-                let from_above = || {
-                    mounts::lowered_onto_its_frame(&k.mounted)
-                        .filter(|above| *above != start)
-                        .and_then(|above| place(&above).ok())
-                        .and_then(|eq| Self::state_at(&k.mounted, &eq))
-                };
-                if mounts::overlap_on_its_frame(&k.mounted, &start) > ROW_MARGIN {
-                    self.lifts_off = true;
-                    None
-                } else {
-                    match place(&start) {
-                        Ok(eq) => Self::state_at(&k.mounted, &eq).or_else(from_above),
-                        // Carried off its pin from its nominal pose, which
-                        // can stand at the top of the slide's range a whole
-                        // degree from where the key rides below it: off its
-                        // frame unless it finds a state from above.
-                        Err(refusal) if k.mounted.lifts_off_its_frame(&refusal) => {
-                            let state = from_above();
-                            self.lifts_off = state.is_none();
-                            state
-                        }
-                        Err(_) => from_above(),
-                    }
-                }
-            }
-            Err(_) => None,
+        let last = self.state.take();
+        let Ok(k) = self.on_frame() else {
+            return;
         };
+        let kept = Self::wippen_of(&k.mounted, last.as_ref());
+        let start = mounts::nominal_pose(&k.mounted);
+        let from_above = || match mounts::lowered_onto_its_frame(&k.mounted) {
+            Some(above) if above != start => self.placed(&k, &above, kept, Starting::Loading),
+            _ => Placing::Nothing,
+        };
+        let placing = if mounts::overlap_on_its_frame(&k.mounted, &start) > ROW_MARGIN {
+            Placing::LiftsOff
+        } else {
+            match self.placed(&k, &start, kept, Starting::Loading) {
+                // Carried off its pin from its nominal pose, which can stand
+                // at the top of the slide's range a whole degree from where
+                // the key rides below it: off its frame unless it finds a
+                // state from above.
+                Placing::LiftsOff => match from_above() {
+                    Placing::Nothing => Placing::LiftsOff,
+                    other => other,
+                },
+                Placing::Nothing => from_above(),
+                other => other,
+            }
+        };
+        match placing {
+            Placing::State(state) => self.state = Some(state),
+            Placing::LiftsOff => self.lifts_off = true,
+            Placing::Wippen(why) => {
+                self.state = last;
+                self.wippen_refused = Some(why);
+            }
+            Placing::Nothing => {}
+        }
+    }
+
+    /// The wippen's angle in `state`, where the key carries one and a state
+    /// was taken.
+    fn wippen_of(mounted: &Mounted, state: Option<&State>) -> Option<f64> {
+        let wippen = mounted.wippen.as_ref()?;
+        state.map(|s| s.q[wippen.angle.0])
+    }
+
+    /// The key on its frame `k` placed from `placed`, the wippen it carries
+    /// started by the start rule for `starting` ([`Seating::start`]), its
+    /// angle `kept` where a state left it; then solved, friction off for a
+    /// loading and on for an increment, under the weight on its measuring
+    /// point; and the state checked for a wippen part standing in a key part.
+    /// An increment the rule cannot start where the key stands has no state
+    /// here: the caller puts the key back by the loading rule.
+    ///
+    /// A wippen kept where a state left it that fell free below a key part
+    /// an edit brought over its heel's path is started again lowered from
+    /// the top of its range, as the sheet starts it
+    /// ([`Seating::name_the_started_solves_refusal`]), and the start or the
+    /// solve from there names what refuses it.
+    fn placed(
+        &self,
+        k: &OnItsFrame,
+        placed: &[f64],
+        kept: Option<f64>,
+        starting: Starting,
+    ) -> Placing {
+        let mut statics = Statics::new();
+        let seating = self.seating_on(k);
+        let from = match seating.start(&mut statics, placed, kept, starting) {
+            Ok(SolveStart::From { q, .. }) => q,
+            Ok(SolveStart::ByTheLoadingRule) => return Placing::Nothing,
+            Err(SeatRefusal::WippenPushedPastItsRange { at, heel_depth }) => {
+                return Placing::Wippen(WippenRefusal::PushedPastItsRange { at, heel_depth })
+            }
+            // The key alone has no top seat: its refusal is the key's own.
+            Err(_) => return Placing::Nothing,
+        };
+        let friction = match starting {
+            Starting::Increment => Friction::On,
+            Starting::Loading | Starting::Seat(_) => Friction::Off,
+        };
+        let loads = [self.touch_load(&k.mounted)];
+        let solved = k.mounted.solve(&mut statics, &from, &loads, friction);
+        match seating.name_the_started_solves_refusal(&mut statics, solved.as_ref(), kept) {
+            Some(StartedRefusal::StartAgainLoweredFromTheTop) => {
+                return self.placed(k, placed, None, starting)
+            }
+            Some(StartedRefusal::Refused(RefusedBy::Wippen(why))) => return Placing::Wippen(why),
+            Some(StartedRefusal::Refused(RefusedBy::KeyLiftingOffItsFrame)) => {
+                return Placing::LiftsOff
+            }
+            // The key alone has no seat: its refusal is the key's own.
+            Some(StartedRefusal::Refused(RefusedBy::KeyAlone(_))) => return Placing::Nothing,
+            None => {}
+        }
+        match solved {
+            Ok(eq) => Self::state_at(&k.mounted, &eq).map_or(Placing::Nothing, Placing::State),
+            Err(refusal) if k.mounted.lifts_off_its_frame(&refusal) => Placing::LiftsOff,
+            Err(_) => Placing::Nothing,
+        }
+    }
+
+    /// The seated-pose procedure on `k`, as the start of a solve reads it:
+    /// the capstan and the measuring point, nothing standing on the key.
+    fn seating_on<'k>(&self, k: &'k OnItsFrame) -> Seating<'k> {
+        Seating {
+            mounted: &k.mounted,
+            capstan: k.capstan,
+            measuring_point: self.protocol.measuring_point_on_key(&self.key),
+            margin: SEAT_MARGIN,
+            standing: &[],
+        }
     }
 
     /// A key nobody has weighed, where the seated pose puts it at the top of
@@ -1507,6 +1740,16 @@ impl Instrument {
     /// contact reads ([`mounts::overlap_on_its_frame`]), or from which no
     /// increment can be solved otherwise, starts it again from the
     /// initialization, and [`Self::reinitialized`] says so.
+    ///
+    /// A key carrying a wippen starts the increment by the start rule
+    /// ([`Seating::start`], an increment): its wippen where the last state
+    /// left it, or lowered onto the key where its heel stands in it there.
+    /// Where it fits nowhere with the key where it stands, the increment
+    /// never starts from the key alone's seat, which would move a key its
+    /// friction holds: the key is put back by the initialization, said as
+    /// above, and restarted for its wippen there and nowhere else. An
+    /// increment the wippen refuses takes no state, as a loading it refuses
+    /// does.
     fn relax(&mut self) {
         if self.mass_props().is_none() {
             self.initialize();
@@ -1516,36 +1759,40 @@ impl Instrument {
         // Whether the key's last state, unmoved, still stands clear of its
         // frame, so that it can stay drawn there if no equilibrium is found.
         let mut clear = false;
-        let outcome = self.state.as_ref().and_then(|state| {
-            let k = self.on_frame().ok()?;
-            let mut from = state.q.clone();
-            if let Some(lift) = &k.mounted.lift {
-                if state.lift <= TOUCHING {
-                    from[lift.coord.0] = lift.on_punching + state.lift;
+        let placing = match (&self.state, self.on_frame()) {
+            (Some(state), Ok(k)) => {
+                let mut from = state.q.clone();
+                if let Some(lift) = &k.mounted.lift {
+                    if state.lift <= TOUCHING {
+                        from[lift.coord.0] = lift.on_punching + state.lift;
+                    }
+                }
+                if mounts::overlap_on_its_frame(&k.mounted, &from) > ROW_MARGIN {
+                    Placing::Nothing
+                } else {
+                    clear = from == state.q;
+                    let kept = Self::wippen_of(&k.mounted, Some(state));
+                    self.placed(&k, &from, kept, Starting::Increment)
                 }
             }
-            if mounts::overlap_on_its_frame(&k.mounted, &from) > ROW_MARGIN {
-                return None;
-            }
-            clear = from == state.q;
-            let loads = [self.touch_load(&k.mounted)];
-            match k
-                .mounted
-                .solve(&mut Statics::new(), &from, &loads, Friction::On)
-            {
-                Ok(eq) => Self::state_at(&k.mounted, &eq).map(Ok),
-                Err(refusal) if k.mounted.lifts_off_its_frame(&refusal) => Some(Err(())),
-                Err(_) => None,
-            }
-        });
-        self.reinitialized = outcome.is_none() && self.state.is_some();
-        match outcome {
-            Some(Ok(state)) => {
+            _ => Placing::Nothing,
+        };
+        self.reinitialized = matches!(placing, Placing::Nothing) && self.state.is_some();
+        match placing {
+            Placing::State(state) => {
                 self.state = Some(state);
                 self.lifts_off = false;
+                self.wippen_refused = None;
             }
-            Some(Err(())) => self.lifts_off = true,
-            None => {
+            Placing::LiftsOff => {
+                self.lifts_off = true;
+                self.wippen_refused = None;
+            }
+            Placing::Wippen(why) => {
+                self.lifts_off = false;
+                self.wippen_refused = Some(why);
+            }
+            Placing::Nothing => {
                 let last = self.state.clone();
                 self.initialize();
                 // The initialization finds the key lifting off its frame
@@ -1674,7 +1921,9 @@ impl Instrument {
     }
 
     /// Every part of the key and of its frame, the frame's first, on the
-    /// ground, then the key's, on [`KEY`]; with what each declares.
+    /// ground, then the key's, on [`KEY`], then the wippen assembly's the key
+    /// carries, on the body after the key's, its center pin on the ground;
+    /// with what the key's and the frame's declare.
     ///
     /// The frame's papers are the ones actually laid, one part each, because
     /// that is what the drawer holds and what a technician counts.
@@ -1682,6 +1931,9 @@ impl Instrument {
         let mut parts = Vec::new();
         let frame = self.frame.parts(&self.key, self.kind, &mut parts);
         let key = self.key.parts(KEY, &mut parts);
+        if let Some((assembly, _)) = &self.wippen_assembly {
+            assembly.parts(MOUNT.wippen_body(), BodyId::GROUND, &mut parts);
+        }
         (parts, key, frame)
     }
 
@@ -1723,7 +1975,14 @@ impl Instrument {
             Some(state) => state.placements.clone(),
             None => {
                 let level = self.level();
-                vec![Placement::WORLD, level, level]
+                let mut poses = vec![Placement::WORLD, level, level];
+                if let Some((assembly, _)) = &self.wippen_assembly {
+                    poses.push(Placement {
+                        origin: assembly.center,
+                        ..Placement::WORLD
+                    });
+                }
+                poses
             }
         }
     }
@@ -1745,11 +2004,45 @@ impl Instrument {
     /// ([`Self::key_placement`]): placed by an equilibrium, or not and why
     /// not.
     pub fn key_place(&self) -> KeyPlace {
-        match (&self.state, self.lifts_off) {
-            (None, _) => KeyPlace::Unplaced,
-            (Some(_), true) => KeyPlace::LiftedOff,
-            (Some(_), false) => KeyPlace::Placed,
+        match (&self.state, self.lifts_off, self.wippen_refused) {
+            (None, ..) => KeyPlace::Unplaced,
+            (Some(_), true, _) => KeyPlace::LiftedOff,
+            (Some(_), false, Some(_)) => KeyPlace::WippenRefused,
+            (Some(_), false, None) => KeyPlace::Placed,
         }
+    }
+
+    /// Why the wippen the key carries refused the last loading or increment,
+    /// where it did: drawn faded where the last state left it, or level on
+    /// its balance punching where none was taken.
+    pub fn wippen_refused(&self) -> Option<WippenRefusal> {
+        self.wippen_refused
+    }
+
+    /// Whether the key carries a wippen assembly.
+    pub fn carries_a_wippen(&self) -> bool {
+        self.wippen_assembly.is_some()
+    }
+
+    /// The links that carry the wippen where the key is drawn, each with the
+    /// parts of the heel it bears on: the capstan on the heel cloth or on
+    /// the heel's wood, or the heel on the key's top. Empty where the key
+    /// carries no wippen, or where no equilibrium places it.
+    pub fn wippen_carried_by(&self) -> Vec<CarriedBy> {
+        match (&self.state, self.key_on_frame()) {
+            (Some(state), Some(mounted)) if self.is_placed() => {
+                wippen_carried_by(&mounted, &state.q)
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// The wippen's angle where it is drawn, radians, positive lifting its
+    /// heel; `None` where the key carries no wippen.
+    pub fn wippen_angle(&self) -> Option<f64> {
+        let mounted = self.key_on_frame()?;
+        let wippen = mounted.wippen?;
+        Some(self.drawn(&mounted)[wippen.angle.0])
     }
 
     /// Whether an equilibrium places the key where it is drawn
@@ -1788,6 +2081,7 @@ impl Instrument {
             self.kind,
             self.mass_props(),
             self.friction.bound_n_m,
+            self.wippen_assembly.as_ref().map(|(a, m)| (a, m)),
         )
     }
 
@@ -1981,6 +2275,7 @@ impl Instrument {
             },
             key_friction: self.friction_basis,
             geometry: Basis::Assumed,
+            wippen_assembly: self.wippen_bases,
         }
     }
 
@@ -2187,8 +2482,13 @@ pub(crate) mod read {
         Stack, Start, Targets,
     };
     use crate::registry::path;
+    use pa_core::contact::{PartCode, PartId};
+    use pa_core::measure::seat::Seating;
     use pa_core::measure::walk::{HALVINGS, STEP_G};
+    use pa_core::mechanism::BodyId;
+    use pa_core::parts::mounts::{step_down_a_whole_degree, Mounted};
     use pa_core::solve::statics::RESIDUAL_TOLERANCE;
+    use pa_core::solve::Statics;
     use pa_core::G;
 
     /// Bushings that hold `grams` at the measuring point with the key
@@ -2277,6 +2577,114 @@ pub(crate) mod read {
     pub(crate) fn resolution() -> f64 {
         0.5 * STEP_G / f64::from(1u32 << HALVINGS)
             + 1000.0 * RESIDUAL_TOLERANCE * 2.0 * 0.3 / (G * 0.2)
+    }
+
+    /// How finely [`halve_between`] halves a setting, meters: a hundredth
+    /// of a micron.
+    pub(crate) const HALVED_TO: f64 = 1e-8;
+
+    /// A setting between `refused`, where `fits` says no, and `seated`,
+    /// where it says yes, halved until the two stand no more than
+    /// [`HALVED_TO`] apart, each half keeping the end `fits` gives its
+    /// middle: the refused end and the seated end, either way round. Sound
+    /// where the setting crosses one boundary between them.
+    pub(crate) fn halve_between(
+        mut refused: f64,
+        mut seated: f64,
+        fits: impl Fn(f64) -> bool,
+    ) -> (f64, f64) {
+        while (seated - refused).abs() > HALVED_TO {
+            let middle = 0.5 * (refused + seated);
+            if fits(middle) {
+                seated = middle;
+            } else {
+                refused = middle;
+            }
+        }
+        (refused, seated)
+    }
+
+    /// The key of `b` carrying its wippen, and the key alone's top seat,
+    /// the wippen's angle in its place at nothing: where the sheet reads a
+    /// wippen out of the key's reach
+    /// ([`pa_core::parts::mounts::Mounted::measure_the_heel_past`]).
+    pub(crate) fn at_the_key_alones_top_seat(b: &Instrument) -> (Mounted, Vec<f64>) {
+        let k = b.on_frame().expect("the key on its frame");
+        let alone = Seating {
+            mounted: k.mounted.key_alone.as_deref().expect("the key alone"),
+            ..b.seating_on(&k)
+        }
+        .top(&mut Statics::new())
+        .expect("the key alone seats");
+        let mut q = alone.q;
+        q.insert(k.mounted.wippen.expect("a wippen").angle.0, 0.0);
+        (k.mounted, q)
+    }
+
+    /// How finely [`nearest_over_its_whole_turn`] resolves the heel's
+    /// nearest approach, meters: a micron, finer than any tolerance the
+    /// bench reads a distance to.
+    pub(crate) const RESOLVED_TO: f64 = 1e-6;
+
+    /// How near the heel and its cloth come to the key's parts over the
+    /// whole turn of the wippen, the key at `q`, meters, to within
+    /// [`RESOLVED_TO`] above it, with the widest step between two of the
+    /// angles the bench decides reach at
+    /// ([`pa_core::parts::mounts::step_down_a_whole_degree`]). The clearance at
+    /// an angle moves by no more than the wippen's reach times the turn,
+    /// every sample and every edge of the heel turning about the center pin
+    /// within its reach, so no angle between two read at `a` and `b`,
+    /// reading `ca` and `cb`, reads less than their mean less the reach
+    /// times half the turn between them: each step is halved until that
+    /// bound stands within [`RESOLVED_TO`] of the least read so far. Started
+    /// from the whole degrees, so the least read is no more than the
+    /// bench's reading.
+    pub(crate) fn nearest_over_its_whole_turn(mounted: &Mounted, q: &[f64]) -> (f64, f64) {
+        let m = &mounted.mechanism;
+        let wippen = mounted.wippen.expect("a wippen");
+        let (low, high) = m.coords()[wippen.angle.0].limits;
+        let picked = |keep: &dyn Fn(PartCode, BodyId) -> bool| -> Vec<PartId> {
+            (0..m.parts().len())
+                .filter(|&i| keep(m.parts()[i].code, m.parts()[i].body))
+                .map(|i| PartId(u16::try_from(i).expect("few parts")))
+                .collect()
+        };
+        let heel = picked(&|code, body| {
+            body == wippen.body && matches!(code, PartCode::WippenHeel | PartCode::WippenHeelCloth)
+        });
+        let key = m.outlines(&m.pose(q), &picked(&|_, body| body == mounted.key));
+        let clearance = |angle: f64| {
+            let mut at = q.to_vec();
+            at[wippen.angle.0] = angle;
+            m.outlines(&m.pose(&at), &heel).clearance(&key)
+        };
+        let mut whole = vec![(high, clearance(high))];
+        let mut widest = 0.0_f64;
+        let mut angle = high;
+        while angle > low {
+            let below = step_down_a_whole_degree(angle, low);
+            widest = widest.max(angle - below);
+            whole.push((below, clearance(below)));
+            angle = below;
+        }
+        let mut least = whole
+            .iter()
+            .map(|&(_, read)| read)
+            .fold(f64::INFINITY, f64::min);
+        let mut steps: Vec<[(f64, f64); 2]> =
+            whole.windows(2).map(|pair| [pair[0], pair[1]]).collect();
+        while let Some([(above, at_above), (below, at_below)]) = steps.pop() {
+            let bound = 0.5 * (at_above + at_below) - wippen.reach * 0.5 * (above - below);
+            if bound >= least - RESOLVED_TO {
+                continue;
+            }
+            let middle = 0.5 * (above + below);
+            let at_middle = clearance(middle);
+            least = least.min(at_middle);
+            steps.push([(above, at_above), (middle, at_middle)]);
+            steps.push([(middle, at_middle), (below, at_below)]);
+        }
+        (least, widest)
     }
 }
 
@@ -3713,8 +4121,9 @@ mod contact_readout_tests {
     /// By type, a contact pair holds nothing but ranges of parts. Here, on
     /// every bench of the golden sheet and on every shipped profile's: the
     /// mechanism the contacts are read on carries exactly the parts the view
-    /// draws, and every range of every pair names one of them and segments
-    /// its drawn silhouette has.
+    /// draws, five pairs between the key and its frame and the two links
+    /// where it carries a wippen, and every range of every pair names one of
+    /// them and segments its drawn silhouette has.
     #[test]
     fn every_contact_surface_is_a_range_of_a_drawn_part() {
         let fixtures = crate::golden::FIXTURES
@@ -3732,7 +4141,8 @@ mod contact_readout_tests {
                 &drawn[..],
                 "{name}: the contacts read the parts the view draws"
             );
-            assert_eq!(mounted.mechanism.pairs().len(), 5, "{name}");
+            let links = 2 * usize::from(b.carries_a_wippen());
+            assert_eq!(mounted.mechanism.pairs().len(), 5 + links, "{name}");
             for pair in mounted.mechanism.pairs() {
                 for range in pair.a.ranges.iter().chain(&pair.b.ranges) {
                     let part = &drawn[range.part.index()];
@@ -5080,10 +5490,15 @@ mod edit_tests {
     #[test]
     fn no_number_that_is_not_finite_reaches_the_core() {
         let mut b = Instrument::weighed_section();
+        let mut carrying = Instrument::carrying_the_test_wippen();
         for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             for e in &ENTRIES {
                 let param = e.param();
-                refuses(&mut b, set(e.path, bad), &|w| match e.set_by() {
+                let b = match e.field {
+                    Field::Wippen(_) => &mut carrying,
+                    _ => &mut b,
+                };
+                refuses(b, set(e.path, bad), &|w| match e.set_by() {
                     Some(action) => {
                         *w == EditRefusal::SetByAction {
                             path: e.path,
@@ -5247,6 +5662,11 @@ mod edit_tests {
     fn the_state_hash_changes_with_every_coordinate_and_the_hidden_state() {
         let standard = Instrument::weighed_section().state_hash();
         assert_eq!(Instrument::weighed_section().state_hash(), standard);
+        let carrying = Instrument::carrying_the_test_wippen();
+        assert_eq!(
+            Instrument::carrying_the_test_wippen().state_hash(),
+            carrying.state_hash()
+        );
         let soft = |path: &str| {
             PAGE.iter()
                 .flat_map(|(_, controls)| controls.iter())
@@ -5256,7 +5676,10 @@ mod edit_tests {
                 })
         };
         for e in ENTRIES.iter().filter(|e| e.set_by().is_none()) {
-            let mut b = Instrument::weighed_section();
+            let (mut b, standard) = match e.field {
+                Field::Wippen(_) => (carrying.clone(), carrying.state_hash()),
+                _ => (Instrument::weighed_section(), standard),
+            };
             let now = b.value(e.path).expect("a value");
             // A tenth of what the page offers away from where it stands,
             // forward or else back, whichever a key can be built at.
@@ -5337,6 +5760,7 @@ mod edit_tests {
             assert_ne!(c.state_hash(), b.state_hash(), "{what}");
         };
         let b = Instrument::weighed_section();
+        let carrying = Instrument::carrying_the_test_wippen();
         for e in &ENTRIES {
             let what = e.path;
             match e.field {
@@ -5363,6 +5787,11 @@ mod edit_tests {
                 Field::Target(s) => moves(what, &b, &|c| {
                     let x = next((s.get)(&c.targets));
                     (s.set)(&mut c.targets, x);
+                }),
+                Field::Wippen(s) => moves(what, &carrying, &|c| {
+                    let (assembly, _) = c.wippen_assembly.as_mut().expect("a wippen");
+                    let x = next((s.get)(assembly));
+                    (s.set)(assembly, x);
                 }),
                 Field::Weighing(_) | Field::Papers(_) => {}
             }
@@ -5871,12 +6300,15 @@ mod band_tests {
     /// Level 0, consistency, the second non-confusion test through the band,
     /// on both shipped keys: **bushings 1.2 times as tight widen the band and
     /// leave its middle.** The bushings' torque set a fifth higher, the
-    /// curves stand that bound over the measuring point's arm either side of
-    /// the key's balance at every travel: the width grows by a fifth, the
-    /// middle moves by rounding alone. At the extremes the width grows by
-    /// the extra bound read at the two attitudes' arms, the middle by half
-    /// their difference, under a hundredth of a gram. Friction does not
-    /// seat the key, so every step holds the same angle, to the bit.
+    /// curves stand that extra bound over the measuring point's arm either
+    /// side of the key's balance at every travel: the width grows by a fifth
+    /// of what the bushings hold, which is the key alone's band, since the
+    /// friction of a wippen's center, which the bushings leave, widens the
+    /// band of a key carrying it too; the middle moves by rounding alone. At
+    /// the extremes the width grows by the extra bound read at the two
+    /// attitudes' arms, the middle by half their difference, under a
+    /// hundredth of a gram. Friction does not seat the key, so every step
+    /// holds the same angle, to the bit.
     #[test]
     fn bushings_a_fifth_tighter_widen_the_band_and_leave_its_middle() {
         for (name, base) in shipped() {
@@ -5930,10 +6362,13 @@ mod band_tests {
                 "{name}: the middle moved by {middle} g, the extremes' arms account for {tilt} g"
             );
             assert!(tilt.abs() < 0.01, "{name}: under a hundredth of a gram");
-            let was = b0.down_weight.grams - b0.up_weight.grams;
+            let mut start = base.profile().start.clone();
+            start.wippen_assembly = None;
+            let alone = band(&Instrument::new(start, base.profile()).expect("the key alone"));
+            let was = alone.down_weight.grams - alone.up_weight.grams;
             assert!(
                 (width / was - 0.2).abs() < 0.01,
-                "{name}: about a fifth wider"
+                "{name}: about a fifth wider than its bushings alone hold it"
             );
         }
     }
@@ -6085,3 +6520,6 @@ mod section_tests {
         assert!(!because(ProcedureId::FrontWeight).contains(&Input::CenterOfMassHeight));
     }
 }
+
+#[cfg(test)]
+mod wippen_tests;

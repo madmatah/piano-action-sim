@@ -3,4 +3,4 @@
 /**
  * Where the key stands on its frame, as the view draws it.
  */
-export type KeyPlace = "placed" | "unplaced" | "lifted_off";
+export type KeyPlace = "placed" | "unplaced" | "lifted_off" | "wippen_refused";

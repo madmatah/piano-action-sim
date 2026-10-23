@@ -46,6 +46,9 @@
  * inside it and draws its walls from inside, in the color of the wood they
  * are cut in (`carving.ts`).
  *
+ * The wippen the key carries is drawn wholly, whatever the reader chose for
+ * the key, and faded with a key no equilibrium places (`opacity.ts`).
+ *
  * The faded parts, a key drawn faint as the reader chose or one no
  * equilibrium places, are drawn apart in the solid, whatever order they
  * come in (`transparency.ts`): every face of them stays drawn, the
@@ -93,6 +96,7 @@ import { OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { assemblyOf, GROUND } from './bodies'
 import { type Box, measureBounds } from './bounds'
 import {
   buildCarvingUniforms,
@@ -178,9 +182,6 @@ const LAYER = {
   marks: 8,
   contacts: 9,
 } as const
-
-/** The engine's ground, which carries the frame: body 0. */
-const GROUND = 0
 
 /** The stencil value a cut leaves where the key's wood must not be painted. */
 const CUT_STENCIL = 1
@@ -948,7 +949,7 @@ export function SagittalView({
   /** Whether every line is marked by how its number is known. */
   marked: boolean
   /** How opaque the key is drawn, as the reader chose: faded further where
-   * no equilibrium places it. */
+   * no equilibrium places it. Its wippen does not follow it. */
   keyOpacity: number
   /** How opaque the key's two mortises' bushings are drawn, as the reader
    * chose apart from its wood, so that they show inside it: faded further
@@ -1006,7 +1007,7 @@ export function SagittalView({
               marker={state.measuring_point.body === body ? state.measuring_point : undefined}
               marked={marked}
               opacity={bodyOpacity({
-                grounded: body === GROUND,
+                assembly: assemblyOf(body),
                 chosen: keyOpacity,
                 chosenForBushings: bushingsOpacity,
                 isPlaced: state.place === 'placed',

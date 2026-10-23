@@ -6,6 +6,8 @@ import type { RefusedEdit } from "./RefusedEdit";
 import type { Riding } from "./Riding";
 import type { Seats } from "./Seats";
 import type { Touch } from "./Touch";
+import type { WippenCarriedBy } from "./WippenCarriedBy";
+import type { WippenRefused } from "./WippenRefused";
 
 /**
  * How the key stands on its frame and why, each part wherever it can be
@@ -44,4 +46,15 @@ edge_overlaps: Array<EdgeOverlap>,
  * The last edit refused since one was taken, and why; `null` where
  * none was.
  */
-refused_edit: RefusedEdit | null, };
+refused_edit: RefusedEdit | null, 
+/**
+ * What carries the wippen the key carries where it is drawn, each link
+ * with the parts of the heel it bears on; empty where it carries none,
+ * or where no equilibrium places the key.
+ */
+wippen_carried_by: Array<WippenCarriedBy>, 
+/**
+ * Why the wippen refused the last loading or increment; `null` where
+ * it did not.
+ */
+wippen_refused: WippenRefused | null, };

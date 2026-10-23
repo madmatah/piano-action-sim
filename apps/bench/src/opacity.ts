@@ -1,15 +1,17 @@
 /**
  * How opaque each body of the view is drawn: the frame always wholly, the
  * key as the reader chose, its two mortises' bushings apart from the rest
- * of it, and fainter still where no equilibrium places it, so that a key
- * with no place on its frame never reads as standing there.
+ * of it, and the wippen it carries wholly, whatever is chosen for the key;
+ * the key and its wippen fainter where no equilibrium places them, so that
+ * a key with no place on its frame never reads as standing there.
  */
 
 import type { Outline, Part } from '@pas/wasm/types'
+import type { Assembly } from './bodies'
 
-/** How much fainter than chosen a key no equilibrium places is drawn:
- * enough that it reads as no place of the key's, and that the frame's parts
- * it is drawn through show. */
+/** How much fainter than chosen a key no equilibrium places is drawn, and
+ * its wippen than whole: enough that it reads as no place of the key's, and
+ * that the frame's parts it is drawn through show. */
 export const UNPLACED = 0.3
 
 /** How opaque a body's parts are drawn: the two mortises' bushings apart
@@ -34,15 +36,18 @@ const BUSHINGS: ReadonlySet<Part> = new Set<Part>([
   'front_mortise_bushing',
 ])
 
+/** A body no equilibrium places, drawn fainter than whole. */
+const FADED: BodyOpacity = { parts: UNPLACED, bushings: UNPLACED }
+
 /** How opaque a body's parts are drawn. */
 export function bodyOpacity({
-  grounded,
+  assembly,
   chosen,
   chosenForBushings,
   isPlaced,
 }: {
-  /** Whether the body is the ground, which carries the frame. */
-  grounded: boolean
+  /** What the body belongs to: the frame, the key, or its wippen. */
+  assembly: Assembly
   /** How opaque the reader chose the key to be. */
   chosen: number
   /** How opaque the reader chose the key's two mortises' bushings to be. */
@@ -50,7 +55,8 @@ export function bodyOpacity({
   /** Whether an equilibrium placed the key where it is drawn. */
   isPlaced: boolean
 }): BodyOpacity {
-  if (grounded) return WHOLE
+  if (assembly === 'frame') return WHOLE
+  if (assembly === 'wippen') return isPlaced ? WHOLE : FADED
   return isPlaced
     ? { parts: chosen, bushings: chosenForBushings }
     : { parts: chosen * UNPLACED, bushings: chosenForBushings * UNPLACED }
