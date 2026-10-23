@@ -202,6 +202,23 @@ impl Bench {
         }
     }
 
+    /// The normal along which the two pieces of `feature` meet at `q`, by
+    /// hand, a unit vector in the world, either way along it: two discs'
+    /// line of centers, or the normal of the line a disc meets.
+    fn hand_normal(&self, q: &[f64], feature: Feature) -> Point {
+        let unit = |dx: f64, dy: f64| {
+            let length = (dx * dx + dy * dy).sqrt();
+            Point::new(dx / length, dy / length)
+        };
+        match (self.shape(q, feature.a), self.shape(q, feature.b)) {
+            (Shape::Disc(c, _), Shape::Disc(d, _)) => unit(d.x - c.x, d.y - c.y),
+            (Shape::Disc(..), Shape::Line(p, l)) | (Shape::Line(p, l), Shape::Disc(..)) => {
+                unit(l.y - p.y, p.x - l.x)
+            }
+            (Shape::Line(..), Shape::Line(..)) => unreachable!("two faces meet at a corner"),
+        }
+    }
+
     /// The wippen's angle at which the pieces of `feature` touch with the
     /// key's coordinates of `q`, by hand: halved within a hundredth of a
     /// radian of `q`'s, the heel lifting off the key as the wippen turns up.
@@ -1407,25 +1424,41 @@ fn sheet_of(
     a: &Setup,
     carries_a_wippen: bool,
 ) -> crate::measure::weighing::Sheet {
+    weighing_of(on_frame, jig, a, carries_a_wippen).sheet(&mut Statics::new())
+}
+
+/// The bases of the test bench's inputs: its mass weighed by hand, the
+/// height of its center of mass estimated, its friction and its dimensions
+/// assumed, and the wippen it carries, where it carries one, published.
+fn bases_of(carries_a_wippen: bool) -> crate::measure::measurement::Bases {
     use crate::measure::measurement::{Bases, Basis, WippenAssemblyBases};
+    Bases {
+        key_mass: Basis::SetByHand,
+        center_of_mass_height: Basis::Estimated,
+        key_friction: Basis::Assumed,
+        geometry: Basis::Assumed,
+        wippen_assembly: carries_a_wippen.then_some(WippenAssemblyBases {
+            mass: Basis::Published,
+            friction: Basis::Published,
+        }),
+    }
+}
+
+/// The weighing of a key on its frame and on the jig, as the bench reads it.
+fn weighing_of<'a>(
+    on_frame: &'a crate::parts::mounts::OnItsFrame,
+    jig: &'a crate::measure::jig::KeyJig,
+    a: &Setup,
+    carries_a_wippen: bool,
+) -> crate::measure::weighing::Weighing<'a> {
     crate::measure::weighing::Weighing {
         on_frame,
         jig,
         measuring_point: a.protocol.measuring_point_on_key(&a.key),
         measuring_point_from_lip_m: a.protocol.measuring_point_from_lip,
         thinnest_paper_m: a.frame.drawer.thinnest(),
-        bases: Bases {
-            key_mass: Basis::SetByHand,
-            center_of_mass_height: Basis::Estimated,
-            key_friction: Basis::Assumed,
-            geometry: Basis::Assumed,
-            wippen_assembly: carries_a_wippen.then_some(WippenAssemblyBases {
-                mass: Basis::Published,
-                friction: Basis::Published,
-            }),
-        },
+        bases: bases_of(carries_a_wippen),
     }
-    .sheet(&mut Statics::new())
 }
 
 /// Consistency: **both key friction weights read the same bits with the
@@ -1941,12 +1974,13 @@ fn with_the_heel_on_the_keys_top_the_key_weight_ratio_is_read_on_the_capstans_to
 /// read at the top seat.** With the front rail 300 mm in front of the
 /// balance pin, past the key's front edge at 258 mm, no stop stands below
 /// the key's front: the key alone's seats are refused, its top seat not,
-/// and the key weight ratio is read where the capstan touches the heel at
-/// the top seat [`Seating::top`] seats the key carrying its wippen at.
+/// and the key weight ratio and the wippen weight are read where the
+/// capstan touches the heel at the top seat [`Seating::top`] seats the key
+/// carrying its wippen at.
 #[test]
 fn where_the_key_alones_seats_are_refused_the_contact_is_read_at_the_top_seat() {
     use super::seat::SeatRefusal;
-    use crate::measure::measurement::{ContactFound, ContactPoint};
+    use crate::measure::measurement::{ContactFound, ContactPoint, ProcedureId};
     const PAST_THE_KEYS_FRONT: f64 = 0.300;
     let mut a = regulated();
     a.frame.front_rail = PAST_THE_KEYS_FRONT;
@@ -1967,12 +2001,22 @@ fn where_the_key_alones_seats_are_refused_the_contact_is_read_at_the_top_seat() 
         .mounted()
         .capstan_on_the_heel(&top.q, TOUCHING)
         .expect("the capstan touches the heel at the top seat");
-    let kr = key_ratio_of(&carrying_sheet_of(&a));
+    let sheet = carrying_sheet_of(&a);
+    let found = ContactFound::WhereTheCapstanTouchesTheHeel { part: contact.part };
     assert_eq!(
-        kr.conditions.capstan_heel_contact,
+        key_ratio_of(&sheet).conditions.capstan_heel_contact,
         Some(ContactPoint {
             at: contact.on_the_capstan,
-            found: ContactFound::WhereTheCapstanTouchesTheHeel { part: contact.part }
+            found
+        })
+    );
+    assert_eq!(
+        reading_of(&sheet, ProcedureId::WippenWeight)
+            .conditions
+            .capstan_heel_contact,
+        Some(ContactPoint {
+            at: contact.on_the_heel,
+            found
         })
     );
 }
@@ -2018,4 +2062,506 @@ fn where_only_the_bottom_seat_is_refused_the_contact_is_read_at_the_top_seat() {
             found: ContactFound::WhereTheCapstanTouchesTheHeel { part: contact.part }
         })
     );
+}
+
+/// The reading of `procedure` on `sheet`, read.
+fn reading_of(
+    sheet: &crate::measure::weighing::Sheet,
+    procedure: crate::measure::measurement::ProcedureId,
+) -> crate::measure::measurement::Measurement {
+    sheet
+        .get(procedure)
+        .expect("the sheet holds it")
+        .clone()
+        .unwrap_or_else(|why| panic!("{procedure:?}: {why:?}"))
+}
+
+/// The test wippen assembly's mass, its center of mass in its frame.
+fn wippen_props() -> crate::mechanism::MassProps {
+    let (wippen, mass) = test_wippen();
+    mass.props(&wippen)
+}
+
+/// Consistency, by hand: **the wippen weight is read where the capstan
+/// touches the heel at the top seat**, *"measured at the capstan/heel
+/// contact point"* [V, Stanwood 2000, glossary, p. 23]: the roller under the
+/// point of the heel the capstan touches, `x_mark` along the wippen, worked
+/// by hand ([`Bench::hand_contact`]), it reads the assembly's static moment
+/// over that arm, `1000 m com.x / x_mark`, within what the hand's round-off
+/// moves it by, `WW δ / x_mark`, and the jig's, sixteen units in the last
+/// place of the weight. The reading is the jig's, names where the roller
+/// stood and how that point was found, and reads the wippen's mass and the
+/// dimensions.
+#[test]
+fn the_wippen_weight_is_read_where_the_capstan_touches_the_heel_at_the_top_seat() {
+    use crate::measure::measurement::{ContactFound, ContactPoint, Mount, ProcedureId, Trust};
+    let mass = wippen_props();
+    for (name, a, _) in touch_benches() {
+        let b = bench_of(&a);
+        let top = b.seats().top;
+        let m = b.mounted();
+        let (_, on_b) = b.hand_contact(&top.q, b.carrying(&top.q, Motion::Down));
+        let wippen = m.wippen.expect("a wippen").body;
+        let x_mark = m.mechanism.pose(&top.q).placement(wippen).local(on_b).x;
+        let contact = m
+            .capstan_on_the_heel(&top.q, TOUCHING)
+            .expect("the capstan touches the heel");
+        let ww = reading_of(&carrying_sheet_of(&a), ProcedureId::WippenWeight);
+        let by_hand = 1000.0 * mass.mass * mass.com.x / x_mark;
+        let bound = ww.value * HAND_CONTACT_M / x_mark + jig_round_off(ww.value);
+        assert!(
+            (ww.value - by_hand).abs() <= bound,
+            "{name}: WW {} g, by hand {by_hand} g, within {bound} g",
+            ww.value
+        );
+        assert_eq!(ww.conditions.mount, Mount::Jig, "{name}");
+        assert_eq!(
+            ww.conditions.capstan_heel_contact,
+            Some(ContactPoint {
+                at: contact.on_the_heel,
+                found: ContactFound::WhereTheCapstanTouchesTheHeel {
+                    part: PartCode::WippenHeelCloth
+                }
+            }),
+            "{name}"
+        );
+        assert_eq!(
+            ww.trust,
+            Trust::of(ProcedureId::WippenWeight.reads(), &bases_of(true)),
+            "{name}"
+        );
+    }
+}
+
+/// The roller the wippen weight of `a`'s key carrying `wippen` stands
+/// under, and how its point was found.
+fn roller_of(
+    a: &Setup,
+    wippen: &WippenAssembly,
+) -> Option<crate::measure::measurement::ContactPoint> {
+    use crate::measure::measurement::ProcedureId;
+    let (_, mass) = test_wippen();
+    let (on_frame, jig) = weighed_with(a, Some((wippen, &mass)));
+    reading_of(
+        &sheet_of(&on_frame, &jig, a, true),
+        ProcedureId::WippenWeight,
+    )
+    .conditions
+    .capstan_heel_contact
+}
+
+/// The lowest point of `wippen`'s heel's circle, in its frame, as the
+/// trade's two quantities place it: its position along the wippen, and its
+/// height below the jack's pin.
+fn heel_lowest_point_of(wippen: &WippenAssembly) -> Point {
+    Point::new(wippen.heel.position, wippen.jack.pin.y - wippen.heel.height)
+}
+
+/// Consistency: **with no top seat the wippen is weighed at its heel's
+/// lowest point.** On a capstan 30 mm tall under a center pin 69 mm high
+/// the top seat is refused, so no point where the capstan touches the heel
+/// is read: the roller stands under the heel's lowest point, to the bit.
+#[test]
+fn with_no_top_seat_the_wippen_is_weighed_at_its_heels_lowest_point() {
+    use super::seat_wippen::TALL_CAPSTAN;
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    let mut a = regulated();
+    a.key.capstan_screw.height = TALL_CAPSTAN;
+    let (mut wippen, _) = test_wippen();
+    wippen.center.y = REFUSED_AT_THE_TOP_SEAT;
+    assert_eq!(
+        roller_of(&a, &wippen),
+        Some(ContactPoint {
+            at: heel_lowest_point_of(&wippen),
+            found: ContactFound::NoTopSeat
+        })
+    );
+}
+
+/// Consistency: **with the heel on the key's top the wippen is weighed at
+/// its heel's lowest point**: 100 mm behind the balance pin the capstan
+/// does not touch the heel at the top seat, and the roller stands under the
+/// heel's lowest point, to the bit.
+#[test]
+fn with_the_heel_on_the_keys_top_the_wippen_is_weighed_at_its_heels_lowest_point() {
+    use crate::measure::measurement::{ContactFound, ContactPoint};
+    let (wippen, _) = test_wippen();
+    assert_eq!(
+        roller_of(&with_the_capstan_at(100.0), &wippen),
+        Some(ContactPoint {
+            at: heel_lowest_point_of(&wippen),
+            found: ContactFound::CapstanOffTheHeel
+        })
+    );
+}
+
+/// Consistency: **a heel at its center pin refuses the wippen weight,
+/// naming where the roller stands.** With the heel's position at nothing,
+/// its lowest point stands under the center pin, where the capstan does not
+/// reach it: the roller would stand there, at no arm, and the wippen weight
+/// is refused naming that place, 0 m to the bit; WBW is refused as computed
+/// from it.
+#[test]
+fn a_heel_at_its_center_pin_refuses_the_wippen_weight_naming_where_the_roller_stands() {
+    use crate::measure::measurement::ProcedureId;
+    use crate::measure::weighing::Refused;
+    const AT_THE_CENTER_PIN: f64 = 0.0;
+    let a = regulated();
+    let (mut wippen, mass) = test_wippen();
+    wippen.heel.position = AT_THE_CENTER_PIN;
+    let (on_frame, jig) = weighed_with(&a, Some((&wippen, &mass)));
+    let sheet = sheet_of(&on_frame, &jig, &a, true);
+    let Some(Err(Refused::RollerNotInFrontOfTheCenterPin { at_m })) =
+        sheet.get(ProcedureId::WippenWeight)
+    else {
+        panic!("{:?}", sheet.get(ProcedureId::WippenWeight))
+    };
+    assert_eq!(at_m.to_bits(), AT_THE_CENTER_PIN.to_bits());
+    assert_eq!(
+        sheet.get(ProcedureId::WippenBalanceWeight),
+        Some(&Err(Refused::From {
+            reading: ProcedureId::WippenWeight
+        }))
+    );
+}
+
+/// Consistency: **WBW is read from the wippen weight and the key weight
+/// ratio as the sheet reads them**: its value the product of the two in
+/// full, the bits `Touchweight::wippen_balance_weight_g` gives; computed
+/// from the two; its solves the wippen weight's; and refused, as computed
+/// from it, where either is, the wippen weight first.
+#[test]
+fn wbw_is_read_from_the_wippen_weight_and_the_key_weight_ratio_as_the_sheet_reads_them() {
+    use crate::measure::measurement::ProcedureId;
+    use crate::measure::weighing::Refused;
+    use crate::measure::Touchweight;
+    let a = regulated();
+    let (wippen, mass) = test_wippen();
+    let (on_frame, jig) = weighed_with(&a, Some((&wippen, &mass)));
+    let weighing = weighing_of(&on_frame, &jig, &a, true);
+    let sheet = weighing.sheet(&mut Statics::new());
+    let ww = reading_of(&sheet, ProcedureId::WippenWeight);
+    let kr = reading_of(&sheet, ProcedureId::KeyWeightRatio);
+    let wbw = reading_of(&sheet, ProcedureId::WippenBalanceWeight);
+    let touchweight = Touchweight {
+        wippen_weight_g: ww.value,
+        key_ratio: kr.value,
+        ..Touchweight::default()
+    };
+    assert_eq!(
+        wbw.value.to_bits(),
+        touchweight.wippen_balance_weight_g().to_bits()
+    );
+    assert_eq!(
+        wbw.conditions.from,
+        vec![ProcedureId::WippenWeight, ProcedureId::KeyWeightRatio]
+    );
+    assert_eq!(wbw.report, ww.report);
+    let refused = Err(Refused::NoWippenAssembly);
+    assert_eq!(
+        weighing.wippen_balance_weight(&refused, &refused),
+        Err(Refused::From {
+            reading: ProcedureId::WippenWeight
+        })
+    );
+    assert_eq!(
+        weighing.wippen_balance_weight(&Ok(ww), &refused),
+        Err(Refused::From {
+            reading: ProcedureId::KeyWeightRatio
+        })
+    );
+}
+
+/// Consistency: **WBW is shown from its two readings as read, not from its
+/// value in full**, as a technician computes it from what he read: a wippen
+/// weight of 16.94 g, read 16.9 g, and a key weight ratio of 0.5249, read
+/// 0.52, show 16.9 × 0.52 = 8.788, 8.8 g, where the value in full,
+/// 8.892 g, would read 8.9 g.
+#[test]
+fn wbw_is_shown_from_its_two_readings_as_read_not_from_its_value_in_full() {
+    use crate::measure::measurement::{ProcedureId, Rounding};
+    const WW_IN_FULL: f64 = 16.94;
+    const WW_READ: f64 = 16.9;
+    const KR_IN_FULL: f64 = 0.5249;
+    const KR_READ: f64 = 0.52;
+    const SHOWN: f64 = 8.8;
+    let a = regulated();
+    let (wippen, mass) = test_wippen();
+    let (on_frame, jig) = weighed_with(&a, Some((&wippen, &mass)));
+    let weighing = weighing_of(&on_frame, &jig, &a, true);
+    let sheet = weighing.sheet(&mut Statics::new());
+    let named = |procedure, value, shown| {
+        let mut m = reading_of(&sheet, procedure);
+        m.value = value;
+        m.shown = shown;
+        Ok(m)
+    };
+    let wbw = weighing
+        .wippen_balance_weight(
+            &named(ProcedureId::WippenWeight, WW_IN_FULL, WW_READ),
+            &named(ProcedureId::KeyWeightRatio, KR_IN_FULL, KR_READ),
+        )
+        .expect("WBW is read");
+    assert_eq!(wbw.shown.to_bits(), SHOWN.to_bits());
+    assert_ne!(
+        Rounding::Nearest.apply(wbw.value, 10.0, 0.0).to_bits(),
+        SHOWN.to_bits()
+    );
+}
+
+/// Consistency: **a WBW on a half tenth shows the tenth above**, as a
+/// technician rounds the product of what he read: 15.0 g × 0.57 = 8.55 g
+/// shows 8.6 g, and 17.5 g × 0.58 = 10.15 g shows 10.2 g, where the product
+/// of the two doubles falls just under the half.
+#[test]
+fn a_wbw_on_a_half_tenth_shows_the_tenth_above() {
+    use crate::measure::measurement::ProcedureId;
+    const ON_A_HALF_TENTH: [(f64, f64, f64); 2] = [(15.0, 0.57, 8.6), (17.5, 0.58, 10.2)];
+    let a = regulated();
+    let (wippen, mass) = test_wippen();
+    let (on_frame, jig) = weighed_with(&a, Some((&wippen, &mass)));
+    let weighing = weighing_of(&on_frame, &jig, &a, true);
+    let sheet = weighing.sheet(&mut Statics::new());
+    let read_as = |procedure, shown| {
+        let mut m = reading_of(&sheet, procedure);
+        m.shown = shown;
+        Ok(m)
+    };
+    for (ww_read, kr_read, shown) in ON_A_HALF_TENTH {
+        let wbw = weighing
+            .wippen_balance_weight(
+                &read_as(ProcedureId::WippenWeight, ww_read),
+                &read_as(ProcedureId::KeyWeightRatio, kr_read),
+            )
+            .expect("WBW is read");
+        assert_eq!(
+            wbw.shown.to_bits(),
+            shown.to_bits(),
+            "{ww_read} g × {kr_read}"
+        );
+    }
+}
+
+/// Consistency: **the sheet's wippen balance weight reads the force
+/// convention**: the wippen weight and the key weight ratio the sheet reads
+/// pass `Touchweight::conventions_are_sane`, a key weight ratio between 0.3
+/// and 1.0 and a WBW under the wippen weight, which the geometric
+/// convention, the ratio's reciprocal, would fail.
+#[test]
+fn the_sheets_wippen_balance_weight_reads_the_force_convention() {
+    use crate::measure::measurement::ProcedureId;
+    use crate::measure::Touchweight;
+    let sheet = carrying_sheet_of(&regulated());
+    let touchweight = Touchweight {
+        wippen_weight_g: reading_of(&sheet, ProcedureId::WippenWeight).value,
+        key_ratio: reading_of(&sheet, ProcedureId::KeyWeightRatio).value,
+        ..Touchweight::default()
+    };
+    assert!(touchweight.conventions_are_sane(), "{touchweight:?}");
+    assert_eq!(
+        touchweight.wippen_balance_weight_g().to_bits(),
+        reading_of(&sheet, ProcedureId::WippenBalanceWeight)
+            .value
+            .to_bits()
+    );
+}
+
+/// The wippen's share of the band's middle at one state, by hand, and what
+/// it is made of.
+#[derive(Debug, Clone, Copy)]
+struct Share {
+    /// `T(s) = 1000 m_w X(φ) d_k / (d_w a)`, grams at the measuring point.
+    grams: f64,
+    /// `X(φ) / com.x`: the wippen's attitude against the protocol's level.
+    attitude: f64,
+    /// `x_meas / a(θ)`: the key's attitude against the jig's level.
+    key_attitude: f64,
+    /// `(d_k / |x_c|)(x_mark / d_w)`: the line of action against the
+    /// verticals the jigs weigh along, and the contact's roll.
+    line: f64,
+    /// `d_k / d_w`: how far the wippen turns per turn of the key.
+    ratio: f64,
+    /// The measuring point's arm about the key's bearing, meters.
+    arm: f64,
+}
+
+impl Bench {
+    /// The wippen's share of the band's middle at `q`, carried through the
+    /// pieces of `feature`, by hand, against the arms the jigs read:
+    /// `x_c` along the key, `x_mark` along the wippen, `x_meas` the
+    /// measuring point's on the level jig.
+    ///
+    /// The contact pushes along its normal `n` through its point `P`, so the
+    /// key's angle feels it at the arm `d_k = |(P − B) × n|` about the key's
+    /// bearing `B` and the wippen's at `d_w = |(P − C) × n|` about its center
+    /// pin `C`; the wippen's weight, `m_w g X(φ)` about `C`, its center's arm
+    /// `X(φ) = com.x cos φ − com.y sin φ` at its angle `φ`, comes onto the
+    /// key's angle times `d_k / d_w`, and onto the measuring point over its
+    /// arm `a(θ)`.
+    fn share(&self, q: &[f64], feature: Feature, x_c: f64, x_mark: f64, x_meas: f64) -> Share {
+        let m = self.mounted();
+        let w = m.wippen.expect("a wippen");
+        let pose = m.mechanism.pose(q);
+        let (p, _) = self.hand_contact(q, feature);
+        let n = self.hand_normal(q, feature);
+        let cross = |o: Point| ((p.x - o.x) * n.y - (p.y - o.y) * n.x).abs();
+        let bearing = pose.world(MaterialPoint {
+            body: m.key,
+            at: Point::new(0.0, 0.0),
+        });
+        let (d_k, d_w) = (cross(bearing), cross(self.wippen.center));
+        let mass = self.wippen_mass.props(&self.wippen);
+        let phi = q[w.angle.0];
+        let along = mass.com.x * libm::cos(phi) - mass.com.y * libm::sin(phi);
+        let arm =
+            pose.world(MaterialPoint {
+                body: m.key,
+                at: self.k.measuring_point,
+            })
+            .x - bearing.x;
+        Share {
+            grams: 1000.0 * mass.mass * along * d_k / (d_w * arm),
+            attitude: along / mass.com.x,
+            key_attitude: x_meas / arm,
+            line: (d_k / x_c.abs()) * (x_mark / d_w),
+            ratio: d_k / d_w,
+            arm,
+        }
+    }
+}
+
+/// Consistency, by hand: **the wippen moves balance weight by WW × KR but
+/// for the terms derived by hand.** The trade's equation of balance with no
+/// hammer reads `BW + FW = WW × KR`; on the model,
+/// `BW + FW − WBW = (BW_alone + FW) + (ΔBW − WBW)`, `BW_alone` the key
+/// alone's and `ΔBW` what the wippen moves it by. The first bracket is the
+/// bare key's tilt ([`super::weighing`]'s
+/// `the_equation_of_balance_closes_on_a_bare_key`); this test holds the
+/// second, term by term:
+///
+/// `ΔBW_hand − WBW_hand = ½ Σ_s (T(s) − WBW_hand) + H + K_s`, where
+///
+/// - `s` is each state the walks' thresholds fall at, `s_D` going down and
+///   `s_U` coming up: on these benches the seats, the band by hand over the
+///   sweep's states passing neither seat's threshold, which the test checks;
+/// - `T(s) = 1000 m_w X(φ_s) d_k / (d_w a_s)` is the wippen's share of the
+///   band's middle there ([`Bench::share`]), and
+///   `T(s) / WBW_hand = A_w · A_k · L`: `A_w = X(φ_s) / com.x` the wippen's
+///   attitude against the protocol's level, `A_k = x_meas / a(θ_s)` the
+///   key's against the jig's, `L = (d_k / x_c)(x_mark / d_w)` the line of
+///   action against the verticals the two jigs weigh along, with the
+///   contact's roll;
+/// - `WBW_hand = 1000 m_w (com.x / x_mark)(|x_c| / x_meas)`, the two jigs by
+///   hand at the contact the top seat reads;
+/// - `H = ½ · 1000 b_w (|r_D| / a_D − |r_U| / a_U) / g` is the wippen
+///   center's friction, carried onto each threshold at its own ratio
+///   `r = d_k / d_w`, which does not cancel between the two;
+/// - `K_s`, the key's own band at `s_D` and `s_U` against the key alone's
+///   own seats ([`band_at`]), half of each difference: nothing where the
+///   states are the seats, but for what the wippen moves the seats by.
+///
+/// The bound adds what each side is read to: the walks' resolution for each
+/// balance weight; half the band by hand's bound at each state
+/// ([`Bench::hand_within`]); and `WBW_hand`'s, `WBW (δ / |x_c| + δ /
+/// x_mark)` from the hand's contact and the two jigs' round-off. The
+/// wippen's attitude alone moves it by `½ Σ_s (A_w(s) − 1) · WBW_hand`,
+/// more than ten times that bound, so a WBW read with the wippen level at
+/// its seats, or an equation closed without its terms, fails.
+#[test]
+fn the_wippen_moves_balance_weight_by_ww_times_kr_but_for_the_terms_derived_by_hand() {
+    use crate::measure::measurement::ProcedureId;
+    use crate::measure::oracle::band_at;
+    for (name, a) in [
+        ("the flat capstan", regulated()),
+        ("the 9.7 mm dome", with_a_domed_capstan()),
+    ] {
+        let b = bench_of(&a);
+        let seats = b.seats();
+        let m = b.mounted();
+        let w = m.wippen.expect("a wippen");
+        let carrying = carrying_sheet_of(&a);
+        let (bare_frame, bare_jig) = weighed_with(&a, None);
+        let bare = sheet_of(&bare_frame, &bare_jig, &a, false);
+        let value = |sheet, procedure| reading_of(sheet, procedure).value;
+        let moved =
+            value(&carrying, ProcedureId::BalanceWeight) - value(&bare, ProcedureId::BalanceWeight);
+        let wbw = value(&carrying, ProcedureId::WippenBalanceWeight);
+        let ww = value(&carrying, ProcedureId::WippenWeight);
+        let kr = value(&carrying, ProcedureId::KeyWeightRatio);
+
+        let top = &seats.top.q;
+        let pose = m.mechanism.pose(top);
+        let (on_a, on_b) = b.hand_contact(top, b.carrying(top, Motion::Down));
+        let x_c = pose.placement(m.key).local(on_a).x;
+        let x_mark = pose.placement(w.body).local(on_b).x;
+        let x_meas = b.k.measuring_point.x;
+        let mass = wippen_props();
+        let wbw_hand = 1000.0 * mass.mass * (mass.com.x / x_mark) * (x_c.abs() / x_meas);
+
+        let band = b.band(&seats);
+        let [down, up] = b.band_by_hand(&seats, &band);
+        let (at_the_top, within_d) = b.at_seat(&seats.top, Motion::Down);
+        let (at_the_bottom, within_u) = b.at_seat(&seats.bottom, Motion::Up);
+        assert!(
+            down.iter().all(|h| h.grams <= at_the_top.down_g)
+                && up.iter().all(|h| h.grams >= at_the_bottom.up_g),
+            "{name}: the band by hand passes its seats' thresholds inside the sweep"
+        );
+        let (s_d, s_u) = (seats.top.q.clone(), seats.bottom.q.clone());
+        let share_d = b.share(&s_d, b.carrying(&s_d, Motion::Down), x_c, x_mark, x_meas);
+        let share_u = b.share(&s_u, b.carrying(&s_u, Motion::Up), x_c, x_mark, x_meas);
+
+        let friction = 0.5
+            * 1000.0
+            * b.wippen_friction()
+            * (share_d.ratio / share_d.arm - share_u.ratio / share_u.arm)
+            / G;
+        let key_mass = mass_of(&a.key).expect("the test key is weighed");
+        let key_band = |q: &[f64]| {
+            band_at(
+                &[(key_mass.mass, key_mass.com)],
+                b.k.measuring_point,
+                b.bushings,
+                q[m.angle.0],
+            )
+        };
+        let alone = crate::parts::fixtures::on_frame(
+            &a,
+            crate::parts::frame::KeyKind::Natural,
+            b.bushings,
+            true,
+        );
+        let alone_seats = alone
+            .seating()
+            .seats(&mut Statics::new())
+            .expect("the key alone seats");
+        let key_own = 0.5 * (key_band(&s_d).down_g - key_band(&alone_seats.top.q).down_g)
+            + 0.5 * (key_band(&s_u).up_g - key_band(&alone_seats.bottom.q).up_g);
+        let by_hand =
+            0.5 * ((share_d.grams - wbw_hand) + (share_u.grams - wbw_hand)) + friction + key_own;
+
+        let jigs = jig_round_off(ww) + jig_round_off(kr) * ww;
+        let wbw_within = wbw_hand * (HAND_CONTACT_M / x_c.abs() + HAND_CONTACT_M / x_mark) + jigs;
+        let bound = 2.0 * walk_resolution() + 0.5 * (within_d + within_u) + wbw_within;
+        let attitude = 0.5 * ((share_d.attitude - 1.0) + (share_u.attitude - 1.0)) * wbw_hand;
+        let terms = format!(
+            "A_w {:.6} and {:.6}, A_k {:.6} and {:.6}, L {:.6} and {:.6}, H {friction:.6} g, \
+             K_s {key_own:.6} g",
+            share_d.attitude,
+            share_u.attitude,
+            share_d.key_attitude,
+            share_u.key_attitude,
+            share_d.line,
+            share_u.line
+        );
+        assert!(
+            ((moved - wbw) - by_hand).abs() <= bound,
+            "{name}: ΔBW {moved} g less WBW {wbw} g, by hand {by_hand} g, within {bound} g; \
+             {terms}"
+        );
+        assert!(
+            attitude.abs() > 10.0 * bound,
+            "{name}: the wippen's attitude moves it {attitude} g, the bound {bound} g; {terms}"
+        );
+    }
 }

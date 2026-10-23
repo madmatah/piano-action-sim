@@ -3,4 +3,4 @@
 /**
  * A reading of the weighing sheet, by the procedure that takes it.
  */
-export type Procedure = "front_weight" | "key_weight_ratio" | "key_height" | "key_dip" | "down_weight" | "up_weight" | "balance_weight" | "friction_weight" | "key_friction_weight_zeroed_on_the_jig" | "key_friction_weight_zeroed_on_the_frame" | "down_weight_on_the_band" | "up_weight_on_the_band";
+export type Procedure = "front_weight" | "key_weight_ratio" | "key_height" | "key_dip" | "down_weight" | "up_weight" | "balance_weight" | "friction_weight" | "key_friction_weight_zeroed_on_the_jig" | "key_friction_weight_zeroed_on_the_frame" | "wippen_weight" | "wippen_balance_weight" | "down_weight_on_the_band" | "up_weight_on_the_band";

@@ -260,6 +260,8 @@ fn label(p: ProcedureId) -> &'static str {
         ProcedureId::FrictionWeight => "friction weight   F",
         ProcedureId::KeyFrictionWeightZeroedOnTheJig => "key friction KF, jig",
         ProcedureId::KeyFrictionWeightZeroedOnTheFrame => "key friction KF, frame",
+        ProcedureId::WippenWeight => "wippen weight    WW",
+        ProcedureId::WippenBalanceWeight => "WBW = WW × KR",
         ProcedureId::DownWeightOnTheBand => "band, greatest down",
         ProcedureId::UpWeightOnTheBand => "band, least up",
     }
@@ -304,9 +306,16 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
                         "", c.link, c.parts
                     );
                 }
-                if let Some(contact) = m.conditions.capstan_heel_contact {
+                let centered_from = match m.procedure {
+                    ProcedureId::KeyWeightRatio => Some(("balance pin", "the capstan's top")),
+                    ProcedureId::WippenWeight => Some(("center pin", "the heel's lowest point")),
+                    _ => None,
+                };
+                if let (Some(contact), Some((pin, elsewhere))) =
+                    (m.conditions.capstan_heel_contact, centered_from)
+                {
                     println!(
-                        "  {:<22}centered {:.2} mm {} the pin: {}",
+                        "  {:<22}centered {:.2} mm {} the {pin}: {}",
                         "",
                         contact.at.x.abs() * 1000.0,
                         if contact.at.x < 0.0 {
@@ -320,12 +329,12 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
                                 part.code()
                             ),
                             ContactFound::NoWippenAssembly =>
-                                "the capstan's top, the key carrying no wippen".to_owned(),
-                            ContactFound::NoTopSeat =>
-                                "the capstan's top, the key carrying its wippen having no top seat"
-                                    .to_owned(),
+                                format!("{elsewhere}, the key carrying no wippen"),
+                            ContactFound::NoTopSeat => format!(
+                                "{elsewhere}, the key carrying its wippen having no top seat"
+                            ),
                             ContactFound::CapstanOffTheHeel =>
-                                "the capstan's top, the heel resting on the key's top".to_owned(),
+                                format!("{elsewhere}, the heel resting on the key's top"),
                         }
                     );
                 }

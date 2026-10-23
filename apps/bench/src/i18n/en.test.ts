@@ -176,6 +176,44 @@ describe('a refused weighing', () => {
   })
 })
 
+describe('a reading computed from another', () => {
+  it('names each reading it can be computed from, where that one is refused', () => {
+    for (const [reading, words] of [
+      ['down_weight', 'down weight'],
+      ['up_weight', 'up weight'],
+      ['wippen_weight', 'wippen weight'],
+      ['key_weight_ratio', 'key weight ratio'],
+    ] as const) {
+      expect(t.refusal.from_a_refused_reading({ code: 'from_a_refused_reading', reading })).toBe(
+        `the ${words} it is computed from is refused.`,
+      )
+    }
+  })
+})
+
+describe('a refused wippen weight', () => {
+  it('says the key carries no wippen assembly', () => {
+    expect(t.refusal.no_wippen_assembly({ code: 'no_wippen_assembly' })).toBe(
+      'the key carries no wippen assembly on its capstan.',
+    )
+  })
+
+  it('says where the roller would stand on a wippen assembly with no heel in front of its center pin', () => {
+    expect(
+      t.refusal.roller_not_in_front_of_the_center_pin({
+        code: 'roller_not_in_front_of_the_center_pin',
+        at_mm: 0,
+      }),
+    ).toContain('the roller would stand under the center pin,')
+    expect(
+      t.refusal.roller_not_in_front_of_the_center_pin({
+        code: 'roller_not_in_front_of_the_center_pin',
+        at_mm: -12.5,
+      }),
+    ).toContain('12.50 mm behind the center pin')
+  })
+})
+
 describe('a refused key friction weight', () => {
   it('says what no friction reads, beside what was typed', () => {
     const said = t.refused.set_friction_from_key_friction_weight({

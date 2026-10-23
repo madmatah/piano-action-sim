@@ -12,6 +12,8 @@
 //! | balance weight, friction weight | `(D + U) / 2`, `(D − U) / 2`, of the two as read | from those, to the half gram |
 //! | key friction weight, zeroed on the jig | Stanwood's: the front weight zeroed on the leveled jig by a temporary weight, the key back on its frame, D | up to the gram |
 //! | key friction weight, zeroed on the frame | the temporary weight canceling the key's balance where it rests on its frame, D | up to the gram |
+//! | wippen weight WW | the wippen assembly level on Stanwood's jig, on its center pin, the jig's roller under where the capstan touches the heel at the top seat ([`super::jig::WippenJig`]) | to the nearest 0.1 g |
+//! | WBW | `WW × KR`, of the two as read | from those, to the nearest 0.1 g |
 //!
 //! The band is read apart from the sheet, when it is shown
 //! ([`Weighing::band`]): the driven sweep from the top seat to the bottom
@@ -72,7 +74,7 @@
 //! the measuring point or editing the key afterwards leaves the torque where
 //! it is, and changes the grams the protocol reads.
 
-use super::jig::{JigRefusal, KeyJig};
+use super::jig::{JigRefusal, KeyJig, WippenJig};
 use super::measurement::{
     Bases, Conditions, ContactFound, ContactPoint, Measurement, Mount, Preparation, ProcedureId,
     Rounding, Swept, TemporaryWeight, Trust, Unit, Walked, Zeroed,
@@ -80,6 +82,7 @@ use super::measurement::{
 use super::seat::{Seat, SeatRefusal, Seating, Seats, SEAT_MARGIN};
 use super::sweep::{Band, Sample, SweepRefusal};
 use super::walk::{Breakaway, Stroke, WalkRefusal, HALVINGS, ROUNDING_TOLERANCE_G, STEP_G};
+use super::Touchweight;
 use crate::geometry::Point;
 use crate::mechanism::{AxisFriction, MaterialPoint, PointLoad, Problem};
 use crate::parts::mounts::{HeelContact, Mounted, OnItsFrame};
@@ -142,6 +145,17 @@ pub enum Refused {
     From {
         /// That reading.
         reading: ProcedureId,
+    },
+    /// The reading weighs the wippen assembly the key carries, and it carries
+    /// none.
+    NoWippenAssembly,
+    /// The roller the wippen weight is read on stands at or behind the
+    /// wippen's center pin, where it cannot hold the wippen level: no heel
+    /// stands in front of it to rest on it.
+    RollerNotInFrontOfTheCenterPin {
+        /// Where it stands, meters along the wippen from its center pin,
+        /// positive in front.
+        at_m: f64,
     },
 }
 
@@ -300,11 +314,14 @@ impl Weighing<'_> {
             Some(top) => top.map_err(Refused::Seat),
             None => seats.as_ref().map(|s| s.top.clone()).map_err(Clone::clone),
         };
+        let key_ratio = self.key_ratio(&at_the_heel);
+        let wippen_weight = self.wippen_weight(&at_the_heel);
+        let wippen_balance_weight = self.wippen_balance_weight(&wippen_weight, &key_ratio);
         let (height, dip) = self.height_and_dip(&seats);
         let [down, up, balance, friction] = self.weights(statics, &seats);
         let results = [
             (ProcedureId::FrontWeight, self.front_weight()),
-            (ProcedureId::KeyWeightRatio, self.key_ratio(&at_the_heel)),
+            (ProcedureId::KeyWeightRatio, key_ratio),
             (ProcedureId::KeyHeight, height),
             (ProcedureId::KeyDip, dip),
             (ProcedureId::DownWeight, down),
@@ -319,6 +336,8 @@ impl Weighing<'_> {
                 ProcedureId::KeyFrictionWeightZeroedOnTheFrame,
                 self.key_friction_weight_zeroed_on_the_frame(statics, &alone_top),
             ),
+            (ProcedureId::WippenWeight, wippen_weight),
+            (ProcedureId::WippenBalanceWeight, wippen_balance_weight),
         ];
         Sheet {
             readings: results
@@ -484,6 +503,110 @@ impl Weighing<'_> {
             },
             at_the_heel.report,
         ))
+    }
+
+    /// **Wippen weight** WW, grams, to the nearest tenth: *"the amount of
+    /// weight, to the nearest 0.1 gram, of the level wippen, pivoted without
+    /// friction at the wippen center, and measured at the capstan/heel
+    /// contact point"* [V, Stanwood 2000, glossary, p. 23]. The wippen
+    /// assembly the key carries, its jack and its repetition lever at rest on
+    /// it, on Stanwood's jig ([`WippenJig`]), its long body level, the
+    /// jig's roller under the point of its heel the capstan touches at
+    /// the top seat, `at_the_heel`; where that point is not read, under the
+    /// heel's lowest point. Refused on a key that carries no wippen, and
+    /// where the roller stands at or behind the center pin.
+    pub fn wippen_weight(&self, at_the_heel: &AtTheHeel) -> Result<Measurement, Refused> {
+        let mounted = &self.on_frame.mounted;
+        let (Some(wippen), Some(ranges)) = (mounted.wippen, &self.on_frame.wippen) else {
+            return Err(Refused::NoWippenAssembly);
+        };
+        let Some(mass) = mounted.mechanism.body(wippen.body).mass else {
+            return Err(Refused::NoWippenAssembly);
+        };
+        let roller = at_the_heel
+            .contact
+            .map_or(ranges.heel_lowest_point, |contact| contact.on_the_heel);
+        let grams = WippenJig::new(mass)
+            .map_err(Refused::Mechanism)?
+            .wippen_weight_g(roller)
+            .map_err(|why| match why {
+                JigRefusal::ScaleNotInFrontOfThePivot => {
+                    Refused::RollerNotInFrontOfTheCenterPin { at_m: roller.x }
+                }
+                other => jig_refused(other),
+            })?;
+        Ok(self.measured(
+            ProcedureId::WippenWeight,
+            grams,
+            Unit::Gram,
+            0.1,
+            10.0,
+            Rounding::Nearest,
+            0.0,
+            Conditions {
+                capstan_heel_contact: Some(ContactPoint {
+                    at: roller,
+                    found: at_the_heel.found,
+                }),
+                ..Conditions::at(Mount::Jig, self.measuring_point_from_lip_m)
+            },
+            at_the_heel.report,
+        ))
+    }
+
+    /// **WBW**, wippen balance weight, grams: *"the upward static force at
+    /// the measuring point resulting from the static weight of the wippen
+    /// leveraged through the key, found as: KR x WW"* [V, Stanwood 2000,
+    /// glossary, p. 23]. Its value is the product of the two readings in
+    /// full; it is shown as the tenth nearest the product of the two as
+    /// read, a half tenth rounded away from nothing, as a technician computes it
+    /// from what he read. The glossary gives it no resolution: the tenth is
+    /// the wippen weight's. Its solves are the wippen weight's, which are
+    /// the key weight ratio's too. Refused where either is.
+    pub fn wippen_balance_weight(
+        &self,
+        wippen_weight: &Result<Measurement, Refused>,
+        key_ratio: &Result<Measurement, Refused>,
+    ) -> Result<Measurement, Refused> {
+        let from = |reading| Refused::From { reading };
+        let ww = wippen_weight
+            .as_ref()
+            .map_err(|_| from(ProcedureId::WippenWeight))?;
+        let kr = key_ratio
+            .as_ref()
+            .map_err(|_| from(ProcedureId::KeyWeightRatio))?;
+        let in_full = Touchweight {
+            wippen_weight_g: ww.value,
+            key_ratio: kr.value,
+            ..Touchweight::default()
+        };
+        let mut m = self.measured(
+            ProcedureId::WippenBalanceWeight,
+            in_full.wippen_balance_weight_g(),
+            Unit::Gram,
+            0.1,
+            10.0,
+            Rounding::FromReadings,
+            0.0,
+            Conditions {
+                from: vec![ProcedureId::WippenWeight, ProcedureId::KeyWeightRatio],
+                ..Conditions::at(Mount::Jig, self.measuring_point_from_lip_m)
+            },
+            ww.report,
+        );
+        const KR_STEPS_PER_UNIT: f64 = 100.0;
+        const WW_STEPS_PER_GRAM: f64 = 10.0;
+        const THOUSANDTHS_PER_TENTH: f64 = 100.0;
+        // The product of the two doubles as read can fall under a half tenth
+        // the product of the decimals stands on, 15.0 × 0.57 = 8.55 among
+        // them; the product of their whole steps, in thousandths of a gram,
+        // is exact, and so is a half tenth of it counted in tenths, which
+        // the nearest step then rounds away from nothing.
+        let thousandths =
+            (kr.shown * KR_STEPS_PER_UNIT).round() * (ww.shown * WW_STEPS_PER_GRAM).round();
+        m.shown = Rounding::Nearest.apply(thousandths / THOUSANDTHS_PER_TENTH, 1.0, 0.0)
+            / WW_STEPS_PER_GRAM;
+        Ok(m)
     }
 
     /// **Key height** and **key dip**, meters: the key front's top at the
@@ -1575,8 +1698,26 @@ mod tests {
         let b = bench(&regulated(), 6.0);
         let sheet = b.sheet();
         assert_eq!(sheet.readings.len(), ProcedureId::ALL.len());
-        for (r, p) in sheet.readings.iter().zip(ProcedureId::ALL) {
-            assert_eq!(r.procedure, p);
+        let is_read_on_a_key_carrying_no_wippen = |p: &ProcedureId| {
+            !matches!(
+                p,
+                ProcedureId::WippenWeight | ProcedureId::WippenBalanceWeight
+            )
+        };
+        assert_eq!(
+            sheet
+                .readings
+                .iter()
+                .map(|r| r.procedure)
+                .collect::<Vec<_>>(),
+            ProcedureId::ALL
+        );
+        for (r, p) in sheet
+            .readings
+            .iter()
+            .zip(ProcedureId::ALL)
+            .filter(|(_, p)| is_read_on_a_key_carrying_no_wippen(p))
+        {
             let m = r.result.as_ref().unwrap();
             assert_eq!(m.procedure, p);
             assert_eq!(m.fingerprint, crate::solve::SOLVER_FINGERPRINT);
@@ -1659,6 +1800,24 @@ mod tests {
             b.jig.key_ratio().expect("the jig reads it").to_bits()
         );
         assert_eq!(kr.report, SolveReport::NOTHING);
+    }
+
+    /// Consistency: **a key carrying no wippen has no wippen weight**: the
+    /// wippen weight is refused for it, naming why, and WBW as computed from
+    /// it.
+    #[test]
+    fn a_key_carrying_no_wippen_has_no_wippen_weight() {
+        let sheet = bench(&regulated(), 6.0).sheet();
+        assert_eq!(
+            sheet.get(ProcedureId::WippenWeight),
+            Some(&Err(Refused::NoWippenAssembly))
+        );
+        assert_eq!(
+            sheet.get(ProcedureId::WippenBalanceWeight),
+            Some(&Err(Refused::From {
+                reading: ProcedureId::WippenWeight
+            }))
+        );
     }
 
     /// Consistency: **a key nobody has weighed reads what needs no mass.**
@@ -1789,7 +1948,18 @@ mod tests {
         let b = bench(&regulated(), 6.0);
         let (one, two) = (b.sheet(), b.sheet());
         assert_eq!(one, two);
-        for (x, y) in one.readings.iter().zip(&two.readings) {
+        let is_read_on_a_key_carrying_no_wippen = |p: ProcedureId| {
+            !matches!(
+                p,
+                ProcedureId::WippenWeight | ProcedureId::WippenBalanceWeight
+            )
+        };
+        for (x, y) in one
+            .readings
+            .iter()
+            .zip(&two.readings)
+            .filter(|(x, _)| is_read_on_a_key_carrying_no_wippen(x.procedure))
+        {
             let (x, y) = (x.result.as_ref().unwrap(), y.result.as_ref().unwrap());
             assert_eq!(x.value.to_bits(), y.value.to_bits());
         }

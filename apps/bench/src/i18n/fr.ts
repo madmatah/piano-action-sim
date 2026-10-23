@@ -18,6 +18,7 @@ import type {
   Limit,
   Part,
   Problem,
+  Procedure,
   Riding,
   SettingUnit,
   Solve,
@@ -214,6 +215,14 @@ const STROKE: Named<Stroke> = {
   up: 'à la remontée',
 }
 
+/** The readings another is computed from, as a refusal names them. */
+const FROM_A_READING: { readonly [P in Procedure]?: string } = {
+  down_weight: 'du poids d’enfoncement, refusé',
+  up_weight: 'du poids de remontée, refusé',
+  wippen_weight: 'du poids radial du chevalet, refusé',
+  key_weight_ratio: 'du rapport de poids de clavier, refusé',
+}
+
 /** Each panel's heading, which a sentence pointing to the panel quotes. */
 const panel: Catalog['panel'] = {
   instrument: 'L’instrument',
@@ -267,7 +276,10 @@ const refusal: Catalog['refusal'] = {
   no_key_top_at_the_station: ({ station_mm }) =>
     `aucun dessus de touche ne se trouve à ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'en arrière' : 'en avant'} de la pointe de balancier, où va le poids provisoire.`,
   from_a_refused_reading: ({ reading }) =>
-    `cette mesure se calcule à partir ${reading === 'down_weight' ? 'du poids d’enfoncement, refusé' : reading === 'up_weight' ? 'du poids de remontée, refusé' : 'd’une mesure refusée'}.`,
+    `cette mesure se calcule à partir ${FROM_A_READING[reading] ?? 'd’une mesure refusée'}.`,
+  no_wippen_assembly: () => 'la touche ne porte pas de chevalet sur son pilote.',
+  roller_not_in_front_of_the_center_pin: ({ at_mm }) =>
+    `le support à faible friction se trouverait ${at_mm === 0 ? 'sous l’axe' : `à ${to(Math.abs(at_mm), LENGTH_MM)} mm en arrière de l’axe`}, où il ne peut pas tenir le chevalet de niveau : aucun talon de chevalet ne se trouve en avant de l’axe pour reposer dessus.`,
   wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
     `${AT_THE_SEAT[at]}, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de ${showPartDistance(heel_depth_mm)} dans la touche, comme le ferait un axe placé trop bas pour son pilote.`,
   wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
@@ -707,6 +719,8 @@ export const fr: Catalog = {
       'friction de la touche KF, touche équilibrée sur l’appareil de mesure à faible friction',
     key_friction_weight_zeroed_on_the_frame:
       'friction de la touche KF, touche équilibrée sur son châssis',
+    wippen_weight: 'poids radial du chevalet WW',
+    wippen_balance_weight: 'WBW = WW × KR',
     down_weight_on_the_band: 'la plus grande force de la courbe d’enfoncement',
     up_weight_on_the_band: 'la plus petite force de la courbe de remontée',
   },

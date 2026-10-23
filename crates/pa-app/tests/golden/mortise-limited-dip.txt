@@ -70,6 +70,19 @@ sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 6.277091233040912e-15 
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 60.765100935755584 0x404e61eed3d49ac8
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x -0.1 0xbfb999999999999a
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_y 0.02402 0x3f9898b2e9ccb7d4
+sheet.wippen_weight.value 16.927382145088465 0x4030ed68ea900c9e
+sheet.wippen_weight.shown 16.9 0x4030e66666666666
+sheet.wippen_weight.unit g
+sheet.wippen_weight.trust indicative geometry
+sheet.wippen_weight.fingerprint statics/4
+sheet.wippen_weight.capstan_heel_contact WhereTheCapstanTouchesTheHeel { part: WippenHeelCloth }
+sheet.wippen_weight.capstan_heel_contact.x 0.061221600982021084 0x3faf58700c0d96eb
+sheet.wippen_weight.capstan_heel_contact.y -0.022241356739658505 0xbf96c6702f431314
+sheet.wippen_balance_weight.value 8.845392221405975 0x4021b0d73fce7681
+sheet.wippen_balance_weight.shown 8.8 0x402199999999999a
+sheet.wippen_balance_weight.unit g
+sheet.wippen_balance_weight.trust indicative geometry
+sheet.wippen_balance_weight.fingerprint statics/4
 readout.key_mass_g 120.08000000000001 0x405e051eb851eb86
 readout.gap_front_mm 1.119454091673616 0x3ff1e948b191c8fa
 readout.gap_back_mm 7.271724242582822 0x401d163ee13db1c2

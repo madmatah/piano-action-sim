@@ -17,9 +17,10 @@
 //!
 //! Every reading of the weighing sheet ([`Instrument::sheet`]): its value in
 //! full, what the trade reads it as, its trust, for the key weight ratio
-//! the point its 10 g was centered on, in the key's frame in meters, and how
-//! that point was found, and for the key friction weights the temporary
-//! weight and where it stood; or why it is refused.
+//! and the wippen weight the point each centered its load on, in the frame
+//! of the body it weighs in meters, and how that point was found, and for
+//! the key friction weights the temporary weight and where it stood; or
+//! why it is refused.
 //! Then every field of [`BenchReadout`] (or that there is none, when the
 //! bench cannot seat its key), the reason it cannot, how the key rides on
 //! its stops where they fight (written only there), the faults, where the

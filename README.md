@@ -77,6 +77,10 @@ wippen pushed past its range or out of the key's reach is named. Hirschkorn's
 key carries his wippen, from his tables and his traced figure: it reads a down
 weight of −12 g, an up weight of −25 g, a balance weight of −18.5 g and a
 friction weight of 6.5 g, against −21, −33, −27.0 and 6.0 g for his key alone.
+The sheet reads the key weight ratio and the wippen weight by Stanwood's
+protocols at the point where the capstan touches the heel with the key at
+rest, and WBW = WW × KR from the two: on his key KR 0.52, WW 16.9 g and WBW
+8.8 g, against a balance weight and front weight adding up to 8.7 g.
 The wippen is drawn in section and in solid, faded with a key no
 equilibrium places, and the « chevalet » panel says what carries it and sets
 where the center pin stands, the heel's position and height, and the center's
@@ -129,7 +133,7 @@ being borrowed or assumed.
 | `crates/pa-core` | the domain in Rust: geometry, bodies in a tree, contacts, the static solve, parts, the weighing protocols |
 | `crates/pa-app` | the single-key bench as an instrument, built from a profile, set by path and by action, its registry and its documents; the golden sheet that records its every reading |
 | `data/profiles` | what each instrument starts from, every number bound to a record or a stated assumption |
-| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves; `band [PROFILE]`: the band, its extremes in full beside the walk's D and U, and both curves step by step; `golden`: rewrites the golden sheet |
+| `crates/pa-cli` | `weigh [PROFILE]`: the weighing sheet in a terminal, each reading with its procedure, trust and solves, and where the key weight ratio and the wippen weight were centered; `band [PROFILE]`: the band, its extremes in full beside the walk's D and U, and both curves step by step; `golden`: rewrites the golden sheet |
 | `crates/pa-wasm`, `apps/bench` | the same bench in a browser, in section, in solid and as the band, force against travel, drawn when it is chosen (React, react-three-fiber), from the same Rust compiled to WebAssembly; worded in English or in French, the browser's language first, with a selector |
 
 ## What is planned
@@ -148,8 +152,8 @@ In this order, each stage with its engine and its view
 - the felt law and the flexible hammer, which the one-note dynamics prototype
   (`tools/dynamics-prototype/`, built) left open after settling the time step
   and the solver;
-- the wippen weight, then the hammer, until Stanwood's equation of balance
-  closes (stages 1b to 1d);
+- the wippen's support spring, then the hammer, until Stanwood's equation of
+  balance closes (stages 1b to 1d);
 - the jack, the repetition lever, let-off, drop and checking: the action in
   motion (stage 2);
 - regulation training (stage 3);

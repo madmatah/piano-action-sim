@@ -64,7 +64,7 @@
       "which_level": "The wippen's long body horizontal. The 2000 glossary says 'the level wippen' and not what is level, and the 1996 text gives the wippen no attitude in words; its Photo 2 shows the long body horizontal. This is the owner's choice, as which_lip records his for the measuring point; leveling the wippen with its center pin and the capstan's mark at one height is not it.",
       "note": "V covers the quotations and their locators: photo is a reading of the photograph, and which_level the owner's choice.",
       "where": "The roller stands under the capstan/heel contact point: the point of the heel the capstan touches, the key at rest.",
-      "engine": "Nothing reads this record."
+      "engine": "Nothing reads it as a number: the sheet's wippen weight runs this setup, the wippen assembly held level at its frame's angle zero on a frictionless pin at its center pin, the roller under where the capstan touches the heel at the key's top seat, or under the heel circle's lowest point where that point is not read (WippenJig and Weighing::wippen_weight in crates/pa-core)."
     }
   ]
 }

@@ -66,6 +66,8 @@ sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 5.7578064442701595e-15
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 61.529046414198795 0x404ec3b7cafb8663
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x -0.1 0xbfb999999999999a
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_y 0.0245 0x3f9916872b020c4a
+sheet.wippen_weight refused NoWippenAssembly
+sheet.wippen_balance_weight refused From { reading: WippenWeight }
 readout.key_mass_g 118.0 0x405d800000000000
 readout.gap_front_mm 1.7787162496748273e-15 0x3ce00570c0000000
 readout.gap_back_mm 7.6240974590671415 0x401e7f136780d71d

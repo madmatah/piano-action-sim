@@ -88,12 +88,45 @@ describe('the sheet', () => {
       ['friction_weight', ' F'],
       ['front_weight', ' FW'],
       ['key_weight_ratio', ' KR'],
+      ['wippen_weight', ' WW'],
     ]
     for (const [procedure, symbol] of symbols) {
       expect(t.procedure[procedure].endsWith(symbol), t.procedure[procedure]).toBe(true)
     }
     expect(t.procedure.key_friction_weight_zeroed_on_the_jig).toContain(' KF, ')
     expect(t.procedure.key_friction_weight_zeroed_on_the_frame).toContain(' KF, ')
+  })
+
+  it('shows WBW by Stanwood’s symbol and its formula, with no French word, the owner having none for it', () => {
+    expect(t.procedure.wippen_balance_weight).toBe('WBW = WW × KR')
+  })
+
+  it('names each reading another is computed from, where it is refused', () => {
+    for (const [reading, words] of [
+      ['down_weight', 'du poids d’enfoncement, refusé'],
+      ['up_weight', 'du poids de remontée, refusé'],
+      ['wippen_weight', 'du poids radial du chevalet, refusé'],
+      ['key_weight_ratio', 'du rapport de poids de clavier, refusé'],
+    ] as const) {
+      expect(t.refusal.from_a_refused_reading({ code: 'from_a_refused_reading', reading })).toBe(
+        `cette mesure se calcule à partir ${words}.`,
+      )
+    }
+  })
+
+  it('says where the roller would stand on a wippen assembly with no heel in front of its center pin', () => {
+    expect(
+      t.refusal.roller_not_in_front_of_the_center_pin({
+        code: 'roller_not_in_front_of_the_center_pin',
+        at_mm: 0,
+      }),
+    ).toContain('le support à faible friction se trouverait sous l’axe,')
+    expect(
+      t.refusal.roller_not_in_front_of_the_center_pin({
+        code: 'roller_not_in_front_of_the_center_pin',
+        at_mm: -12.5,
+      }),
+    ).toContain('à 12,50 mm en arrière de l’axe')
   })
 
   it('gives the reasons for an indicative reading as clauses, each after a no-break space and a semicolon', () => {

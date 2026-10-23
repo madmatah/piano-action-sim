@@ -33,6 +33,8 @@ sheet.key_friction_weight_zeroed_on_the_frame.unit g
 sheet.key_friction_weight_zeroed_on_the_frame.trust indicative key_friction,geometry
 sheet.key_friction_weight_zeroed_on_the_frame.fingerprint statics/4
 sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 0.0 0x0000000000000000
+sheet.wippen_weight refused NoWippenAssembly
+sheet.wippen_balance_weight refused From { reading: WippenWeight }
 readout.key_mass_g none
 readout.gap_front_mm 8.923314898166899 0x4021d8bcbaf712a3
 readout.gap_back_mm -7.892991815694472e-14 0xbd36378000000000

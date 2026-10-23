@@ -34,6 +34,19 @@ sheet.balance_weight refused From { reading: DownWeight }
 sheet.friction_weight refused From { reading: DownWeight }
 sheet.key_friction_weight_zeroed_on_the_jig refused Walk(NoTravel)
 sheet.key_friction_weight_zeroed_on_the_frame refused Walk(NoTravel)
+sheet.wippen_weight.value 17.32790158550168 0x403153f15bba0949
+sheet.wippen_weight.shown 17.3 0x40314ccccccccccd
+sheet.wippen_weight.unit g
+sheet.wippen_weight.trust indicative geometry
+sheet.wippen_weight.fingerprint statics/4
+sheet.wippen_weight.capstan_heel_contact WhereTheCapstanTouchesTheHeel { part: WippenHeelCloth }
+sheet.wippen_weight.capstan_heel_contact.x 0.05980651668889255 0x3fae9ef5b2886efb
+sheet.wippen_weight.capstan_heel_contact.y -0.02229814316347012 0xbf96d5530e983280
+sheet.wippen_balance_weight.value 9.807460094909072 0x40239d6b68d8eb46
+sheet.wippen_balance_weight.shown 9.9 0x4023cccccccccccd
+sheet.wippen_balance_weight.unit g
+sheet.wippen_balance_weight.trust indicative geometry
+sheet.wippen_balance_weight.fingerprint statics/4
 readout.key_mass_g 120.08000000000001 0x405e051eb851eb86
 readout.gap_front_mm 21.090152267232327 0x40351714380f6c50
 readout.gap_back_mm -9.324138683375338e-15 0xbd04ff0000000000

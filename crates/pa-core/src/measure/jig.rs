@@ -38,7 +38,8 @@
 use super::TouchweightProtocol;
 use crate::geometry::Point;
 use crate::mechanism::{
-    CoordId, MassProps, MaterialPoint, Mechanism, PointLoad, Prescribed, Problem,
+    Body, BodyId, Coord, CoordId, Joint, MassProps, MaterialPoint, Mechanism, PointLoad,
+    Prescribed, Problem,
 };
 use crate::parts::mounts::{self, Mounted};
 use crate::parts::KeyDesign;
@@ -50,8 +51,10 @@ pub enum JigRefusal {
     /// Front weight is the key's own weight read at the measuring point, and
     /// this key has no mass in the model: nobody has weighed it.
     KeyNotWeighed,
-    /// The scale stands at or behind the pivot, where pushing up cannot hold
-    /// the key level: the measuring point is not in front of the balance pin.
+    /// The scale stands at or behind the pivot the jig holds the body level
+    /// about, where pushing up cannot hold it level: a measuring point not in
+    /// front of the balance pin, or a roller not in front of the wippen's
+    /// center pin.
     ScaleNotInFrontOfThePivot,
     /// The mechanism could not be held as the jig holds it.
     Mechanism(Problem),
@@ -240,9 +243,90 @@ impl KeyJig {
     }
 }
 
+/// A wippen assembly on the setup that weighs it: Stanwood's jig, the
+/// key's, which weighs a wippen too.
+///
+/// *"The amount of weight, to the nearest 0.1 gram, of the level wippen,
+/// pivoted without friction at the wippen center, and measured at the
+/// capstan/heel contact point"* [V, Stanwood 2000, glossary, p. 23]. The 2000
+/// protocols print no setup for it; the 1996 paper's rests the heel on the
+/// roller at the capstan contact point and the flange, upright, on its felt
+/// wedge [V, Stanwood 1996, *Wippen Weight*, Photo 2]
+/// (`data/params/touchweight-protocol.json`, `wippen_weight`). On the model it
+/// is two bodies: the ground, and the wippen assembly, its jack and its
+/// repetition lever at rest on it, hung on a revolute joint at its center pin
+/// without friction, its angle held level, and the scale under the roller
+/// reading the reaction that holds it there over its arm, as the key's jig
+/// reads front weight ([`scale_reading_g`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct WippenJig {
+    mechanism: Mechanism,
+}
+
+impl WippenJig {
+    /// The angle that holds the wippen level, radians: its long body
+    /// horizontal, the level the owner chose for it. The wippen's frame has
+    /// its `x` axis along the body's long top edge, within the trace's two
+    /// pixels on Hirschkorn's (`tools/derivations/12-hirschkorn-wippen-outline.py`),
+    /// so level is zero.
+    pub const LEVEL: f64 = 0.0;
+
+    const WIPPEN: BodyId = BodyId(1);
+    const ANGLE: CoordId = CoordId(0);
+
+    /// A wippen assembly of mass `mass`, its center of mass in its own
+    /// frame, on the jig.
+    pub fn new(mass: MassProps) -> Result<Self, Problem> {
+        let wippen = Body {
+            parent: BodyId::GROUND,
+            joint: Joint::Revolute {
+                pivot: Point::new(0.0, 0.0),
+                coord: Self::ANGLE,
+            },
+            mass: Some(mass),
+        };
+        Ok(Self {
+            mechanism: Mechanism::new(vec![Body::GROUND, wippen], vec![Coord::ANGLE])?,
+        })
+    }
+
+    /// A weight of `mass_g` grams centered on `at`, a point of the wippen in
+    /// its frame.
+    pub fn weight_on_the_wippen(&self, at: Point, mass_g: f64) -> PointLoad {
+        PointLoad::weight(
+            MaterialPoint {
+                body: Self::WIPPEN,
+                at,
+            },
+            mass_g / 1000.0,
+        )
+    }
+
+    /// What the scale reads with the roller under `roller`, a point of the
+    /// wippen in its frame, and `loads` on the wippen, grams.
+    pub fn reading_g(&self, roller: Point, loads: &[PointLoad]) -> Result<f64, JigRefusal> {
+        let level = [Prescribed {
+            coord: Self::ANGLE,
+            value: Self::LEVEL,
+        }];
+        let scale = MaterialPoint {
+            body: Self::WIPPEN,
+            at: roller,
+        };
+        scale_reading_g(&self.mechanism, &level, Self::ANGLE, scale, loads)
+    }
+
+    /// **Wippen weight**, grams: what the scale reads with the roller under
+    /// `roller` and nothing on the wippen, the assembly's static moment about
+    /// its center pin over the roller's arm.
+    pub fn wippen_weight_g(&self, roller: Point) -> Result<f64, JigRefusal> {
+        self.reading_g(roller, &[])
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::super::oracle::KeyWeighing;
+    use super::super::oracle::{KeyWeighing, WippenWeighing};
     use super::*;
     use crate::parts::KeyMass;
     use crate::test_fixture::{KEY_RATIO_LOAD_G, MEASURING_POINT_HALF_INCH};
@@ -596,6 +680,73 @@ mod tests {
         assert!((lip.x - back.x - key.keytop_length).abs() < 1e-15);
         assert_eq!(lip.y.to_bits(), back.y.to_bits());
         assert_eq!(KeyJig::LEVEL.to_bits(), 0.0_f64.to_bits());
+    }
+
+    /// The test wippen assembly's mass, its center of mass in its frame.
+    fn wippen_mass() -> MassProps {
+        crate::test_fixture::wippen_assembly_mass().props(&crate::test_fixture::wippen_assembly())
+    }
+
+    /// The test wippen's heel's lowest point, in its frame.
+    fn heel_lowest_point() -> Point {
+        crate::test_fixture::wippen_assembly()
+            .parts(BodyId(1), BodyId::GROUND, &mut Vec::new())
+            .heel_lowest_point
+    }
+
+    /// Consistency: **the wippen weight is its static moment over the
+    /// roller's arm**, `1000 m x_c / x_r`, the closed form the jig matches
+    /// within sixteen units in the last place of the weight: under the
+    /// heel's lowest point, a millimeter behind it and 5 mm in front.
+    #[test]
+    fn the_wippen_weight_is_its_static_moment_over_the_rollers_arm() {
+        let mass = wippen_mass();
+        let jig = WippenJig::new(mass).expect("the wippen on the jig");
+        let lowest = heel_lowest_point();
+        for along in [0.0, -0.001, 0.005] {
+            let roller = Point::new(lowest.x + along, lowest.y);
+            let ww = jig.wippen_weight_g(roller).expect("a weight");
+            let oracle = WippenWeighing {
+                static_moment: mass.mass * mass.com.x,
+                roller_arm: roller.x,
+            }
+            .wippen_weight_g();
+            assert!(agree(ww, oracle, ww.abs()), "{ww} g against {oracle} g");
+        }
+    }
+
+    /// Consistency: **a gram over the roller reads a gram**: on the level
+    /// wippen, a gram centered over the roller, at any height, reads a gram
+    /// on the tared scale, and one over the center pin nothing.
+    #[test]
+    fn a_gram_over_the_roller_reads_a_gram() {
+        const ABOVE: f64 = 0.040;
+        let jig = WippenJig::new(wippen_mass()).expect("the wippen on the jig");
+        let roller = heel_lowest_point();
+        let bare = jig.wippen_weight_g(roller).expect("a weight");
+        let read = |at: Point| {
+            jig.reading_g(roller, &[jig.weight_on_the_wippen(at, 1.0)])
+                .expect("a reading")
+                - bare
+        };
+        let magnitude = bare.abs() + 1.0;
+        let over = read(Point::new(roller.x, roller.y + ABOVE));
+        assert!(agree(over, 1.0, magnitude), "{over} g");
+        let on_the_pin = read(Point::new(0.0, ABOVE));
+        assert!(agree(on_the_pin, 0.0, magnitude), "{on_the_pin} g");
+    }
+
+    /// A roller at or behind the center pin cannot hold the wippen level:
+    /// the reading is refused, never divided by a zero arm.
+    #[test]
+    fn a_roller_at_or_behind_the_center_pin_is_refused() {
+        let jig = WippenJig::new(wippen_mass()).expect("the wippen on the jig");
+        for x in [0.0, -0.010] {
+            assert_eq!(
+                jig.wippen_weight_g(Point::new(x, -0.02)),
+                Err(JigRefusal::ScaleNotInFrontOfThePivot)
+            );
+        }
     }
 
     /// A measuring point at or behind the pin is no place for the scale: the

@@ -47,7 +47,7 @@ temporary_weight: TemporaryWeight | null,
 from: Array<Procedure>, 
 /**
  * Where it centers its load on the capstan/heel contact point, and how
- * that point was found: the key weight ratio's 10 g; nothing for the
- * other readings.
+ * that point was found: the key weight ratio's 10 g, and the jig's
+ * roller the wippen weight is read on; nothing for the other readings.
  */
 capstan_heel_contact: CapstanHeelContact | null, };

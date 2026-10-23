@@ -11,8 +11,12 @@
 //! force that holds it; key height and dip from the key seated on its frame by
 //! the trade's gestures ([`seat`]); down and up weight by the breakaway walk
 //! from each seat ([`walk`]), balance and friction weight from those two as
-//! read; and the key friction weight by Stanwood's protocol and by its
-//! variant zeroed on the frame. Apart from the sheet, when the band is shown,
+//! read; the key friction weight by Stanwood's protocol and by its variant
+//! zeroed on the frame; and the wippen weight, the wippen assembly the key
+//! carries held level on Stanwood's jig ([`jig::WippenJig`]), the jig's
+//! roller under where the capstan touches the heel, and WBW, the wippen
+//! weight times the key weight ratio, from the two as read. Apart from the
+//! sheet, when the band is shown,
 //! the driven sweep holds the key's angle through its stroke and back and
 //! reads the force that holds it at every step ([`sweep`]): the band, and
 //! down and up weight read on it a second way. Each comes back as a [`measurement`]: its
@@ -53,7 +57,7 @@ use crate::registry::{Kind, Layer, ParamSpec, Quantity, Step};
 ///   measured by taring the scale, placing 10 g on the key at the
 ///   capstan/heel contact point and reading what arrives at the front of the
 ///   key — *"if the scale reads -5.5 the Key Weight Ratio (KR) would be
-///   0.55"*. So `KR ≈ 0.50…0.60`, dimensionless, and `WBW = KR × WW` is
+///   0.55"*. So `KR ≈ 0.50…0.60`, dimensionless, and `WBW = WW × KR` is
 ///   necessarily **smaller** than `WW`, because a reducing lever cannot
 ///   amplify. ([`jig::KeyJig::key_ratio`] runs that protocol on the model.)
 /// * **Geometric convention**: the ratio of lever arms, front over capstan,
@@ -102,7 +106,7 @@ impl Touchweight {
         self.balance_weight_g() + self.front_weight_g
     }
 
-    /// Wippen balance weight, `KR × WW`, grams.
+    /// Wippen balance weight, `WW × KR`, grams.
     pub fn wippen_balance_weight_g(&self) -> f64 {
         self.key_ratio * self.wippen_weight_g
     }

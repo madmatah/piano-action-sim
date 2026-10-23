@@ -269,6 +269,11 @@ pub enum Procedure {
     KeyFrictionWeightZeroedOnTheJig,
     /// Key friction weight zeroed where the key rests on its frame.
     KeyFrictionWeightZeroedOnTheFrame,
+    /// Wippen weight WW, by Stanwood's protocol, at the capstan/heel contact
+    /// point.
+    WippenWeight,
+    /// Wippen balance weight, `WBW = WW × KR`, from the two as read.
+    WippenBalanceWeight,
     /// Down weight read on the band: the greatest force of the driven
     /// sweep's down curve, the walk's in full within a few thousandths of a
     /// gram. Shown in full and never as a gram: within that of a whole gram
@@ -294,6 +299,8 @@ impl From<ProcedureId> for Procedure {
             ProcedureId::KeyFrictionWeightZeroedOnTheFrame => {
                 Self::KeyFrictionWeightZeroedOnTheFrame
             }
+            ProcedureId::WippenWeight => Self::WippenWeight,
+            ProcedureId::WippenBalanceWeight => Self::WippenBalanceWeight,
             ProcedureId::DownWeightOnTheBand => Self::DownWeightOnTheBand,
             ProcedureId::UpWeightOnTheBand => Self::UpWeightOnTheBand,
         }
@@ -475,6 +482,16 @@ pub enum Refusal {
         /// That reading.
         reading: Procedure,
     },
+    /// The reading weighs the wippen assembly the key carries, and it carries
+    /// none.
+    NoWippenAssembly,
+    /// The roller the wippen weight is read on stands at or behind the
+    /// wippen's center pin, where it cannot hold the wippen level.
+    RollerNotInFrontOfTheCenterPin {
+        /// Where it stands, millimeters along the wippen from its center pin,
+        /// positive in front.
+        at_mm: f64,
+    },
 }
 
 impl Refusal {
@@ -586,6 +603,10 @@ impl Refusal {
             Refused::From { reading } => Self::FromARefusedReading {
                 reading: (*reading).into(),
             },
+            Refused::NoWippenAssembly => Self::NoWippenAssembly,
+            Refused::RollerNotInFrontOfTheCenterPin { at_m } => {
+                Self::RollerNotInFrontOfTheCenterPin { at_mm: mm(*at_m) }
+            }
         }
     }
 }
@@ -1554,8 +1575,8 @@ impl From<&CoreTrust> for Trust {
 #[cfg_attr(test, derive(TS))]
 #[serde(rename_all = "snake_case")]
 pub enum Mount {
-    /// On Stanwood's jig, leveled, turning without friction about its
-    /// balance pin.
+    /// On Stanwood's jig, leveled, turning without friction: the key on its
+    /// balance pin, the wippen assembly on its center pin.
     OnTheJig,
     /// On its frame, turning about a fixed axis through its balance bearing.
     OnAPivot,
@@ -1722,8 +1743,8 @@ pub struct Conditions {
     /// The readings it is computed from, where it is computed.
     pub from: Vec<Procedure>,
     /// Where it centers its load on the capstan/heel contact point, and how
-    /// that point was found: the key weight ratio's 10 g; nothing for the
-    /// other readings.
+    /// that point was found: the key weight ratio's 10 g, and the jig's
+    /// roller the wippen weight is read on; nothing for the other readings.
     pub capstan_heel_contact: Option<CapstanHeelContact>,
 }
 
@@ -3920,9 +3941,39 @@ mod tests {
     /// units with the unit in their names**: a fault in millimeters, a
     /// regulation refused with its target as it was asked, what keeps it
     /// out, its shortfall and the search's reach, a problem with the part
-    /// that limits it and the shortfall.
+    /// that limits it and the shortfall, and the capstan/heel contact point
+    /// and the roller refused at or behind the center pin each at its place
+    /// along its body.
     #[test]
     fn a_code_crosses_with_its_parameters_in_trade_units() {
+        const ALONG_ITS_BODY_M: f64 = -1.0 / 512.0;
+        assert_eq!(
+            written(&Refusal::reading(
+                &Refused::RollerNotInFrontOfTheCenterPin {
+                    at_m: ALONG_ITS_BODY_M
+                },
+                None
+            )),
+            r#"{"code":"roller_not_in_front_of_the_center_pin","at_mm":-1.953125}"#
+        );
+        let his = Instrument::of(Profile::named("hirschkorn").unwrap()).unwrap();
+        let mut kr = his
+            .sheet()
+            .get(ProcedureId::KeyWeightRatio)
+            .cloned()
+            .expect("the sheet holds it")
+            .expect("his key weight ratio is read");
+        kr.conditions.capstan_heel_contact = Some(pa_core::measure::measurement::ContactPoint {
+            at: pa_core::geometry::Point::new(ALONG_ITS_BODY_M, 0.0),
+            found: ContactFound::CapstanOffTheHeel,
+        });
+        let Reading::Read { conditions, .. } = Reading::read(&kr) else {
+            unreachable!("a measurement crosses read")
+        };
+        assert_eq!(
+            written(&conditions.capstan_heel_contact),
+            r#"{"at_mm":-1.953125,"found":{"code":"capstan_off_the_heel"}}"#
+        );
         assert_eq!(
             written(&Fault::from(&CoreFault::PinOutsideTheMortise {
                 by: 0.0625
@@ -4083,7 +4134,8 @@ mod tests {
     /// frame every reading that needs a stroke is refused as `no_travel`,
     /// carrying how the key rides: on its front punching, lifted by the
     /// seats' own lift to the bit; the diagnostics say the same and refuse
-    /// no seat. On the tests' bench nothing rides.
+    /// no seat. On the tests' bench nothing rides, and every reading is
+    /// read but the wippen weight and WBW, its key carrying no wippen.
     #[test]
     fn a_key_with_no_stroke_is_told_why() {
         let bench = wedged();
@@ -4115,10 +4167,20 @@ mod tests {
 
         let standard = Instrument::weighed_section();
         assert_eq!(Diagnostics::of(&standard).riding, None);
-        assert!(Sheet::of(&standard)
-            .readings
-            .iter()
-            .all(|r| matches!(r, Reading::Read { .. })));
+        assert!(Sheet::of(&standard).readings.iter().all(|r| matches!(
+            r,
+            Reading::Read { .. }
+                | Reading::Refused {
+                    procedure: Procedure::WippenWeight,
+                    why: Refusal::NoWippenAssembly,
+                }
+                | Reading::Refused {
+                    procedure: Procedure::WippenBalanceWeight,
+                    why: Refusal::FromARefusedReading {
+                        reading: Procedure::WippenWeight
+                    },
+                }
+        )));
     }
 
     /// Consistency, and what the owner sees: **a refused edit answers in
