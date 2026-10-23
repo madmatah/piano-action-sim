@@ -17,7 +17,7 @@
 //! to, and the bench is held to it.
 
 use pa_core::geometry::Point;
-use pa_core::measure::measurement::ProcedureId;
+use pa_core::measure::measurement::{ContactFound, ContactPoint, ProcedureId};
 use pa_core::parts::frame::KeyKind;
 use serde_json::Value;
 
@@ -146,9 +146,11 @@ fn fall(p: Point, rest: f64, bottom: f64) -> f64 {
 ///   front edge are held to Pg4 and Pg5 where it draws them, which names a
 ///   felt laid elsewhere along the key before the seats show it.
 /// - **Table A.1's static moment** over the measuring arm is the front
-///   weight the jig reads, to round-off; and the key weight ratio is the
-///   capstan's arm over the measuring arm. These see what the attitudes
-///   cannot: a center of mass read in another frame.
+///   weight the jig reads, to round-off; and the key weight ratio is the arm
+///   of where his capstan touches his heel at the top seat, the point its
+///   condition names, over the measuring arm, that point standing on his
+///   dome to round-off. These see what the attitudes cannot: a center of
+///   mass read in another frame.
 fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
     let record: Value = serde_json::from_str(RECORD).expect("his record");
     let fixture: Value = serde_json::from_str(FIXTURE).expect("the fixture");
@@ -339,16 +341,51 @@ fn c11(b: &Instrument) -> Result<(Stops, Stops), String> {
              arm is {front_weight} g"
         ));
     }
-    let ratio = -key.capstan / arm;
-    let kr = read(ProcedureId::KeyWeightRatio)?;
-    if (kr - ratio).abs() > 64.0 * f64::EPSILON {
+    let sheet = b.sheet();
+    let Some(Ok(kr)) = sheet.get(ProcedureId::KeyWeightRatio) else {
         return Err(format!(
-            "key weight ratio: the jig reads {kr}, the capstan's arm over the measuring arm is \
-             {ratio}"
+            "key weight ratio: {:?}",
+            sheet.get(ProcedureId::KeyWeightRatio)
+        ));
+    };
+    let Some(ContactPoint {
+        at,
+        found: ContactFound::WhereTheCapstanTouchesTheHeel { .. },
+    }) = kr.conditions.capstan_heel_contact
+    else {
+        return Err(format!(
+            "key weight ratio: read at {:?}, not where his capstan touches his heel",
+            kr.conditions.capstan_heel_contact
+        ));
+    };
+    let ratio = -at.x / arm;
+    if (kr.value - ratio).abs() > 64.0 * f64::EPSILON {
+        return Err(format!(
+            "key weight ratio: the jig reads {}, the arm of where his capstan touches his heel \
+             over the measuring arm is {ratio}",
+            kr.value
+        ));
+    }
+    let dome = key
+        .capstan_screw
+        .dome_radius
+        .ok_or("his capstan has no dome")?;
+    let top = key.capstan_contact();
+    let (dx, dy) = (at.x - key.capstan, at.y - (top.y - dome));
+    let off = (dx * dx + dy * dy).sqrt() - dome;
+    if off.abs() > HAND_CONTACT_M {
+        return Err(format!(
+            "key weight ratio: read at {at:?}, {off} m off his dome"
         ));
     }
     Ok((rounds, bench))
 }
+
+/// How far a point the hand works where two pieces meet may stand from the
+/// one the engine reads, meters: `64 ε` of the 0.3 m its coordinates stand
+/// under, the engine's row and the hand's roundings and the point carried
+/// into its body's frame.
+const HAND_CONTACT_M: f64 = 64.0 * f64::EPSILON * 0.3;
 
 /// His instrument, built from `text` as his profile.
 fn built(text: &str) -> Result<Instrument, String> {
@@ -556,6 +593,119 @@ mod tests {
         assert!(
             (0.000_001_65..0.000_001_75).contains(&more),
             "the real felts add {more} m to his dip at Pk2"
+        );
+    }
+
+    /// Where his dome touches his heel cloth at his top seat, by hand, from
+    /// the one closed row of the capstan's link there, his dome's arc on his
+    /// cloth's arc: their contact on the line of the two arcs' centers, at
+    /// his top seat's coordinates through the engine's pose, each surface
+    /// its radius along it; carried into the key's frame and the wippen's.
+    /// `None` where his key does not seat or carries no wippen, where the
+    /// link has not one closed row, or where that row is not his dome's arc
+    /// on his cloth's arc.
+    fn his_hand_contact(b: &Instrument) -> Option<(Point, Point)> {
+        use pa_core::contact::{Piece, Rows, ROW_MARGIN};
+        use pa_core::geometry::Seg;
+        use pa_core::parts::verdicts::TOUCHING;
+        let (k, seats) = b.seated().ok()?;
+        let m = &k.mounted.mechanism;
+        let wippen = k.mounted.wippen?;
+        let pose = m.pose(&seats.top.q);
+        let mut rows = Rows::new();
+        m.rows(&pose, ROW_MARGIN, &mut rows);
+        let closed: Vec<_> = rows
+            .of_pair(wippen.links[0])
+            .filter(|(_, row)| row.gap <= TOUCHING)
+            .map(|(_, row)| row.feature)
+            .collect();
+        let [feature] = closed[..] else {
+            return None;
+        };
+        let disc = |piece: Piece| {
+            let part = &m.parts()[piece.part().index()];
+            let Piece::Arc { seg, .. } = piece else {
+                return None;
+            };
+            let Seg::Arc { c, r, .. } = part.silhouette()[usize::from(seg)] else {
+                return None;
+            };
+            Some((part.code, pose.placement(part.body).world(c), r))
+        };
+        let (PartCode::Capstan, c, r) = disc(feature.a)? else {
+            return None;
+        };
+        let (PartCode::WippenHeelCloth, d, t) = disc(feature.b)? else {
+            return None;
+        };
+        let length = ((d.x - c.x) * (d.x - c.x) + (d.y - c.y) * (d.y - c.y)).sqrt();
+        let (ux, uy) = ((d.x - c.x) / length, (d.y - c.y) / length);
+        Some((
+            pose.placement(k.mounted.key)
+                .local(Point::new(c.x + r * ux, c.y + r * uy)),
+            pose.placement(wippen.body)
+                .local(Point::new(d.x - t * ux, d.y - t * uy)),
+        ))
+    }
+
+    /// What `b`'s sheet reads for `p`, in full.
+    fn read_in_full(b: &Instrument, p: ProcedureId) -> f64 {
+        match b.sheet().get(p) {
+            Some(Ok(m)) => m.value,
+            other => panic!("{p:?}: {other:?}"),
+        }
+    }
+
+    /// Consistency, by hand: **his key weight ratio is read where his dome
+    /// touches his heel cloth**, at his top seat ([`his_hand_contact`]). On
+    /// the level jig the ratio is that point's arm over the measuring arm,
+    /// within the hand's round-off over the measuring arm and the two jig
+    /// readings', sixteen units in the last place of the readings' magnitude
+    /// over the 10 g each.
+    #[test]
+    fn his_key_weight_ratio_is_read_where_his_dome_touches_his_heel_cloth() {
+        let b = his();
+        let (on_the_dome, _) =
+            his_hand_contact(&b).expect("his dome's arc bears on his cloth's arc at his top seat");
+        let arm = b.measuring_point();
+        let load = b.protocol().key_ratio_load_g;
+        let readings = (read_in_full(&b, ProcedureId::FrontWeight).abs() + load) / load;
+        let bound = HAND_CONTACT_M / arm + 2.0 * 16.0 * f64::EPSILON * readings;
+        let kr = read_in_full(&b, ProcedureId::KeyWeightRatio);
+        assert!(
+            (kr - -on_the_dome.x / arm).abs() <= bound,
+            "KR {kr}, by hand {}, within {bound}",
+            -on_the_dome.x / arm
+        );
+    }
+
+    /// Consistency, by hand: **his wippen weight is his table's static
+    /// moment over where his capstan touches his heel.** Table A.1's
+    /// wippen, jack and repetition lever, 18.32 g, the jack and the lever at
+    /// rest on the wippen, their center 56.57 mm in front of the center pin
+    /// at the wippen's level, read over the roller under where his dome
+    /// touches his heel cloth at his top seat, 61.22 mm in front of it
+    /// ([`his_hand_contact`]): 16.93 g, read 16.9 g. Within the hand's
+    /// round-off over that arm, times the weight, and the jig's, sixteen
+    /// units in the last place of it.
+    #[test]
+    fn his_wippen_weight_is_his_tables_static_moment_over_where_his_capstan_touches_his_heel() {
+        let b = his();
+        let (_, on_the_cloth) =
+            his_hand_contact(&b).expect("his dome's arc bears on his cloth's arc at his top seat");
+        let start = Profile::named("hirschkorn")
+            .expect("shipped")
+            .start
+            .wippen_assembly
+            .as_ref()
+            .expect("his profile carries his wippen");
+        let mass = start.mass.props(&start.assembly);
+        let by_hand = 1000.0 * mass.mass * mass.com.x / on_the_cloth.x;
+        let ww = read_in_full(&b, ProcedureId::WippenWeight);
+        let bound = ww * HAND_CONTACT_M / on_the_cloth.x + 16.0 * f64::EPSILON * ww;
+        assert!(
+            (ww - by_hand).abs() <= bound,
+            "WW {ww} g, by hand {by_hand} g, within {bound} g"
         );
     }
 

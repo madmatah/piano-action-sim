@@ -18,7 +18,9 @@ use std::path::{Path, PathBuf};
 
 use pa_app::boundary::{self, json, Acted, Refusal, Riding};
 use pa_app::golden;
-use pa_app::instrument::{Action, Instrument, KeyMass, ProcedureId, Sheet, Trust, Unit};
+use pa_app::instrument::{
+    Action, ContactFound, Instrument, KeyMass, ProcedureId, Sheet, Trust, Unit,
+};
 use pa_app::profile::Profile;
 
 /// Where `golden` writes when it is not told, relative to the repository root.
@@ -258,6 +260,8 @@ fn label(p: ProcedureId) -> &'static str {
         ProcedureId::FrictionWeight => "friction weight   F",
         ProcedureId::KeyFrictionWeightZeroedOnTheJig => "key friction KF, jig",
         ProcedureId::KeyFrictionWeightZeroedOnTheFrame => "key friction KF, frame",
+        ProcedureId::WippenWeight => "wippen weight    WW",
+        ProcedureId::WippenBalanceWeight => "WBW = WW × KR",
         ProcedureId::DownWeightOnTheBand => "band, greatest down",
         ProcedureId::UpWeightOnTheBand => "band, least up",
     }
@@ -300,6 +304,38 @@ fn print_sheet(title: &str, bench: &Instrument, sheet: &Sheet) {
                     println!(
                         "  {:<22}the wippen rests: {:?} on {:?}",
                         "", c.link, c.parts
+                    );
+                }
+                let centered_from = match m.procedure {
+                    ProcedureId::KeyWeightRatio => Some(("balance pin", "the capstan's top")),
+                    ProcedureId::WippenWeight => Some(("center pin", "the heel's lowest point")),
+                    _ => None,
+                };
+                if let (Some(contact), Some((pin, elsewhere))) =
+                    (m.conditions.capstan_heel_contact, centered_from)
+                {
+                    println!(
+                        "  {:<22}centered {:.2} mm {} the {pin}: {}",
+                        "",
+                        contact.at.x.abs() * 1000.0,
+                        if contact.at.x < 0.0 {
+                            "behind"
+                        } else {
+                            "in front of"
+                        },
+                        match contact.found {
+                            ContactFound::WhereTheCapstanTouchesTheHeel { part } => format!(
+                                "where the capstan touches the heel at the top seat, on {}",
+                                part.code()
+                            ),
+                            ContactFound::NoWippenAssembly =>
+                                format!("{elsewhere}, the key carrying no wippen"),
+                            ContactFound::NoTopSeat => format!(
+                                "{elsewhere}, the key carrying its wippen having no top seat"
+                            ),
+                            ContactFound::CapstanOffTheHeel =>
+                                format!("{elsewhere}, the heel resting on the key's top"),
+                        }
                     );
                 }
                 if let Some(t) = m.conditions.temporary_weight {

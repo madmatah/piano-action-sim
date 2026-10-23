@@ -101,6 +101,18 @@ pub struct WippenOn {
     pub reach: f64,
 }
 
+/// Where the capstan touches the wippen's heel ([`Mounted::capstan_on_the_heel`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HeelContact {
+    /// The capstan's point, in the key's frame.
+    pub on_the_capstan: Point,
+    /// The heel's point, in the wippen's frame.
+    pub on_the_heel: Point,
+    /// The part of the heel it touches: its cloth, or its wood where the
+    /// capstan stands off the cloth.
+    pub part: PartCode,
+}
+
 /// Which limit of its turn the wippen leans on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WippenLimit {
@@ -428,22 +440,68 @@ impl Mounted {
         let m = &self.mechanism;
         let mut rows = crate::contact::Rows::new();
         m.rows(&m.pose(q), within.max(0.0), &mut rows);
+        let carrying = self.carrying_among(&rows, &wippen.links, motion, within);
+        carrying.map(|i| (rows, i))
+    }
+
+    /// Of the rows of `links` in `rows` closed within `within`, the one that
+    /// carries the wippen by `motion`, as [`Self::wippen_follows`] picks it,
+    /// its index in `rows`: a row the wippen's angle does not move, whose
+    /// ratio is none, carries nothing. Nothing on a mount that carries no
+    /// wippen.
+    fn carrying_among(
+        &self,
+        rows: &crate::contact::Rows,
+        links: &[u16],
+        motion: Motion,
+        within: f64,
+    ) -> Option<usize> {
+        let wippen = self.wippen.as_ref()?;
         let follows = |i: usize| {
             let (by_key, by_wippen) = (rows.grad(i)[self.angle.0], rows.grad(i)[wippen.angle.0]);
             (by_wippen != 0.0).then(|| -by_key / by_wippen)
         };
-        let carrying = (0..rows.len())
-            .filter(|&i| {
-                wippen.links.contains(&rows.rows()[i].pair) && rows.rows()[i].gap <= within
-            })
+        (0..rows.len())
+            .filter(|&i| links.contains(&rows.rows()[i].pair) && rows.rows()[i].gap <= within)
             .filter_map(|i| follows(i).map(|r| (i, r)))
             .reduce(|(a, ra), (b, rb)| match motion {
                 Motion::Down if rb.abs() > ra.abs() => (b, rb),
                 Motion::Up if rb.abs() < ra.abs() => (b, rb),
                 _ => (a, ra),
             })
-            .map(|(i, _)| i);
-        carrying.map(|i| (rows, i))
+            .map(|(i, _)| i)
+    }
+
+    /// Where the capstan touches the wippen's heel at `q`: of the rows of the
+    /// capstan's link closed within `within`, the one that carries the wippen
+    /// going down, the key's back rising, as [`Self::wippen_follows`] picks
+    /// it, and where none of them has a ratio, the first in the pair's
+    /// order, a contact radial to the center pin, which the wippen's range
+    /// keeps far from any seat. Each surface's point is read in its own
+    /// body's frame, from the row's two points, which stand on the two
+    /// surfaces along their normal at `q` whatever the row's gap. `None`
+    /// where no row of the capstan's link is that close, the heel resting on
+    /// the key's top or standing off the key, and on a mount that carries no
+    /// wippen.
+    ///
+    /// What the key weight ratio's 10 g and the wippen weight's roller are
+    /// centered under, Stanwood's *"capstan/heel contact point"*.
+    pub fn capstan_on_the_heel(&self, q: &[f64], within: f64) -> Option<HeelContact> {
+        let wippen = self.wippen.as_ref()?;
+        let m = &self.mechanism;
+        let pose = m.pose(q);
+        let capstans = [wippen.links[0]];
+        let mut rows = crate::contact::Rows::new();
+        m.read_the_rows_of(&pose, &capstans, within.max(0.0), &mut rows);
+        let row = self
+            .carrying_among(&rows, &capstans, Motion::Down, within)
+            .or_else(|| (0..rows.len()).find(|&i| rows.rows()[i].gap <= within))
+            .map(|i| rows.rows()[i])?;
+        Some(HeelContact {
+            on_the_capstan: pose.placement(self.key).local(row.on_a()),
+            on_the_heel: pose.placement(wippen.body).local(row.on_b()),
+            part: m.parts()[row.feature.b.part().index()].code,
+        })
     }
 
     /// The generalized force `forces` puts on the key's angle with the

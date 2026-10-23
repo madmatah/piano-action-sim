@@ -393,10 +393,11 @@ const readsAsBooted = (read) =>
   })
 
 // His key carries his wippen, which the view draws, his capstan bearing on
-// its heel cloth. A slider of the « chevalet » panel reaches the engine:
-// his wippen's center pin moved 4 mm along the key moves his down weight,
-// the heel's arm and the ratio through the capstan changing with it, and
-// put back, the sheet reads as the page booted.
+// its heel cloth. The sheet reads its wippen weight and WBW, each where the
+// capstan touches the heel. A slider of the « chevalet » panel reaches the
+// engine: his wippen's center pin moved 4 mm along the key moves his down
+// weight and his wippen weight, the heel's arm and the ratio through the
+// capstan changing with it, and put back, the sheet reads as the page booted.
 const wippenParts = () => evaluate(`document.querySelector('.view')?.dataset.wippenParts ?? null`)
 const wippenCarriedBy = () =>
   evaluate(`document.querySelector('[data-wippen-carried-by]')?.dataset.wippenCarriedBy ?? null`)
@@ -407,6 +408,25 @@ if (!['wippen', 'wippen_heel', 'wippen_heel_cloth'].every((part) => hisWippen.in
 const hisCarriedBy = await wippenCarriedBy()
 if (hisCarriedBy !== 'capstan_on_the_heel:wippen_heel_cloth') {
   fail(`his capstan does not bear on his heel cloth: ${hisCarriedBy}`)
+}
+for (const procedure of ['wippen_weight', 'wippen_balance_weight']) {
+  if (!Number.isFinite(bootRead[procedure]?.exact)) {
+    fail(`his ${procedure} is not read: ${JSON.stringify(bootRead[procedure])}`)
+  }
+}
+const centeredAt = () =>
+  evaluate(`
+    JSON.stringify(Object.fromEntries([...document.querySelectorAll('[data-centered]')].map(
+      (p) => [p.dataset.centered, p.dataset.found])))
+  `).then(JSON.parse)
+const hisCentered = await centeredAt()
+if (
+  hisCentered.key_weight_ratio !== 'where_the_capstan_touches_the_heel' ||
+  hisCentered.wippen_weight !== 'where_the_capstan_touches_the_heel'
+) {
+  fail(
+    `his KR and WW are not read where his capstan touches his heel: ${JSON.stringify(hisCentered)}`,
+  )
 }
 const WIPPEN_CENTER = 'wippen.center.behind_mm'
 const MOVED_CENTER_MM = 185
@@ -426,6 +446,11 @@ if (centerMoved.down_weight?.exact === bootRead.down_weight?.exact) {
     `his down weight does not move with his wippen's center pin: ${JSON.stringify(centerMoved.down_weight)}`,
   )
 }
+if (centerMoved.wippen_weight?.exact === bootRead.wippen_weight?.exact) {
+  fail(
+    `his wippen weight does not move with his wippen's center pin: ${JSON.stringify(centerMoved.wippen_weight)}`,
+  )
+}
 if ((await moveSlider(WIPPEN_CENTER, Number(hisCenter))) !== 'ok') {
   fail('no slider over the wippen center pin')
 }
@@ -436,7 +461,7 @@ if (JSON.stringify(await measured()) !== JSON.stringify(bootRead)) {
   )
 }
 console.log(
-  `  ok  his wippen drawn on his capstan's heel cloth; its center pin moved to ${MOVED_CENTER_MM} mm moves D from ${bootRead.down_weight.exact} to ${centerMoved.down_weight.exact} g, and put back reads as booted`,
+  `  ok  his wippen drawn on his capstan's heel cloth, WW ${bootRead.wippen_weight.exact} g and WBW ${bootRead.wippen_balance_weight.exact} g read where his capstan touches his heel; its center pin moved to ${MOVED_CENTER_MM} mm moves D from ${bootRead.down_weight.exact} to ${centerMoved.down_weight.exact} g and WW to ${centerMoved.wippen_weight.exact} g, and put back reads as booted`,
 )
 
 /** What the page says, by the identifiers it says it about, and what it
@@ -619,6 +644,10 @@ for (const p of ['balance_weight', 'friction_weight']) {
 for (const p of NO_MASS_READ) {
   if (unweighed[p] !== 'read') fail(`${p} needs no mass, and is not read: ${unweighed[p]}`)
 }
+if (unweighed.wippen_weight !== 'no_wippen_assembly') {
+  fail(`the wippen weight of the measured section, which carries none: ${unweighed.wippen_weight}`)
+}
+console.log('  ok  the measured section refuses its wippen weight: it carries no wippen assembly')
 const unweighedFriction = await frictionControl()
 if (
   unweighedFriction?.shown !== null ||
@@ -712,7 +741,10 @@ await settle()
 if ((await clickAction('weigh_key')) !== 'ok') fail('no button to weigh the key')
 await settle()
 const start = await sheet()
-if (Object.values(start).includes('refused')) {
+// The section carries no wippen assembly: its wippen weight and WBW stay
+// refused for that, whatever the key weighs.
+const NO_WIPPEN = ['wippen_weight', 'wippen_balance_weight']
+if (Object.entries(start).some(([code, read]) => read === 'refused' && !NO_WIPPEN.includes(code))) {
   fail(`the weighed section still refuses: ${JSON.stringify(start)}`)
 }
 const weighedAs = await evaluate(`

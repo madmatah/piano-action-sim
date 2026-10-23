@@ -8,11 +8,14 @@ sheet.front_weight.shown 29.6 0x403d99999999999a
 sheet.front_weight.unit g
 sheet.front_weight.trust indicative geometry
 sheet.front_weight.fingerprint statics/4
-sheet.key_weight_ratio.value 0.5646245438832338 0x3fe211677dcfeac0
-sheet.key_weight_ratio.shown 0.56 0x3fe1eb851eb851ec
+sheet.key_weight_ratio.value 0.5659923705427211 0x3fe21c9c0828872d
+sheet.key_weight_ratio.shown 0.57 0x3fe23d70a3d70a3d
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
 sheet.key_weight_ratio.fingerprint statics/4
+sheet.key_weight_ratio.capstan_heel_contact WhereTheCapstanTouchesTheHeel { part: WippenHeelCloth }
+sheet.key_weight_ratio.capstan_heel_contact.x -0.11788489093663804 0xbfbe2db44743f06a
+sheet.key_weight_ratio.capstan_heel_contact.y 0.035595815445552875 0x3fa2399d5e6d1b9c
 sheet.key_height.value 0.07340959487800769 0x3fb2caf8a136b1e8
 sheet.key_height.shown 0.07340959487800769 0x3fb2caf8a136b1e8
 sheet.key_height.unit m
@@ -31,6 +34,19 @@ sheet.balance_weight refused From { reading: DownWeight }
 sheet.friction_weight refused From { reading: DownWeight }
 sheet.key_friction_weight_zeroed_on_the_jig refused Walk(NoTravel)
 sheet.key_friction_weight_zeroed_on_the_frame refused Walk(NoTravel)
+sheet.wippen_weight.value 17.32790158550168 0x403153f15bba0949
+sheet.wippen_weight.shown 17.3 0x40314ccccccccccd
+sheet.wippen_weight.unit g
+sheet.wippen_weight.trust indicative geometry
+sheet.wippen_weight.fingerprint statics/4
+sheet.wippen_weight.capstan_heel_contact WhereTheCapstanTouchesTheHeel { part: WippenHeelCloth }
+sheet.wippen_weight.capstan_heel_contact.x 0.05980651668889255 0x3fae9ef5b2886efb
+sheet.wippen_weight.capstan_heel_contact.y -0.02229814316347012 0xbf96d5530e983280
+sheet.wippen_balance_weight.value 9.807460094909072 0x40239d6b68d8eb46
+sheet.wippen_balance_weight.shown 9.9 0x4023cccccccccccd
+sheet.wippen_balance_weight.unit g
+sheet.wippen_balance_weight.trust indicative geometry
+sheet.wippen_balance_weight.fingerprint statics/4
 readout.key_mass_g 120.08000000000001 0x405e051eb851eb86
 readout.gap_front_mm 21.090152267232327 0x40351714380f6c50
 readout.gap_back_mm -9.324138683375338e-15 0xbd04ff0000000000

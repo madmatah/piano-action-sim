@@ -933,9 +933,12 @@ impl KeyDesign {
     /// The capstan's contact point, in the key's frame: the top of its head,
     /// on its axis.
     ///
-    /// Where the wippen's heel bears, and where the key weight ratio's 10 g is
-    /// centered on the jig, *"on a vertical axis which passes through the
-    /// capstan/heel contact point"* [V, Stanwood 2000, p. 22].
+    /// Where a load standing for the action bears, and where the key weight
+    /// ratio's 10 g is centered on the jig, *"on a vertical axis which passes
+    /// through the capstan/heel contact point"* [V, Stanwood 2000, p. 22], on
+    /// a key that carries no wippen. A key carrying its wippen is read where
+    /// its capstan touches the heel at the top seat
+    /// ([`crate::parts::mounts::Mounted::capstan_on_the_heel`]).
     pub fn capstan_contact(&self) -> Point {
         Point::new(
             self.capstan,

@@ -99,4 +99,9 @@ station_mm: number, } | { "code": "from_a_refused_reading",
 /**
  * That reading.
  */
-reading: Procedure, };
+reading: Procedure, } | { "code": "no_wippen_assembly" } | { "code": "roller_not_in_front_of_the_center_pin", 
+/**
+ * Where it stands, millimeters along the wippen from its center pin,
+ * positive in front.
+ */
+at_mm: number, };

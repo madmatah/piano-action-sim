@@ -282,6 +282,11 @@ pub struct WippenAssemblyRanges {
     /// face; the heel's bottom in front of the cloth and its front side, up
     /// to where it meets the body.
     pub heel_below_the_body: [SurfaceRef; 3],
+    /// The lowest point of the heel's circle at angle zero, in the
+    /// wippen's frame: its position along the wippen, and its height below
+    /// the jack's pin. Where the wippen weight's roller stands where the
+    /// capstan's touch on the heel is not read.
+    pub heel_lowest_point: Point,
 }
 
 /// A setting of the wippen assembly: a length under a meter either way.
@@ -565,6 +570,7 @@ impl WippenAssembly {
                     segs: 5..7,
                 },
             ],
+            heel_lowest_point: Point::new(self.heel.position, self.jack.pin.y - self.heel.height),
         }
     }
 }

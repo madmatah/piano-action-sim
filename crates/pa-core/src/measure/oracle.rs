@@ -237,6 +237,26 @@ impl Branches {
     }
 }
 
+/// The wippen assembly on its jig, by the closed form of Stanwood's wippen
+/// weight: its static moment about its center pin over the roller's arm,
+/// both taken level.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WippenWeighing {
+    /// The assembly's static moment about its center pin, kg·m, positive in
+    /// front.
+    pub static_moment: f64,
+    /// The center pin to the roller, meters, in front.
+    pub roller_arm: f64,
+}
+
+impl WippenWeighing {
+    /// The wippen weight, grams: the weight a load on the roller would need
+    /// to have to stand for the assembly's.
+    pub fn wippen_weight_g(&self) -> f64 {
+        1000.0 * self.static_moment / self.roller_arm
+    }
+}
+
 /// The key on its frame weighed by the closed form taken with the key level,
 /// turning about its balance pin, one friction torque at its bushings: D and
 /// U as if the key rested level, which the walks read within the tilt of the

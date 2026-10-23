@@ -14,6 +14,7 @@ import type {
   Limit,
   Part,
   Problem,
+  Procedure,
   Riding,
   SettingUnit,
   Solve,
@@ -190,6 +191,19 @@ const STROKE: Named<Stroke> = {
   up: 'on the way up',
 }
 
+/** How far from a pin a load stood, millimeters, behind or in front of it. */
+function fromThePin(atMm: number, pin: string): string {
+  return `${to(Math.abs(atMm), LENGTH_MM)} mm ${atMm < 0 ? 'behind' : 'in front of'} the ${pin}`
+}
+
+/** The readings another is computed from, as a refusal names them. */
+const FROM_A_READING: { readonly [P in Procedure]?: string } = {
+  down_weight: 'down weight',
+  up_weight: 'up weight',
+  wippen_weight: 'wippen weight',
+  key_weight_ratio: 'key weight ratio',
+}
+
 /** Each panel's heading, which a sentence pointing to the panel quotes. */
 const panel: Catalog['panel'] = {
   instrument: 'The instrument',
@@ -242,7 +256,10 @@ const refusal: Catalog['refusal'] = {
   no_key_top_at_the_station: ({ station_mm }) =>
     `no top of the key stands ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'behind' : 'in front of'} the balance pin, where the temporary weight goes.`,
   from_a_refused_reading: ({ reading }) =>
-    `the ${reading === 'down_weight' ? 'down weight' : reading === 'up_weight' ? 'up weight' : 'reading'} it is computed from is refused.`,
+    `the ${FROM_A_READING[reading] ?? 'reading'} it is computed from is refused.`,
+  no_wippen_assembly: () => 'the key carries no wippen assembly on its capstan.',
+  roller_not_in_front_of_the_center_pin: ({ at_mm }) =>
+    `the roller would stand ${at_mm === 0 ? 'under the center pin' : `${to(Math.abs(at_mm), LENGTH_MM)} mm behind the center pin`}, where it cannot hold the wippen assembly level: no heel stands in front of the center pin to rest on it.`,
   wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
     `at the ${at} seat the key pushes the wippen assembly past its range, its heel lifted to the edge of what the model holds and still ${showPartDistance(heel_depth_mm)} in the key there, as a center pin set too low for its capstan would.`,
   wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
@@ -656,6 +673,29 @@ export const en: Catalog = {
       'A keyboard is set up so the key is **level when it is fully down**, and so slightly nose-up when released — and the chamfer under the tail is cut at that same angle so the tail beds **flat** on its cloth. Both are design goals, not laws: rail heights, punchings and cloth are what reach them, and most keys rest on an **edge** instead, sometimes the cloth’s, sometimes the key’s own. For regulating that hardly matters: the papers under the balance punching set the key’s height, and the cloth’s work is to damp the key’s return and give it the same rest every time; bedded flat, the tail only wears its cloth more slowly. So the bench reports all three rather than refusing the frame. Nose-down is positive, and so is a rear end digging in.',
     balanceNote:
       'With no action on the capstan, **BW = −FW**: the equation of balance with its right-hand side removed, but for what the key’s rest attitude adds, read here at its two seats rather than level. A bare front-heavy key falls on its own, which is why these branches are negative.',
+    balanceNoteCarrying:
+      'With the wippen assembly on the capstan and no hammer, **BW + FW = WW × KR**: the equation of balance without its strike weight term, but for what the attitudes of the key and of the wippen assembly add, read here at the top seat and at the bottom seat rather than level, and for the friction of the wippen center, which does not cancel between the two.',
+    keyRatioCentered: {
+      where_the_capstan_touches_the_heel: (atMm) =>
+        `The key weight ratio’s 10 g stood over where the capstan touches the wippen heel with the key at its top seat, ${fromThePin(atMm, 'balance pin')}: the capstan/heel contact point.`,
+      no_wippen_assembly: (atMm) =>
+        `The key weight ratio’s 10 g stood on the top of the capstan head, ${fromThePin(atMm, 'balance pin')}: the key carries no wippen assembly.`,
+      no_top_seat: (atMm) =>
+        `The key weight ratio’s 10 g stood on the top of the capstan head, ${fromThePin(atMm, 'balance pin')}: the key carrying its wippen assembly has no top seat at which to read where the capstan touches the wippen heel.`,
+      capstan_off_the_heel: (atMm) =>
+        `The key weight ratio’s 10 g stood on the top of the capstan head, ${fromThePin(atMm, 'balance pin')}: at the top seat the capstan does not touch the wippen heel, which rests on the key’s top.`,
+    },
+    wippenWeightCentered: {
+      where_the_capstan_touches_the_heel: (atMm) =>
+        `The wippen weight is read with the wippen assembly on the jig, turning without friction on its center pin, the wippen’s body level, the jig’s roller under where the capstan touches the wippen heel with the key at its top seat, ${fromThePin(atMm, 'center pin')}.`,
+      no_wippen_assembly: () => 'The key carries no wippen assembly to weigh.',
+      no_top_seat: (atMm) =>
+        `The wippen weight is read with the wippen assembly on the jig, turning without friction on its center pin, the wippen’s body level, the jig’s roller under the wippen heel at its position, ${fromThePin(atMm, 'center pin')}: the key carrying its wippen assembly has no top seat at which to read where the capstan touches the wippen heel.`,
+      capstan_off_the_heel: (atMm) =>
+        `The wippen weight is read with the wippen assembly on the jig, turning without friction on its center pin, the wippen’s body level, the jig’s roller under the wippen heel at its position, ${fromThePin(atMm, 'center pin')}: at the top seat the capstan does not touch the wippen heel, which rests on the key’s top.`,
+    },
+    wippenBalanceNote:
+      '**WBW = WW × KR**, the wippen balance weight: what the weight of the wippen assembly puts on the measuring point through the key, computed from the two readings as read, to the tenth of a gram.',
   },
   procedure: {
     front_weight: 'front weight FW',
@@ -668,6 +708,8 @@ export const en: Catalog = {
     friction_weight: 'friction weight F',
     key_friction_weight_zeroed_on_the_jig: 'key friction weight KF, zeroed on the jig',
     key_friction_weight_zeroed_on_the_frame: 'key friction weight KF, zeroed on the frame',
+    wippen_weight: 'wippen weight WW',
+    wippen_balance_weight: 'wippen balance weight WBW',
     down_weight_on_the_band: 'the band’s greatest force on the way down',
     up_weight_on_the_band: 'the band’s least force on the way up',
   },

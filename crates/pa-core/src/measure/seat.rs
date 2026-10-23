@@ -498,7 +498,7 @@ impl Seating<'_> {
     pub fn seats(&self, statics: &mut Statics) -> Result<Seats, SeatRefusal> {
         let prepared = self.preparation()?;
         let alone = self.key_alone().map(|alone| alone.seats(statics));
-        self.seats_prepared(statics, &prepared, alone.as_ref())
+        self.seats_prepared(statics, &prepared, alone.as_ref()).0
     }
 
     /// The seats of a key carrying its wippen, as [`Self::seats`] seats it,
@@ -510,45 +510,76 @@ impl Seating<'_> {
     /// then the key alone's refusal is the key's own. A key that carries no
     /// wippen has no key alone, and `alone` is not read: it is seated as
     /// [`Self::seats`] seats it.
+    ///
+    /// Beside the seats, the top seat of the key carrying its wippen as it
+    /// was solved, wherever it seated, whether or not the bottom seat was
+    /// then refused, with the bits [`Self::top`] seats it at: where the sheet
+    /// reads where the capstan touches the heel, without solving the top
+    /// seat twice. None where the preparation or the key alone's seats were
+    /// refused before it, and on a key that carries no wippen.
     pub fn seats_from_the_key_alones(
         &self,
         statics: &mut Statics,
         alone: &Result<Seats, SeatRefusal>,
-    ) -> Result<Seats, SeatRefusal> {
+    ) -> (Result<Seats, SeatRefusal>, Option<Seat>) {
         if self.mounted.key_alone.is_none() {
-            return self.seats(statics);
+            return (self.seats(statics), None);
         }
-        let prepared = self.preparation()?;
-        self.seats_prepared(statics, &prepared, Some(alone))
+        match self.preparation() {
+            Ok(prepared) => self.seats_prepared(statics, &prepared, Some(alone)),
+            Err(refusal) => (Err(refusal), None),
+        }
     }
 
     /// The seats under the loads `prepared`, from the key alone's seats
     /// `alone` where the key carries a wippen; the preparation's lowering of
-    /// the wippen counted with the top seat's.
+    /// the wippen counted with the top seat's. Beside them, the top seat as
+    /// it was solved, where it seated, its lowering counted alike.
     fn seats_prepared(
         &self,
         statics: &mut Statics,
         prepared: &Preparation,
         alone: Option<&Result<Seats, SeatRefusal>>,
+    ) -> (Result<Seats, SeatRefusal>, Option<Seat>) {
+        let top = match alone {
+            None => self.top_seat(statics, &prepared.top),
+            Some(alone) => match alone.as_ref() {
+                Ok(alone) => {
+                    self.seat_by_the_key_alone(statics, &alone.top, &prepared.top, WhichSeat::Top)
+                }
+                Err(refusal) => return (Err(refusal.clone()), None),
+            },
+        };
+        let mut top = match top {
+            Ok(top) => top,
+            Err(refusal) => return (Err(refusal), None),
+        };
+        top.report.lowering_halvings += prepared.lowering_halvings;
+        let seats = self.bottom_prepared(statics, prepared, alone, &top);
+        (seats, Some(top))
+    }
+
+    /// The seats under the loads `prepared` from `top`, the top seat as
+    /// [`Self::seats_prepared`] solved it: the bottom seat, from the key
+    /// alone's own where the key carries a wippen, and the punching's check.
+    fn bottom_prepared(
+        &self,
+        statics: &mut Statics,
+        prepared: &Preparation,
+        alone: Option<&Result<Seats, SeatRefusal>>,
+        top: &Seat,
     ) -> Result<Seats, SeatRefusal> {
         let m = &self.mounted.mechanism;
-        let (mut top, bottom) = match alone {
-            None => {
-                let top = self.top_seat(statics, &prepared.top)?;
-                let bottom = self.seat(statics, &top.q, &prepared.bottom, false)?;
-                (top, bottom)
-            }
+        let bottom = match alone {
+            None => self.seat(statics, &top.q, &prepared.bottom, false)?,
             Some(alone) => {
                 let alone = alone.as_ref().map_err(Clone::clone)?;
-                (
-                    self.seat_by_the_key_alone(statics, &alone.top, &prepared.top, WhichSeat::Top)?,
-                    self.seat_by_the_key_alone(
-                        statics,
-                        &alone.bottom,
-                        &prepared.bottom,
-                        WhichSeat::Bottom,
-                    )?,
-                )
+                self.seat_by_the_key_alone(
+                    statics,
+                    &alone.bottom,
+                    &prepared.bottom,
+                    WhichSeat::Bottom,
+                )?
             }
         };
         // A punching read at its center bears on nothing once that center
@@ -566,9 +597,8 @@ impl Seating<'_> {
                 return Err(SeatRefusal::NoStopBelowTheFront);
             }
         }
-        top.report.lowering_halvings += prepared.lowering_halvings;
         Ok(Seats {
-            top,
+            top: top.clone(),
             bottom,
             capstan_load: prepared.capstan_load,
             press: prepared.press,
@@ -581,13 +611,42 @@ impl Seating<'_> {
     /// does not need.
     pub fn top(&self, statics: &mut Statics) -> Result<Seat, SeatRefusal> {
         let prepared = self.preparation()?;
-        let mut top = match self.key_alone() {
-            None => self.top_seat(statics, &prepared.top),
+        match self.key_alone() {
+            None => {
+                let mut top = self.top_seat(statics, &prepared.top)?;
+                top.report.lowering_halvings += prepared.lowering_halvings;
+                Ok(top)
+            }
             Some(alone) => {
                 let alone = alone.top(statics)?;
-                self.seat_by_the_key_alone(statics, &alone, &prepared.top, WhichSeat::Top)
+                self.top_prepared_from_the_key_alones(statics, &prepared, &alone)
             }
-        }?;
+        }
+    }
+
+    /// The top seat of a key carrying its wippen from `alone`, the key
+    /// alone's own top seat, as [`Self::top`] seats it, the same bits. The
+    /// sheet seats it so where the key alone's seats are refused but its top
+    /// seat is not, to read where the capstan touches the heel.
+    pub(crate) fn top_from_the_key_alones(
+        &self,
+        statics: &mut Statics,
+        alone: &Seat,
+    ) -> Result<Seat, SeatRefusal> {
+        let prepared = self.preparation()?;
+        self.top_prepared_from_the_key_alones(statics, &prepared, alone)
+    }
+
+    /// The top seat under the loads `prepared` from `alone`, the key alone's
+    /// own top seat, the preparation's lowering of the wippen counted with
+    /// it.
+    fn top_prepared_from_the_key_alones(
+        &self,
+        statics: &mut Statics,
+        prepared: &Preparation,
+        alone: &Seat,
+    ) -> Result<Seat, SeatRefusal> {
+        let mut top = self.seat_by_the_key_alone(statics, alone, &prepared.top, WhichSeat::Top)?;
         top.report.lowering_halvings += prepared.lowering_halvings;
         Ok(top)
     }

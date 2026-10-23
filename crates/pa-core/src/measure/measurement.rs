@@ -25,7 +25,7 @@
 //! ([`Input`]). Every reading carries the counts of the static solves it
 //! took ([`SolveReport`]) and the fingerprint of the solver that took it.
 
-use crate::contact::ContactCode;
+use crate::contact::{ContactCode, PartCode};
 use crate::geometry::Point;
 use crate::parts::mounts::KeyMount;
 use crate::parts::verdicts::CarriedBy;
@@ -59,6 +59,13 @@ pub enum ProcedureId {
     /// Key friction weight with the temporary weight chosen to zero the
     /// key's balance where it rests on its frame, then the down weight.
     KeyFrictionWeightZeroedOnTheFrame,
+    /// Wippen weight WW, by Stanwood's protocol: the wippen assembly level on
+    /// Stanwood's jig, turning without friction on its center pin, read at
+    /// the capstan/heel contact point.
+    WippenWeight,
+    /// Wippen balance weight, `WBW = WW × KR`, from the two as read: what
+    /// the wippen's weight puts on the measuring point through the key.
+    WippenBalanceWeight,
     /// Down weight read on the band: the greatest force the driven sweep
     /// needs on its way down, the walk's in full within a few thousandths
     /// of a gram. Its gram is the walk's rounding of it, which may read a
@@ -72,7 +79,7 @@ pub enum ProcedureId {
 
 impl ProcedureId {
     /// Every reading of the sheet, in its order.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 12] = [
         Self::FrontWeight,
         Self::KeyWeightRatio,
         Self::KeyHeight,
@@ -83,6 +90,8 @@ impl ProcedureId {
         Self::FrictionWeight,
         Self::KeyFrictionWeightZeroedOnTheJig,
         Self::KeyFrictionWeightZeroedOnTheFrame,
+        Self::WippenWeight,
+        Self::WippenBalanceWeight,
     ];
 
     /// The readings of the band, which the driven sweep takes when the band
@@ -102,6 +111,8 @@ impl ProcedureId {
             Self::FrictionWeight => "friction_weight",
             Self::KeyFrictionWeightZeroedOnTheJig => "key_friction_weight_zeroed_on_the_jig",
             Self::KeyFrictionWeightZeroedOnTheFrame => "key_friction_weight_zeroed_on_the_frame",
+            Self::WippenWeight => "wippen_weight",
+            Self::WippenBalanceWeight => "wippen_balance_weight",
             Self::DownWeightOnTheBand => "down_weight_on_the_band",
             Self::UpWeightOnTheBand => "up_weight_on_the_band",
         }
@@ -122,7 +133,9 @@ impl ProcedureId {
     /// D, U, BW, F and the band read the wippen the key carries, its mass
     /// and its center's friction, where it carries one; key height and dip,
     /// on rigid stops, read neither, and both key friction weights are read
-    /// on the key alone.
+    /// on the key alone. The wippen weight reads the wippen assembly's mass
+    /// and where the capstan touches its heel, and WBW, from it and the key
+    /// weight ratio, the same.
     pub fn reads(self) -> &'static [Input] {
         match self {
             Self::FrontWeight => &[Input::KeyMass, Input::Geometry],
@@ -147,6 +160,9 @@ impl ProcedureId {
                 Input::Geometry,
             ],
             Self::KeyFrictionWeightZeroedOnTheFrame => &[Input::KeyFriction, Input::Geometry],
+            Self::WippenWeight | Self::WippenBalanceWeight => {
+                &[Input::WippenAssemblyMass, Input::Geometry]
+            }
         }
     }
 }
@@ -187,7 +203,7 @@ pub enum Rounding {
     Nearest,
     /// Computed from other readings as they were read: balance and friction
     /// weight from the down and up weights in whole grams, a half gram
-    /// possible.
+    /// possible; and WBW from WW and KR as read, to the tenth.
     FromReadings,
     /// Not rounded: key height and key dip, read to the display's
     /// hundredth of a millimeter, the thinnest paper being what the trade
@@ -242,7 +258,8 @@ pub enum Input {
     CenterOfMassHeight,
     /// The friction of the key's bushings.
     KeyFriction,
-    /// The dimensions of the key and its frame the procedure reads.
+    /// The dimensions of the key, its frame and the wippen assembly it
+    /// carries that the procedure reads.
     Geometry,
     /// The mass of the wippen assembly the key carries and its center, with
     /// its jack and its repetition lever at rest on it.
@@ -364,7 +381,9 @@ impl Trust {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mount {
     /// On Stanwood's front weight jig, turning without friction about its
-    /// balance pin, leveled.
+    /// balance pin, leveled; for the wippen weight and WBW, the wippen
+    /// assembly on Stanwood's jig, turning without friction on its center
+    /// pin, leveled.
     Jig,
     /// On its frame.
     Frame(KeyMount),
@@ -442,7 +461,9 @@ pub struct TemporaryWeight {
 pub struct Conditions {
     /// Where the key was read.
     pub mount: Mount,
-    /// The measuring point, meters back from the covering's lip.
+    /// The measuring point, meters back from the covering's lip: the sheet's,
+    /// which the wippen weight, read at the capstan/heel contact point, does
+    /// not read.
     pub measuring_point_from_lip_m: f64,
     /// The contacts holding the seat the reading is taken at or starts from:
     /// the cloth at the top, whichever stop bottomed at the bottom.
@@ -462,6 +483,60 @@ pub struct Conditions {
     pub temporary_weight: Option<TemporaryWeight>,
     /// The readings it is computed from, where it is computed.
     pub from: Vec<ProcedureId>,
+    /// Where the reading centers its load on Stanwood's *"capstan/heel
+    /// contact point"*, and how that point was found: the key weight ratio's
+    /// 10 g, and the roller the wippen weight is read on. `None` for every
+    /// other reading.
+    pub capstan_heel_contact: Option<ContactPoint>,
+}
+
+/// Where a reading centers its load on the capstan/heel contact point, and
+/// how the point was found.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ContactPoint {
+    /// The point, in the frame of the body the reading weighs: the key's for
+    /// the key weight ratio, from its balance pin; the wippen's for the
+    /// wippen weight, from its center pin.
+    pub at: Point,
+    /// How it was found.
+    pub found: ContactFound,
+}
+
+/// How the capstan/heel contact point a reading centers its load on was
+/// found.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContactFound {
+    /// Where the capstan touches the heel, the key carrying its wippen at its
+    /// top seat, the key at rest: on the heel's `part`, its cloth or, where
+    /// the capstan stands off it, its wood.
+    WhereTheCapstanTouchesTheHeel {
+        /// The part of the heel it touches.
+        part: PartCode,
+    },
+    /// The key carries no wippen: the capstan's top, on its axis.
+    NoWippenAssembly,
+    /// The key carrying its wippen has no top seat, so no point where the
+    /// capstan touches the heel: the seats were refused before a top seat
+    /// with the wippen was solved, or at it. The capstan's top, on its axis,
+    /// for the key weight ratio; the heel's lowest point for the wippen
+    /// weight.
+    NoTopSeat,
+    /// At the top seat the capstan does not touch the heel, which rests on
+    /// the key's top: the capstan's top, on its axis, for the key weight
+    /// ratio; the heel's lowest point for the wippen weight.
+    CapstanOffTheHeel,
+}
+
+impl ContactFound {
+    /// How it was found's identifier.
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::WhereTheCapstanTouchesTheHeel { .. } => "where_the_capstan_touches_the_heel",
+            Self::NoWippenAssembly => "no_wippen_assembly",
+            Self::NoTopSeat => "no_top_seat",
+            Self::CapstanOffTheHeel => "capstan_off_the_heel",
+        }
+    }
 }
 
 impl Conditions {
@@ -478,6 +553,7 @@ impl Conditions {
             sweep: None,
             temporary_weight: None,
             from: Vec::new(),
+            capstan_heel_contact: None,
         }
     }
 }
@@ -630,9 +706,10 @@ mod tests {
 
     /// Consistency: **a reading names the wippen's inputs it reads where they
     /// are not measured, and only where the key carries a wippen.** D reads
-    /// the wippen's mass and its center's friction, key height and both key
-    /// friction weights neither: a wippen whose mass is assumed makes D an
-    /// indication and names it; with no wippen, nothing of it is named.
+    /// the wippen's mass and its center's friction, the wippen weight its
+    /// mass, key height and both key friction weights neither: a wippen
+    /// whose mass is assumed makes D and the wippen weight indications and
+    /// names it; with no wippen, nothing of it is named.
     #[test]
     fn trust_names_the_wippens_inputs_only_where_the_key_carries_one() {
         let measured = Bases {
@@ -658,6 +735,16 @@ mod tests {
             Trust::Indicative {
                 because: vec![Input::WippenAssemblyMass]
             }
+        );
+        assert_eq!(
+            Trust::of(ProcedureId::WippenWeight.reads(), &carrying),
+            Trust::Indicative {
+                because: vec![Input::WippenAssemblyMass]
+            }
+        );
+        assert_eq!(
+            Trust::of(ProcedureId::WippenWeight.reads(), &measured),
+            Trust::Metrological
         );
         for procedure in [
             ProcedureId::KeyHeight,

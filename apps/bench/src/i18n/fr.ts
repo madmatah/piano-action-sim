@@ -18,6 +18,7 @@ import type {
   Limit,
   Part,
   Problem,
+  Procedure,
   Riding,
   SettingUnit,
   Solve,
@@ -214,6 +215,20 @@ const STROKE: Named<Stroke> = {
   up: 'à la remontée',
 }
 
+/** How far from a pin a load stood, millimeters, behind or in front of it,
+ * the pin named with its preposition. */
+function fromThePin(atMm: number, pin: string): string {
+  return `à ${to(Math.abs(atMm), LENGTH_MM)} mm ${atMm < 0 ? 'en arrière' : 'en avant'} ${pin}`
+}
+
+/** The readings another is computed from, as a refusal names them. */
+const FROM_A_READING: { readonly [P in Procedure]?: string } = {
+  down_weight: 'du poids d’enfoncement, refusé',
+  up_weight: 'du poids de remontée, refusé',
+  wippen_weight: 'du poids radial du chevalet, refusé',
+  key_weight_ratio: 'du rapport de poids de clavier, refusé',
+}
+
 /** Each panel's heading, which a sentence pointing to the panel quotes. */
 const panel: Catalog['panel'] = {
   instrument: 'L’instrument',
@@ -267,7 +282,10 @@ const refusal: Catalog['refusal'] = {
   no_key_top_at_the_station: ({ station_mm }) =>
     `aucun dessus de touche ne se trouve à ${to(Math.abs(station_mm), STATION_MM)} mm ${station_mm < 0 ? 'en arrière' : 'en avant'} de la pointe de balancier, où va le poids provisoire.`,
   from_a_refused_reading: ({ reading }) =>
-    `cette mesure se calcule à partir ${reading === 'down_weight' ? 'du poids d’enfoncement, refusé' : reading === 'up_weight' ? 'du poids de remontée, refusé' : 'd’une mesure refusée'}.`,
+    `cette mesure se calcule à partir ${FROM_A_READING[reading] ?? 'd’une mesure refusée'}.`,
+  no_wippen_assembly: () => 'la touche ne porte pas de chevalet sur son pilote.',
+  roller_not_in_front_of_the_center_pin: ({ at_mm }) =>
+    `le support à faible friction se trouverait ${at_mm === 0 ? 'sous l’axe' : `à ${to(Math.abs(at_mm), LENGTH_MM)} mm en arrière de l’axe`}, où il ne peut pas tenir le chevalet de niveau : aucun talon de chevalet ne se trouve en avant de l’axe pour reposer dessus.`,
   wippen_pushed_past_its_range: ({ at, heel_depth_mm }) =>
     `${AT_THE_SEAT[at]}, la touche pousse le chevalet au-delà de ce que le modèle représente, son talon, soulevé jusqu’à cette limite, pénétrant encore de ${showPartDistance(heel_depth_mm)} dans la touche, comme le ferait un axe placé trop bas pour son pilote.`,
   wippen_out_of_reach: ({ at, heel_clearance_mm }) =>
@@ -693,6 +711,29 @@ export const fr: Catalog = {
       'Un clavier se règle pour que la touche soit **de niveau quand elle est enfoncée à fond**, donc légèrement relevée à l’avant quand elle est relâchée, et le chanfrein sous le bout de touche est taillé à ce même angle pour que le bout de touche porte **à plat** sur son drap. Ce sont deux objectifs de conception, pas des lois : les hauteurs des barres, les mouches et le drap sont ce qui les atteint, et la plupart des touches reposent plutôt sur un bord, tantôt sur le **bord du drap**, tantôt sur une **arête de la touche**. Pour le réglage, cela compte peu : les mouches en papier sous la mouche de balancier fixent la hauteur de la touche, et le drap sert à amortir le retour de la touche et à lui donner le même repos à chaque fois ; portant à plat, le bout de touche use seulement son drap plus lentement. Le banc d’essai indique donc les trois valeurs plutôt que de refuser le châssis. Un avant qui plonge compte en positif, de même qu’un arrière qui s’enfonce dans le drap.',
     balanceNote:
       'Sans mécanique sur le pilote, **BW = −FW** : c’est l’équilibre des poids sans son membre de droite, à l’effet près de l’inclinaison de la touche au repos, lue ici à ses deux positions et non de niveau. Une touche nue plus lourde à l’avant descend d’elle-même, d’où ces valeurs négatives.',
+    balanceNoteCarrying:
+      'Avec le chevalet sur le pilote et sans marteau, **BW + FW = WW × KR** : c’est l’équilibre des poids sans le terme du poids d’attaque, à l’effet près des inclinaisons de la touche et du chevalet, lues ici à la position de repos et en fond de course et non de niveau, et de la friction de l’axe du chevalet, qui ne s’annule pas entre les deux.',
+    keyRatioCentered: {
+      where_the_capstan_touches_the_heel: (atMm) =>
+        `Les 10 g du rapport de poids de clavier sont posés à l’aplomb de l’endroit où le pilote touche le talon de chevalet, à la position de repos, ${fromThePin(atMm, 'de la pointe de balancier')}.`,
+      no_wippen_assembly: (atMm) =>
+        `Les 10 g du rapport de poids de clavier sont posés en haut de la tête du pilote, ${fromThePin(atMm, 'de la pointe de balancier')} : la touche ne porte pas de chevalet.`,
+      no_top_seat: (atMm) =>
+        `Les 10 g du rapport de poids de clavier sont posés en haut de la tête du pilote, ${fromThePin(atMm, 'de la pointe de balancier')} : la touche portant son chevalet n’a pas de position de repos où lire l’endroit où le pilote touche le talon de chevalet.`,
+      capstan_off_the_heel: (atMm) =>
+        `Les 10 g du rapport de poids de clavier sont posés en haut de la tête du pilote, ${fromThePin(atMm, 'de la pointe de balancier')} : à la position de repos, le pilote ne touche pas le talon de chevalet, qui repose sur le dessus de la touche.`,
+    },
+    wippenWeightCentered: {
+      where_the_capstan_touches_the_heel: (atMm) =>
+        `Le poids radial du chevalet se lit le chevalet sur l’appareil de mesure à faible friction, tournant sans friction sur son axe, le corps du chevalet à l’horizontale, le support à faible friction sous l’endroit où le pilote touche le talon de chevalet à la position de repos, ${fromThePin(atMm, 'de l’axe')}.`,
+      no_wippen_assembly: () => 'La touche ne porte pas de chevalet à peser.',
+      no_top_seat: (atMm) =>
+        `Le poids radial du chevalet se lit le chevalet sur l’appareil de mesure à faible friction, tournant sans friction sur son axe, le corps du chevalet à l’horizontale, le support à faible friction sous le talon de chevalet à sa position, ${fromThePin(atMm, 'de l’axe')} : la touche portant son chevalet n’a pas de position de repos où lire l’endroit où le pilote touche le talon de chevalet.`,
+      capstan_off_the_heel: (atMm) =>
+        `Le poids radial du chevalet se lit le chevalet sur l’appareil de mesure à faible friction, tournant sans friction sur son axe, le corps du chevalet à l’horizontale, le support à faible friction sous le talon de chevalet à sa position, ${fromThePin(atMm, 'de l’axe')} : à la position de repos, le pilote ne touche pas le talon de chevalet, qui repose sur le dessus de la touche.`,
+    },
+    wippenBalanceNote:
+      '**WBW = WW × KR** : ce que le poids du chevalet reporte sur le point de mesure à travers la touche, calculé à partir des deux valeurs lues, au dixième de gramme.',
   },
   procedure: {
     front_weight: 'poids avant FW',
@@ -707,6 +748,8 @@ export const fr: Catalog = {
       'friction de la touche KF, touche équilibrée sur l’appareil de mesure à faible friction',
     key_friction_weight_zeroed_on_the_frame:
       'friction de la touche KF, touche équilibrée sur son châssis',
+    wippen_weight: 'poids radial du chevalet WW',
+    wippen_balance_weight: 'WBW = WW × KR',
     down_weight_on_the_band: 'la plus grande force de la courbe d’enfoncement',
     up_weight_on_the_band: 'la plus petite force de la courbe de remontée',
   },

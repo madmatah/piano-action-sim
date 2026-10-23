@@ -254,6 +254,7 @@ touchweight reads ([FOUNDATIONS > The trade's protocols are the acceptance test]
 | Poids d'attaque du manche | shank strike weight | **SS** | The shank alone, measured as for SW [V, Stanwood 2000, glossary, p. 23] | **1.7 g** as a generic average [V, Stanwood 2000-03, note to Table I, p. 21] |
 | Rapport de poids d'attaque | strike weight ratio | **R** | **R = SBW / SW**: the weight on the measuring point that balances 1 g of strike weight [V, Stanwood 2000, glossary, p. 23]. FOUNDATIONS writes it SR in the equation of balance; it is not Reyburn's shank ratio of [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values) | normal zone **5.0–7.0**; *low* 5.0–5.7 (high leverage), *medium* 5.7–6.3, *high* 6.3–7.0 (low leverage), the leverage being the pianist's on the hammer [V, Stanwood 2000-03, Table III, p. 24] |
 | Poids radial du chevalet | wippen weight | **WW** | The weight, to 0.1 g, of the level wippen, pivoted without friction at its center, measured at the capstan/heel contact point [V, Stanwood 2000, glossary, p. 23] | — |
+| — (the bench shows the symbol, WBW) | wippen balance weight | **WBW** | **WBW = WW × KR**, the upward static force at the measuring point from the wippen's weight leveraged through the key [V, Stanwood 2000, glossary, p. 23] | — |
 | Rapport de poids de clavier | key weight ratio | **KR** | The force at the measuring point over the force at the capstan: the weight on the measuring point that balances 1 g at the capstan/heel contact point [V, Stanwood 2000, glossary, pp. 22–23] | about **0.5** [V, Reyburn, p. 2]; 0.50 to 0.60 on most actions, 0.68 on an 1878 Steinway concert grand ([FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)) |
 
 **Do not use** the reciprocal as KR. Stanwood's own wording, "the ratio of downward
@@ -273,7 +274,7 @@ BW + FW = (WW × KR) + (SW × R)
 ```
 
 [V, Stanwood 1996, p. 2]; [FOUNDATIONS > The trade's protocols are the acceptance test](../FOUNDATIONS.md#the-trades-protocols-are-the-acceptance-test) writes SR for R. With TBW = BW + FW
-(top action balance weight), WBW = KR × WW (wippen balance weight) and
+(top action balance weight), WBW = WW × KR (wippen balance weight) and
 SBW = TBW − WBW (strike balance weight) [V, Stanwood 2000, glossary, pp. 22–23],
 it reads TBW = WBW + SBW, and FW = (WW × KR) + (SW × R) − BW.
 
@@ -816,6 +817,7 @@ empty rather than filled from a dictionary.
 | Poids d'attaque (SW; also *poids de frappe*) | strike weight | `tw.strike_weight_g` | g |
 | Rapport de poids d'attaque (R) | strike weight ratio | `tw.strike_weight_ratio` | — |
 | Poids radial du chevalet (WW) | wippen weight | `tw.wippen_weight_g` | g |
+| — (the bench shows the symbol, WBW) | wippen balance weight | `tw.wippen_balance_weight_g` | g |
 | Rapport de poids de clavier (KR) | key weight ratio | `tw.key_ratio` | — (the force convention, about 0.5: [FOUNDATIONS > The two key ratio conventions; ratios are outputs](../FOUNDATIONS.md#the-two-key-ratio-conventions-ratios-are-outputs)) |
 | Inertie | inertia | `tw.inertia` | kg·m² (no trade protocol measures it: [FOUNDATIONS > Named simplifications](../FOUNDATIONS.md#named-simplifications)) |
 | **Rapport mécanique** (also *rapport de mécanique*) | **action ratio** | `geom.action_ratio` | — (four definitions, [The action ratio: four definitions, four values](#the-action-ratio-four-definitions-four-values)) |
@@ -878,8 +880,8 @@ views; its French catalog (built) takes them from here. The touchweight quantiti
 | Bord avant du revêtement | the covering's front lip | the edge the measuring point is measured back from |
 | Balance (de précision) | scale | |
 | Protocole Stanwood | Stanwood's protocol | |
-| Appareil de mesure à faible friction | Stanwood's jig | the key pivoting at its balance hole on a point, its measuring point on the scale |
-| Support à faible friction | the jig's roller | what the measuring point rests on, on the scale's pan |
+| Appareil de mesure à faible friction | Stanwood's jig | the key pivoting at its balance hole on a point, its measuring point on the scale; and the wippen pivoting at its center pin, its long body level, its heel on the roller at the capstan/heel contact point, a setup with no name of its own |
+| Support à faible friction | the jig's roller | what the measuring point rests on, on the scale's pan; under a wippen, what its heel rests on at the capstan/heel contact point |
 | Pesée (de la touche) | weighing the key | the key weighed whole: its mass on a scale, its front weight on the appareil de mesure à faible friction, and where the roller stood. « Pesée » is also the weigh-off ([Operations](#operations)); the context tells them apart |
 | Poids provisoire | temporary weight | a weight laid on the key for one reading, then taken off |
 | Cote (de réglage) | target | the value a setting is regulated to |

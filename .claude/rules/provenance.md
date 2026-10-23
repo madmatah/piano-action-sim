@@ -34,6 +34,7 @@ The engine starts from no number of its own: a profile in `data/profiles/` binds
 - the spurious gap-gradient term: The lever arm, and the gradient of a gap;
 - Pw2 as the wippen pivot, 5.84: Hirschkorn's frames;
 - "~40 % of friction unexplained", F ≈ 9 g, Hirschkorn's friction law without its bracket: Friction;
-- the face beside an edge arc as the row that always carries a corner sunk past the arc's center: Seventeen contacts per note.
+- the face beside an edge arc as the row that always carries a corner sunk past the arc's center: Seventeen contacts per note;
+- the wippen leveled with its center pin and the capstan's mark at one height: The protocols, as they are.
 
 Check: a grep for a listed value finds only its warning; *not enforced*.

@@ -13,6 +13,9 @@ sheet.key_weight_ratio.shown 0.49 0x3fdf5c28f5c28f5c
 sheet.key_weight_ratio.unit 
 sheet.key_weight_ratio.trust indicative geometry
 sheet.key_weight_ratio.fingerprint statics/4
+sheet.key_weight_ratio.capstan_heel_contact NoWippenAssembly
+sheet.key_weight_ratio.capstan_heel_contact.x -0.122 0xbfbf3b645a1cac08
+sheet.key_weight_ratio.capstan_heel_contact.y 0.0335 0x3fa126e978d4fdf4
 sheet.key_height.value 0.06498878883168036 0x3fb0a31af2a382f8
 sheet.key_height.shown 0.06498878883168036 0x3fb0a31af2a382f8
 sheet.key_height.unit m
@@ -63,6 +66,8 @@ sheet.key_friction_weight_zeroed_on_the_frame.walk.from_g 1.4394516110675399e-15
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.mass_g 13.956227598381554 0x402be996a9ed29ad
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_x 0.15 0x3fc3333333333333
 sheet.key_friction_weight_zeroed_on_the_frame.temporary_weight.station_y 0.026000000000000002 0x3f9a9fbe76c8b43a
+sheet.wippen_weight refused NoWippenAssembly
+sheet.wippen_balance_weight refused From { reading: WippenWeight }
 readout.key_mass_g 151.1 0x4062e33333333333
 readout.gap_front_mm 8.923314898166899 0x4021d8bcbaf712a3
 readout.gap_back_mm -7.892991815694472e-14 0xbd36378000000000

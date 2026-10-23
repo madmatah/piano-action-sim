@@ -38,7 +38,10 @@ Prints:
      the real felts of his profile, closing contact 1, against script 10's
      rest on his rounds;
   6. the body's long top edge, and the figure's drawn x axis, against the
-     fitted frame's x axis;
+     fitted frame's x axis; exit status 1 where the edge stands off that axis
+     by two pixels or more over its own length, at the wippen's fitted scale:
+     a wippen weighed with its frame's x axis horizontal stands at the level
+     the owner chose, its long top edge horizontal, only where the two agree;
   7. the assembly's mass and center at rest, Table A.1's three parts with the
      jack and the lever at the record's rest angles; the center pin's height
      above the keybed on the borrowed balance bearing, and the heel's height
@@ -47,7 +50,11 @@ Prints:
      and the wippen weight,
      the assembly's static moment over the arm of the capstan's mark, under
      each candidate level: (a) the body's long top edge horizontal, and (b)
-     the center pin and the capstan's mark at one height.
+     the center pin and the capstan's mark at one height; exit status 1 where
+     the weight under (a) and the weight with the frame's x axis horizontal
+     differ by half the 0.1 g a wippen weight is read to, or more. That 0.1 g
+     is Stanwood's, from his glossary's entry for the wippen weight, which
+     data/params/touchweight-protocol.json quotes.
 
 A material outline runs counter-clockwise and its arcs with it, so an arc that
 is concave from the material, a cove, runs clockwise: the record gives it as
@@ -559,8 +566,13 @@ def main():
     edge = (WIPPEN(stretches[15][2]), WIPPEN(stretches[16][1]))
     edge_angle = math.atan2(edge[1][1] - edge[0][1], edge[1][0] - edge[0][0])
     axis = [WIPPEN(tuple(pixel)) for pixel in TRACE["bodies"]["wippen"]["axes"]["px"]]
+    edge_length = math.hypot(*minus(edge[1], edge[0]))
+    two_pixels = math.atan2(2.0 * WIPPEN.scale(), edge_length)
+    level = abs(edge_angle) < two_pixels
+    ok &= level
     print(f"  the long top edge, ({edge[0][0]:.2f}, {edge[0][1]:.2f}) to ({edge[1][0]:.2f}, {edge[1][1]:.2f}):"
-          f" {math.degrees(edge_angle):+.3f} deg")
+          f" {math.degrees(edge_angle):+.3f} deg, against two pixels over its {edge_length:.2f} mm,"
+          f" {math.degrees(two_pixels):.3f} deg{'' if level else '   OFF THE FRAME'}")
     print(f"  the figure's x axis: {math.degrees(math.atan2(axis[1][1] - axis[0][1], axis[1][0] - axis[0][0])):+.3f} deg")
 
     print("\n=== 7. The assembly, its center pin and its wippen weight ===")
@@ -586,14 +598,23 @@ def main():
     mark = capstans_mark(rest_felt, wippen)
     print(f"  the capstan's mark, where its dome bears on the heel cloth with the key on its back rail cloth:"
           f" ({mark[0]:.2f}, {mark[1]:.2f}) mm")
-    for label, level in (("(a) the long top edge horizontal", -edge_angle),
-                         ("    the frame's x axis horizontal", 0.0),
-                         ("(b) the center pin and the mark at one height", -math.atan2(mark[1], mark[0]))):
+    weights = {}
+    for name, label, level in (("edge", "(a) the long top edge horizontal", -edge_angle),
+                               ("axis", "    the frame's x axis horizontal", 0.0),
+                               ("pin", "(b) the center pin and the mark at one height", -math.atan2(mark[1], mark[0]))):
         arm_cm, arm_mark = rotated(level, center)[0], rotated(level, mark)[0]
+        weights[name] = mass * arm_cm / arm_mark
         print(f"  {label:46s} the wippen turned {math.degrees(level):+7.3f} deg:"
-              f" WW = {mass:.2f} x {arm_cm:.2f} / {arm_mark:.2f} = {mass * arm_cm / arm_mark:.2f} g")
+              f" WW = {mass:.2f} x {arm_cm:.2f} / {arm_mark:.2f} = {weights[name]:.2f} g")
+    read_to = 0.1
+    apart = abs(weights["edge"] - weights["axis"])
+    close = apart < read_to / 2.0
+    ok &= close
+    print(f"  (a) and the frame's x axis horizontal: {apart:.3f} g apart, against half the {read_to} g a wippen weight"
+          f" is read to{'' if close else '   TOO FAR APART'}")
     if not ok:
-        print("\nthe outline record's values, or his profile's, differ from what they derive from", file=sys.stderr)
+        print("\nthe outline record's values, or his profile's, differ from what they derive from, or his"
+              " wippen's frame is not level with its long top edge", file=sys.stderr)
         sys.exit(1)
 
 

@@ -16,8 +16,11 @@
 //! # What a sheet holds
 //!
 //! Every reading of the weighing sheet ([`Instrument::sheet`]): its value in
-//! full, what the trade reads it as, its trust, and for the key friction
-//! weights the temporary weight and where it stood; or why it is refused.
+//! full, what the trade reads it as, its trust, for the key weight ratio
+//! and the wippen weight the point each centered its load on, in the frame
+//! of the body it weighs in meters, and how that point was found, and for
+//! the key friction weights the temporary weight and where it stood; or
+//! why it is refused.
 //! Then every field of [`BenchReadout`] (or that there is none, when the
 //! bench cannot seat its key), the reason it cannot, how the key rides on
 //! its stops where they fight (written only there), the faults, where the
@@ -325,6 +328,15 @@ fn write_measurement(out: &mut String, name: &str, m: &Measurement) {
             &format!("{name}.wippen_carried_by"),
             &carried(&conditions.wippen_carried_by),
         );
+    }
+    if let Some(contact) = conditions.capstan_heel_contact {
+        line(
+            out,
+            &format!("{name}.capstan_heel_contact"),
+            &format!("{:?}", contact.found),
+        );
+        number(out, &format!("{name}.capstan_heel_contact.x"), contact.at.x);
+        number(out, &format!("{name}.capstan_heel_contact.y"), contact.at.y);
     }
     if let Some(t) = conditions.temporary_weight {
         number(out, &format!("{name}.temporary_weight.mass_g"), t.mass_g);

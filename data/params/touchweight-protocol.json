@@ -1,12 +1,12 @@
 {
-  "what": "The conventions Stanwood's touchweight protocols are run under: where on the key every weight is centered, and the load the key weight ratio is read with.",
+  "what": "The conventions Stanwood's touchweight protocols are run under: where on the key every weight is centered, the load the key weight ratio is read with, and how a wippen is weighed.",
   "source": {
     "author": "David C. Stanwood",
     "doc": "Standard Protocols of the New Touchweight Metrology",
     "published": "Piano Technicians Journal, February 2000, pp. 20-23",
     "local_copy": "data/references/stanwood/2000-02 - Standard Protocols of the New Touchweight Metrology.pdf"
   },
-  "supersedes": "The 1996 paper, The New Touchweight Metrology (Piano Technicians Journal, June 1996), centers the weights 13 mm in from 'the front vertical edge of the key' and reads the key weight ratio with 100 g. These protocols replace both.",
+  "supersedes": "The 1996 paper, The New Touchweight Metrology (Piano Technicians Journal, June 1996), centers the weights 13 mm in from 'the front vertical edge of the key' and reads the key weight ratio with 100 g. These protocols replace both. The setup that weighs a wippen is quoted from the 1996 paper, in the record wippen_weight, because these protocols print none: they give its definition in their glossary and no procedure, figure or photograph.",
   "records": [
     {
       "name": "measuring_point_from_lip",
@@ -37,7 +37,34 @@
       "locator": { "page": 22, "column": 1 },
       "quote": "With the scale set to zero, a 10-gram weight is placed on the back of the key, centered on a vertical axis which passes through the capstan/heel contact point. This gives results accurate to two decimal places. For instance, if the scale reads -5.5 the Key Weight Ratio (KR) would be 0.55.",
       "what_for": "The key weight ratio, read on the front weight jig with the scale tared: the reading over the load.",
-      "engine": "TouchweightProtocol::key_ratio_load_g; both shipped profiles, data/profiles/hirschkorn.json and data/profiles/measured-section.json, bind theirs to this record."
+      "engine": "TouchweightProtocol::key_ratio_load_g; both shipped profiles, data/profiles/hirschkorn.json and data/profiles/measured-section.json, bind theirs to this record. The bench centers it where the capstan touches the wippen's heel at the key's top seat, on a key carrying its wippen, and on the capstan's top, on its axis, where the key carries none, has no top seat with it, or its capstan does not touch the heel there."
+    },
+    {
+      "name": "wippen_weight",
+      "reliability": "V",
+      "locator": { "page": 23, "entry": "Glossary, Wippen Weight" },
+      "quote": "The amount of weight, to the nearest 0.1 gram, of the level wippen, pivoted without friction at the wippen center, and measured at the capstan/heel contact point.",
+      "balance_weight": {
+        "locator": { "page": 23, "entry": "Glossary, Wippen Balance Weight (WBW)" },
+        "quote": "The upward static force at the measuring point resulting from the static weight of the wippen leveraged through the key, found as: KR x WW."
+      },
+      "procedure": "These protocols print none: the glossary's two entries are all they give of the wippen, with no figure or photograph of its setup.",
+      "setup": {
+        "source": {
+          "author": "David C. Stanwood",
+          "doc": "The New Touchweight Metrology",
+          "published": "Piano Technicians Journal, June 1996",
+          "local_copy": "data/references/stanwood/1996 - The New Touchweight Metrology.pdf",
+          "note": "The local copy is the author's reprint, reformatted for reading online; it keeps no page number of the journal, so its locators give the pages of the local copy."
+        },
+        "locator": { "page": 3, "section": "Wippen Weight", "photo": 2 },
+        "quote": "The radius weight of the wippen pivoted on the wippen center, where the capstan contacts the wippen heel. The wippen heel rests on the roller at the capstan contact point. The wippen flange rests on the felt wedge so that the wippen center is aligned with the vertical axis through the center of the roller. If necessary the flange may be wedged with a sliver of wood to prevent the flange from rotating (see Photo 2).",
+        "photo": "Photo 2, 'A wippen on the weighing jig', page 4 of the local copy: the wippen assembly, its jack and repetition lever on it, rests by its heel on a roller bearing set on a block, and by its flange, standing upright, on a felt wedge on a second block; the wippen's long body stands horizontal."
+      },
+      "which_level": "The wippen's long body horizontal. The 2000 glossary says 'the level wippen' and not what is level, and the 1996 text gives the wippen no attitude in words; its Photo 2 shows the long body horizontal. This is the owner's choice, as which_lip records his for the measuring point; leveling the wippen with its center pin and the capstan's mark at one height is not it.",
+      "note": "V covers the quotations and their locators: photo is a reading of the photograph, and which_level the owner's choice.",
+      "where": "The roller stands under the capstan/heel contact point: the point of the heel the capstan touches, the key at rest.",
+      "engine": "Nothing reads it as a number: the sheet's wippen weight runs this setup, the wippen assembly held level at its frame's angle zero on a frictionless pin at its center pin, the roller under where the capstan touches the heel at the key's top seat, or under the heel circle's lowest point where that point is not read (WippenJig and Weighing::wippen_weight in crates/pa-core)."
     }
   ]
 }

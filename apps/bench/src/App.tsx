@@ -54,6 +54,7 @@ import { type Answer, type Around, type Edits, Panel, type Read, Refused, shown 
 import { ANGLE_DEG, decimals, LENGTH_MM, MASS_G } from './format'
 import {
   CATALOG,
+  type Catalog,
   CatalogContext,
   type Language,
   pickLanguage,
@@ -232,6 +233,34 @@ function SheetNotes({ s }: { s: Sheet }) {
   )
 }
 
+/**
+ * Where a reading centered its load on the capstan/heel contact point, and how
+ * that point was found, under the reading, where it is read.
+ */
+function Centered({
+  s,
+  procedure,
+  placed,
+}: {
+  s: Sheet
+  procedure: Procedure
+  placed: Catalog['sheet']['keyRatioCentered']
+}) {
+  const m = reading(s, procedure)
+  const contact = m?.outcome === 'read' ? m.conditions.capstan_heel_contact : null
+  if (contact === null || contact === undefined) return null
+  return (
+    <p
+      className="note capstan-heel-contact"
+      data-centered={procedure}
+      data-found={contact.found.code}
+      data-at-mm={contact.at_mm}
+    >
+      {placed[contact.found.code](contact.at_mm)}
+    </p>
+  )
+}
+
 /** The temporary weight a key friction weight stood on the key, if it was read. */
 function temporaryWeight(s: Sheet, procedure: Procedure) {
   const m = reading(s, procedure)
@@ -405,6 +434,15 @@ export function App() {
             <Measured s={sh} procedure="key_friction_weight_zeroed_on_the_frame" />
             <Measured s={sh} procedure="front_weight" />
             <Measured s={sh} procedure="key_weight_ratio" />
+            <Centered s={sh} procedure="key_weight_ratio" placed={t.sheet.keyRatioCentered} />
+            <Measured s={sh} procedure="wippen_weight" />
+            <Centered s={sh} procedure="wippen_weight" placed={t.sheet.wippenWeightCentered} />
+            <Measured s={sh} procedure="wippen_balance_weight" />
+            {reading(sh, 'wippen_balance_weight')?.outcome === 'read' && (
+              <p className="note">
+                <Rich text={t.sheet.wippenBalanceNote} />
+              </p>
+            )}
             <p className="note">{t.sheet.gramWeights}</p>
             <p className="note">
               {t.sheet.keyFrictionTwice(
@@ -456,7 +494,7 @@ export function App() {
               />
             </p>
             <p className="note">
-              <Rich text={t.sheet.balanceNote} />
+              <Rich text={s.wippen === null ? t.sheet.balanceNote : t.sheet.balanceNoteCarrying} />
             </p>
           </>
         ),

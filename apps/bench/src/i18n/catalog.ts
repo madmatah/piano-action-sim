@@ -18,6 +18,7 @@ import type {
   EditRefusal,
   Fault,
   FrictionRefusal,
+  HeelContactFound,
   How,
   Input,
   KeyPlace,
@@ -36,6 +37,10 @@ import type {
   WippenCarriedBy,
   WippenRefused,
 } from '@pas/wasm/types'
+
+/** A sentence for each way the capstan/heel contact point is found, given
+ * where the load was centered, millimeters along the body weighed. */
+type Placed = { readonly [C in HeelContactFound['code']]: (atMm: number) => string }
 
 /** Each member of a family of codes, by its code. */
 type ByCode<T extends { code: string }> = { [K in T['code']]: Extract<T, { code: K }> }
@@ -205,7 +210,17 @@ export interface Catalog {
     /** How the key bears on its cloth, named. */
     bearsHow(how: string): string
     readonly bearingNote: string
+    /** The equation of balance on a key that carries no wippen. */
     readonly balanceNote: string
+    /** The equation of balance on a key carrying its wippen. */
+    readonly balanceNoteCarrying: string
+    /** Where the key weight ratio's 10 g was centered, millimeters from the
+     * balance pin, by how that point was found. */
+    readonly keyRatioCentered: Placed
+    /** Where the wippen weight's roller stood, millimeters from the
+     * wippen's center pin, by how that point was found. */
+    readonly wippenWeightCentered: Placed
+    readonly wippenBalanceNote: string
   }
   readonly procedure: Named<Procedure>
   readonly because: Named<Input>

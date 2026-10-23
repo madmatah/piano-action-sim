@@ -3,10 +3,19 @@
  * each code's parameters in the sentence, in the trade's units, and every
  * code of a family worded apart.
  */
-import type { Limit, Target } from '@pas/wasm/types'
+import type { HeelContactFound, Limit, Target } from '@pas/wasm/types'
 import { describe, expect, it } from 'vitest'
 import { unitBeside, word } from './catalog'
 import { en as t } from './en'
+
+/** Every way the capstan/heel contact point is found, by a record the
+ * type-check holds complete. */
+const FOUND = Object.keys({
+  where_the_capstan_touches_the_heel: true,
+  no_wippen_assembly: true,
+  no_top_seat: true,
+  capstan_off_the_heel: true,
+} satisfies Record<HeelContactFound['code'], true>) as HeelContactFound['code'][]
 
 /** Every limit, by a record the type-check holds complete. */
 const LIMITS = Object.keys({
@@ -173,6 +182,80 @@ describe('a refused weighing', () => {
       expect(said.startsWith("Refused, the key's weighing left as it was: "), said).toBe(true)
       expect(said).toContain(words)
     }
+  })
+})
+
+describe('where a load stood on the capstan/heel contact point', () => {
+  it('says where the key weight ratio’s 10 g stood, from the balance pin, however its point was found', () => {
+    for (const code of FOUND) {
+      expect(t.sheet.keyRatioCentered[code](-118.2425), code).toContain(
+        '118.24 mm behind the balance pin',
+      )
+    }
+  })
+
+  it('says where the wippen weight’s roller stood, from the center pin, however its point was found', () => {
+    for (const code of FOUND.filter((c) => c !== 'no_wippen_assembly')) {
+      expect(t.sheet.wippenWeightCentered[code](61.2216), code).toContain(
+        '61.22 mm in front of the center pin',
+      )
+    }
+  })
+
+  it('says why the load stood elsewhere than where the capstan touches the wippen heel', () => {
+    expect(t.sheet.keyRatioCentered.no_wippen_assembly(-122)).toContain(
+      'carries no wippen assembly',
+    )
+    expect(t.sheet.keyRatioCentered.no_top_seat(-122)).toContain('has no top seat')
+    expect(t.sheet.keyRatioCentered.capstan_off_the_heel(-122)).toContain('rests on the key’s top')
+    expect(t.sheet.wippenWeightCentered.no_top_seat(59.5)).toContain('has no top seat')
+    expect(t.sheet.wippenWeightCentered.capstan_off_the_heel(59.5)).toContain(
+      'rests on the key’s top',
+    )
+  })
+
+  it('says the key carries no wippen assembly to weigh, and names no roller position', () => {
+    const said = t.sheet.wippenWeightCentered.no_wippen_assembly(59.5)
+    expect(said).toContain('carries no wippen assembly to weigh')
+    expect(said).not.toContain('59')
+  })
+})
+
+describe('a reading computed from another', () => {
+  it('names each reading it can be computed from, where that one is refused', () => {
+    for (const [reading, words] of [
+      ['down_weight', 'down weight'],
+      ['up_weight', 'up weight'],
+      ['wippen_weight', 'wippen weight'],
+      ['key_weight_ratio', 'key weight ratio'],
+    ] as const) {
+      expect(t.refusal.from_a_refused_reading({ code: 'from_a_refused_reading', reading })).toBe(
+        `the ${words} it is computed from is refused.`,
+      )
+    }
+  })
+})
+
+describe('a refused wippen weight', () => {
+  it('says the key carries no wippen assembly', () => {
+    expect(t.refusal.no_wippen_assembly({ code: 'no_wippen_assembly' })).toBe(
+      'the key carries no wippen assembly on its capstan.',
+    )
+  })
+
+  it('says where the roller would stand on a wippen assembly with no heel in front of its center pin', () => {
+    expect(
+      t.refusal.roller_not_in_front_of_the_center_pin({
+        code: 'roller_not_in_front_of_the_center_pin',
+        at_mm: 0,
+      }),
+    ).toContain('the roller would stand under the center pin,')
+    expect(
+      t.refusal.roller_not_in_front_of_the_center_pin({
+        code: 'roller_not_in_front_of_the_center_pin',
+        at_mm: -12.5,
+      }),
+    ).toContain('12.50 mm behind the center pin')
   })
 })
 
